@@ -56,7 +56,7 @@ impl<'a> Pages<'a> {
     ) -> Option<Self> {
         let mut pages = vec![];
         let pages_ctx = PagesContext::new();
-        // PdfCraft patch: guard against page-tree cycles (a `/Kids` entry pointing back up
+        // PDF patch: guard against page-tree cycles (a `/Kids` entry pointing back up
         // the tree), which otherwise recurse until the stack overflows.
         let mut visited = BTreeSet::new();
         resolve_pages(
@@ -112,10 +112,10 @@ impl<'a> Deref for Pages<'a> {
     }
 }
 
-/// PdfCraft patch: maximum page-tree depth (direct dictionaries have no id to track).
+/// PDF patch: maximum page-tree depth (direct dictionaries have no id to track).
 const MAX_PAGE_TREE_DEPTH: usize = 256;
 
-/// PdfCraft patch: the largest `/UserUnit` honoured, as in Acrobat (a larger value counts as
+/// PDF patch: the largest `/UserUnit` honoured, as in Acrobat (a larger value counts as
 /// this one).
 const MAX_USER_UNIT: f64 = 75_000.0;
 
@@ -127,7 +127,7 @@ fn resolve_pages<'a>(
     visited: &mut BTreeSet<ObjectIdentifier>,
     depth: usize,
 ) -> Option<()> {
-    // PdfCraft patch: skip nodes already visited and absurdly deep trees.
+    // PDF patch: skip nodes already visited and absurdly deep trees.
     if depth > MAX_PAGE_TREE_DEPTH {
         return None;
     }
@@ -186,13 +186,13 @@ pub enum Rotation {
     FlippedHorizontal,
 }
 
-/// PdfCraft patch: the cut-off for content that expands from its compressed streams. The decoded
+/// PDF patch: the cut-off for content that expands from its compressed streams. The decoded
 /// content of a page may be `MAX_CONTENT_EXPANSION` times the size of those streams, and never less
 /// than `MAX_DECODED_STREAM`. Real content expands a few times, and a stream that inflates a
 /// thousandfold from a few kilobytes is a decompression bomb.
 const MAX_CONTENT_EXPANSION: usize = 64;
 
-/// PdfCraft patch: the decoded content of a page, produced a piece at a time, so that the whole of
+/// PDF patch: the decoded content of a page, produced a piece at a time, so that the whole of
 /// it need not be in memory at once (see `interpret_page`). Plain streams and Flate streams without
 /// a predictor are decoded as they are read. Any other stream is decoded whole when the reader is
 /// made, as `page_stream` does, and the decoded streams share one `MAX_DECODED_STREAM`.
@@ -403,16 +403,16 @@ impl<'a> Page<'a> {
             return None;
         }
 
-        // PdfCraft patch (38): a box that encloses no area is no box. A `/MediaBox` without
+        // PDF patch (38): a box that encloses no area is no box. A `/MediaBox` without
         // area (`[0 0 0 0]`) is read as a missing one, and a `/CropBox` that has none, or
         // none in common with the media box, as a missing one (the media box, ISO 32000-2
         // §14.11.2, Table 33). Kept, the page's visible region had no area: nothing was drawn
         // and no text was extracted, where other readers show the page.
         // A page's own box without area gives way to one it inherits that has some. Each box
         // set aside is logged, as other repairs of this reader are.
-        // PdfCraft patch (44): a page with no `/MediaBox`, its own or inherited, or only ones
+        // PDF patch (44): a page with no `/MediaBox`, its own or inherited, or only ones
         // without area, is US Letter, not A4. The box is required (ISO 32000-2 §7.7.3.3,
-        // Table 31) and has no default; other readers use Letter, as do PdfCraft's page model
+        // Table 31) and has no default; other readers use Letter, as do PDF's page model
         // and inspector. The page is then sized, placed and clipped by the same Letter region
         // and its content shows.
         let own_media = dict.get::<Rect>(MEDIA_BOX);
@@ -447,7 +447,7 @@ impl<'a> Page<'a> {
             _ => Rotation::None,
         };
 
-        // PdfCraft patch: the page's own `/UserUnit` (it isn't inherited), read as Acrobat reads
+        // PDF patch: the page's own `/UserUnit` (it isn't inherited), read as Acrobat reads
         // it: a number from 1 up, at most `MAX_USER_UNIT`; anything else counts as 1.
         let user_unit = dict
             .get::<f64>(USER_UNIT)
@@ -479,13 +479,13 @@ impl<'a> Page<'a> {
         Some(iter)
     }
 
-    /// PdfCraft patch: the content of the page, to be read a piece at a time (see
+    /// PDF patch: the content of the page, to be read a piece at a time (see
     /// [`ContentReader`]).
     pub fn content_reader(&self) -> ContentReader<'a> {
         self.content_reader_within(MAX_DECODED_STREAM)
     }
 
-    /// PdfCraft patch: [`Page::content_reader`], with `cap` in place of `MAX_DECODED_STREAM`.
+    /// PDF patch: [`Page::content_reader`], with `cap` in place of `MAX_DECODED_STREAM`.
     fn content_reader_within(&self, cap: usize) -> ContentReader<'a> {
         if let Some(stream) = self.inner.get::<Stream<'a>>(CONTENTS) {
             ContentReader::new(vec![stream], false, cap)
@@ -502,7 +502,7 @@ impl<'a> Page<'a> {
     pub fn page_stream(&self) -> Option<&[u8]> {
         let convert_single = |s: Stream<'_>| {
             let data = s.decoded().ok()?;
-            // PdfCraft patch: take the decoded buffer instead of copying it (up to
+            // PDF patch: take the decoded buffer instead of copying it (up to
             // `MAX_DECODED_STREAM` twice over).
             Some(data.into_owned())
         };
@@ -515,7 +515,7 @@ impl<'a> Page<'a> {
                     let mut collected = vec![];
 
                     for stream in array.iter::<Stream<'_>>() {
-                        // PdfCraft patch: the streams share one `MAX_DECODED_STREAM` (an array
+                        // PDF patch: the streams share one `MAX_DECODED_STREAM` (an array
                         // naming one inflating stream twenty times decoded 5 GB).
                         let left = MAX_DECODED_STREAM.saturating_sub(collected.len());
                         if left == 0 {
@@ -563,7 +563,7 @@ impl<'a> Page<'a> {
         self.crop_box
     }
 
-    /// PdfCraft patch: the size of the page's user-space unit in points (`/UserUnit`).
+    /// PDF patch: the size of the page's user-space unit in points (`/UserUnit`).
     pub fn user_unit(&self) -> f32 {
         self.user_unit
     }
@@ -580,10 +580,10 @@ impl<'a> Page<'a> {
 
         if (crop_box.width() as f32).is_nearly_zero() || (crop_box.height() as f32).is_nearly_zero()
         {
-            // PdfCraft patch (44): the same US Letter default as a missing `/MediaBox`.
+            // PDF patch (44): the same US Letter default as a missing `/MediaBox`.
             (LETTER.width() as f32, LETTER.height() as f32)
         } else {
-            // PdfCraft patch: retain a one-point floor after UserUnit, not one raw unit.
+            // PDF patch: retain a one-point floor after UserUnit, not one raw unit.
             // The stored unit is finite and within 1..=75000. Round upward only if the
             // reciprocal's f32 product would fall below one and trigger a placeholder.
             let mut raw_floor = 1.0 / self.user_unit;
@@ -604,7 +604,7 @@ impl<'a> Page<'a> {
     /// of the page. In addition to that, it also takes the rotation of the page into account.
     pub fn render_dimensions(&self) -> (f32, f32) {
         let (base_width, base_height) = self.base_dimensions();
-        // PdfCraft patch: in points, after `/UserUnit`.
+        // PDF patch: in points, after `/UserUnit`.
         let (mut base_width, mut base_height) =
             (base_width * self.user_unit, base_height * self.user_unit);
 
@@ -646,7 +646,7 @@ impl<'a> Page<'a> {
     pub fn initial_transform(&self, invert_y: bool) -> Transform {
         let crop_box = self.intersected_crop_box();
         let (_, base_height) = self.base_dimensions();
-        // PdfCraft patch: the page in points, after `/UserUnit`.
+        // PDF patch: the page in points, after `/UserUnit`.
         let base_height = base_height * self.user_unit;
         let (width, height) = self.render_dimensions();
 
@@ -682,7 +682,7 @@ impl<'a> Page<'a> {
         };
 
         let user_space = Transform::translate((-crop_box.x0, -crop_box.y0));
-        // PdfCraft patch: user space in units of `/UserUnit` points. A page without it keeps
+        // PDF patch: user space in units of `/UserUnit` points. A page without it keeps
         // exactly the transform it had.
         let user_space = if self.user_unit == 1.0 {
             user_space
@@ -699,7 +699,7 @@ impl<'a> Page<'a> {
 pub struct Resources<'a> {
     parent: Option<Box<Self>>,
     ctx: ReaderContext<'a>,
-    // PdfCraft patch: legacy forms without Resources use the page, not their caller.
+    // PDF patch: legacy forms without Resources use the page, not their caller.
     page_properties: Dict<'a>,
     /// The raw dictionary of external graphics states.
     pub ext_g_states: Dict<'a>,
@@ -725,7 +725,7 @@ impl<'a> Resources<'a> {
         Self::new(resources, Some(parent), &ctx)
     }
 
-    // PdfCraft patch: page-tree inheritance stops at any present Resources dictionary.
+    // PDF patch: page-tree inheritance stops at any present Resources dictionary.
     fn for_page(resources: Option<Dict<'a>>, parent: Self) -> Self {
         let properties = resources.as_ref().map_or_else(|| parent.properties.clone(), |dict| dict.get::<Dict<'_>>(PROPERTIES).unwrap_or_default());
         let mut result = Self::from_parent(resources.unwrap_or_default(), parent);
@@ -736,7 +736,7 @@ impl<'a> Resources<'a> {
 
     /// Create form resources, using page Properties only when Resources is absent.
     /// Other resource categories retain their existing parent-chain lookup.
-    // PdfCraft patch: ISO 32000-2, 7.8.3 and Table 93 require the page origin.
+    // PDF patch: ISO 32000-2, 7.8.3 and Table 93 require the page origin.
     pub fn for_form(resources: Option<Dict<'a>>, parent: Self) -> Self {
         let properties =
             resources.as_ref().map_or_else(|| parent.page_properties.clone(), |dict| dict.get::<Dict<'_>>(PROPERTIES).unwrap_or_default());
@@ -755,7 +755,7 @@ impl<'a> Resources<'a> {
         let shadings = resources.get::<Dict<'_>>(SHADING).unwrap_or_default();
         let properties = resources.get::<Dict<'_>>(PROPERTIES).unwrap_or_default();
 
-        // PdfCraft patch: generic child resources retain the page origin.
+        // PDF patch: generic child resources retain the page origin.
         let page_properties = parent.as_ref().map_or_else(|| properties.clone(), |parent| parent.page_properties.clone());
         let parent = parent.map(Box::new);
 
@@ -823,7 +823,7 @@ impl<'a> Resources<'a> {
 const POINTS_PER_INCH: f64 = 72.0;
 const POINTS_PER_MM: f64 = 1.0 / (10.0 * 2.54) * POINTS_PER_INCH;
 
-/// PdfCraft patch (38): whether `r` encloses some area: finite, and wider and taller than
+/// PDF patch (38): whether `r` encloses some area: finite, and wider and taller than
 /// nothing.
 fn has_area(r: &Rect) -> bool {
     let (w, h) = (r.width() as f32, r.height() as f32);
@@ -843,7 +843,7 @@ pub const A4: Rect = Rect {
     y1: 297.0 * POINTS_PER_MM,
 };
 
-/// PdfCraft patch (44): the dimension of a US Letter page (8.5 × 11 in), the size of a page
+/// PDF patch (44): the dimension of a US Letter page (8.5 × 11 in), the size of a page
 /// that has no `/MediaBox`.
 pub const LETTER: Rect = Rect {
     x0: 0.0,

@@ -5,7 +5,7 @@
 //! incrementally, and a missing translation never fails a build, a test or a release.
 //!
 //! The catalogs live in [ngjordan/craft-i18n](https://github.com/ngjordan/craft-i18n)
-//! (`locales/<code>/common.tsv`, shared by the Crafting Apps, and `iridium_pdf.tsv`), not in this
+//! (`locales/<code>/common.tsv`, shared by the apps, and `iridium_pdf.tsv`), not in this
 //! repository. `build.rs` embeds them from `CRAFT_I18N_DIR` (CI and releases check out the commit
 //! in `craft-i18n.rev`); without it the build is English only. Lookup, fallback (PDF's rows
 //! over shared ones), plural forms (CLDR) and language names are the `craft-i18n` crate's
@@ -468,7 +468,7 @@ fn detect_system_lang() -> Lang {
 }
 
 thread_local! {
-    // Per thread, as in PhotoCraft: independent app and test threads (kittest harnesses run in
+    // Per thread, as upstream: independent app and test threads (kittest harnesses run in
     // parallel) must not change each other's drawing language.
     static CURRENT: Cell<Lang> = const { Cell::new(Lang::EN) };
 }

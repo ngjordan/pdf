@@ -39,7 +39,7 @@ pub(crate) fn fill_stroke_path<'a>(
     context.path_mut().truncate(0);
 }
 
-/// PdfCraft patch: when one operator both fills and strokes a path (`B`, `B*`, `b`, `b*`) or
+/// PDF patch: when one operator both fills and strokes a path (`B`, `B*`, `b`, `b*`) or
 /// paints a glyph in text rendering mode 2 or 6, the fill and stroke form an implicit
 /// non-isolated knockout transparency group that is composited as a unit with the current
 /// soft mask and blend mode (ISO 32000-2 §11.7.4.4).
@@ -86,7 +86,7 @@ pub(crate) fn with_fill_stroke_group<'a, D: Device<'a>>(
     device.set_blend_mode(blend_mode);
 }
 
-/// PdfCraft patch: a clip set by `W` / `W*` takes effect once the path-painting operator that
+/// PDF patch: a clip set by `W` / `W*` takes effect once the path-painting operator that
 /// ends the path has painted it, whichever operator that is (ISO 32000-2 §8.5.4). Upstream
 /// applied it only on `n`, and otherwise left it pending for some later, unrelated `n`.
 pub(crate) fn apply_pending_clip<'a>(context: &mut Context<'a>, device: &mut impl Device<'a>) {
@@ -94,7 +94,7 @@ pub(crate) fn apply_pending_clip<'a>(context: &mut Context<'a>, device: &mut imp
         && !context.path().elements().is_empty()
     {
         let ctm = context.get().ctm;
-        // PdfCraft patch (65): a clip that encloses no area keeps the pixels a fill of it marks
+        // PDF patch (65): a clip that encloses no area keeps the pixels a fill of it marks
         // (see `degenerate_fill_area`), as ISO 32000-2 §10.7.4 says of clipping: "the clipping
         // region consists of the set of pixels that would be included by a fill operation".
         match degenerate_fill_area(context.path(), ctm) {
@@ -107,7 +107,7 @@ pub(crate) fn apply_pending_clip<'a>(context: &mut Context<'a>, device: &mut imp
     }
 }
 
-/// PdfCraft patch (65): the device-space area a fill marks for a path whose bounding box (user
+/// PDF patch (65): the device-space area a fill marks for a path whose bounding box (user
 /// space) has exactly no width or exactly no height, but not both, under `ctm`: one area per
 /// subpath (see `degenerate_line_area`), kept as separate subpaths of one path, so a gap between
 /// two subpaths on the same line stays unpainted (ISO 32000-2 §10.7.4 marks only the pixels the
@@ -155,7 +155,7 @@ pub(crate) fn degenerate_fill_area(path: &BezPath, ctm: Affine) -> Option<BezPat
     (!area.elements().is_empty()).then_some(area)
 }
 
-/// PdfCraft patch (65): the corners of the device-space area a fill marks for one subpath whose
+/// PDF patch (65): the corners of the device-space area a fill marks for one subpath whose
 /// bounding box `bbox` (user space) has exactly no width or exactly no height, but not both,
 /// under `ctm`. ISO 32000-2 §10.7.4 paints "any pixel whose half-open square region intersects
 /// the shape, no matter how small the intersection is", and its example says "A zero-width or
@@ -199,7 +199,7 @@ fn degenerate_line_area(bbox: Rect, ctm: Affine) -> Option<[Point; 4]> {
     Some([a + half, b + half, b - half, a - half])
 }
 
-/// PdfCraft patch (65): the device pixel boundaries `(first, end)` of the pixels a span `lo..=hi`
+/// PDF patch (65): the device pixel boundaries `(first, end)` of the pixels a span `lo..=hi`
 /// (`lo <= hi`, finite) touches along one axis by the half-open rule, at least one pixel. A span
 /// under 1/256 of a pixel is taken at its middle, so a line along a device axis that a CTM's
 /// rounding tilts slightly still marks one row or column.
@@ -219,7 +219,7 @@ pub(crate) fn close_path(context: &mut Context<'_>) {
     // but it does cause some weird lines (maybe conflation artifacts) in
     // pdftc_900k_0907.
     //
-    // PdfCraft patch (61): a path that is a single `m` is closed too. kurbo's `is_empty` counts
+    // PDF patch (61): a path that is a single `m` is closed too. kurbo's `is_empty` counts
     // only segments, so upstream dropped the `h` of `x y m h`, and the single-point closed
     // subpath a round cap paints as a dot (ISO 32000-2 §8.5.3.2) became a trailing `m`, which
     // paints nothing.
@@ -232,7 +232,7 @@ pub(crate) fn close_path(context: &mut Context<'_>) {
     }
 }
 
-/// PdfCraft patch (61): call before appending a segment. ISO 32000-2 §8.5.2.1 (Table 58) says `h`
+/// PDF patch (61): call before appending a segment. ISO 32000-2 §8.5.2.1 (Table 58) says `h`
 /// "terminates the current subpath. Appending another segment to the current path shall begin a
 /// new subpath, even if the new segment begins at the endpoint reached by the h operation." kurbo
 /// takes a segment after a `ClosePath` on from the closed subpath's start without a `MoveTo`, so
@@ -267,7 +267,7 @@ pub(crate) fn fill_path_impl<'a>(
         // pdf.js issue 4260: Replace zero-sized paths with a small stroke instead.
         let bbox = path.fast_bounding_box();
 
-        // PdfCraft patch (65): see `degenerate_fill_area`. Painted with the non-zero rule: the
+        // PDF patch (65): see `degenerate_fill_area`. Painted with the non-zero rule: the
         // area is one simple shape, whatever rule the path was filled with.
         if let Some(area) = degenerate_fill_area(path, base_transform) {
             let draw_mode = PathDrawMode::Fill(FillRule::NonZero);
@@ -279,7 +279,7 @@ pub(crate) fn fill_path_impl<'a>(
             return;
         }
 
-        // PdfCraft patch (65): only a box with exactly no width or height (by now a point) is
+        // PDF patch (65): only a box with exactly no width or height (by now a point) is
         // stroked. A box with area, however thin, is filled as the shape it is: a "nearly zero"
         // side scaled up by the CTM can cover many device pixels.
         match (bbox.width() == 0.0, bbox.height() == 0.0) {
@@ -336,7 +336,7 @@ pub(crate) fn stroke_path_impl<'a>(
     device.set_blend_mode(context.get().graphics_state.blend_mode);
     let paint = get_paint(context, true);
 
-    // PdfCraft patch (61): see `resolve_degenerate_subpaths`.
+    // PDF patch (61): see `resolve_degenerate_subpaths`.
     let path = resolve_degenerate_subpaths(
         path.unwrap_or(context.path()),
         stroke_props.line_cap,
@@ -355,7 +355,7 @@ pub(crate) fn stroke_path_impl<'a>(
     }
 }
 
-/// PdfCraft patch (61): `path` as `S` strokes it, by ISO 32000-2 §8.5.3.2: "If a subpath is
+/// PDF patch (61): `path` as `S` strokes it, by ISO 32000-2 §8.5.3.2: "If a subpath is
 /// degenerate (consists of a single-point closed path or of two or more points at the same
 /// coordinates), the S operator shall paint it only if round line caps have been specified,
 /// producing a filled circle centred at the single point." With butt or projecting square caps
@@ -438,7 +438,7 @@ pub(crate) fn get_paint<'a>(context: &Context<'a>, is_stroke: bool) -> Paint<'a>
                 pattern.set_transfer_function(tf.clone());
             }
 
-            // PdfCraft patch: `CA`/`ca` can be set by a `gs` after the pattern colour operator, so use the alpha current at paint time.
+            // PDF patch: `CA`/`ca` can be set by a `gs` after the pattern colour operator, so use the alpha current at paint time.
             pattern.set_alpha(data.alpha);
             pattern.pre_concat_transform(context.root_transform());
 
@@ -448,7 +448,7 @@ pub(crate) fn get_paint<'a>(context: &Context<'a>, is_stroke: bool) -> Paint<'a>
             Paint::Color(Color::new(ColorSpace::device_gray(), smallvec![0.0], 0.0))
         }
     } else {
-        // PdfCraft patch (63): see `Context::luminosity_in_device_cmyk`.
+        // PDF patch (63): see `Context::luminosity_in_device_cmyk`.
         let color = if context.luminosity_in_device_cmyk && data.color_space.is_device_cmyk() {
             let gray = device_cmyk_to_gray(&data.color);
             Color::new(ColorSpace::device_gray(), smallvec![gray], data.alpha)

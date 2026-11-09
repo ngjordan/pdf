@@ -29,7 +29,7 @@ pub(crate) fn convert_line_join(lc: LineJoin) -> kurbo::Join {
     }
 }
 
-/// PdfCraft patch (61): the line width to keep for a `w` operand or an ExtGState `/LW`. ISO
+/// PDF patch (61): the line width to keep for a `w` operand or an ExtGState `/LW`. ISO
 /// 32000-2 §8.4.3.2 makes 0 "the thinnest line that can be rendered at device resolution" but
 /// says nothing of a negative width; it is drawn as 0, as is one that isn't finite, so no device
 /// sees a width below zero.
@@ -41,7 +41,7 @@ pub(crate) fn convert_line_width(width: f32) -> f32 {
     }
 }
 
-/// PdfCraft patch (61): the dash array to keep for a `d` operator or an ExtGState `/D`. ISO
+/// PDF patch (61): the dash array to keep for a `d` operator or an ExtGState `/D`. ISO
 /// 32000-2 §8.4.3.6 requires numbers that "shall be nonnegative and not all zero". A pattern that
 /// breaks that (all zero, a negative or a non-finite entry) is kept as `[]`, a solid line, rather
 /// than cut into dashes the zero-entry workaround below would make a hundredth of a point long.

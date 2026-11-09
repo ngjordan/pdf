@@ -192,7 +192,7 @@ impl TrueTypeFont {
 
         match &self.kind {
             Kind::Embedded(e) => {
-                // PdfCraft patch (79): see `EmbeddedKind::symbolic_text`.
+                // PDF patch (79): see `EmbeddedKind::symbolic_text`.
                 if let Some(text) = e.symbolic_text(code as u8) {
                     let mut chars = text.chars();
                     return Some(match (chars.next(), chars.next()) {
@@ -200,7 +200,7 @@ impl TrueTypeFont {
                         _ => BfString::String(text.to_string()),
                     });
                 }
-                // PdfCraft patch (#3169): a name outside the glyph list reads by the glyph list
+                // PDF patch (#3169): a name outside the glyph list reads by the glyph list
                 // specification's full mapping (`f_i`, `hyphen.case`).
                 e.code_to_unicode_name(code as u8).and_then(|name| {
                     glyph_name_to_unicode(name)
@@ -233,10 +233,10 @@ struct EmbeddedKind {
     cached_mappings: RefCell<HashMap<u8, GlyphId>>,
     /// PostScript name from the PDF.
     postscript_name: Option<String>,
-    /// PdfCraft patch (79): the text each glyph's `post` table name stands for, for the names
+    /// PDF patch (79): the text each glyph's `post` table name stands for, for the names
     /// that stand for any (`glyph_name_text`).
     text_names: HashMap<GlyphId, String>,
-    /// PdfCraft patch (101): whether the font may take the Mac OS Roman reading at all, worked out
+    /// PDF patch (101): whether the font may take the Mac OS Roman reading at all, worked out
     /// once when it is loaded (`EmbeddedKind::mac_roman_name`).
     mac_roman_eligible: bool,
 }
@@ -270,7 +270,7 @@ impl EmbeddedKind {
             .get::<Name<'_>>(BASE_FONT)
             .map(|n| strip_subset_prefix(n.as_str()).to_string());
 
-        // PdfCraft patch (101): the font names no base encoding, not even one this reader doesn't
+        // PDF patch (101): the font names no base encoding, not even one this reader doesn't
         // know (which `read_encoding` reads as the built-in one), and isn't Symbol or ZapfDingbats,
         // whose built-in encodings aren't Latin (ISO 32000-2 §9.6.6.1). Both as the editor's
         // `unicode_map` decides them, Symbol and ZapfDingbats recognised by name as there.
@@ -324,7 +324,7 @@ impl EmbeddedKind {
             .or_else(|| standard::get(code))
     }
 
-    /// PdfCraft patch: the glyph name text extraction reads a code as. Without a base encoding
+    /// PDF patch: the glyph name text extraction reads a code as. Without a base encoding
     /// a TrueType font's codes are read as WinAnsi, matching pdftotext's output, not as
     /// Standard: OCR engines write the text layer of a scan with WinAnsi codes and no
     /// `/Encoding`, and Standard has no name for ü, ö or ß and gives é (0xE9) as Ø. Glyph
@@ -333,11 +333,11 @@ impl EmbeddedKind {
         self.differences
             .get(&code)
             .map(|s| s.as_str())
-            // PdfCraft patch: an Annex D.2 alias code reads as the ordinary character; see
+            // PDF patch: an Annex D.2 alias code reads as the ordinary character; see
             // `Encoding::text_alias`.
             .or_else(|| self.encoding.text_alias(code))
             .or_else(|| self.encoding.map_code(code))
-            // PdfCraft patch (101): see `EmbeddedKind::mac_roman_name`.
+            // PDF patch (101): see `EmbeddedKind::mac_roman_name`.
             .or_else(|| self.mac_roman_name(code))
             // The last resort reads the code as WinAnsi whatever the font said, so it takes the
             // same aliasing.
@@ -345,7 +345,7 @@ impl EmbeddedKind {
             .or_else(|| win_ansi::get(code))
     }
 
-    /// PdfCraft patch (79): a symbolic font without an encoding selects its glyphs through its
+    /// PDF patch (79): a symbolic font without an encoding selects its glyphs through its
     /// own `cmap`, so its codes need not mean anything in WinAnsi. FrameMaker files distilled
     /// with Distiller 3 number them in the Macintosh glyph order, 29 below ASCII, and read as
     /// WinAnsi `Solid` came out as `6ROLG` (#3962). The name the `post` table gives the glyph the
@@ -431,7 +431,7 @@ impl EmbeddedKind {
                 }
             }
         } else if let Ok(cmap) = self.base_font.font_ref().cmap() {
-            // PdfCraft patch (#4156): the Windows (3, 0) subtable comes first, and the (1, 0) one
+            // PDF patch (#4156): the Windows (3, 0) subtable comes first, and the (1, 0) one
             // only for codes it doesn't map (ISO 32000-2 §9.6.5.4: "If the font contains a (3, 0)
             // subtable" it is used; "Otherwise, if the font contains a (1, 0) subtable"). The
             // records are listed by platform ID, so Macintosh came before Windows and a wrong
@@ -471,7 +471,7 @@ impl EmbeddedKind {
         glyph
     }
 
-    /// PdfCraft patch (101): the Mac OS Roman glyph name a code of a symbolic font without an
+    /// PDF patch (101): the Mac OS Roman glyph name a code of a symbolic font without an
     /// encoding or glyph names reads as, when two things say the code is Mac OS Roman:
     ///
     /// - its Macintosh Roman (1, 0) `cmap` subtable selects the glyph the code draws. ISO
@@ -553,7 +553,7 @@ pub(crate) enum Width {
     Missing,
 }
 
-/// PdfCraft patch (79): the text a glyph name stands for, by the rules of the Adobe Glyph List
+/// PDF patch (79): the text a glyph name stands for, by the rules of the Adobe Glyph List
 /// specification (ISO 32000-2 §9.10.2): drop any suffix from the first `.` (`a.ss01` is `a`),
 /// then each `_`-separated component is a list name, `uni` and groups of exactly four
 /// uppercase hex digits, or `u` and four to six. A value in the surrogate range or past
@@ -594,7 +594,7 @@ pub(crate) fn read_widths(dict: &Dict<'_>, descriptor: &Dict<'_>) -> Option<(Vec
     let missing_width = descriptor.get::<f32>(MISSING_WIDTH).unwrap_or(0.0);
 
     if let (Some(fc), Some(lc), Some(w)) = (first_char, last_char, widths_arr) {
-        // PdfCraft patch: simple-font codes are single bytes, so only codes up to 255 get an
+        // PDF patch: simple-font codes are single bytes, so only codes up to 255 get an
         // entry (one per code below /FirstChar was pushed: 4294967295 asked for 34 GB). An
         // entry that isn't a number leaves its code missing instead of ending the array, and a
         // /LastChar below /FirstChar means no widths rather than no font.
@@ -681,7 +681,7 @@ pub(crate) fn read_encoding(dict: &Dict<'_>) -> (Encoding, HashMap<u8, String>) 
 mod tests {
     use super::glyph_name_text;
 
-    /// PdfCraft patch (79): glyph names read by the glyph list specification's rules.
+    /// PDF patch (79): glyph names read by the glyph list specification's rules.
     #[test]
     fn glyph_names_read_by_the_adobe_glyph_list_rules() {
         for (name, expected) in [
@@ -710,7 +710,7 @@ mod tests {
             "u0000041",
             "u004G",
             "a_EMquad",
-            // PdfCraft patch (79): the glyph list specification's hex digits are uppercase only.
+            // PDF patch (79): the glyph list specification's hex digits are uppercase only.
             "uni20ac",
             "uni004100e9",
             "u1f600",

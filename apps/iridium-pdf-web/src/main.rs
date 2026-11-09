@@ -19,7 +19,7 @@ fn main() {
                 options,
                 Box::new(|cc| {
                     let mut app = PdfApp::new();
-                    // "printcraft": settings saved under the app's former name, PrintCraft.
+                    // "printcraft": settings saved under the app's former upstream name.
                     if let Some(json) = cc.storage.and_then(|s| s.get_string("iridium_pdf").or_else(|| s.get_string("printcraft"))) {
                         app.restore(&json);
                     }

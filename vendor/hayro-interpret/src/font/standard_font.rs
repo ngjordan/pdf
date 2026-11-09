@@ -201,7 +201,7 @@ impl StandardFont {
     }
 }
 
-/// PdfCraft patch (98): the style names that may follow `Symbol` or `SymbolMT` after a `,` or
+/// PDF patch (98): the style names that may follow `Symbol` or `SymbolMT` after a `,` or
 /// `-` and still name the Symbol font (any case).
 const SYMBOL_STYLES: [&str; 9] = [
     "Bold",
@@ -215,7 +215,7 @@ const SYMBOL_STYLES: [&str; 9] = [
     "Plain",
 ];
 
-/// PdfCraft patch (98): whether `name` (without a subset prefix) is `Symbol` or `SymbolMT`, alone
+/// PDF patch (98): whether `name` (without a subset prefix) is `Symbol` or `SymbolMT`, alone
 /// or followed by `,` or `-` and a style from [`SYMBOL_STYLES`]. Another name after the
 /// separator (`Symbol-Helvetica`) is a different font.
 fn is_symbol_name(name: &str) -> bool {
@@ -259,7 +259,7 @@ pub(crate) fn select_standard_font(
         _ => {}
     }
 
-    // PdfCraft patch (98): `SymbolMT` (the name Symbol has as a TrueType font) and the style
+    // PDF patch (98): `SymbolMT` (the name Symbol has as a TrueType font) and the style
     // variants `Symbol,Bold`, `SymbolMT,Italic` or `Symbol-Bold` are the Symbol font, drawn with
     // its built-in encoding like `Symbol` itself, whatever `/Encoding` and flags they declare.
     if is_symbol_name(name) {
@@ -361,7 +361,7 @@ impl StandardFontBlob {
 
     pub(crate) fn advance_width(&self, glyph: GlyphId) -> Option<f32> {
         match self {
-            // PdfCraft patch (77): the stand-in's own advance, so a glyph drawn wider than the
+            // PDF patch (77): the stand-in's own advance, so a glyph drawn wider than the
             // standard metrics (the € of the bundled stand-ins) is fitted to them.
             Self::Cff(blob) => blob.advance_width(glyph),
             Self::Otf(blob, _) => blob.glyph_metrics().advance_width(glyph),
@@ -457,7 +457,7 @@ impl StandardKind {
                                 .unicode_to_glyph(c.chars().nth(0).unwrap() as u32)
                         })
                     })
-                    // PdfCraft patch: an accented letter the stand-in lacks is built from its
+                    // PDF patch: an accented letter the stand-in lacks is built from its
                     // parts (see `ACCENTED_LETTERS`).
                     .or_else(|| self.composite_glyph(code, c))
             })
@@ -467,7 +467,7 @@ impl StandardKind {
         result
     }
 
-    /// PdfCraft patch: the glyph id standing for the letter `name` built from its base letter and
+    /// PDF patch: the glyph id standing for the letter `name` built from its base letter and
     /// accent, when the stand-in has both. Ids from [`COMPOSITE_GLYPH_BASE`] up are one per
     /// character code, so the outline is found again from the code alone.
     fn composite_glyph(&self, code: u8, name: &str) -> Option<GlyphId> {
@@ -477,7 +477,7 @@ impl StandardKind {
         Some(GlyphId::new(COMPOSITE_GLYPH_BASE + u32::from(code)))
     }
 
-    /// PdfCraft patch: the outline of a glyph from [`Self::composite_glyph`] — the base letter,
+    /// PDF patch: the outline of a glyph from [`Self::composite_glyph`] — the base letter,
     /// then the accent centred on it. An accent above a letter taller than `x` is raised by the
     /// difference (the stand-in's accents sit on lowercase letters) and, in an italic font,
     /// moved along the slant; an ogonek hangs from the letter's right edge; a comma below is
@@ -546,7 +546,7 @@ impl StandardKind {
         // If the font is not embedded, we might need to stretch it so that
         // it matches the metrics of the actual underlying font blob.
 
-        // PdfCraft patch: a composite id isn't a glyph of the blob, so its width comes from the
+        // PDF patch: a composite id isn't a glyph of the blob, so its width comes from the
         // standard metrics of its name.
         let blob_width = if is_composite {
             None
@@ -579,7 +579,7 @@ impl StandardKind {
                 return path;
             };
 
-            // PdfCraft patch (57): a stand-in for a font the document names is narrowed to a
+            // PDF patch (57): a stand-in for a font the document names is narrowed to a
             // narrower /Widths advance, so neighbours don't overlap, but never widened: the
             // advance already places the next glyph, and widening drew `i` and `l` of a 600-unit
             // `Arial,Bold` as solid blocks twice their width.
@@ -605,7 +605,7 @@ impl StandardKind {
     }
 
     pub(crate) fn char_code_to_unicode(&self, code: u8) -> Option<char> {
-        // PdfCraft patch: an Annex D.2 alias code reads as the ordinary character; see
+        // PDF patch: an Annex D.2 alias code reads as the ordinary character; see
         // `Encoding::text_alias`. `code_to_ps_name` is shared with glyph lookup and stays as it
         // is, so the alias is applied here, after `/Differences` has had its say.
         if !self.encodings.contains_key(&code)
@@ -633,19 +633,19 @@ impl StandardKind {
     }
 }
 
-/// PdfCraft patch: the first glyph id of the letters [`StandardKind`] builds from parts, far
+/// PDF patch: the first glyph id of the letters [`StandardKind`] builds from parts, far
 /// above the glyph count of any font (one id per character code from here).
 const COMPOSITE_GLYPH_BASE: u32 = 0x0100_0000;
 
-/// PdfCraft patch: how far an accent raised over a capital moves right per unit of height in
+/// PDF patch: how far an accent raised over a capital moves right per unit of height in
 /// an italic stand-in (tan 15°; the standard italics lean 12° to 16°).
 const ITALIC_ACCENT_SLANT: f64 = 0.27;
 
-/// PdfCraft patch: the size of a comma accent against the font's comma. A full-size comma
+/// PDF patch: the size of a comma accent against the font's comma. A full-size comma
 /// moved under the baseline reaches past the descenders and into the line below.
 const COMMA_BELOW_SCALE: f64 = 0.75;
 
-/// PdfCraft patch: the gap between the baseline and a comma accent, as a share of its height.
+/// PDF patch: the gap between the baseline and a comma accent, as a share of its height.
 const COMMA_BELOW_GAP: f64 = 0.15;
 
 /// Where an accent goes on its base letter.
@@ -658,7 +658,7 @@ enum Place {
     CommaBelow,
 }
 
-/// PdfCraft patch: the stand-ins for the standard fonts (PDFium's Foxit fonts) carry only the
+/// PDF patch: the stand-ins for the standard fonts (PDFium's Foxit fonts) carry only the
 /// glyphs of the Standard, WinAnsi and Mac Roman encodings, so a font that isn't embedded and
 /// names other Latin letters in its /Differences (`/Gbreve`, `/Idotaccent`, `/Scedilla`…, as
 /// iText 2 writes Turkish text with Times New Roman left unembedded) drew nothing for them. Each of
@@ -773,7 +773,7 @@ const ACCENTED_LETTERS: &[(&str, &str, &str, Place)] = &[
     ("zdotaccent", "z", "dotaccent", Place::Above),
 ];
 
-/// PdfCraft patch: the comma-below letters of [`ACCENTED_LETTERS`] by character. The glyph list
+/// PDF patch: the comma-below letters of [`ACCENTED_LETTERS`] by character. The glyph list
 /// names the Latvian ones `Kcedilla`… (their comma is a cedilla in Unicode's names), has no name
 /// for Ț ț, and gives `Tcommaaccent` and `tcommaaccent` to Ţ ţ, which keep their cedilla.
 const COMMA_BELOW_BY_CHAR: &[(char, &str)] = &[
@@ -792,7 +792,7 @@ const COMMA_BELOW_BY_CHAR: &[(char, &str)] = &[
     ('\u{021B}', "tcommaaccent"),
 ];
 
-/// PdfCraft patch: the base letter, accent and placement of an accented letter in
+/// PDF patch: the base letter, accent and placement of an accented letter in
 /// [`ACCENTED_LETTERS`], by glyph name (`uni011E` and `u011E` forms too). A comma-below letter
 /// is found by its character ([`COMMA_BELOW_BY_CHAR`]), so `/uni0136` and `/Kcedilla` are Ķ too.
 fn accented_parts(name: &str) -> Option<(&'static str, &'static str, Place)> {
@@ -805,7 +805,7 @@ fn accented_parts(name: &str) -> Option<(&'static str, &'static str, Place)> {
     };
     by_name(name).or_else(|| {
         // Drawing keeps upstream's lenient reading of `uni` names; text goes by the glyph list
-        // specification (PdfCraft patch 92).
+        // specification (PDF patch 92).
         let c = glyph_names::get(name)
             .and_then(|s| s.chars().next())
             .or_else(|| unicode_from_name(name))?;

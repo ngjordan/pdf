@@ -120,7 +120,7 @@ impl<'a> Image<'a> {
     /// Parse an embedded JBIG2 image with optional global segments.
     ///
     /// The file is expected to use the embedded organization defined in
-    /// Annex D.3. PdfCraft patch (17): data that starts with a file header (D.4)
+    /// Annex D.3. PDF patch (17): data that starts with a file header (D.4)
     /// is read past it, in the organization it declares, as Acrobat and PDFBox
     /// draw such streams; its segments still count together with the globals'.
     pub fn new_embedded(data: &'a [u8], globals: Option<&'a [u8]>) -> Result<Self> {
@@ -217,7 +217,7 @@ impl<'a> Image<'a> {
         Ok(())
     }
 
-    /// PdfCraft patch: [`Image::decode`], spending from `work`, what decoding may still cost
+    /// PDF patch: [`Image::decode`], spending from `work`, what decoding may still cost
     /// across a run of images. An image spends what it took, failing or not, starting with its
     /// page's pixels, which whoever asked for them will go through, and its segments, so images
     /// that decode nothing add up too. On top of that, it takes at most [`bitmap::MAX_WORK`]
@@ -300,18 +300,18 @@ fn emit_bitmap<D: Decoder>(bitmap: &Bitmap, decoder: &mut D) {
     }
 }
 
-/// PdfCraft patch: count `work` more decoding work, refusing past what is `left` of
+/// PDF patch: count `work` more decoding work, refusing past what is `left` of
 /// [`bitmap::MAX_WORK`] or a run's allowance before what asks for it is decoded.
 fn charge_work(left: &mut u64, work: u64) -> Result<()> {
     *left = left.checked_sub(work).ok_or(OverflowError::DecodingWork)?;
     Ok(())
 }
 
-/// PdfCraft patch: the steps of reading a byte of a stream or its globals: parsing and sorting
+/// PDF patch: the steps of reading a byte of a stream or its globals: parsing and sorting
 /// segments, and building their tables, measured at about 3 a byte at the worst.
 const READ_WORK: u64 = 4;
 
-/// PdfCraft patch: charge `work`, what a run of images may still cost, for reading `bytes` of a stream
+/// PDF patch: charge `work`, what a run of images may still cost, for reading `bytes` of a stream
 /// and its globals. This comes before anything is parsed, as it counts whether or not they turn out
 /// to decode: an image that fails has still cost its reading, and it is read again for each use. What
 /// `work` can't pay for spends all of it.
@@ -323,12 +323,12 @@ pub fn charge_reading(work: &mut u64, bytes: usize) -> Result<()> {
     Ok(())
 }
 
-/// PdfCraft patch: the work of a region decoded pixel by pixel.
+/// PDF patch: the work of a region decoded pixel by pixel.
 fn region_work(region: &decode::RegionSegmentInfo) -> u64 {
     bitmap::decode_work(region.width, region.height)
 }
 
-/// PdfCraft patch: the page restricted to a refinement's area, its reference when it refers to no
+/// PDF patch: the page restricted to a refinement's area, its reference when it refers to no
 /// other region (7.4.7.4). Copying it a word at a time costs less than the region's own decoding,
 /// already charged, and it is held, as large as the region, only while the region decodes.
 fn page_area(page: &Bitmap, region: &decode::RegionSegmentInfo) -> Result<Bitmap> {
@@ -557,7 +557,7 @@ fn decode_segments(
 
                 let header = generic_refinement::parse(&mut reader)?;
                 charge_work(work_left, region_work(&header.region_info))?;
-                // PdfCraft patch: a refinement of the page refines its area (`Bitmap::area`).
+                // PDF patch: a refinement of the page refines its area (`Bitmap::area`).
                 let area;
                 let reference = match referred_segment {
                     Some(region) => region,
@@ -595,7 +595,7 @@ fn decode_segments(
                         scratch_buffers,
                     )?;
                 } else {
-                    // PdfCraft patch: a refinement of the page refines its area (`Bitmap::area`).
+                    // PDF patch: a refinement of the page refines its area (`Bitmap::area`).
                     let area;
                     let reference = match referred_segment {
                         Some(region) => region,
@@ -627,10 +627,10 @@ fn decode_segments(
     Ok(())
 }
 
-/// PdfCraft patch: the words a stored item costs in its list, at least, apart from what it holds.
+/// PDF patch: the words a stored item costs in its list, at least, apart from what it holds.
 const ENTRY_WORDS: u64 = 32;
 
-/// PdfCraft patch: the most words a page's segments may hold for later ones, 64 MiB: two square
+/// PDF patch: the most words a page's segments may hold for later ones, 64 MiB: two square
 /// bitmaps of 16,384 a side (`bitmap::MAX_PIXELS`). Each stored item is bounded on its own, but without a
 /// bound on all of them a stream of a few dozen bytes a segment held 33 MB each (a 16,384-sample
 /// square region of typical rows), and a few kilobytes could exhaust memory. A segment being
@@ -639,7 +639,7 @@ const ENTRY_WORDS: u64 = 32;
 const MAX_RETAINED_WORDS: u64 =
     2 * (bitmap::MAX_PIXELS / bitmap::WORD_BITS as u64 + bitmap::BITMAP_WORDS as u64 + ENTRY_WORDS);
 
-/// PdfCraft patch: the most symbols one segment may refer to, 2^20, far beyond the 65,535 a
+/// PDF patch: the most symbols one segment may refer to, 2^20, far beyond the 65,535 a
 /// dictionary may export. References may repeat, so each names the same symbols again: without
 /// this, 65,535 references to one dictionary in a 78 KB stream collected 17 GB of pointers.
 const MAX_REFERRED_SYMBOLS: u64 = 1 << 20;
@@ -660,7 +660,7 @@ pub(crate) struct PageState {
     /// Decoded Huffman tables from table segments, stored as (`segment_number`, table) pairs.
     /// "Tables – see 7.4.13." (type 53)
     pub(crate) huffman_tables: Vec<(u32, HuffmanTable)>,
-    /// PdfCraft patch: the words the regions, dictionaries and tables above hold, at most
+    /// PDF patch: the words the regions, dictionaries and tables above hold, at most
     /// [`MAX_RETAINED_WORDS`].
     pub(crate) retained_words: u64,
     /// Standard Huffman tables (`TABLE_A` through `TABLE_O`).
@@ -713,12 +713,12 @@ impl PageState {
         }
     }
 
-    /// PdfCraft patch: the words the page may still hold for later segments.
+    /// PDF patch: the words the page may still hold for later segments.
     fn retained_room(&self) -> u64 {
         MAX_RETAINED_WORDS.saturating_sub(self.retained_words)
     }
 
-    /// PdfCraft patch: count a stored item holding `words` for later segments, refusing past
+    /// PDF patch: count a stored item holding `words` for later segments, refusing past
     /// [`MAX_RETAINED_WORDS`].
     fn retain(&mut self, words: usize) -> Result<()> {
         self.retained_words = self.retained_words.saturating_add(words as u64).saturating_add(ENTRY_WORDS);
@@ -765,7 +765,7 @@ impl PageState {
         Ok(())
     }
 
-    /// PdfCraft patch: the symbols of the dictionaries in `segments`, in order, refusing past
+    /// PDF patch: the symbols of the dictionaries in `segments`, in order, refusing past
     /// [`MAX_REFERRED_SYMBOLS`] before anything is collected.
     fn referred_symbols(&self, segments: &[u32]) -> Result<Vec<&Bitmap>> {
         let dictionaries = || segments.iter().filter_map(|&num| self.get_symbol_dictionary(num));
@@ -881,7 +881,7 @@ mod tests {
     const OR: u8 = 0;
     const REPLACE: u8 = 4;
 
-    /// PdfCraft patch: a region's location is unsigned (5.4.4), so one past `i32::MAX` is off the
+    /// PDF patch: a region's location is unsigned (5.4.4), so one past `i32::MAX` is off the
     /// page. Taken for a signed one, a region at 0xFFFFFFFE drew back onto the page two pixels left
     /// of it, and a refinement there was refused, and the rest of the stream with it. Each region
     /// here is 4 × 4 on a blank page of 8 × 8, its coded data arbitrary: on the page it draws, off
@@ -924,7 +924,7 @@ mod tests {
         }
     }
 
-    /// PdfCraft patch: a refinement of a region refines it where it is, "GRREFERENCEDX 0,
+    /// PDF patch: a refinement of a region refines it where it is, "GRREFERENCEDX 0,
     /// GRREFERENCEDY 0" (Table 35), not the page at the refinement's location. A region and its
     /// refinement, directly or through an intermediate refinement, decode otherwise than the same
     /// refinements of the page, and at 2, 3 to the pixels they decode to at 0, 0, moved.
@@ -968,7 +968,7 @@ mod tests {
         }
     }
 
-    /// PdfCraft patch: a refinement of the page refines the page restricted to its area (7.4.7.4),
+    /// PDF patch: a refinement of the page refines the page restricted to its area (7.4.7.4),
     /// reading 0 around it, and a reference 32 or more left of a refinement is read from where each
     /// row starts in it. So that a context read wrong changes what decodes, the refinements are
     /// large, and their pictures come from the hash they were coded from: a 64 × 16 refinement at
@@ -1018,7 +1018,7 @@ mod tests {
         }
     }
 
-    /// PdfCraft patch: the area a refinement of the page refines is the page inside it and 0
+    /// PDF patch: the area a refinement of the page refines is the page inside it and 0
     /// outside: off the page's rows and columns, past where a column can be, and past the page's
     /// width and the area's own whatever the padding of the page's rows holds. `new_with` clears
     /// that padding (patch 13), so the page's words are set to all 1s, padding included.
@@ -1051,7 +1051,7 @@ mod tests {
         assert!(refused(&more), "one more isn't");
     }
 
-    /// PdfCraft patch: a refinement whose reference is offset right of it reads the reference from
+    /// PDF patch: a refinement whose reference is offset right of it reads the reference from
     /// its first column, where it read the first 32 as 0. So that a context read wrong changes what
     /// decodes, the refinement is large, and its picture comes from the hash it was coded from: a
     /// 104 × 12 text instance refined from a 100 × 12 symbol 2 right of it.

@@ -11,15 +11,15 @@ use crate::segment::{
     Segment, SegmentType, parse_segment, parse_segment_data, parse_segment_header,
 };
 
-/// PdfCraft patch: the most segments a stream, with its globals, may have. They are all parsed and
+/// PDF patch: the most segments a stream, with its globals, may have. They are all parsed and
 /// sorted before the first is decoded, at about 64 bytes for 11 of input, so behind nested Flate a
 /// 4,765-byte PDF reached 5 GB and failed only afterwards.
 const MAX_SEGMENTS: usize = 1 << 20;
 
-/// PdfCraft patch: the most references those segments may make, 4 bytes each for 1 of input.
+/// PDF patch: the most references those segments may make, 4 bytes each for 1 of input.
 const MAX_REFERENCES: usize = 1 << 22;
 
-/// PdfCraft patch: the segments of a stream so far (see [`MAX_SEGMENTS`], [`MAX_REFERENCES`]).
+/// PDF patch: the segments of a stream so far (see [`MAX_SEGMENTS`], [`MAX_REFERENCES`]).
 #[derive(Default)]
 pub(crate) struct SegmentCount {
     segments: usize,
@@ -88,7 +88,7 @@ pub(crate) struct File<'a> {
 /// (D.4.1)
 const FILE_HEADER_ID: [u8; 8] = [0x97, 0x4A, 0x42, 0x32, 0x0D, 0x0A, 0x1A, 0x0A];
 
-/// PdfCraft patch (17): an embedded stream that starts with a file header (D.4), which some
+/// PDF patch (17): an embedded stream that starts with a file header (D.4), which some
 /// producers write into a PDF's `JBIG2Decode` data although ISO 32000-1 7.4.7 has the embedded
 /// organization (D.3) there. Returns the reader past the header and the organization the header
 /// declares, or `None` when the data doesn't start with the header's ID string.

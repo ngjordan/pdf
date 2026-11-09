@@ -23,7 +23,7 @@ struct FiltersAndParams<'a> {
     params: SmallVec<[Dict<'a>; 2]>,
 }
 
-/// PdfCraft patch: how the decoded data of a stream can be produced (see `Stream::incremental`).
+/// PDF patch: how the decoded data of a stream can be produced (see `Stream::incremental`).
 pub(crate) enum Incremental {
     /// The stream has no filter, so its data is its own bytes.
     Plain,
@@ -74,7 +74,7 @@ impl<'a> Stream<'a> {
         let mut collected_filters = SmallVec::new();
         let mut collected_params = SmallVec::new();
 
-        // PdfCraft patch (30): `/DecodeParms` in either form, whichever form `/Filter` has: one filter
+        // PDF patch (30): `/DecodeParms` in either form, whichever form `/Filter` has: one filter
         // in an array with a lone dictionary is an everyday spelling, and a lone dictionary is the
         // first filter's. Read as the chain asks, so a long array costs no more than a short one.
         let parms = self
@@ -126,7 +126,7 @@ impl<'a> Stream<'a> {
         }
     }
 
-    /// PdfCraft patch (30): the crypt filter the stream names for itself: `/Crypt` in its chain, its
+    /// PDF patch (30): the crypt filter the stream names for itself: `/Crypt` in its chain, its
     /// name in that filter's parameters, or `/Identity` without one (ISO 32000-2 §7.4.10).
     fn crypt_filter(&self) -> Option<String> {
         let FiltersAndParams { filters, params } = self.filters_and_params();
@@ -187,7 +187,7 @@ impl<'a> Stream<'a> {
         self.filters_and_params().filters
     }
 
-    /// PdfCraft patch: how the decoded data of the stream can be produced a piece at a time.
+    /// PDF patch: how the decoded data of the stream can be produced a piece at a time.
     pub(crate) fn incremental(&self) -> Incremental {
         let filters_and_params = self.filters_and_params();
 
@@ -221,7 +221,7 @@ impl<'a> Stream<'a> {
         self.decode_within(image_params, usize::MAX)
     }
 
-    /// PdfCraft patch: the decoded data of the stream, for callers that budget what a page
+    /// PDF patch: the decoded data of the stream, for callers that budget what a page
     /// holds. Flate, LZW and RunLength stop at `max` bytes (and at
     /// [`crate::filter::MAX_DECODED_STREAM`] in any case). A stream without filters is returned
     /// as it is; ASCIIHex and ASCII85 barely expand, and the image codecs stop at their own pixel
@@ -239,7 +239,7 @@ impl<'a> Stream<'a> {
         self.decode_raw_within(self.raw_data(), image_params, max)
     }
 
-    /// PdfCraft patch: decode caller-supplied raw/decrypted bytes with the same filters and limits.
+    /// PDF patch: decode caller-supplied raw/decrypted bytes with the same filters and limits.
     pub(crate) fn decoded_raw_within(
         &self,
         data: Cow<'a, [u8]>,
@@ -266,14 +266,14 @@ impl<'a> Stream<'a> {
             .zip(filters_and_params.params.iter())
             .enumerate()
         {
-            // PdfCraft patch (30): `raw_data` decrypted the data, so there's nothing to undo, and a
+            // PDF patch (30): `raw_data` decrypted the data, so there's nothing to undo, and a
             // chain can name this thousands of times.
             if matches!(filter, Filter::Crypt) {
                 continue;
             }
-            // PdfCraft patch: see `filter::decode_limit`.
+            // PDF patch: see `filter::decode_limit`.
             let limit = crate::filter::decode_limit(image_params, i + 1 == count).min(max);
-            // PdfCraft patch: the last filter of an image produces its rows.
+            // PDF patch: the last filter of an image produces its rows.
             let rows = (i + 1 == count && image_params.height > 0)
                 .then(|| usize::try_from(image_params.height).ok())
                 .flatten();
@@ -322,7 +322,7 @@ impl<'a> Readable<'a> for Stream<'a> {
         let offset = r.offset();
         parse_proper(r, &dict)
             .or_else(|| {
-                // PdfCraft patch (36): before searching on, which could reach a later object.
+                // PDF patch (36): before searching on, which could reach a later object.
                 r.jump(offset);
                 parse_declared(r, &dict, true)
             })
@@ -397,7 +397,7 @@ impl FilterResult<'_> {
     }
 }
 
-/// PdfCraft patch (20): the end-of-line after the `stream` keyword. Microsoft Reporting Services
+/// PDF patch (20): the end-of-line after the `stream` keyword. Microsoft Reporting Services
 /// writes `stream \r\n`, a space before the line break, which the specification does not allow.
 /// Without this the content stream was taken to start at the space, failed to inflate, and the
 /// page rendered blank (bank statements, invoices) while other viewers showed it. Only spaces and
@@ -419,7 +419,7 @@ fn parse_proper<'a>(r: &mut Reader<'a>, dict: &Dict<'a>) -> Option<Stream<'a>> {
     let data = r.read_bytes(length as usize)?;
     r.skip_white_spaces();
     r.forward_tag(b"endstream")?;
-    // PdfCraft patch (36): a whole token (ISO 32000-2 7.2.3), so a wrong `/Length` that stops
+    // PDF patch (36): a whole token (ISO 32000-2 7.2.3), so a wrong `/Length` that stops
     // before payload such as `endstreamer` does not end the stream there.
     if r.tail().and_then(|t| t.first().copied()).is_some_and(is_regular_character) {
         return None;
@@ -429,7 +429,7 @@ fn parse_proper<'a>(r: &mut Reader<'a>, dict: &Dict<'a>) -> Option<Stream<'a>> {
 }
 
 fn parse_fallback<'a>(r: &mut Reader<'a>, dict: &Dict<'a>) -> Option<Stream<'a>> {
-    // PdfCraft patch: `stream` must be the next token. Scanning ahead to a later
+    // PDF patch: `stream` must be the next token. Scanning ahead to a later
     // `stream` made a dictionary look like a stream — in particular an indirect
     // `/AP /N` appearance-state dictionary (`<< /Yes 5 0 R /Off 6 0 R >>`, as Quartz
     // writes checkboxes). The widget then had no form to draw, so the box disappeared.
@@ -450,7 +450,7 @@ fn parse_fallback<'a>(r: &mut Reader<'a>, dict: &Dict<'a>) -> Option<Stream<'a>>
     Some(Stream::new(data, dict.clone()))
 }
 
-/// PdfCraft patch (36): a stream with no `endstream` after it, as a producer that writes
+/// PDF patch (36): a stream with no `endstream` after it, as a producer that writes
 /// `endstrea` leaves every stream, is the bytes its `/Length` gives, "how many bytes of the PDF
 /// file are used for the stream's data" (ISO 32000-2 7.3.8.2), as other readers take it. Neither
 /// [`parse_proper`] nor [`parse_fallback`] found it, so every font and page content of such a file
@@ -475,7 +475,7 @@ fn parse_declared<'a>(r: &mut Reader<'a>, dict: &Dict<'a>, at_an_end: bool) -> O
     Some(Stream::new(data, dict.clone()))
 }
 
-/// PdfCraft patch (36): the first `endstream` in `data` that is a whole token (ISO 32000-2
+/// PDF patch (36): the first `endstream` in `data` that is a whole token (ISO 32000-2
 /// 7.2.3), not the start of payload bytes such as `endstreamer`.
 fn find_endstream_token(data: &[u8]) -> Option<usize> {
     let mut from = 0;
@@ -489,7 +489,7 @@ fn find_endstream_token(data: &[u8]) -> Option<usize> {
     }
 }
 
-/// PdfCraft patch (36): whether `rest`, the data after a stream's `/Length` bytes, is where the
+/// PDF patch (36): whether `rest`, the data after a stream's `/Length` bytes, is where the
 /// stream ends. A whole `endstream` token is. A misspelt one (`endstrea`), an `endobj` with the
 /// `endstream` left out, or both, are only where the object ends as well, before the end of the
 /// data, another object's `N G obj` header, or `xref`, `trailer` or `startxref`: payload such as

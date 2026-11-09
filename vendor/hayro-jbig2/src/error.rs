@@ -135,11 +135,11 @@ pub enum OverflowError {
     Index,
     /// A symbol dictionary has too many symbols, or a segment refers to too many.
     SymbolCount,
-    /// PdfCraft patch: the segments retain more bitmaps than a page may hold.
+    /// PDF patch: the segments retain more bitmaps than a page may hold.
     RetainedBitmaps,
-    /// PdfCraft patch: a stream has more segments, or references, than it may.
+    /// PDF patch: a stream has more segments, or references, than it may.
     SegmentCount,
-    /// PdfCraft patch: a stream asks for more decoding work than it may.
+    /// PDF patch: a stream asks for more decoding work than it may.
     DecodingWork,
 }
 

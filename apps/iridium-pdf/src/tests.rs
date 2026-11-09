@@ -10,7 +10,7 @@ fn locked_package(root: &std::path::Path, name: &str) -> String {
 /// Interim graph check for the window stack while the reviewed fork revision is not yet
 /// published. The old `vendor/winit` / `vendor/egui-wgpu` path patches were removed from the
 /// published manifest; local integration supplies the reviewed worktrees through an external
-/// Cargo config patch. A git source must name the public storytold fork; a path source is the
+/// Cargo config patch. A git source must name the public upstream fork; a path source is the
 /// local integration graph. Behaviour (surface fitting, error scopes, scroll phases) is tested
 /// directly elsewhere; the retained vendor copies keep provenance until the fork revision is
 /// pinned. No public revision is invented here.
@@ -18,7 +18,7 @@ fn assert_window_stack_graph(root: &std::path::Path, name: &str, version: &str) 
     let package = locked_package(root, name);
     assert!(package.contains(&format!("\nversion = \"{version}\"\n")), "{name} must resolve to {version}: {package}");
     if let Some(source) = package.lines().find_map(|line| line.strip_prefix("source = ")) {
-        assert!(source.contains("github.com/ngjordan/"), "{name} must come from the reviewed storytold fork once published, not {source}");
+        assert!(source.contains("github.com/ngjordan/"), "{name} must come from the reviewed upstream fork once published, not {source}");
         assert!(
             source.split(|c: char| !c.is_ascii_hexdigit()).any(|part| part.len() == 40),
             "{name} must pin the fork's 40-character revision, not {source}"

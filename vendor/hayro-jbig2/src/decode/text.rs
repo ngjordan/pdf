@@ -160,7 +160,7 @@ pub(crate) fn decode_with(
             let symbol_width = symbol_bitmap_ref.width as i32;
             let symbol_height = symbol_bitmap_ref.height as i32;
 
-            // PdfCraft patch: see `bitmap::MAX_WORK`. An instance of a large symbol costs its copy,
+            // PDF patch: see `bitmap::MAX_WORK`. An instance of a large symbol costs its copy,
             // and 10,000 of one took 64 s. Even one with no pixels reads its four integers.
             let work = copy_work(symbol_bitmap_ref.width, symbol_bitmap_ref.height).saturating_add(4 * INTEGER_WORK);
             *work_left = work_left.checked_sub(work).ok_or(OverflowError::DecodingWork)?;
@@ -575,7 +575,7 @@ fn decode_symbol_instance_bitmap(
         .checked_add(rdy)
         .ok_or(OverflowError::ReferenceOffset)?;
 
-    // PdfCraft patch: see `bitmap::MAX_WORK`. Before it is decoded: charged after, one instance
+    // PDF patch: see `bitmap::MAX_WORK`. Before it is decoded: charged after, one instance
     // could still be 2^28 pixels past what was left. With the four integers that gave its size.
     let work = decode_work(refined_width, refined_height).saturating_add(4 * INTEGER_WORK);
     *work_left = work_left.checked_sub(work).ok_or(OverflowError::DecodingWork)?;

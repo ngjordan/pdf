@@ -39,7 +39,7 @@ impl From<ObjectIdentifier> for ObjRef {
 
 impl Skippable for ObjRef {
     fn skip(r: &mut Reader<'_>, _: bool) -> Option<()> {
-        // PdfCraft patch: (hayro-syntax (33)) a comment counts as white space, here too.
+        // PDF patch: (hayro-syntax (33)) a comment counts as white space, here too.
         r.skip::<i32>(false)?;
         r.skip_white_spaces_and_comments();
         r.skip::<i32>(false)?;

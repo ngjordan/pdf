@@ -360,7 +360,7 @@ const MAX_NESTING_DEPTH: u32 = 16;
 pub struct CMap {
     metadata: Metadata,
     // Note that the CID lookup doesn't check this, because Acrobat _seems_ to
-    // ignore it, too. PdfCraft patch (4): the `bfchar` fallback of
+    // ignore it, too. PDF patch (4): the `bfchar` fallback of
     // `lookup_cid_code` does check it (see there).
     _codespace_ranges: Vec<CodespaceRange>,
     cid_ranges: PartitionedRanges,
@@ -451,7 +451,7 @@ impl CMap {
         // of a text-showing operator, so try that as well. We don't want to
         // recurse though, only check the bf chars of this level.
         //
-        // PdfCraft patch (4): bf entries don't record how many bytes their code
+        // PDF patch (4): bf entries don't record how many bytes their code
         // has, so the fallback only applies when the codespace ranges give
         // the code `byte_len` bytes (ISO 32000-2 §9.7.6.2). Otherwise the
         // first byte of `<fe96>` matched a `<00fe>` entry and a two-byte code
@@ -473,7 +473,7 @@ impl CMap {
             .and_then(|b| b.lookup_cid_code(code, byte_len))
     }
 
-    /// PdfCraft patch (4): whether this level's bf entry for `code` was written with `byte_len`
+    /// PDF patch (4): whether this level's bf entry for `code` was written with `byte_len`
     /// bytes (`<00fe>` is a two-byte code, not the one-byte `<fe>`), or doesn't record its length.
     /// Used where no codespace range gives the code its length.
     fn bf_code_has_length(&self, code: u32, byte_len: u8) -> bool {
@@ -481,7 +481,7 @@ impl CMap {
             .is_some_and(|entry| entry.code_len == 0 || entry.code_len == byte_len)
     }
 
-    /// PdfCraft patch (4): whether a code of `byte_len` bytes lies in a codespace range of that
+    /// PDF patch (4): whether a code of `byte_len` bytes lies in a codespace range of that
     /// length (each byte within the range's bounds for its position, ISO
     /// 32000-2 §9.7.6.2). A CMap without codespace ranges defers to its base,
     /// and with none anywhere the answer is `None`.
@@ -602,7 +602,7 @@ impl PartitionedRanges {
         }
     }
 
-    // PdfCraft patch: needed by the truncated-stream guard in parse.rs.
+    // PDF patch: needed by the truncated-stream guard in parse.rs.
     pub(crate) fn is_empty(&self) -> bool {
         self.buckets.iter().all(|b| b.is_empty())
     }
@@ -632,7 +632,7 @@ impl PartitionedRanges {
 pub(crate) struct BfRange {
     pub(crate) range: Range,
     pub(crate) dst_base: Vec<u16>,
-    /// PdfCraft patch (4): how many bytes the entry's source code was written with (1 to 4),
+    /// PDF patch (4): how many bytes the entry's source code was written with (1 to 4),
     /// or 0 where that isn't recorded (a binary CMap).
     pub(crate) code_len: u8,
 }
@@ -787,7 +787,7 @@ endcodespacerange
         CMap::parse(&data, |_| None).unwrap()
     }
 
-    /// PdfCraft patch test: a binary CMap whose `usecmap` names itself stops at the nesting limit.
+    /// PDF patch test: a binary CMap whose `usecmap` names itself stops at the nesting limit.
     #[cfg(feature = "embed-cmaps")]
     #[test]
     fn self_referencing_binary_usecmap_stops_at_the_nesting_limit() {
@@ -1157,7 +1157,7 @@ endbfchar
         );
     }
 
-    // PdfCraft patch: malformed pieces of a CMap are skipped, not fatal - the reading
+    // PDF patch: malformed pieces of a CMap are skipped, not fatal - the reading
     // path used to discard the whole CMap and fall back to the font encoding for every
     // code, so search and search-redaction missed text the edit layer could see (#3177).
 
@@ -1195,7 +1195,7 @@ end def
         CMap::parse(&data, |_| None).unwrap()
     }
 
-    /// PdfCraft patch (4) test: a `bfchar` entry used as a CID mapping matches only
+    /// PDF patch (4) test: a `bfchar` entry used as a CID mapping matches only
     /// codes of the length the codespace ranges give it (ISO 32000-2 §9.7.6.2).
     #[test]
     fn bfchar_cid_fallback_takes_the_codespace_length() {
@@ -1218,7 +1218,7 @@ endbfchar
         assert_eq!(cmap.lookup_bf_string(0x20), Some(BfString::Char(' ')));
     }
 
-    /// PdfCraft patch (4) test: mixed codespaces give each code its own length,
+    /// PDF patch (4) test: mixed codespaces give each code its own length,
     /// byte by byte, and a CMap without codespace ranges keeps the fallback.
     #[test]
     fn bfchar_cid_fallback_checks_each_byte_of_the_codespace() {
@@ -1245,7 +1245,7 @@ endbfchar
         assert_eq!(no_codespace.lookup_cid_code(0x20, 1), Some(0x20));
     }
 
-    /// PdfCraft patch (4) test: without codespace ranges, a `bfchar` entry used as a CID
+    /// PDF patch (4) test: without codespace ranges, a `bfchar` entry used as a CID
     /// mapping matches only codes of the length its source was written with, so the first
     /// byte of `<fe96>` is not taken for `<00fe>`.
     #[test]
@@ -1316,7 +1316,7 @@ endbfrange
         assert!(cmap.lookup_bf_string(0x41).is_some());
     }
 
-    // PdfCraft patch (3): a token the scanner can't read (a stray `>` after a CMap name, a name
+    // PDF patch (3): a token the scanner can't read (a stray `>` after a CMap name, a name
     // with spaces in it) is stepped over, so the mappings after it are still read; at most
     // `MAX_SKIPPED` of them per CMap.
 

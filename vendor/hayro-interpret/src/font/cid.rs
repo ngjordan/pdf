@@ -44,18 +44,18 @@ pub(crate) struct Type0Font {
     /// Whether the `to_unicode` map is a UCS2 `CMap` (CID-indexed) rather than
     /// a `ToUnicode` `CMap` (code-indexed).
     to_unicode_is_cid_indexed: bool,
-    /// PdfCraft patch (84): the character collection's UCS2 CMap (by CID), for the codes the
+    /// PDF patch (84): the character collection's UCS2 CMap (by CID), for the codes the
     /// font's own `/ToUnicode` gives nothing for, whether or not its program is embedded.
     ucs2: Option<Ucs2>,
-    /// PdfCraft patch: whether the CIDs belong to an Adobe character collection (Japan1, GB1,
+    /// PDF patch: whether the CIDs belong to an Adobe character collection (Japan1, GB1,
     /// CNS1, Korea1), whose glyph numbering no substitute other than a CID-keyed CFF font shares.
     adobe_collection: bool,
-    /// PdfCraft patch: `/ToUnicode /Identity-H` (a name, not a CMap stream), which CAD exporters
+    /// PDF patch: `/ToUnicode /Identity-H` (a name, not a CMap stream), which CAD exporters
     /// such as WSCAD write for fonts whose two-byte codes are UTF-16 code units. Acrobat shows
     /// such text as the code's Unicode value; the identity CMap the name resolves to maps codes
     /// to CIDs only and gave no text at all.
     identity_to_unicode: bool,
-    /// PdfCraft patch: an Arial or a Times New Roman the PDF doesn't embed, as a TrueType CID
+    /// PDF patch: an Arial or a Times New Roman the PDF doesn't embed, as a TrueType CID
     /// font (`CIDFontType2`) whose CIDs aren't of an Adobe character collection. Its CIDToGIDMap
     /// gives glyph indexes in the author's font, which numbers its first 258 glyphs in the
     /// standard Macintosh order of the TrueType `post` table (#5889, #6449).
@@ -96,7 +96,7 @@ impl Type0Font {
                     if let Some((standard, _)) = select_standard_font(dict, &font_descriptor) {
                         (FontQuery::Standard(standard), true)
                     } else {
-                        // PdfCraft patch: the style comes from the descendant's descriptor.
+                        // PDF patch: the style comes from the descendant's descriptor.
                         let mut query =
                             FallbackFontQuery::with_descriptor(dict, Some(font_descriptor.clone()));
                         query.character_collection = character_collection.clone();
@@ -141,7 +141,7 @@ impl Type0Font {
             .is_some_and(|n| matches!(n.as_ref(), b"Identity-H" | b"Identity-V"));
         let mut to_unicode_is_cid_indexed = false;
 
-        // PdfCraft patch (84): the character collection's UCS2 CMap (ISO 32000-2 §9.10.2), CID
+        // PDF patch (84): the character collection's UCS2 CMap (ISO 32000-2 §9.10.2), CID
         // to Unicode, for a font of an Adobe collection whether or not its program is embedded.
         let mut ucs2 = character_collection
             .as_ref()
@@ -169,7 +169,7 @@ impl Type0Font {
             .get::<Name<'_>>(BASE_FONT)
             .map(|n| strip_subset_prefix(n.as_str()).to_string());
 
-        // PdfCraft patch: the descendant names the font program itself; a Type 0 font's own
+        // PDF patch: the descendant names the font program itself; a Type 0 font's own
         // `/BaseFont` may carry the CMap's name after it.
         let mac_glyph_order = fallback
             && !adobe_collection
@@ -227,7 +227,7 @@ impl Type0Font {
             return glyph;
         }
 
-        // PdfCraft patch: the CID of an Arial or a Times New Roman the PDF doesn't embed names
+        // PDF patch: the CID of an Arial or a Times New Roman the PDF doesn't embed names
         // one of that font's glyphs, which the substitute draws by that name. Taken as the
         // substitute's own glyph index it drew an unrelated glyph: "Low Power" as
         // "@ck 'Dck Yf" (#5889), "Salarié(e) du régime" as "Salari²*g+f w't²i lo" (#6449).
@@ -237,7 +237,7 @@ impl Type0Font {
             return glyph;
         }
 
-        // PdfCraft patch: a substitute that isn't CID-keyed numbers its glyphs its own way, so
+        // PDF patch: a substitute that isn't CID-keyed numbers its glyphs its own way, so
         // the CID of an Adobe character collection taken as its glyph index draws an unrelated
         // glyph. Draw .notdef, as for a CID the font has no glyph for.
         if self.fallback
@@ -293,7 +293,7 @@ impl Type0Font {
             })
             .and_then(|bf| match bf {
                 BfString::Char(c) => Some((c, None)),
-                // PdfCraft patch: a character and a variation selector is that character in a
+                // PDF patch: a character and a variation selector is that character in a
                 // given form, as Adobe-Japan1 maps the JIS X 0208 forms of the kanji that
                 // JIS X 0213:2004 redrew (噂 is U+5642 U+E0100). Other strings (ligatures) still
                 // have no glyph.
@@ -308,7 +308,7 @@ impl Type0Font {
         match &self.font_type {
             FontType::OpenType(t) => {
                 let charmap = t.font_ref().charmap();
-                // PdfCraft patch: the face's glyph for that form when its `cmap` has one, else its
+                // PDF patch: the face's glyph for that form when its `cmap` has one, else its
                 // glyph for the character, as when a form isn't supported (Unicode FAQ on
                 // variation sequences).
                 if let Some(selector) = selector
@@ -316,7 +316,7 @@ impl Type0Font {
                 {
                     return Some(glyph);
                 }
-                // PdfCraft patch: a substitute may lack a spacing character (#3601; e.g.
+                // PDF patch: a substitute may lack a spacing character (#3601; e.g.
                 // Adobe-Japan1's U+2002). Draw its ordinary space instead of .notdef;
                 // the PDF's widths and Unicode mapping still determine advance and text.
                 charmap.map(character).or_else(|| match character {
@@ -329,7 +329,7 @@ impl Type0Font {
                 let by_name = |character: char| {
                     glyph_names::get_reverse(character).and_then(|name| c.glyph_index_by_name(name))
                 };
-                // PdfCraft patch: a soft hyphen the substitute has no glyph for is its hyphen
+                // PDF patch: a soft hyphen the substitute has no glyph for is its hyphen
                 // (#5888). Windows exporters map the hyphen glyph of a font they don't embed to
                 // U+00AD, which ISO 32000-2 Annex D.2 calls typographically the same as the
                 // hyphen; without this the CID, taken as a glyph index, drew an unrelated glyph.
@@ -346,7 +346,7 @@ impl Type0Font {
         }
     }
 
-    /// PdfCraft patch: the substitute's glyph for the author's glyph that `cid` gives, found by
+    /// PDF patch: the substitute's glyph for the author's glyph that `cid` gives, found by
     /// that glyph's name in the standard Macintosh order. `None` past the 258 glyphs the order
     /// names, and for a substitute that isn't a name-keyed CFF font (the standard substitutes
     /// are); .notdef for a name the substitute has no glyph for.
@@ -475,7 +475,7 @@ impl Type0Font {
         }
     }
 
-    /// PdfCraft patch: the code's width w0 (its horizontal displacement, from `/W` or `/DW`)
+    /// PDF patch: the code's width w0 (its horizontal displacement, from `/W` or `/DW`)
     /// in either writing mode. In vertical writing it is the glyph's extent across the column
     /// (ISO 32000-2 §9.7.4.3).
     pub(crate) fn code_horizontal_width(&self, code: u32) -> f32 {
@@ -533,7 +533,7 @@ impl Type0Font {
             } else {
                 code
             };
-            // PdfCraft patch (85): a `/ToUnicode` written as a CID CMap (`begincidrange` /
+            // PDF patch (85): a `/ToUnicode` written as a CID CMap (`begincidrange` /
             // `begincidchar`, whose destinations are numbers) gives the code's Unicode value as
             // that number, as glyph lookup already reads it (`map_via_unicode`) and as pdftotext
             // and PDFium extract it. ISO 32000-2 §9.10.3 has `beginbfrange` / `beginbfchar` here;
@@ -550,7 +550,7 @@ impl Type0Font {
                 return Some(s);
             }
         }
-        // PdfCraft patch (84): then the collection's UCS2 CMap, by the code's CID.
+        // PDF patch (84): then the collection's UCS2 CMap, by the code's CID.
         if let Some(ucs2) = self.ucs2.as_ref().and_then(Ucs2::cmap)
             && let Some(s) = self
                 .code_to_cid(code)
@@ -563,7 +563,7 @@ impl Type0Font {
     }
 }
 
-/// PdfCraft patch (84): a collection's UCS2 CMap, parsed the first time a code needs it: a font
+/// PDF patch (84): a collection's UCS2 CMap, parsed the first time a code needs it: a font
 /// whose `/ToUnicode` maps every code it shows never parses it.
 struct Ucs2 {
     data: &'static [u8],
@@ -694,12 +694,12 @@ impl CidToGIdMap {
     }
 }
 
-/// PdfCraft patch: Variation Selectors (U+FE00–U+FE0F) and their supplement (U+E0100–U+E01EF).
+/// PDF patch: Variation Selectors (U+FE00–U+FE0F) and their supplement (U+E0100–U+E01EF).
 fn is_variation_selector(c: char) -> bool {
     matches!(c, '\u{FE00}'..='\u{FE0F}' | '\u{E0100}'..='\u{E01EF}')
 }
 
-/// PdfCraft patch: whether `name`, a `/BaseFont` without its subset tag, is one of the four
+/// PDF patch: whether `name`, a `/BaseFont` without its subset tag, is one of the four
 /// faces of Arial or Times New Roman as exporters name them: `ArialMT`, `Arial-BoldMT`,
 /// `Arial-ItalicMT`, `Arial-BoldItalicMT`, `TimesNewRomanPSMT`, `TimesNewRomanPS-BoldMT` and so
 /// on, or `Arial` or `TimesNewRoman` followed by `,Bold`, `,Italic` or `,BoldItalic`. Both
@@ -720,7 +720,7 @@ fn numbers_glyphs_in_mac_order(name: &str) -> bool {
             .any(|s| without_mt(&style).eq_ignore_ascii_case(s))
 }
 
-/// PdfCraft patch: `name` without a trailing `MT` in any letter case (Monotype's mark in
+/// PDF patch: `name` without a trailing `MT` in any letter case (Monotype's mark in
 /// PostScript names such as `ArialMT`).
 fn without_mt(name: &str) -> &str {
     name.len()
@@ -730,7 +730,7 @@ fn without_mt(name: &str) -> &str {
         .map_or(name, |(stem, _)| stem)
 }
 
-/// PdfCraft patch: the largest CID (ISO 32000-2 §9.7.2; CIDs are at most two bytes).
+/// PDF patch: the largest CID (ISO 32000-2 §9.7.2; CIDs are at most two bytes).
 const MAX_CID: u32 = 65_535;
 
 fn read_widths(arr: &Array<'_>) -> Option<HashMap<u32, f32>> {
@@ -747,7 +747,7 @@ fn read_widths(arr: &Array<'_>) -> Option<HashMap<u32, f32>> {
                 first = first.checked_add(1)?;
             }
         } else if let Some((first, second, width)) = iter.next::<(u32, u32, f32)>() {
-            // PdfCraft patch: CIDs stop at 65535. A corrupt range such as
+            // PDF patch: CIDs stop at 65535. A corrupt range such as
             // `0 4294967295 500` inserted billions of entries (found by fuzzing).
             for i in first..=second.min(MAX_CID) {
                 map.insert(i, width);
@@ -769,7 +769,7 @@ fn read_widths2(arr: &Array<'_>) -> Option<HashMap<u32, [f32; 3]>> {
             let mut iter = range.iter::<f32>();
 
             while let Some(w) = iter.next() {
-                // PdfCraft patch: as in `read_widths`, checked before the run's metrics are
+                // PDF patch: as in `read_widths`, checked before the run's metrics are
                 // read. Without it, a run starting at 4294967295 overflowed `first` and
                 // discarded the whole /W2 table.
                 if first > MAX_CID {
@@ -781,7 +781,7 @@ fn read_widths2(arr: &Array<'_>) -> Option<HashMap<u32, [f32; 3]>> {
                 first = first.checked_add(1)?;
             }
         } else if let Some((first, second, w, v1, v2)) = iter.next::<(u32, u32, f32, f32, f32)>() {
-            // PdfCraft patch: as in `read_widths`.
+            // PDF patch: as in `read_widths`.
             for i in first..=second.min(MAX_CID) {
                 map.insert(i, [w, v1, v2]);
             }
@@ -827,7 +827,7 @@ fn read_encoding(object: &Object<'_>, cmap_resolver: &CMapResolverFn) -> Option<
     }
 }
 
-/// PdfCraft patch test (ported from craft-libs): a /W2 run whose first CID is past `MAX_CID`
+/// PDF patch test (ported from craft-libs): a /W2 run whose first CID is past `MAX_CID`
 /// is skipped and the rest of the table kept.
 #[cfg(test)]
 mod tests {

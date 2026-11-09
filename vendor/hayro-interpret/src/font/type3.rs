@@ -33,7 +33,7 @@ use std::sync::OnceLock;
 pub(crate) struct Type3<'a> {
     widths: Vec<Width>,
     missing_width: f32,
-    /// PdfCraft patch (90): the width each code's glyph procedure gives with `d0`/`d1`, read
+    /// PDF patch (90): the width each code's glyph procedure gives with `d0`/`d1`, read
     /// the first time the code is shown in a font without `/Widths`. One cell per code.
     proc_widths: Vec<OnceCell<Option<f32>>>,
     encoding: Encoding,
@@ -44,20 +44,20 @@ pub(crate) struct Type3<'a> {
     font_bbox: Rect,
     matrix: Affine,
     to_unicode: Option<CMap>,
-    /// PdfCraft patch (87): glyph procedures already decoded, by glyph name, so a glyph shown
+    /// PDF patch (87): glyph procedures already decoded, by glyph name, so a glyph shown
     /// again and again (a Type 3 font used as a fill pattern draws one glyph hundreds of
     /// thousands of times) isn't inflated again for every copy. Only procedures of at most
     /// [`MAX_CACHED_PROC`] bytes are kept, and the fonts of one interpreter cache keep at most
     /// `context::MAX_CACHED_TYPE3_PROCS` bytes together.
     decoded_procs: RefCell<HashMap<String, Rc<[u8]>>>,
-    /// PdfCraft patch: whether the font's numbered glyph names all name their own codes
+    /// PDF patch: whether the font's numbered glyph names all name their own codes
     /// (`numbered_names_name_their_codes`), worked out on first use.
     own_code_names: OnceLock<bool>,
 }
 
-/// PdfCraft patch (87): the largest decoded glyph procedure [`Type3`] keeps.
+/// PDF patch (87): the largest decoded glyph procedure [`Type3`] keeps.
 const MAX_CACHED_PROC: usize = 64 << 10;
-/// PdfCraft patch (87): what a kept procedure costs the cache besides its bytes and its glyph
+/// PDF patch (87): what a kept procedure costs the cache besides its bytes and its glyph
 /// name (the map entry and the shared allocation's counts), so many empty procedures count too.
 const CACHED_PROC_OVERHEAD: usize = 64;
 
@@ -107,7 +107,7 @@ impl<'a> Type3<'a> {
         })
     }
 
-    /// PdfCraft patch (87): the decoded procedure of glyph `name`, held within the page's
+    /// PDF patch (87): the decoded procedure of glyph `name`, held within the page's
     /// content budget while the glyph is painted, whether it was decoded now or kept from an
     /// earlier copy, so a page skips the same glyphs either way once the budget is spent. It is
     /// decoded the first time and kept, when small enough and while `procs` has room, for the
@@ -125,7 +125,7 @@ impl<'a> Type3<'a> {
             return Some((bytes, held));
         }
         let left = content_left();
-        // PdfCraft patch: see `context::MAX_PAGE_CONTENT`.
+        // PDF patch: see `context::MAX_PAGE_CONTENT`.
         let decoded = crate::context::decode_content(program)?;
         procs.decodes.set(procs.decodes.get().saturating_add(1));
         let bytes: Rc<[u8]> = Rc::from(decoded.as_ref());
@@ -158,7 +158,7 @@ impl<'a> Type3<'a> {
     }
 
     pub(crate) fn glyph_width(&self, code: u8) -> f32 {
-        // PdfCraft patch (90): /Widths, /FirstChar and /LastChar are required for Type 3 fonts
+        // PDF patch (90): /Widths, /FirstChar and /LastChar are required for Type 3 fonts
         // (Table 110), but a font without them gave every glyph no advance and its text was drawn on one spot. The glyph
         // procedure's `d0`/`d1` operator states the glyph's width too (9.6.4), so such a font
         // takes that width, as PDFium does. A font with /Widths is read as before: a code
@@ -171,13 +171,13 @@ impl<'a> Type3<'a> {
         (w * self.matrix.as_coeffs()[0] as f32) * UNITS_PER_EM
     }
 
-    /// PdfCraft patch (90): whether the font has no `/Widths` (or `/FirstChar`/`/LastChar`), so
+    /// PDF patch (90): whether the font has no `/Widths` (or `/FirstChar`/`/LastChar`), so
     /// that `glyph_width` falls back on the glyph procedures' `d0`/`d1` widths.
     pub(crate) fn widths_missing(&self) -> bool {
         self.widths.is_empty()
     }
 
-    /// PdfCraft patch (90): the horizontal width `wx` that the glyph procedure for `code`
+    /// PDF patch (90): the horizontal width `wx` that the glyph procedure for `code`
     /// sets with `d0` or `d1`, in glyph space. `None` when the code has no procedure, the
     /// procedure sets no width or its width isn't finite. A procedure the page's content
     /// budget can't decode isn't remembered, so a later page may still read it.
@@ -206,7 +206,7 @@ impl<'a> Type3<'a> {
     }
 
     pub(crate) fn char_code_to_unicode(&self, char_code: u32) -> Option<BfString> {
-        // PdfCraft patch: upstream only consulted ToUnicode. Many Type3 fonts (e.g. TeX/dvips
+        // PDF patch: upstream only consulted ToUnicode. Many Type3 fonts (e.g. TeX/dvips
         // bitmap fonts) have none; fall back to the /Encoding glyph names, then to printable
         // ASCII codes, as other viewers do for text extraction.
         self.to_unicode
@@ -218,14 +218,14 @@ impl<'a> Type3<'a> {
                     .encodings
                     .get(&code)
                     .map(|s| s.as_str())
-                    // PdfCraft patch: an Annex D.2 alias code reads as the ordinary character;
+                    // PDF patch: an Annex D.2 alias code reads as the ordinary character;
                     // see `Encoding::text_alias`.
                     .or_else(|| self.encoding.text_alias(code))
                     .or_else(|| self.encoding.map_code(code));
                 name.and_then(crate::font::glyph_name_to_unicode)
                     .or_else(|| (0x20..0x7f).contains(&code).then_some(code as char))
                     .map(BfString::Char)
-                    // PdfCraft patch (100): above 126, a name that only numbers its glyph reads
+                    // PDF patch (100): above 126, a name that only numbers its glyph reads
                     // as the code's Latin-1 character when the number is that code and every
                     // numbered name in the font names its own code (`C174` at 174 reads `®`),
                     // as in a Type 1 font.
@@ -241,7 +241,7 @@ impl<'a> Type3<'a> {
             })
     }
 
-    /// PdfCraft patch: the glyph name `/Encoding` gives a code, as `map_code` reads it.
+    /// PDF patch: the glyph name `/Encoding` gives a code, as `map_code` reads it.
     fn code_to_name(&self, code: u8) -> Option<&str> {
         self.encodings
             .get(&code)
@@ -257,7 +257,7 @@ impl<'a> Type3<'a> {
         paint: &Paint<'a>,
         device: &mut impl Device<'a>,
     ) -> Option<()> {
-        // PdfCraft patch: a glyph procedure may show text in this same font (through
+        // PDF patch: a glyph procedure may show text in this same font (through
         // inherited resources), recursing until the stack overflowed.
         if glyph.nesting_depth > crate::context::MAX_PAINT_NESTING
             || !crate::context::take_nested_paint(glyph.nesting_depth)
@@ -298,7 +298,7 @@ impl<'a> Type3<'a> {
             is_shape_glyph
         };
 
-        // PdfCraft patch: context clips and shading bounds are in device space; FontBBox is in glyph space.
+        // PDF patch: context clips and shading bounds are in device space; FontBBox is in glyph space.
         let mut context = Context::new_with(
             state.ctm,
             root_transform.transform_rect_bbox(self.font_bbox),

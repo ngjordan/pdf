@@ -262,7 +262,7 @@ fn sat<S: Simd>(r: f32x4<S>, g: f32x4<S>, b: f32x4<S>) -> f32x4<S> {
     r.max(g).max(b) - r.min(g).min(b)
 }
 
-// PdfCraft patch: backport of linebender/vello#2000. A gray that rounding leaves just below 0
+// PDF patch: backport of linebender/vello#2000. A gray that rounding leaves just below 0
 // or above 1 has `l == n` (or `x == l`), and the unguarded division made a NaN that drew it
 // black, whatever the backdrop's alpha; a clip now needs a nonzero denominator.
 fn clip_color<S: Simd>(r: &mut f32x4<S>, g: &mut f32x4<S>, b: &mut f32x4<S>) {

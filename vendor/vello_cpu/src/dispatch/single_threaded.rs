@@ -42,9 +42,9 @@ pub(crate) struct SingleThreadedDispatcher {
     layer_id_next: u32,
     /// Dependency graph tracking layer relationships and filter effects.
     render_graph: RenderGraph,
-    /// PdfCraft patch (1): a path was left out because the scene's coverage was full.
+    /// PDF patch (1): a path was left out because the scene's coverage was full.
     coverage_full: bool,
-    /// PdfCraft patch (1): the most coverage values the scene keeps
+    /// PDF patch (1): the most coverage values the scene keeps
     /// ([`Dispatcher::set_max_coverage`]).
     max_coverage: usize,
 }
@@ -89,7 +89,7 @@ impl SingleThreadedDispatcher {
         }
     }
 
-    /// PdfCraft patch (1): whether the scene has room for the coverage of one more path
+    /// PDF patch (1): whether the scene has room for the coverage of one more path
     /// ([`StripStorage::room_for_path`]). Once it hasn't, the path and every later one are left
     /// out, and [`Dispatcher::coverage_full`] says so.
     fn room_for_path(&mut self) -> bool {
@@ -668,7 +668,7 @@ impl Dispatcher for SingleThreadedDispatcher {
         // Allocate a new unique layer ID.
         self.layer_id_next += 1;
 
-        // Generate clip coverage if a clip path is provided. PdfCraft patch (1): without room for
+        // Generate clip coverage if a clip path is provided. PDF patch (1): without room for
         // it the layer goes unclipped, as nothing can be drawn into it any more either.
         let clip = if let Some(c) = clip_path.filter(|_| self.room_for_path()) {
             self.strip_generator.generate_filled_path(

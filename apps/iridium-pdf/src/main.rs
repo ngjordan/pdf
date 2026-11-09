@@ -88,11 +88,11 @@ fn print_and_exit(text: &str) -> eframe::Result {
     Ok(())
 }
 
-/// The app was called PrintCraft before; settings saved then are under this key.
+/// The app had a former upstream name; settings saved then are under this key.
 const LEGACY_STORAGE_KEY: &str = "printcraft";
 
 /// The preferences folder (`app.ron`, docs/development.md). In portable mode
-/// it is `PdfCraftData` beside the executable (#157). XDG desktops use the configuration base;
+/// it is the former upstream data folder beside the executable (#157). XDG desktops use the configuration base;
 /// other platforms retain eframe's PDF folder. Logs and recovery stay in the data folder.
 fn settings_dir() -> Option<std::path::PathBuf> {
     let legacy = eframe::storage_dir("PDF");
@@ -111,7 +111,7 @@ fn settings_dir() -> Option<std::path::PathBuf> {
     }
 }
 
-/// Move the settings and crash-recovery folders of the app's former name, PrintCraft, to the new
+/// Move the settings and crash-recovery folders of the app's former upstream name to the new
 /// name once, so an upgrade keeps recent files, preferences and unsaved work. Best effort: a
 /// folder is left alone when the new one already exists or the move fails. A portable copy leaves
 /// the per-user folders alone.
@@ -240,7 +240,7 @@ fn main() -> eframe::Result {
     let window_controls = if cfg!(any(target_os = "macos", target_os = "windows")) { None } else { decorations::app_drawn() };
     migrate_legacy_folders();
     // The log file stays in the data folder; opened after the arguments (so `--version` leaves
-    // no file behind) and after the PrintCraft migration (which a fresh folder would block).
+    // no file behind) and after the former-name migration (which a fresh folder would block).
     // Records logged until now are written to it first.
     if let (Some(logger), Some(dir)) =
         (logger, iridium_pdf_ui_egui::portable::data_dir().map(std::path::Path::to_path_buf).or_else(|| eframe::storage_dir("PDF")))

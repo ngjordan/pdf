@@ -2,7 +2,7 @@
 //!
 //! The twelve `winit_*` modules next to this one read the retained `vendor/winit` /
 //! `vendor/egui-wgpu` copies. They are provenance for W1–W13 and E2+E3, not proof of what the app
-//! runs: the root manifest pins both crates to immutable storytold git revisions, and the retained
+//! runs: the root manifest pins both crates to immutable upstream git revisions, and the retained
 //! copies are not path patches. These tests check the resolved graph and the retained evidence
 //! instead of treating the copies as the runtime source. The winit fork's own W17 tests own patch
 //! behaviour.
@@ -27,7 +27,7 @@ fn locked(name: &str) -> String {
     packages.remove(0)
 }
 
-/// The resolved package must be the exact canonical storytold git source at the reviewed
+/// The resolved package must be the exact canonical upstream git source at the reviewed
 /// 40-character revision, including the `Cargo.lock` URL and fragment. A path source (no `source`
 /// line) is refused: it would make the graph depend on a developer's checkout. A published path
 /// patch is refused as well.

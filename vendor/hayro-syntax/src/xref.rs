@@ -32,11 +32,11 @@ use core::ops::Deref;
 
 pub(crate) const XREF_ENTRY_LEN: usize = 20;
 
-/// PdfCraft patch: (hayro-syntax (33)) how many references a read follows through objects that hold
+/// PDF patch: (hayro-syntax (33)) how many references a read follows through objects that hold
 /// nothing else. Past it, as any cycle goes, the object reads as a missing one.
 const MAX_REFERENCE_HOPS: usize = 32;
 
-/// PdfCraft patch: (hayro-syntax (33)) what [`XRef::fetch`] found at an object's place.
+/// PDF patch: (hayro-syntax (33)) what [`XRef::fetch`] found at an object's place.
 enum Fetched<T> {
     Object(T),
     /// All the object holds is a reference to this one.
@@ -51,14 +51,14 @@ pub(crate) enum XRefError {
 
 /// Parse the "root" xref from the PDF.
 ///
-/// PdfCraft patch: (hayro-syntax (45)) also whether the table was rebuilt because the newest
+/// PDF patch: (hayro-syntax (45)) also whether the table was rebuilt because the newest
 /// section cuts off the page tree (see below).
 pub(crate) fn root_xref(data: PdfData, password: &[u8]) -> Result<(XRef, bool), XRefError> {
     let mut xref_map = FxHashMap::default();
     let xref_pos = find_last_xref_pos(data.as_ref()).ok_or(XRefError::Unknown)?;
     let trailer =
         populate_xref_impl(data.as_ref(), xref_pos, &mut xref_map).ok_or(XRefError::Unknown)?;
-    // PdfCraft patch: (hayro-syntax (45)) whether the newest section names an earlier one. Its
+    // PDF patch: (hayro-syntax (45)) whether the newest section names an earlier one. Its
     // `/XRefStm` (a hybrid file's stream, §7.5.8.4) belongs to the same update and doesn't count,
     // as `iridium-pdf-cos` doesn't count it.
     let linked = Reader::new(trailer)
@@ -72,7 +72,7 @@ pub(crate) fn root_xref(data: PdfData, password: &[u8]) -> Result<(XRef, bool), 
         false,
         password,
     )?;
-    // PdfCraft patch: (hayro-syntax (45)) an update whose section has no `/Prev` (ISO 32000-2
+    // PDF patch: (hayro-syntax (45)) an update whose section has no `/Prev` (ISO 32000-2
     // §7.5.6, §7.5.8.2) cuts off the revisions before it, and with them the page tree its catalog
     // names (the signed files of PDFBOX-2720 and PDFBOX-2942). The table is rebuilt by scanning
     // the file, as for a broken one, so the page tree is found rather than whatever page
@@ -93,7 +93,7 @@ pub(crate) fn root_xref(data: PdfData, password: &[u8]) -> Result<(XRef, bool), 
     Ok((xref, cut_off))
 }
 
-/// PdfCraft patch: (hayro-syntax (45)) whether `data` holds an earlier `startxref` than its last.
+/// PDF patch: (hayro-syntax (45)) whether `data` holds an earlier `startxref` than its last.
 fn more_than_one_startxref(data: &[u8]) -> bool {
     let needle = b"startxref";
     findr_needle(data, needle)
@@ -117,7 +117,7 @@ pub(crate) fn fallback(data: PdfData, password: &[u8]) -> Option<XRef> {
     }
 }
 
-/// PdfCraft patch: an `N G obj` header for the repair scan, taking a generation number that
+/// PDF patch: an `N G obj` header for the repair scan, taking a generation number that
 /// cannot be read as 0.
 ///
 /// A generation number is at most 65,535 (ISO 32000-2 §7.5.4), so `3 18446744073709551616 obj` is
@@ -146,7 +146,7 @@ fn read_object_header<'a>(r: &mut Reader<'a>, ctx: &ReaderContext<'a>) -> Option
     Some(ObjectIdentifier::new(obj_number, 0))
 }
 
-/// PdfCraft patch: the body of the object at `offset` whose `N G obj` header cannot be read
+/// PDF patch: the body of the object at `offset` whose `N G obj` header cannot be read
 /// strictly, for a table rebuilt by scanning the file (#5580). The steps are
 /// `IndirectObject::read`'s, with [`read_object_header`] in place of the strict identifier.
 fn read_repaired_body<'a, T>(
@@ -187,7 +187,7 @@ fn fallback_xref_map_inner<'a>(
     password: &[u8],
 ) -> (XrefMap, Option<XRefInput<'a>>) {
     let mut xref_map = FxHashMap::default();
-    // PdfCraft patch: the generation-0 keys below that stand in for a header with another
+    // PDF patch: the generation-0 keys below that stand in for a header with another
     // generation, so a later header can replace one while a real `N 0 obj` is never displaced
     // (noted in review of #5580).
     let mut aliases: rustc_hash::FxHashSet<ObjectIdentifier> = rustc_hash::FxHashSet::default();
@@ -211,7 +211,7 @@ fn fallback_xref_map_inner<'a>(
                 cloned.skip_white_spaces_and_comments();
                 if cloned.skip::<Object<'_>>(false).is_some() {
                     xref_map.insert(obj_id, EntryType::Normal(cur_pos));
-                    // PdfCraft patch: also reachable by object number alone, so a reference that
+                    // PDF patch: also reachable by object number alone, so a reference that
                     // names a different generation than the header still finds it. A rebuilt
                     // table has no revision history to tell two generations apart, and a file
                     // that needs rebuilding references everything as `N 0 R` whatever its headers
@@ -405,7 +405,7 @@ const DUMMY_XREF: XRef = XRef(Inner::Dummy);
 pub struct XRef(Inner);
 
 impl XRef {
-    // PdfCraft patch: keep the bounded dictionary-index cache local to this PDF.
+    // PDF patch: keep the bounded dictionary-index cache local to this PDF.
     pub(crate) fn with_dict_cache<T>(&self, f: impl FnOnce(&mut DictCache) -> T) -> Option<T> {
         let Inner::Some(repr) = &self.0 else {
             return None;
@@ -420,7 +420,7 @@ impl XRef {
         Some(f(&mut cache))
     }
 
-    /// PdfCraft patch: (hayro-syntax (22)) run `f` on this PDF's parsed object stream indexes
+    /// PDF patch: (hayro-syntax (22)) run `f` on this PDF's parsed object stream indexes
     /// ([`ObjectStreamIndexes`]). `None` when there is none to use (the dummy xref, or a no_std
     /// cache already borrowed), and the caller then parses the index without it. A poisoned lock
     /// is still used: entries are complete `Arc`s inserted in one step, so a panic elsewhere
@@ -618,7 +618,7 @@ impl XRef {
                 // Try to yield in the order the objects appeared in the
                 // PDF.
                 elements.sort_by(|e1, e2| e1.1.cmp(&e2.1));
-                // PdfCraft patch: one object per location. A rebuilt table can hold two keys for
+                // PDF patch: one object per location. A rebuilt table can hold two keys for
                 // one object -- its own generation and the generation-0 stand-in (#5580) -- and
                 // enumeration yielded the object once for each, so a document recovered by
                 // `Pages::new_brute_force` reported the page twice (noted in review). Both keys
@@ -631,7 +631,7 @@ impl XRef {
 
                 iter::from_fn(move || {
                     for next in iter.by_ref() {
-                        // PdfCraft patch: (hayro-syntax (33)) an object that only refers to another
+                        // PDF patch: (hayro-syntax (33)) an object that only refers to another
                         // isn't one of its own: followed, that one came out once more for each.
                         if let Some(Fetched::Object(obj)) =
                             self.fetch(next.0, &ReaderContext::new(self, false))
@@ -668,7 +668,7 @@ impl XRef {
         locked.xref_map = xref_map;
     }
 
-    /// PdfCraft patch: (hayro-syntax (43)) whether objects read through this table are
+    /// PDF patch: (hayro-syntax (43)) whether objects read through this table are
     /// decrypted.
     pub(crate) fn is_encrypted(&self) -> bool {
         match &self.0 {
@@ -716,7 +716,7 @@ impl XRef {
 
     /// Return the object with the given identifier.
     ///
-    /// PdfCraft patch: (hayro-syntax (33)) an object that holds only a reference stands for what
+    /// PDF patch: (hayro-syntax (33)) an object that holds only a reference stands for what
     /// that names. Read as a number it was the reference's own object number, and as anything else
     /// it was lost. This is a loop, so a long chain takes no stack.
     #[allow(private_bounds)]
@@ -740,7 +740,7 @@ impl XRef {
         None
     }
 
-    /// PdfCraft patch: (hayro-syntax (33)) the object stream `id`. It has to be a stream stored as
+    /// PDF patch: (hayro-syntax (33)) the object stream `id`. It has to be a stream stored as
     /// that object (ISO 32000-2 7.5.7), so this follows no reference: the check of where it is stored
     /// is of that object, and one reached through a reference could be a stream stored inside
     /// another.
@@ -790,7 +790,7 @@ impl XRef {
                 }
 
                 if let Some(object) = r.read_with_context::<IndirectObject<T>>(&ctx) {
-                    // PdfCraft patch: in a table rebuilt by scanning the file, the object number
+                    // PDF patch: in a table rebuilt by scanning the file, the object number
                     // is what identifies an object. There is no revision history to tell two
                     // generations apart, the scan already files objects found in object streams
                     // under generation 0, and a malformed generation in a header would otherwise
@@ -800,7 +800,7 @@ impl XRef {
                         return Some(Fetched::Object(object.get()));
                     }
                 } else {
-                    // PdfCraft patch: the strict read of the header failed. In a table rebuilt by
+                    // PDF patch: the strict read of the header failed. In a table rebuilt by
                     // scanning the file that can be a generation number no generation may be --
                     // `3 18446744073709551616 obj` -- and refusing it loses the object the
                     // reference names (#5580). The object number still has to be the one asked
@@ -854,7 +854,7 @@ impl XRef {
                     return None;
                 }
 
-                // PdfCraft patch: (hayro-syntax (22)) the stream's index of `objnum offset` pairs
+                // PDF patch: (hayro-syntax (22)) the stream's index of `objnum offset` pairs
                 // is parsed once and kept, as its decoded data is: parsed again for every object
                 // fetched from it, reading all of a stream of N objects took N² steps (one
                 // Firefox page kept 65,542 objects in one stream and took 37 s to draw).
@@ -866,7 +866,7 @@ impl XRef {
                     // A stream whose pairs don't parse stays unreadable, as it was.
                     Some(offsets) => offsets?,
                     None => {
-                        // PdfCraft patch: (hayro-syntax (33)) this read can reach another object
+                        // PDF patch: (hayro-syntax (33)) this read can reach another object
                         // stream, whose `/N` or `/First` can be a member of the next: the gate's
                         // limit holds here too, or a chain of them ran out of stack. It reads the
                         // dictionary, which is all it needs: parsing the stream reads `/Length`
@@ -919,7 +919,7 @@ pub(crate) enum XRefInput<'a> {
     RootRef(ObjectIdentifier),
 }
 
-/// PdfCraft patch: (hayro-syntax (43)) how far from the end of the file a `startxref` counts as
+/// PDF patch: (hayro-syntax (43)) how far from the end of the file a `startxref` counts as
 /// the file's own footer, as `iridium-pdf-cos` judges it (ISO 32000-2 §7.5.5 puts it on the last lines
 /// of the file).
 const STARTXREF_TAIL: usize = 4096;
@@ -934,7 +934,7 @@ pub(crate) fn find_last_xref_pos(data: &[u8]) -> Option<usize> {
     finder.read_without_context::<i32>()?.try_into().ok()
 }
 
-/// PdfCraft patch: (hayro-syntax (43)) whether the last update of the file was cut off before its
+/// PDF patch: (hayro-syntax (43)) whether the last update of the file was cut off before its
 /// own cross-reference section and trailer: the last `startxref` is not near the end of the file
 /// and objects follow it. That section would supersede the older ones (ISO 32000-2 §7.5.6), so
 /// the update's objects are the document; reading the older table the last `startxref` names
@@ -951,7 +951,7 @@ pub(crate) fn cut_off_update_follows(data: &[u8]) -> bool {
     })
 }
 
-/// PdfCraft patch: (hayro-syntax (43)) whether `data` holds an `N G obj` header: two runs of
+/// PDF patch: (hayro-syntax (43)) whether `data` holds an `N G obj` header: two runs of
 /// digits and the keyword, separated by white space, at the start of the data or after white
 /// space or `>`, the keyword ended by white space, a delimiter or the end of the data (ISO
 /// 32000-2 §7.2.3, Table 2), as the document model's repair scan reads it: `1 0 obj_name` is
@@ -1113,7 +1113,7 @@ fn populate_xref_impl<'a>(data: &'a [u8], pos: usize, xref_map: &mut XrefMap) ->
 }
 
 /// The offset of the previous xref section (`Prev`).
-// PdfCraft patch: (#2366) some writers give `Prev` as a reference `N G R`. When this section's
+// PDF patch: (#2366) some writers give `Prev` as a reference `N G R`. When this section's
 // own entries (`own`) place that object and it holds an offset (iText's `indirectPrev.pdf`), that
 // is the offset; otherwise its object number is (tiff2pdf, in JHOVE's PDF-HUL-157 files), as
 // `iridium-pdf-cos` and other readers take it.
@@ -1215,7 +1215,7 @@ fn populate_from_xref_table<'a>(
     reader.skip_white_spaces();
 
     let mut max_obj = 0;
-    // PdfCraft patch: (#2366) this section's entries are read first, for `prev_offset`.
+    // PDF patch: (#2366) this section's entries are read first, for `prev_offset`.
     let mut own = XrefMap::default();
 
     while let Some(header) = reader.read_without_context::<SubsectionHeader>() {
@@ -1270,7 +1270,7 @@ fn populate_from_xref_stream<'a>(
 
     let [f1_len, f2_len, f3_len] = stream.dict().get::<[u8; 3]>(W)?;
 
-    // PdfCraft patch: the type field is read at its full width, so it is bounded like the offset.
+    // PDF patch: the type field is read at its full width, so it is bounded like the offset.
     if f1_len > size_of::<u64>() as u8 || f2_len > size_of::<u64>() as u8 {
         error!("xref field length is larger than the allowed limit");
 
@@ -1278,7 +1278,7 @@ fn populate_from_xref_stream<'a>(
     }
 
     let xref_data = stream.decoded().ok()?;
-    // PdfCraft patch: (#2366) this section's entries are read first, for `prev_offset`.
+    // PDF patch: (#2366) this section's entries are read first, for `prev_offset`.
     let mut own = XrefMap::default();
     let mut xref_reader = Reader::new(xref_data.as_ref());
 
@@ -1343,7 +1343,7 @@ fn xref_stream_subsection<'a>(
     f3_len: u8,
     insert_map: &mut XrefMap,
 ) -> Option<()> {
-    // PdfCraft patch: every entry must be backed by stream bytes. With all widths zero an entry
+    // PDF patch: every entry must be backed by stream bytes. With all widths zero an entry
     // reads nothing, so a tiny stream could declare billions of entries; and a count past the
     // decoded data is refused before any of it is inserted.
     let width = f1_len as usize + f2_len as usize + f3_len as usize;
@@ -1367,12 +1367,12 @@ fn xref_stream_subsection<'a>(
         let f_type = if f1_len == 0 {
             1
         } else {
-            // PdfCraft patch: the type field is read big-endian at its full `/W[0]` width.
+            // PDF patch: the type field is read big-endian at its full `/W[0]` width.
             let bytes = xref_reader.read_bytes(f1_len as usize)?;
             bytes.iter().fold(0u64, |acc, b| (acc << 8) | u64::from(*b))
         };
 
-        // PdfCraft patch: object numbers are stored as `i32`; a subsection running past
+        // PDF patch: object numbers are stored as `i32`; a subsection running past
         // `i32::MAX` is refused instead of overflowing or turning negative.
         let obj_number = i32::try_from(start.checked_add(i)?).ok()?;
 
@@ -1468,7 +1468,7 @@ fn get_decryptor(trailer_dict: &Dict<'_>, password: &[u8]) -> Result<Decryptor, 
     }
 }
 
-/// PdfCraft patch: (hayro-syntax (22)) each object stream's parsed `(object number, offset)`
+/// PDF patch: (hayro-syntax (22)) each object stream's parsed `(object number, offset)`
 /// pairs ([`read_object_stream_index`]) by the stream's identifier, `None` for pairs that don't
 /// parse. Never cleared, like the decoded stream data they index (`Data`), which a repair keeps
 /// too. Bounded by that data: every pair takes at least three of its bytes.
@@ -1492,7 +1492,7 @@ fn read_object_stream_index(
         let obj_num = r.read_without_context::<u32>()?;
         r.skip_white_spaces_and_comments();
         let relative_offset = r.read_without_context::<usize>()?;
-        // PdfCraft patch: (hayro-syntax (22)) an offset past `usize` is malformed (it wrapped).
+        // PDF patch: (hayro-syntax (22)) an offset past `usize` is malformed (it wrapped).
         offsets.push((obj_num, first_offset.checked_add(relative_offset)?));
     }
 
@@ -1514,7 +1514,7 @@ impl<'a> ObjectStream<'a> {
         Some(Self::with_offsets(data, ctx, Arc::new(offsets)))
     }
 
-    /// PdfCraft patch: (hayro-syntax (22)) an object stream whose index is already parsed.
+    /// PDF patch: (hayro-syntax (22)) an object stream whose index is already parsed.
     fn with_offsets(
         data: &'a [u8],
         ctx: &ReaderContext<'a>,
@@ -1538,7 +1538,7 @@ impl<'a> ObjectStream<'a> {
         r.read_with_context::<T>(&self.ctx)
     }
 
-    /// PdfCraft patch: (hayro-syntax (33)) what the object at `index` refers to, when a reference is
+    /// PDF patch: (hayro-syntax (33)) what the object at `index` refers to, when a reference is
     /// all it holds.
     fn reference(&self, index: u32) -> Option<ObjectIdentifier> {
         let offset = self.offsets.get(index as usize)?.1;
@@ -1550,7 +1550,7 @@ impl<'a> ObjectStream<'a> {
     }
 }
 
-/// PdfCraft patch: (hayro-syntax (33)) what the indirect object `id` at `r` refers to, when a
+/// PDF patch: (hayro-syntax (33)) what the indirect object `id` at `r` refers to, when a
 /// reference is all it holds.
 fn held_reference(mut r: Reader<'_>, id: ObjectIdentifier) -> Option<ObjectIdentifier> {
     if r.read_without_context::<ObjectIdentifier>()? != id {
@@ -1791,7 +1791,7 @@ mod tests {
         assert_eq!(pdf.pages().len(), 1);
     }
 
-    // PdfCraft patch tests (ported from craft-libs): xref stream entries are bounded by the
+    // PDF patch tests (ported from craft-libs): xref stream entries are bounded by the
     // decoded data, and the type field is read at its full width.
     #[test]
     fn xref_stream_entries_need_backing_bytes() {
@@ -2168,7 +2168,7 @@ mod tests {
         assert!(read_xref_table_trailer(&mut reader, &ReaderContext::dummy()).is_none());
     }
 
-    /// PdfCraft patch: (hayro-syntax (22)) an object's offset past `usize` is malformed: a plain
+    /// PDF patch: (hayro-syntax (22)) an object's offset past `usize` is malformed: a plain
     /// `+` there panics in a debug build and wraps in a release one.
     #[test]
     fn an_object_stream_offset_past_usize_is_malformed_not_a_panic() {

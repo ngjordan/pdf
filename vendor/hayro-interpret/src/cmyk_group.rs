@@ -1,4 +1,4 @@
-//! PdfCraft patch (70): an isolated transparency group that blends in `DeviceCMYK`.
+//! PDF patch (70): an isolated transparency group that blends in `DeviceCMYK`.
 //!
 //! ISO 32000-2 §11.3.4: a group's elements blend in the group's colour space, and the
 //! components of a subtractive space are complemented before the blend function and
@@ -26,7 +26,7 @@ use kurbo::{Affine, Rect, Shape};
 use std::ops::Deref;
 
 /// An isolated, non-knockout transparency group whose blending colour space is `DeviceCMYK`,
-/// captured where it is painted (PdfCraft patch (70); see the module documentation).
+/// captured where it is painted (PDF patch (70); see the module documentation).
 pub struct CmykGroup<'a, 'b> {
     form: &'b FormXObject<'a>,
     resources: &'b Resources<'a>,

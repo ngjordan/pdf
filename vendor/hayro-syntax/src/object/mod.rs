@@ -33,7 +33,7 @@ pub mod stream;
 
 /// A trait for PDF objects.
 pub(crate) trait ObjectLike<'a>: TryFrom<Object<'a>> + Readable<'a> + Debug + Clone {
-    /// PdfCraft patch (32): whether this is several items of an array, read one by one (a tuple).
+    /// PDF patch (32): whether this is several items of an array, read one by one (a tuple).
     /// Such a thing can't itself be given by reference, so one at its start is its first item's.
     const GROUP: bool = false;
 }
@@ -196,7 +196,7 @@ impl<'a> Readable<'a> for Object<'a> {
                     let dict = Dict::read(&mut cloned, ctx);
                     cloned.skip_white_spaces_and_comments();
                     let is_stream = cloned.forward_tag(b"stream").is_some();
-                    // PdfCraft patch: what the clone looked at past the end counts for `r` too.
+                    // PDF patch: what the clone looked at past the end counts for `r` too.
                     r.absorb_past_end(&cloned);
                     let dict = dict?;
 

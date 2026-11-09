@@ -14,7 +14,7 @@ include!("huffman_tables_generated.rs");
 /// Maximum number of nodes in an inline Huffman table.
 const INLINE_TABLE_SIZE: usize = 43;
 
-/// PdfCraft patch: the most lines a custom table may have. A line takes 2 bits of input at least
+/// PDF patch: the most lines a custom table may have. A line takes 2 bits of input at least
 /// and 8 bytes here, so a table reading 250 MiB behind nested Flate, a 1,297-byte PDF, was killed
 /// at 8 GiB before it could be counted.
 const MAX_TABLE_LINES: usize = 1 << 16;
@@ -24,7 +24,7 @@ const MAX_TABLE_LINES: usize = 1 << 16;
 pub(crate) struct HuffmanTable(Rc<InnerHuffmanTable>);
 
 impl HuffmanTable {
-    /// PdfCraft patch: the words this table holds. Every table takes the room of the inline
+    /// PDF patch: the words this table holds. Every table takes the room of the inline
     /// variant, however few nodes it has, and a dynamic one its nodes besides.
     pub(crate) fn words(&self) -> usize {
         let nodes = match &*self.0 {

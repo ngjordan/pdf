@@ -7,20 +7,20 @@ use std::collections::{HashMap, HashSet};
 
 pub(crate) struct OcgState {
     inactive_ocgs: HashSet<ObjectIdentifier>,
-    /// PdfCraft patch (40): every group the document lists in `/OCProperties /OCGs`, so a
+    /// PDF patch (40): every group the document lists in `/OCProperties /OCGs`, so a
     /// visibility expression naming anything else is known to be malformed.
     known_ocgs: HashSet<ObjectIdentifier>,
     visibility_stack: Vec<bool>,
 }
 
 impl OcgState {
-    /// PdfCraft patch (67): the marked-content visibility now, to put back after content that
+    /// PDF patch (67): the marked-content visibility now, to put back after content that
     /// may leave it unbalanced is interpreted once more (`draw_knockout_passes`).
     pub(crate) fn visibility(&self) -> Vec<bool> {
         self.visibility_stack.clone()
     }
 
-    /// PdfCraft patch (67): see `visibility`.
+    /// PDF patch (67): see `visibility`.
     pub(crate) fn set_visibility(&mut self, visibility: Vec<bool>) {
         self.visibility_stack = visibility;
     }
@@ -34,7 +34,7 @@ impl OcgState {
     }
 
     /// The groups' states as the document opens: the default configuration (`/BaseState`, then
-    /// `/ON` and `/OFF`), then, when `view_auto_state` is set (PdfCraft patch (103)), the auto
+    /// `/ON` and `/OFF`), then, when `view_auto_state` is set (PDF patch (103)), the auto
     /// state its `/AS` array gives for the View event ([`apply_view_auto_state`]).
     pub(crate) fn from_catalog(catalog: &Dict<'_>, xref: &XRef, view_auto_state: bool) -> Self {
         let Some(oc_properties) = catalog.get::<Dict<'_>>(OCPROPERTIES) else {
@@ -107,7 +107,7 @@ impl OcgState {
     }
 
     pub(crate) fn begin_ocmd(&mut self, ocmd: &Dict<'_>) {
-        // PdfCraft patch (40): a visibility expression takes precedence over /OCGs and /P
+        // PDF patch (40): a visibility expression takes precedence over /OCGs and /P
         // (ISO 32000-2 §8.11.2.2); a malformed one is ignored and they decide instead.
         if let Some(visible) = ocmd.get::<Array<'_>>(VE).and_then(|ve| self.visibility_expression(&ve, 0)) {
             let visible = self.is_visible() && visible;
@@ -147,7 +147,7 @@ impl OcgState {
         self.visibility_stack.push(visible);
     }
 
-    /// PdfCraft patch (40): evaluate a visibility expression (`/VE`, PDF 1.6): `[/And e…]`,
+    /// PDF patch (40): evaluate a visibility expression (`/VE`, PDF 1.6): `[/And e…]`,
     /// `[/Or e…]` or `[/Not e]`, each `e` an optional content group (by reference) or a nested
     /// expression. `None` for a malformed expression: an unknown operator, a `/Not` without
     /// exactly one operand, an `/And` or `/Or` without any, an operand that is neither (a
@@ -203,7 +203,7 @@ impl OcgState {
         self.visibility_stack.pop();
     }
 
-    /// PdfCraft patch: override one group's state (viewer layer toggles).
+    /// PDF patch: override one group's state (viewer layer toggles).
     pub(crate) fn set_active(&mut self, id: ObjectIdentifier, active: bool) {
         if active {
             self.inactive_ocgs.remove(&id);
@@ -223,15 +223,15 @@ impl Default for OcgState {
     }
 }
 
-/// PdfCraft patch (103): at most this many usage application dictionaries of an `/AS` array are
+/// PDF patch (103): at most this many usage application dictionaries of an `/AS` array are
 /// read; the rest are ignored.
 const MAX_AUTO_STATE_APPLICATIONS: usize = 256;
-/// PdfCraft patch (103): at most this many `/OCGs` entries are read across all of them.
+/// PDF patch (103): at most this many `/OCGs` entries are read across all of them.
 const MAX_AUTO_STATE_GROUPS: usize = 4096;
-/// PdfCraft patch (103): at most this many `/Category` names are read per application.
+/// PDF patch (103): at most this many `/Category` names are read per application.
 const MAX_AUTO_STATE_CATEGORIES: usize = 16;
 
-/// PdfCraft patch (103): apply the configuration's auto state for the View event (ISO 32000-2
+/// PDF patch (103): apply the configuration's auto state for the View event (ISO 32000-2
 /// §8.11.4.4, Tables 99 and 101). For each usage application dictionary in `/AS` whose `/Event`
 /// is `/View`, each group in its `/OCGs` gets a recommended state from each category in its
 /// `/Category` that the group's `/Usage` gives one for. A group is ON only if every
@@ -304,7 +304,7 @@ fn apply_view_auto_state(config: &Dict<'_>, xref: &XRef, inactive: &mut HashSet<
     }
 }
 
-/// PdfCraft patch (40): how deep visibility expressions may nest; deeper ones are malformed.
+/// PDF patch (40): how deep visibility expressions may nest; deeper ones are malformed.
 const MAX_VISIBILITY_EXPRESSION_DEPTH: usize = 32;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]

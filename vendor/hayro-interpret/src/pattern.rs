@@ -25,7 +25,7 @@ use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-/// PdfCraft patch (78): the source of [`TilingPattern::instance`].
+/// PDF patch (78): the source of [`TilingPattern::instance`].
 static NEXT_TILING_INSTANCE: AtomicU64 = AtomicU64::new(0);
 
 /// A PDF pattern.
@@ -38,7 +38,7 @@ pub enum Pattern<'a> {
 }
 
 impl<'a> Pattern<'a> {
-    /// PdfCraft patch (38): `defaults` are those of the resources the pattern is selected with,
+    /// PDF patch (38): `defaults` are those of the resources the pattern is selected with,
     /// for a shading pattern's shading in a device space.
     pub(crate) fn new(
         object: Object<'a>,
@@ -70,7 +70,7 @@ impl<'a> Pattern<'a> {
         }
     }
 
-    /// PdfCraft patch (46): the pattern without the fill or stroke opacity it captured when it was
+    /// PDF patch (46): the pattern without the fill or stroke opacity it captured when it was
     /// set (`scn`). A stencil mask's transparency group applies the opacity in force when the mask
     /// is drawn, so a pattern paint carrying it too drew the mask at the opacity squared (#2975).
     pub(crate) fn without_opacity(mut self) -> Self {
@@ -84,7 +84,7 @@ impl<'a> Pattern<'a> {
         self
     }
 
-    /// PdfCraft patch: set the alpha of the graphics state in effect when the pattern is painted. The `gs` operator
+    /// PDF patch: set the alpha of the graphics state in effect when the pattern is painted. The `gs` operator
     /// can come after `scn`/`SCN`, so the alpha must not be captured when the pattern is selected.
     pub(crate) fn set_alpha(&mut self, alpha: f32) {
         if let Self::Shading(p) = self {
@@ -160,7 +160,7 @@ impl CacheKey for ShadingPattern {
 #[derive(Clone)]
 pub struct TilingPattern<'a> {
     cache_key: u128,
-    /// PdfCraft patch (78): see [`Self::instance`].
+    /// PDF patch (78): see [`Self::instance`].
     instance: u64,
     ctx_bbox: Rect,
     /// The bbox of the tiling pattern.
@@ -264,7 +264,7 @@ impl<'a> TilingPattern<'a> {
         initial_transform: Affine,
         is_stroke: bool,
     ) -> Option<()> {
-        // PdfCraft patch: a tiling pattern can paint itself (directly, or through resources it
+        // PDF patch: a tiling pattern can paint itself (directly, or through resources it
         // inherits when its own are missing), which recursed until the stack overflowed. Bound
         // the nesting like XObjects do, tighter because every level rasterizes a tile.
         if self.nesting_depth > crate::context::MAX_PAINT_NESTING || !crate::context::take_nested_paint(self.nesting_depth) {
@@ -284,7 +284,7 @@ impl<'a> TilingPattern<'a> {
             self.nesting_depth,
         );
 
-        // PdfCraft patch: see `context::MAX_PAGE_CONTENT`.
+        // PDF patch: see `context::MAX_PAGE_CONTENT`.
         let decoded = crate::context::decode_content(&self.stream)?;
         let resources = Resources::from_parent(
             self.stream.dict().get(RESOURCES).unwrap_or_default(),
@@ -318,7 +318,7 @@ impl<'a> TilingPattern<'a> {
 }
 
 impl TilingPattern<'_> {
-    /// PdfCraft patch (78): which setting of the pattern (`scn`/`SCN`) this is. Each setting is
+    /// PDF patch (78): which setting of the pattern (`scn`/`SCN`) this is. Each setting is
     /// numbered apart, and its copies keep the number. A coloured pattern's cell depends only on
     /// what the setting captured (its stream, resources, settings and the bounding box then in
     /// effect) and on the scale it is drawn at, so a renderer can draw the cell once per number

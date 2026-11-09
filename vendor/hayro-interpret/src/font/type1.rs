@@ -20,7 +20,7 @@ pub(crate) struct Type1Font(
     u128,
     Kind,
     Option<CMap>,
-    /// PdfCraft patch: whether the font's numbered glyph names all name their own codes
+    /// PDF patch: whether the font's numbered glyph names all name their own codes
     /// (`numbered_names_name_their_codes`), worked out on first use.
     OnceLock<bool>,
 );
@@ -139,7 +139,7 @@ impl Type1Font {
         if let Some(c) = found {
             return Some(BfString::Char(c));
         }
-        // PdfCraft patch (#3169, #3170): a name outside the glyph list still reads by the
+        // PDF patch (#3169, #3170): a name outside the glyph list still reads by the
         // glyph list specification's full mapping (`f_i`, `hyphen.case`). A name that only
         // numbers the glyph (`C39`, `c251`) reads as the code's Latin-1 character only when its
         // number is that code (`C39` at 39) and every numbered name in the font names its own
@@ -282,7 +282,7 @@ impl Type1Kind {
     }
 
     fn char_code_to_unicode(&self, code: u8) -> Option<char> {
-        // PdfCraft patch: an Annex D.2 alias code reads as the ordinary character; see
+        // PDF patch: an Annex D.2 alias code reads as the ordinary character; see
         // `Encoding::text_alias`. `code_to_ps_name` is shared with glyph lookup and stays as it
         // is, so the alias is applied here, after `/Differences` has had its say.
         if !self.encodings.contains_key(&code)
@@ -311,7 +311,7 @@ impl CffKind {
         let descriptor = dict.get::<Dict<'_>>(FONT_DESC)?;
         let data = descriptor.get::<Stream<'_>>(FONT_FILE3)?;
         let bytes = data.decoded().ok()?.to_vec();
-        // PdfCraft patch (69): an OpenType-wrapped program carries its CFF in a table.
+        // PDF patch (69): an OpenType-wrapped program carries its CFF in a table.
         let font = if bytes.starts_with(b"OTTO") {
             CffFontBlob::from_open_type(&bytes)?
         } else {
@@ -393,7 +393,7 @@ impl CffKind {
     }
 
     fn char_code_to_unicode(&self, code: u8) -> Option<char> {
-        // PdfCraft patch: an Annex D.2 alias code reads as the ordinary character; see
+        // PDF patch: an Annex D.2 alias code reads as the ordinary character; see
         // `Encoding::text_alias`. `code_to_ps_name` is shared with glyph lookup and stays as it
         // is, so the alias is applied here, after `/Differences` has had its say.
         if !self.encodings.contains_key(&code)

@@ -60,7 +60,7 @@ impl<'a> Scanner<'a> {
         object::read(&mut self.reader)
     }
 
-    /// PdfCraft patch (2): parse the next object; when it can't be read, read on from where
+    /// PDF patch (2): parse the next object; when it can't be read, read on from where
     /// the failed read stopped, or, when it read nothing, from one byte past where its token
     /// starts, so a caller can read on past a token it can't parse (a stray `>` in a name, a
     /// CMap name with spaces in it) instead of stopping there. Every failure moves forward, one
@@ -208,7 +208,7 @@ endcmap"#;
         assert!(scanner.parse_name().is_err());
     }
 
-    /// PdfCraft patch (2) test: a token that can't be read fails once and is stepped over,
+    /// PDF patch (2) test: a token that can't be read fails once and is stepped over,
     /// whether or not whitespace or a comment comes before it, and the objects after it read.
     #[test]
     fn parse_object_or_skip_steps_over_an_unreadable_token() {
@@ -230,7 +230,7 @@ endcmap"#;
         assert!(s.at_end());
     }
 
-    /// PdfCraft patch (2) test: a number that can't be read fails once with the rest of its
+    /// PDF patch (2) test: a number that can't be read fails once with the rest of its
     /// token, which is not read as a name of its own; the tokens after it still read.
     #[test]
     fn parse_object_or_skip_skips_the_rest_of_an_unreadable_number() {
@@ -245,7 +245,7 @@ endcmap"#;
         assert!(s.at_end());
     }
 
-    /// PdfCraft patch (2) test: what a failed read went through is not read again. An unclosed
+    /// PDF patch (2) test: what a failed read went through is not read again. An unclosed
     /// string reads to the end of the data, so one failure leaves nothing to read; the nested
     /// `(` inside it are not each read to the end once more.
     #[test]
@@ -259,7 +259,7 @@ endcmap"#;
         assert!(s.at_end());
     }
 
-    /// PdfCraft patch (2) test: at the end of the data a read fails and the scanner stays at
+    /// PDF patch (2) test: at the end of the data a read fails and the scanner stays at
     /// the end; it never steps past the data.
     #[test]
     fn parse_object_or_skip_stays_at_the_end() {

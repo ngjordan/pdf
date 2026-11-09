@@ -69,7 +69,7 @@ impl StripStorage {
         self.strips.is_empty() && self.alphas.is_empty()
     }
 
-    /// PdfCraft patch (2): whether these strips have room for the coverage of one more path on a
+    /// PDF patch (2): whether these strips have room for the coverage of one more path on a
     /// `width` x `height` surface, which covers at most the whole surface (twice, to be safe). A
     /// strip packs its index into the alphas in 31 bits and [`Strip::new`] asserts that it fits:
     /// a scene that painted past it (a form drawn 2^22 times over) panicked.
@@ -91,7 +91,7 @@ impl StripStorage {
     }
 }
 
-/// PdfCraft patch (2): the most coverage (alpha) values a strip index can reach (31 bits; the
+/// PDF patch (2): the most coverage (alpha) values a strip index can reach (31 bits; the
 /// top bit of [`Strip`]'s packed index is its fill-gap flag).
 const MAX_ALPHAS: usize = 1 << 31;
 
@@ -163,7 +163,7 @@ impl StripGenerator {
     /// Generate the strips for a stroked path.
     pub fn generate_stroked_path(
         &mut self,
-        // PdfCraft patch: `Clone` for `flatten::stroke`.
+        // PDF patch: `Clone` for `flatten::stroke`.
         path: impl IntoIterator<Item = PathEl> + Clone,
         stroke: &Stroke,
         transform: Affine,
@@ -463,7 +463,7 @@ mod tests {
 mod iridium_pdf_tests {
     use super::*;
 
-    /// PdfCraft patch (2): room runs out a whole surface's coverage before the limit, so the path
+    /// PDF patch (2): room runs out a whole surface's coverage before the limit, so the path
     /// that would cross it is never generated; at the real limit, an index of `MAX_ALPHAS` would
     /// not fit a strip.
     #[test]

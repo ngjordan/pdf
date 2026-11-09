@@ -46,13 +46,13 @@ pub(crate) fn decode_into(
 
     // Validate that the region fits within the reference bitmap.
     // When referring to another segment, dimensions must match exactly (7.4.7.5).
-    // PdfCraft patch: a refinement of the page refines the page's area of its own size (7.4.7.4,
+    // PDF patch: a refinement of the page refines the page's area of its own size (7.4.7.4,
     // `Bitmap::area`), which it always fits.
     if header.region_info.width > reference.width || header.region_info.height > reference.height {
         bail!(RegionError::InvalidDimension);
     }
 
-    // PdfCraft patch: "GRREFERENCEDX 0, GRREFERENCEDY 0" (Table 35). The reference is another
+    // PDF patch: "GRREFERENCEDX 0, GRREFERENCEDY 0" (Table 35). The reference is another
     // region, which a refinement refines where it is (their locations should be equal, 7.4.7.5),
     // or the page restricted to the refinement's area (7.4.7.4, `Bitmap::area`). Offsetting it by
     // the difference of the locations refused one past `i32::MAX` as an overflow, and read the
@@ -185,7 +185,7 @@ impl<'a> RefinementContextGatherer<'a> {
         };
         self.reg_cur = 0;
 
-        // PdfCraft patch: the buffers start a column left of the reference column the row starts
+        // PDF patch: the buffers start a column left of the reference column the row starts
         // at, as `maybe_reload_buffers` would load them, or at column 0 where that is left of the
         // reference. The row's first context takes in that column and the one left of it, which
         // from column 32 on lay outside a word loaded from column 0 and read as 0: with the
@@ -264,7 +264,7 @@ impl<'a> RefinementContextGatherer<'a> {
             self.reg_cur = ContextGatherer::load_word(region, self.reg_y, new_start);
         }
 
-        // PdfCraft patch: left of the reference the buffers keep what `start_row` loaded, its words
+        // PDF patch: left of the reference the buffers keep what `start_row` loaded, its words
         // from column 0. The context takes in the reference a column to the right of the current
         // one (Figures 12 and 13), so at column −1 it reads column 0, and from 0 on the buffers are
         // the reference's own. They were zeroed here and, at column 0, not loaded again: with the

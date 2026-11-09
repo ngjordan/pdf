@@ -1,9 +1,9 @@
 //! Portable mode (#157): a marker file beside the executable ([`MARKERS`]) keeps the settings,
-//! log files, crash-recovery autosaves and new digital IDs in `<exe dir>/PdfCraftData`, so a
+//! log files, crash-recovery autosaves and new digital IDs in the app data folder, so a
 //! portable copy (on a USB stick, say) writes nothing to `%APPDATA%`. In `%LOCALAPPDATA%` it keeps
 //! only its single-instance socket and lock, two empty files in `%LOCALAPPDATA%\PDF` that
 //! must stay private to the user (#889, `apps/iridium_pdf/src/single_instance.rs`). The Windows
-//! portable zip ships with `portable.txt`; the MSI doesn't. PhotoCraft uses the same scheme
+//! portable zip ships with `portable.txt`; the MSI doesn't. The upstream app uses the same scheme
 //! (the upstream app's `app_dirs.rs`).
 //!
 //! If that folder can't be written (read-only medium, Program Files), portable mode stays off, the

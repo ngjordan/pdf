@@ -8,7 +8,7 @@ use crate::error::{OverflowError, ParseError, Result};
 use crate::reader::Reader;
 use alloc::vec::Vec;
 
-/// PdfCraft patch: the most words of shifted copies a dictionary keeps, 16 MiB, where 256 patterns
+/// PDF patch: the most words of shifted copies a dictionary keeps, 16 MiB, where 256 patterns
 /// of 32 rows take 2 MiB. A 48-byte dictionary of 65,535 such patterns asked for 539 MB.
 const MAX_SHIFTED_WORDS: u64 = 1 << 22;
 
@@ -139,7 +139,7 @@ pub(crate) fn decode(
     // very easily blit it into the backdrop, significantly speeding up
     // the whole process.
     //
-    // PdfCraft patch: only when the table is small, and fits what the page may still hold
+    // PDF patch: only when the table is small, and fits what the page may still hold
     // (`room`), so that a speed-up never gets an image refused. It can be left out:
     // `shifted_pattern` then returns `None` and the patterns are combined the slow way.
     let shifted_words = (patterns.len() as u64)
@@ -198,7 +198,7 @@ impl PatternDictionary {
         self.shifted_patterns.get(start..start + len)
     }
 
-    /// PdfCraft patch: the words the dictionary holds, its patterns and their shifted copies.
+    /// PDF patch: the words the dictionary holds, its patterns and their shifted copies.
     pub(crate) fn words(&self) -> usize {
         self.patterns.iter().map(Bitmap::words).fold(self.shifted_patterns.len(), usize::saturating_add)
     }
@@ -219,7 +219,7 @@ pub(crate) struct PatternDictionaryHeader<'a> {
 }
 
 impl PatternDictionaryHeader<'_> {
-    /// PdfCraft patch: the work of decoding the patterns, side by side in one bitmap, and of
+    /// PDF patch: the work of decoding the patterns, side by side in one bitmap, and of
     /// taking each out of it (see `bitmap::MAX_WORK`).
     pub(crate) fn work(&self) -> u64 {
         let (width, height) = (u32::from(self.pattern_width), u32::from(self.pattern_height));

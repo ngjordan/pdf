@@ -220,7 +220,7 @@ pub fn fill_impl<S: Simd>(
 /// See the note about open subpaths and culling on [`fill`].
 pub fn stroke(
     level: Level,
-    // PdfCraft patch: `Clone` so the path can be stroked a second time.
+    // PDF patch: `Clone` so the path can be stroked a second time.
     path: impl IntoIterator<Item = PathEl> + Clone,
     style: &Stroke,
     affine: Affine,
@@ -237,10 +237,10 @@ pub fn stroke(
             .max(1.);
 
     expand_stroke(path.clone(), style, tolerance, stroke_ctx);
-    // PdfCraft patch: kurbo's stroker can put NaN into the outline of a curve that is nearly a
+    // PDF patch: kurbo's stroker can put NaN into the outline of a curve that is nearly a
     // line (all control points within a rounding error of the chord), and `fill` then drops the
     // whole outline. Stroke it again with such curves as lines. A finite outline is unchanged.
-    // PdfCraft patch (4): it can also put NaN into the offset of a cubic whose second control
+    // PDF patch (4): it can also put NaN into the offset of a cubic whose second control
     // point is its end point (as `y` builds), so that control point is moved off it in the same
     // pass.
     if !stroke_ctx.output().is_finite() {
@@ -257,7 +257,7 @@ pub fn stroke(
     );
 }
 
-// PdfCraft patch.
+// PDF patch.
 /// `path` with each quadratic or cubic whose control points all lie within
 /// `tolerance` of its chord replaced by a line to its end point, and (patch (4)) each other
 /// cubic whose second control point is its end point given a short end handle instead
@@ -293,7 +293,7 @@ fn robust_for_stroking(path: impl IntoIterator<Item = PathEl>, tolerance: f64) -
     out
 }
 
-// PdfCraft patch (4).
+// PDF patch (4).
 /// The second control point of the cubic `p0 p1 p2 p3`, moved `tolerance` towards `p1` (or `p0`
 /// when `p1` is that close too) when it sits on the end point `p3`, as a `y` curve's does.
 ///

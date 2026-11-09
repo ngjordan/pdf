@@ -15,12 +15,12 @@ pub(crate) fn decode(
 ) -> Option<FilterResult<'static>> {
     let k = params.get::<i32>(K).unwrap_or(0);
 
-    // PdfCraft patch: `/Rows 0` means the height is not predetermined (ISO 32000-2 Table 11, and
+    // PDF patch: `/Rows 0` means the height is not predetermined (ISO 32000-2 Table 11, and
     // the default), not zero rows. Scanners write it on Group 4 pages, which rendered blank.
-    // PdfCraft patch (19): fewer `/Rows` than the image's `/Height` doesn't cut the image short: a
+    // PDF patch (19): fewer `/Rows` than the image's `/Height` doesn't cut the image short: a
     // plotter driver wrote `/Rows` equal to `/Columns`, and the rows after it were drawn black
     // (#3308). The decoder still stops where the data ends.
-    // PdfCraft patch (41): more `/Rows` than the image's `/Height` doesn't make the decoder go
+    // PDF patch (41): more `/Rows` than the image's `/Height` doesn't make the decoder go
     // past it either: the image is `/Height` rows (ISO 32000-2 Table 87), and a `/Rows` of
     // 1,084,975,104 on 2,592 columns had the size check refuse every page of a scan (PDFBOX-771).
     // `/Rows` counts only for a stream decoded without an image's height.
@@ -46,7 +46,7 @@ pub(crate) fn decode(
         invert_black: params.get::<bool>(BLACK_IS_1).unwrap_or(false),
     };
 
-    // PdfCraft patch: refuse absurd sizes before the decoder allocates for them.
+    // PDF patch: refuse absurd sizes before the decoder allocates for them.
     if !super::ccitt_size_ok(settings.columns, settings.rows) {
         return None;
     }

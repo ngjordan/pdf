@@ -319,7 +319,7 @@ pub(crate) fn handle_gs_single<'a>(
 ) -> Option<()> {
     // TODO Can we use constants here somehow?
     match key.as_str() {
-        // PdfCraft patch (61): see `convert_line_width`.
+        // PDF patch (61): see `convert_line_width`.
         "LW" => {
             context.get_mut().graphics_state.stroke_props.line_width =
                 convert_line_width(dict.get::<f32>(key)?);
@@ -406,7 +406,7 @@ pub(crate) fn handle_gs_single<'a>(
             let dash_phase = iter.next()?.into_number()?.as_f32();
 
             context.get_mut().graphics_state.stroke_props.dash_offset = dash_phase;
-            // PdfCraft patch (61): see `convert_dash_array`.
+            // PDF patch (61): see `convert_dash_array`.
             context.get_mut().graphics_state.stroke_props.dash_array =
                 convert_dash_array(dash_array.iter::<f32>());
         }

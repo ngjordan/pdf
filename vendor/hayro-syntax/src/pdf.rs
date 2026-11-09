@@ -17,7 +17,7 @@ pub struct Pdf {
     header_version: PdfVersion,
     pages: CachedPages,
     data: PdfData,
-    /// PdfCraft patch: (hayro-syntax (45)) see [`Pdf::rebuilt_unlinked_update`].
+    /// PDF patch: (hayro-syntax (45)) see [`Pdf::rebuilt_unlinked_update`].
     rebuilt_unlinked_update: bool,
 }
 
@@ -49,7 +49,7 @@ impl Pdf {
         let data = data.into();
         let password = password.as_bytes();
         let version = find_version(data.as_ref()).unwrap_or(PdfVersion::Pdf10);
-        // PdfCraft patch: (hayro-syntax (43)) a last update cut off before its trailer is read by
+        // PDF patch: (hayro-syntax (43)) a last update cut off before its trailer is read by
         // rebuilding the table from object headers, the latest definition of each object
         // winning, as the document model reads such a file. Only when that finds no page is the
         // older table the last `startxref` names read instead (a file cut short in the middle of
@@ -62,7 +62,7 @@ impl Pdf {
             return Err(LoadPdfError::Decryption(e));
         }
         let root_encrypted = root.as_ref().ok().map(|(x, _)| x.is_encrypted());
-        // PdfCraft patch: (hayro-syntax (45)) said of the file whichever table is kept, as
+        // PDF patch: (hayro-syntax (45)) said of the file whichever table is kept, as
         // `iridium-pdf-cos` says it under the same conditions.
         let rebuilt_unlinked_update = root.as_ref().is_ok_and(|(_, rebuilt)| *rebuilt);
         if cut_off_update_follows(data.as_ref())
@@ -104,7 +104,7 @@ impl Pdf {
         })
     }
 
-    /// PdfCraft patch: (hayro-syntax (45)) whether the newest cross-reference section has no
+    /// PDF patch: (hayro-syntax (45)) whether the newest cross-reference section has no
     /// `/Prev`, so the page tree in the revisions before it could only be found by rebuilding the
     /// table from the file's objects.
     pub fn rebuilt_unlinked_update(&self) -> bool {

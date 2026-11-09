@@ -433,14 +433,14 @@ mod tests {
         let record = |level, target: &'static str, msg: &'static str| {
             logger.log(&log::Record::builder().level(level).target(target).args(format_args!("{msg}")).build());
         };
-        record(log::Level::Info, "iridium_pdf", "moved the PrintCraft settings");
+        record(log::Level::Info, "iridium_pdf", "moved the former-name settings");
         record(log::Level::Info, "wgpu_core::device", "too chatty");
         let path = logger.attach_dir(&dir).expect("attach");
         assert_eq!(path, dir.join(LOG_FILE));
         record(log::Level::Warn, "wgpu_hal::vulkan", "a real warning");
         record(log::Level::Debug, "iridium_pdf", "below info");
         let text = read(&path);
-        assert!(text.contains(" INFO  [") && text.contains("iridium_pdf: moved the PrintCraft settings\n"), "{text}");
+        assert!(text.contains(" INFO  [") && text.contains("iridium_pdf: moved the former-name settings\n"), "{text}");
         assert!(text.contains("wgpu_hal::vulkan: a real warning\n"), "{text}");
         assert!(!text.contains("too chatty") && !text.contains("below info"), "{text}");
         assert!(logger.enabled(&log::Metadata::builder().level(log::Level::Info).target("iridium_pdf_ui_egui").build()));

@@ -87,7 +87,7 @@ impl Glyph<'_> {
     /// 1. `ToUnicode` cmap
     /// 2. Glyph name → Unicode (via Adobe Glyph List)
     /// 3. Unicode naming conventions (e.g., "uni0041", "u0041")
-    /// 4. PdfCraft patch (100), Type1 and CFF fonts only: a name that only numbers its glyph, as
+    /// 4. PDF patch (100), Type1 and CFF fonts only: a name that only numbers its glyph, as
     ///    for Type3 fonts below
     ///
     /// **For CID Fonts (Type0):**
@@ -96,10 +96,10 @@ impl Glyph<'_> {
     ///
     /// **For Type3 Fonts:**
     /// 1. `ToUnicode` cmap
-    /// 2. PdfCraft patch: the `/Encoding` glyph name → Unicode (an Annex D.2 alias code reads as
+    /// 2. PDF patch: the `/Encoding` glyph name → Unicode (an Annex D.2 alias code reads as
     ///    the ordinary character)
-    /// 3. PdfCraft patch: a printable ASCII code (32–126) as itself
-    /// 4. PdfCraft patch (100): above 126, a name that only numbers its glyph (`C174`) as the
+    /// 3. PDF patch: a printable ASCII code (32–126) as itself
+    /// 4. PDF patch (100): above 126, a name that only numbers its glyph (`C174`) as the
     ///    code's Latin-1 character, when the number is that code and every numbered name in the
     ///    font names its own code
     ///
@@ -173,7 +173,7 @@ impl OutlineGlyph {
         self.id
     }
 
-    /// PdfCraft patch: whether this glyph belongs to a vertical-writing Type0 font.
+    /// PDF patch: whether this glyph belongs to a vertical-writing Type0 font.
     /// The glyph outline stays upright; text extraction must follow the font's advance axis.
     pub fn is_vertical(&self) -> bool {
         matches!(&self.font, OutlineFont::Type0(font) if !font.is_horizontal())
@@ -187,7 +187,7 @@ impl OutlineGlyph {
         self.font.glyph_advance_width(self.char_code)
     }
 
-    /// PdfCraft patch: for a glyph of a vertical-writing Type0 font, its width w0 (the
+    /// PDF patch: for a glyph of a vertical-writing Type0 font, its width w0 (the
     /// horizontal displacement from `/W` or `/DW`), which is how wide the glyph sits across the
     /// column (ISO 32000-2 §9.7.4.3). `None` for horizontal writing, where
     /// [`advance_width`](Self::advance_width) gives it.
@@ -239,14 +239,14 @@ impl<'a> Type3Glyph<'a> {
 
     /// Returns the Unicode code point for this glyph, if available: the `ToUnicode` cmap, then
     /// the `/Encoding` glyph name, a printable ASCII code, and a numbered glyph name at its own
-    /// code (PdfCraft patches).
+    /// code (PDF patches).
     ///
     /// See [`Glyph::as_unicode`] for details on the fallback chain used.
     pub fn as_unicode(&self) -> Option<BfString> {
         self.font.char_code_to_unicode(self.char_code)
     }
 
-    /// PdfCraft patch: the advance width in glyph space (1000 units per em), from `/Widths`.
+    /// PDF patch: the advance width in glyph space (1000 units per em), from `/Widths`.
     pub fn advance_width(&self) -> Option<f32> {
         u8::try_from(self.char_code).ok().map(|c| self.font.glyph_width(c))
     }
@@ -267,7 +267,7 @@ impl<'a> Font<'a> {
         font_resolver: &FontResolverFn,
         cmap_resolver: &CMapResolverFn,
     ) -> Option<Self> {
-        // PdfCraft patch (94): a font dictionary whose `/Subtype` is missing or the empty name
+        // PDF patch (94): a font dictionary whose `/Subtype` is missing or the empty name
         // (`/Subtype /`) is read as a Type 1 font, so its `/BaseFont` still picks the font: a
         // `/Courier-Bold` was drawn in the Helvetica fallback (PDFBOX-1988). `/Subtype` is
         // required (ISO 32000-2 §9.6.2.1, Table 109); other readers fall back to Type 1 this way.
@@ -300,7 +300,7 @@ impl<'a> Font<'a> {
         Some(Self(cache_key, f_type))
     }
 
-    /// PdfCraft patch (90): whether this is a Type 3 font without `/Widths` (or
+    /// PDF patch (90): whether this is a Type 3 font without `/Widths` (or
     /// `/FirstChar`/`/LastChar`), whose glyphs advance by their `d0`/`d1` widths.
     pub(crate) fn type3_widths_missing(&self) -> bool {
         matches!(&self.1, FontType::Type3(t) if t.widths_missing())
@@ -480,7 +480,7 @@ impl Encoding {
         }
     }
 
-    /// PdfCraft patch: the glyph name an Annex D.2 *alias code* reads as when the glyph is taken
+    /// PDF patch: the glyph name an Annex D.2 *alias code* reads as when the glyph is taken
     /// as text rather than looked up in a font program; `None` for every other code.
     ///
     /// Annex D.2 gives WinAnsiEncoding codes 0xA0 and 0xAD the glyph names `space` and `hyphen`,
@@ -602,7 +602,7 @@ impl FallbackFontQuery {
         Self::with_descriptor(dict, dict.get::<Dict<'_>>(FONT_DESC))
     }
 
-    /// PdfCraft patch: the query for the font `dict` names, with its style read from
+    /// PDF patch: the query for the font `dict` names, with its style read from
     /// `descriptor`. A Type 0 font has no font descriptor of its own; its descendant CIDFont
     /// has it (ISO 32000-2 §9.7.4.1, §9.7.6.1).
     pub(crate) fn with_descriptor(dict: &Dict<'_>, descriptor: Option<Dict<'_>>) -> Self {
@@ -711,7 +711,7 @@ pub(crate) fn glyph_name_to_unicode(name: &str) -> Option<char> {
     })
 }
 
-/// PdfCraft patch: the text of a glyph name `glyph_name_to_unicode` doesn't know, by the
+/// PDF patch: the text of a glyph name `glyph_name_to_unicode` doesn't know, by the
 /// Adobe Glyph List Specification's full mapping: drop everything from the first `.`
 /// (`hyphen.case`, `a.sc`), split the rest on `_` into components (`f_i`, `f_f_l`), and map each
 /// one through the glyph list, as `uniXXXX[XXXX…]` (BMP values, four hex digits each) or as
@@ -754,7 +754,7 @@ pub(crate) fn glyph_name_to_text(name: &str) -> Option<BfString> {
     }
 }
 
-/// PdfCraft patch: the numbers a glyph name that only numbers its glyph gives (`C39`, `G27`,
+/// PDF patch: the numbers a glyph name that only numbers its glyph gives (`C39`, `G27`,
 /// `MT174`: one to three ASCII letters, then one to six decimal or hexadecimal digits), for
 /// every split into letters and digits, read in decimal and in hexadecimal (`GA9` is `G` with
 /// hex `A9`); nothing for any other name. Everything from the first `.` is dropped first, as
@@ -781,7 +781,7 @@ fn glyph_name_numbers(name: &str) -> impl Iterator<Item = u32> + '_ {
     })
 }
 
-/// PdfCraft patch: whether every glyph name in a simple font's encoding that only numbers its
+/// PDF patch: whether every glyph name in a simple font's encoding that only numbers its
 /// glyph (see `glyph_name_numbers`) names the very code it sits at, in decimal or hexadecimal.
 /// Names the glyph list or its `uni`/`u` forms read are not numbered names. A font whose names
 /// number something else (`/Differences [1 /C70 /C105 …]`, a glyph's order in the subset)
@@ -807,7 +807,7 @@ pub(crate) fn numbered_names_name_their_codes<'a>(
         })
 }
 
-/// PdfCraft patch: the text of a glyph name outside the glyph list that only numbers its glyph
+/// PDF patch: the text of a glyph name outside the glyph list that only numbers its glyph
 /// (see `glyph_name_numbers`) when that number is the very code the glyph is shown with: the
 /// code's Latin-1 character, for codes above 127 too (`C174` reads `®`), as pdftotext, PDFium
 /// and MuPDF read it. The name and the code then agree, so nothing is guessed from an
@@ -824,7 +824,7 @@ pub(crate) fn numbered_glyph_name_at_its_code(name: &str, code: u8) -> Option<Bf
         .then_some(BfString::Char(c))
 }
 
-/// PdfCraft patch (92): the character a `uniXXXX` or `uXXXX` to `uXXXXXX` glyph name stands
+/// PDF patch (92): the character a `uniXXXX` or `uXXXX` to `uXXXXXX` glyph name stands
 /// for, by the Adobe Glyph List Specification: `uni` and exactly four uppercase hex digits, or
 /// `u` and four to six; a value in the surrogate range or past U+10FFFF is no character. The
 /// text of a glyph goes by this rule, so `uni65`, `uni20ac` and `u41` read as nothing, as they
@@ -845,7 +845,7 @@ pub(crate) fn agl_unicode_from_name(name: &str) -> Option<char> {
 }
 
 /// Upstream's lenient reading of a `uni…` or `u…` name (any number of hex digits, either case),
-/// kept for finding a glyph in a font: PdfCraft patch (92) reads text by
+/// kept for finding a glyph in a font: PDF patch (92) reads text by
 /// [`agl_unicode_from_name`] instead.
 pub(crate) fn unicode_from_name(name: &str) -> Option<char> {
     let convert = |input: &str| u32::from_str_radix(input, 16).ok().and_then(char::from_u32);

@@ -24,12 +24,12 @@ use crate::reader::Reader;
 
 const MAX_SYMBOLS: u32 = u16::MAX as u32;
 
-/// PdfCraft patch: the most symbol pixels one dictionary may decode (2^26). Symbols are
+/// PDF patch: the most symbol pixels one dictionary may decode (2^26). Symbols are
 /// decoded pixel by pixel, and up to 65535 of them of up to 65535 × 65535 each kept a fuzzed
 /// file decoding for minutes; real dictionaries hold about a million pixels.
 const MAX_DICTIONARY_PIXELS: u64 = 1 << 26;
 
-/// PdfCraft patch: decoding steps that decode nothing, allowed beyond what a valid dictionary can
+/// PDF patch: decoding steps that decode nothing, allowed beyond what a valid dictionary can
 /// need. A height class without a symbol and an export run of length 0 don't move their loops
 /// on, and past the end of its data the arithmetic decoder can decode them for ever: one changed
 /// byte in a symbol dictionary hung the renderer. A valid dictionary needs at most one height
@@ -93,7 +93,7 @@ pub(crate) fn decode(
         }
     };
 
-    // PdfCraft patch: see `EXTRA_EMPTY_STEPS`.
+    // PDF patch: see `EXTRA_EMPTY_STEPS`.
     let mut height_classes_left = u64::from(num_new_symbols) + EXTRA_EMPTY_STEPS;
 
     while ctx.symbols_decoded_count < num_new_symbols {
@@ -101,7 +101,7 @@ pub(crate) fn decode(
             bail!(SymbolError::Invalid);
         }
         height_classes_left -= 1;
-        // PdfCraft patch: see `bitmap::INTEGER_WORK`. A class of no symbols still reads its delta.
+        // PDF patch: see `bitmap::INTEGER_WORK`. A class of no symbols still reads its delta.
         *ctx.work_left = ctx.work_left.checked_sub(INTEGER_WORK).ok_or(OverflowError::DecodingWork)?;
         let height_class_delta =
             read_height_class_delta(&mut ctx)?.ok_or(SymbolError::UnexpectedOob)?;
@@ -130,20 +130,20 @@ pub(crate) fn decode(
                 .total_width
                 .checked_add(symbol_width)
                 .ok_or(OverflowError::BitmapDimension)?;
-            // PdfCraft patch: see `MAX_DICTIONARY_PIXELS`.
+            // PDF patch: see `MAX_DICTIONARY_PIXELS`.
             ctx.pixels = ctx
                 .pixels
                 .saturating_add(u64::from(symbol_width) * u64::from(ctx.height_class_height));
             if ctx.pixels > MAX_DICTIONARY_PIXELS {
                 bail!(OverflowError::BitmapDimension);
             }
-            // PdfCraft patch: see `bitmap::INTEGER_WORK`. Its width, and a stream can hold thousands
+            // PDF patch: see `bitmap::INTEGER_WORK`. Its width, and a stream can hold thousands
             // of dictionaries of symbols of no pixels. An aggregated one reads its count, a symbol
             // and two offsets as well.
             let integers = if ctx.header.flags.use_refagg { 5 } else { 1 };
             let work = decode_work(symbol_width, ctx.height_class_height).saturating_add(integers * INTEGER_WORK);
             *ctx.work_left = ctx.work_left.checked_sub(work).ok_or(OverflowError::DecodingWork)?;
-            // PdfCraft patch: see `room`. Rows take a word at least, so symbols of one column
+            // PDF patch: see `room`. Rows take a word at least, so symbols of one column
             // held 270 MiB within the pixel bound, however few the dictionary exported.
             let rows = u64::from(symbol_width.div_ceil(WORD_BITS)) * u64::from(ctx.height_class_height);
             ctx.new_words = ctx.new_words.saturating_add(rows).saturating_add(BITMAP_WORDS as u64);
@@ -223,7 +223,7 @@ pub(crate) struct SymbolDictionary {
 }
 
 impl SymbolDictionary {
-    /// PdfCraft patch: the words the dictionary holds, its retained contexts included. Those are
+    /// PDF patch: the words the dictionary holds, its retained contexts included. Those are
     /// a byte each, and 1.1 MB of dictionaries that retain them, 103 KB behind Flate, held 2.89 GB.
     pub(crate) fn words(&self) -> usize {
         let contexts = self.retained_contexts.as_ref().map_or(0, |contexts| {
@@ -369,7 +369,7 @@ fn decode_aggregation_bitmap(
 ) -> Result<Bitmap> {
     let use_huffman = ctx.header.flags.use_huffman;
 
-    // PdfCraft patch: see `bitmap::MAX_WORK`. What follows is sized by all the symbols, for each
+    // PDF patch: see `bitmap::MAX_WORK`. What follows is sized by all the symbols, for each
     // aggregated symbol, at about 50 ns a symbol: a 713-byte PDF asked for an hour.
     let work = u64::from(ctx.total_symbols()).saturating_mul(HUFFMAN_LINE_WORK);
     *ctx.work_left = ctx.work_left.checked_sub(work).ok_or(OverflowError::DecodingWork)?;
@@ -500,15 +500,15 @@ struct SymbolDecodeContext<'a> {
     symbols_decoded_count: u32,
     total_width: u32,
     height_class_height: u32,
-    /// PdfCraft patch: the words the page may still hold, which neither the new symbols nor the
+    /// PDF patch: the words the page may still hold, which neither the new symbols nor the
     /// exported ones may pass. They are counted as they are made: counted only once the
     /// dictionary was stored, 8 MiB symbols exported again and again killed the process.
     room: u64,
-    /// PdfCraft patch: the words of the new symbols so far (see `room`).
+    /// PDF patch: the words of the new symbols so far (see `room`).
     new_words: u64,
-    /// PdfCraft patch: the decoding work the stream may still ask for (see `bitmap::MAX_WORK`).
+    /// PDF patch: the decoding work the stream may still ask for (see `bitmap::MAX_WORK`).
     work_left: &'a mut u64,
-    /// PdfCraft patch: symbol pixels decoded so far (see `MAX_DICTIONARY_PIXELS`).
+    /// PDF patch: symbol pixels decoded so far (see `MAX_DICTIONARY_PIXELS`).
     pixels: u64,
 }
 
@@ -657,7 +657,7 @@ fn decode_height_class_collective_bitmap(ctx: &mut SymbolDecodeContext<'_>) -> R
 
     ctx.h_ctx.reader.align();
 
-    // PdfCraft patch: a class of no symbols has nothing to cut out, and `bitmap::decode_work` charges
+    // PDF patch: a class of no symbols has nothing to cut out, and `bitmap::decode_work` charges
     // rows by the symbol, so decoding this would be rows for nothing: 65,535 a class, and a dictionary
     // can hold a thousand such classes. Its bytes still have to be stepped over.
     if ctx.symbols_decoded_count == ctx.height_class_first_symbol {
@@ -767,7 +767,7 @@ fn export_symbols(ctx: &mut SymbolDecodeContext<'_>) -> Result<Vec<Bitmap>> {
     let mut exported_words: u64 = 0;
     let mut index: u32 = 0;
     let mut should_export = false;
-    // PdfCraft patch: see `EXTRA_EMPTY_STEPS`.
+    // PDF patch: see `EXTRA_EMPTY_STEPS`.
     let mut runs_left = u64::from(total_symbols) * 2 + 1 + EXTRA_EMPTY_STEPS;
 
     while index < total_symbols {
@@ -775,7 +775,7 @@ fn export_symbols(ctx: &mut SymbolDecodeContext<'_>) -> Result<Vec<Bitmap>> {
             bail!(SymbolError::Invalid);
         }
         runs_left -= 1;
-        // PdfCraft patch: see `bitmap::INTEGER_WORK`. A run of no symbols still reads its length.
+        // PDF patch: see `bitmap::INTEGER_WORK`. A run of no symbols still reads its length.
         *ctx.work_left = ctx.work_left.checked_sub(INTEGER_WORK).ok_or(OverflowError::DecodingWork)?;
         let run_length = read_run_length()?;
 
@@ -790,7 +790,7 @@ fn export_symbols(ctx: &mut SymbolDecodeContext<'_>) -> Result<Vec<Bitmap>> {
                     .symbols
                     .get(symbol_idx as usize)
                     .ok_or(SymbolError::OutOfRange)?;
-                // PdfCraft patch: see `room`.
+                // PDF patch: see `room`.
                 exported_words = exported_words.saturating_add(symbol.words() as u64);
                 if exported_words > ctx.room {
                     bail!(OverflowError::RetainedBitmaps);

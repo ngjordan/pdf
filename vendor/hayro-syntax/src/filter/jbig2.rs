@@ -9,7 +9,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::iter;
 
-/// PdfCraft patch (31): the steps of decoding a page's JBIG2 images may take between them, as many
+/// PDF patch (31): the steps of decoding a page's JBIG2 images may take between them, as many
 /// as one may. Each has its own limit, which doesn't bound a page of many made to reach it. That
 /// is about 6 s to 17 s, inside a render's watchdog; an image of the largest size costs a quarter of
 /// it to decode and a quarter for its page, and ordinary ones are far below that.
@@ -21,7 +21,7 @@ std::thread_local! {
     static PAGE_WORK_LEFT: core::cell::Cell<u64> = const { core::cell::Cell::new(u64::MAX) };
 }
 
-/// PdfCraft patch (31): what the JBIG2 images decoded next on this thread may take, for a new page.
+/// PDF patch (31): what the JBIG2 images decoded next on this thread may take, for a new page.
 #[cfg(feature = "std")]
 pub fn set_page_jbig2_work(work: u64) {
     PAGE_WORK_LEFT.with(|left| left.set(work));
@@ -58,7 +58,7 @@ fn decode_for_page<D: hayro_jbig2::Decoder>(image: &hayro_jbig2::Image<'_>, deco
     image.decode(decoder).ok()
 }
 
-/// PdfCraft patch (31): whether the page has nothing left for another image, which then isn't read
+/// PDF patch (31): whether the page has nothing left for another image, which then isn't read
 /// at all.
 #[cfg(feature = "std")]
 pub fn page_jbig2_work_spent() -> bool {
@@ -83,7 +83,7 @@ pub(crate) fn decode(
         return None;
     }
 
-    // PdfCraft patch: globals are raw segments, so JBIG2 inside them means nothing, and decoding
+    // PDF patch: globals are raw segments, so JBIG2 inside them means nothing, and decoding
     // it reads its own globals in turn: a chain of 16,000 such streams overflowed the stack, which
     // aborts the process. Such a stream reads as globals that can't be decoded.
     let globals = params

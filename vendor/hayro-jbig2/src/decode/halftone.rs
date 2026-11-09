@@ -69,7 +69,7 @@ pub(crate) fn decode_into(
     Ok(())
 }
 
-/// PdfCraft patch: the work of a halftone region (see `bitmap::MAX_WORK`): a bit plane of the grid
+/// PDF patch: the work of a halftone region (see `bitmap::MAX_WORK`): a bit plane of the grid
 /// for each bit of a pattern's index, a pattern copied for each cell, and the region itself. One
 /// such segment in a 795-byte PDF took 265 s.
 pub(crate) fn work(header: &HalftoneRegionHeader<'_>, patterns: &PatternDictionary) -> u64 {
@@ -115,7 +115,7 @@ pub(crate) fn parse<'a>(reader: &mut Reader<'a>) -> Result<HalftoneRegionHeader<
     if grid_width > MAX_DIMENSION || grid_height > MAX_DIMENSION {
         bail!(OverflowError::GridDimension);
     }
-    // PdfCraft patch: the product is bounded too (see `bitmap::MAX_GRID_CELLS`).
+    // PDF patch: the product is bounded too (see `bitmap::MAX_GRID_CELLS`).
     if u64::from(grid_width) * u64::from(grid_height) > crate::bitmap::MAX_GRID_CELLS {
         bail!(OverflowError::GridDimension);
     }

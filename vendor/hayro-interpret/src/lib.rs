@@ -42,7 +42,7 @@ mod ocg;
 mod soft_mask;
 mod types;
 mod x_object;
-/// PdfCraft patch: exported for its regression test.
+/// PDF patch: exported for its regression test.
 pub use x_object::image_size_ok;
 
 pub mod color;

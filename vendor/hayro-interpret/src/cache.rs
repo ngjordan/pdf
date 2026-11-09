@@ -9,8 +9,8 @@ use std::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 type CacheMap = HashMap<u128, Option<Box<dyn Any + Send + Sync>>>;
-/// The objects read from a document, by key. PdfCraft patch (48): the second field counts the
-/// ICC profiles read through it ([`Cache::icc_profile_reads`]). PdfCraft patch (80): the third
+/// The objects read from a document, by key. PDF patch (48): the second field counts the
+/// ICC profiles read through it ([`Cache::icc_profile_reads`]). PDF patch (80): the third
 /// counts the `/Indexed` lookup tables read ([`Cache::indexed_lookup_reads`]).
 #[derive(Clone)]
 pub(crate) struct Cache(Arc<Mutex<CacheMap>>, Arc<AtomicUsize>, Arc<AtomicUsize>);
@@ -29,24 +29,24 @@ impl Cache {
         )
     }
 
-    /// PdfCraft patch (48): count one ICC profile read, the colour space of an `/ICCBased`
+    /// PDF patch (48): count one ICC profile read, the colour space of an `/ICCBased`
     /// profile no entry held yet being built from it.
     pub(crate) fn count_icc_profile_read(&self) {
         self.1.fetch_add(1, Ordering::Relaxed);
     }
 
-    /// PdfCraft patch (48): how many ICC profiles were read through this cache.
+    /// PDF patch (48): how many ICC profiles were read through this cache.
     pub(crate) fn icc_profile_reads(&self) -> usize {
         self.1.load(Ordering::Relaxed)
     }
 
-    /// PdfCraft patch (80): count one `/Indexed` lookup table read (a stream decoded or a
+    /// PDF patch (80): count one `/Indexed` lookup table read (a stream decoded or a
     /// string copied).
     pub(crate) fn count_indexed_lookup_read(&self) {
         self.2.fetch_add(1, Ordering::Relaxed);
     }
 
-    /// PdfCraft patch (80): how many `/Indexed` lookup tables were read through this cache.
+    /// PDF patch (80): how many `/Indexed` lookup tables were read through this cache.
     pub(crate) fn indexed_lookup_reads(&self) -> usize {
         self.2.load(Ordering::Relaxed)
     }
@@ -80,14 +80,14 @@ impl Cache {
     }
 }
 
-/// PdfCraft patch: a byte-budgeted cache of decoded images, keyed by everything a decode reads
+/// PDF patch: a byte-budgeted cache of decoded images, keyed by everything a decode reads
 /// ([`DecodedImageKey`]). Image-heavy pages decode thousands of images; without this every tile
 /// and every scale decodes them all again. Entries hold owned pixels, so a hit never changes
 /// them; when an insert would pass the budget the whole map is dropped (a fresh epoch), which
 /// only costs re-decoding, and an image larger than the whole budget is never kept. The budget
 /// caps memory per interpreter cache. A poisoned lock decodes without the cache.
 ///
-/// PdfCraft patch (91): a decode that fails is kept too, as the warnings it reported, so an
+/// PDF patch (91): a decode that fails is kept too, as the warnings it reported, so an
 /// image drawn again and again that doesn't decode (damaged data, a JPX or JBIG2 stream its
 /// decoder refuses) isn't decoded again at every draw: a later draw reports the same warnings
 /// and gets nothing, as the decode did. A failure counts [`FAILED_DECODE_BYTES`] towards the
@@ -102,7 +102,7 @@ pub(crate) struct DecodedImageCache {
     pub(crate) preview: bool,
 }
 
-/// PdfCraft patch: what a decoded image depends on. Two images share an entry only when all of
+/// PDF patch: what a decoded image depends on. Two images share an entry only when all of
 /// it is equal:
 /// - where the stream's dictionary lies in the document's data (`dict_at`, `dict_len`): a
 ///   stream's data follows its dictionary, so this tells apart streams whose dictionaries are
@@ -112,9 +112,9 @@ pub(crate) struct DecodedImageCache {
 ///   `/BitsPerComponent`, filters, …) and its object (`obj`: the decryption key depends on it);
 /// - whether it is decoded as a mask, a stencil mask, raster or mask output, interpolation,
 ///   the decode target size (only for an image a JPX stream decodes, which is the only
-///   decode that reads it: PdfCraft patch 32), and preview or final quality;
+///   decode that reads it: PDF patch 32), and preview or final quality;
 /// - the default colour space drawn in place of the image's device space, if any (the cache
-///   key of its object, PdfCraft patch 38): the same image can be drawn by resources with a
+///   key of its object, PDF patch 38): the same image can be drawn by resources with a
 ///   `/DefaultRGB` and by resources without one.
 ///
 /// A transfer function (graphics state `/TR`) also changes the pixels and has no cheap key, so
@@ -133,16 +133,16 @@ pub(crate) struct DecodedImageKey {
     pub(crate) default_space: Option<u128>,
     pub(crate) target: Option<(u32, u32)>,
     pub(crate) preview: bool,
-    /// PdfCraft patch (82): the size a soft mask far larger than where it is drawn was averaged
+    /// PDF patch (82): the size a soft mask far larger than where it is drawn was averaged
     /// down to (`ImageXObject::decoded_soft_mask`), `None` for a mask kept at its own size.
     pub(crate) shrunk_to: Option<(u32, u32)>,
 }
 
-/// PdfCraft patch (91): what the budget charges for a failed decode, about what its key and
+/// PDF patch (91): what the budget charges for a failed decode, about what its key and
 /// entry take in the map.
 const FAILED_DECODE_BYTES: usize = 128;
 
-/// PdfCraft patch (91): what a [`DecodedImageCache`] keeps for a key.
+/// PDF patch (91): what a [`DecodedImageCache`] keeps for a key.
 enum DecodedEntry {
     /// The decoded image.
     Decoded(Box<dyn Any + Send + Sync>),
@@ -150,7 +150,7 @@ enum DecodedEntry {
     Failed(u8),
 }
 
-/// PdfCraft patch (91): `warning` as a flag in a set of warnings.
+/// PDF patch (91): `warning` as a flag in a set of warnings.
 fn warning_bit(warning: InterpreterWarning) -> u8 {
     match warning {
         InterpreterWarning::UnsupportedFont => 1,
@@ -162,7 +162,7 @@ fn warning_bit(warning: InterpreterWarning) -> u8 {
     }
 }
 
-/// PdfCraft patch (91): the warnings in a set of [`warning_bit`] flags.
+/// PDF patch (91): the warnings in a set of [`warning_bit`] flags.
 fn warnings_in(bits: u8) -> impl Iterator<Item = InterpreterWarning> {
     [
         InterpreterWarning::UnsupportedFont,
@@ -180,9 +180,9 @@ fn warnings_in(bits: u8) -> impl Iterator<Item = InterpreterWarning> {
 struct DecodedImageCacheInner {
     map: HashMap<DecodedImageKey, DecodedEntry>,
     bytes: usize,
-    /// PdfCraft patch (32): how many keyed decodes ran (cache misses).
+    /// PDF patch (32): how many keyed decodes ran (cache misses).
     decodes: usize,
-    /// PdfCraft patch (82): how many of `decodes` were of masks (keys with `mask_output`).
+    /// PDF patch (82): how many of `decodes` were of masks (keys with `mask_output`).
     mask_decodes: usize,
 }
 
@@ -194,13 +194,13 @@ impl DecodedImageCache {
         }
     }
 
-    /// PdfCraft patch (32): how many decodes the cache was asked to keep (its misses), for
+    /// PDF patch (32): how many decodes the cache was asked to keep (its misses), for
     /// diagnostics and tests. 0 when the lock is poisoned.
     pub(crate) fn decodes(&self) -> usize {
         self.inner.lock().map(|locked| locked.decodes).unwrap_or(0)
     }
 
-    /// PdfCraft patch (82): how many of [`Self::decodes`] were of soft masks and `/Mask` images,
+    /// PDF patch (82): how many of [`Self::decodes`] were of soft masks and `/Mask` images,
     /// for tests. 0 when the lock is poisoned.
     pub(crate) fn mask_decodes(&self) -> usize {
         self.inner
@@ -219,7 +219,7 @@ impl DecodedImageCache {
 
     /// The decoded image for `key`, from the cache or from `f`, which decodes reporting its
     /// warnings to the sink it is handed. `None` as the key decodes without the cache.
-    /// PdfCraft patch (91): `sink` gets the warnings of the decode, or those of the failed
+    /// PDF patch (91): `sink` gets the warnings of the decode, or those of the failed
     /// decode kept for `key`.
     pub(crate) fn get_or_insert_with<T: Clone + Send + Sync + 'static>(
         &self,

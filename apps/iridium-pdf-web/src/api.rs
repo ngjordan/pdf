@@ -9,7 +9,7 @@
 //! is `ui.inspect`.
 //!
 //! The channel keeps the accessibility tree of every frame, so it is off unless the page asks for it
-//! (`?control`), as FigCraft's is. PDF's control requests cannot be withdrawn, so a call the page
+//! (`?control`), as the upstream app's is. PDF's control requests cannot be withdrawn, so a call the page
 //! gave up on may still run (or be rejected) when the app reaches it, as it does for a desktop client that timed out.
 
 use serde_json::{Value, json};

@@ -53,7 +53,7 @@ impl Type1FontBlob {
 #[derive(Clone)]
 pub(crate) struct CffFontBlob(Arc<CffFontYoke>, Arc<OnceLock<GlyphNames>>);
 
-/// PdfCraft patch: (see vendor/README.md hayro-interpret (50)) glyph name to glyph id, built on
+/// PDF patch: (see vendor/README.md hayro-interpret (50)) glyph name to glyph id, built on
 /// first use.
 type GlyphNames = HashMap<Box<[u8]>, GlyphId>;
 
@@ -68,7 +68,7 @@ impl CffFontBlob {
         let font = CffFontRef::new(data.as_ref().as_ref(), 0, None).ok()?;
         let cff = Cff::read(ReadFontData::new(data.as_ref().as_ref())).ok()?;
         let charset = font.charset();
-        // PdfCraft patch (93): a font dict that cannot be read (a CID font's FDArray entry
+        // PDF patch (93): a font dict that cannot be read (a CID font's FDArray entry
         // emptied by a subsetter, with no Private DICT) leaves only the glyphs it selects
         // missing. The font is dropped only when no font dict is usable.
         let subfonts = (0..font.num_subfonts())
@@ -78,7 +78,7 @@ impl CffFontBlob {
             return None;
         }
 
-        // PdfCraft patch (93): the subfonts read above own their data, so they move into the
+        // PDF patch (93): the subfonts read above own their data, so they move into the
         // yoke instead of being read again.
         let yoke = Yoke::<CFFYoke<'static>, FontData>::attach_to_cart(data.clone(), move |data| {
             let bytes = data.as_ref();
@@ -127,7 +127,7 @@ impl CffFontBlob {
         path.take()
     }
 
-    /// PdfCraft patch (see vendor/README.md hayro-interpret (77)): the glyph's own advance from
+    /// PDF patch (see vendor/README.md hayro-interpret (77)): the glyph's own advance from
     /// its charstring, in thousandths of an em like [`Self::outline_glyph`], or `None` when the
     /// charstring can't be read or gives no usable width.
     pub(crate) fn advance_width(&self, glyph: GlyphId) -> Option<f32> {
@@ -188,7 +188,7 @@ impl CffFontBlob {
         self.font().num_glyphs()
     }
 
-    /// PdfCraft patch (69): the `CFF ` table of an OpenType font, for a `FontFile3` of
+    /// PDF patch (69): the `CFF ` table of an OpenType font, for a `FontFile3` of
     /// subtype `OpenType` (ISO 32000-2 §9.9) under a simple font.
     pub(crate) fn from_open_type(data: &[u8]) -> Option<Self> {
         let cff = FontRef::new(data).ok()?.cff().ok()?;
@@ -213,7 +213,7 @@ impl Debug for OpenTypeFontBlob {
     }
 }
 
-/// PdfCraft patch (83): a copy of the font with its `head.indexToLocFormat` set to the format its
+/// PDF patch (83): a copy of the font with its `head.indexToLocFormat` set to the format its
 /// `loca` table is in, when the field holds neither 0 (short offsets) nor 1 (long), or `None` when
 /// it needs no change. The glyph outline reader takes only 1 as long, so a font whose field reads
 /// 256 (the value's bytes swapped) had its long `loca` read as short offsets: every glyph came
@@ -250,7 +250,7 @@ fn with_loca_format_fixed(data: &[u8], index: u32) -> Option<Vec<u8>> {
 
 impl OpenTypeFontBlob {
     pub(crate) fn new(data: FontData, index: u32) -> Option<Self> {
-        // PdfCraft patch (83): see `with_loca_format_fixed`.
+        // PDF patch (83): see `with_loca_format_fixed`.
         let data = match with_loca_format_fixed(data.as_ref().as_ref(), index) {
             Some(fixed) => Arc::new(fixed) as FontData,
             None => data,
@@ -259,7 +259,7 @@ impl OpenTypeFontBlob {
         let f = FontRef::from_index(data.as_ref().as_ref(), index).ok()?;
         // Reject fonts with invalid post table version, fixes pdf.js issue 9462. Not sure if there
         // is a better fix, for some reason skrifa accepts the font which is completely invalid.
-        // PdfCraft patch: also accept 1.0, 2.0 and 3.0 with the two 16-bit halves swapped
+        // PDF patch: also accept 1.0, 2.0 and 3.0 with the two 16-bit halves swapped
         // (`00 00 00 03` for 3.0), as ScanSoft PDF Create! writes it into every font it embeds
         // (#2946). Rejecting those fonts drew their text with a substitute that has no such glyphs.
         let invalid = f.post().is_ok_and(|p| {
@@ -336,7 +336,7 @@ impl OpenTypeFontBlob {
             return glyph_names;
         };
 
-        // PdfCraft patch: a version written with its halves swapped (`00 00 00 02`, accepted in
+        // PDF patch: a version written with its halves swapped (`00 00 00 02`, accepted in
         // `new`) is read as the version it means, from a copy of the table with the version
         // written correctly: read-fonts reads a 2.0 table's name index only under version 2.0,
         // so otherwise its glyph names were never found (#2946).
@@ -435,7 +435,7 @@ struct CFFYoke<'a> {
     font: CffFontRef<'a>,
     cff: Cff<'a>,
     charset: Option<Charset<'a>>,
-    /// PdfCraft patch (93): `None` for a font dict that could not be read.
+    /// PDF patch (93): `None` for a font dict that could not be read.
     subfonts: Vec<Option<Subfont>>,
 }
 

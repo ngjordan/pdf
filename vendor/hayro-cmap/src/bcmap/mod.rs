@@ -109,7 +109,7 @@ pub(crate) fn parse<'a>(
             SEGMENT_USECMAP => {
                 let base_data = get_cmap(CMapName::from_bytes(payload))?;
 
-                // PdfCraft patch: a binary `usecmap` counts against the nesting limit as a text
+                // PDF patch: a binary `usecmap` counts against the nesting limit as a text
                 // one does; passing the same depth let a self-referencing CMap recurse until the
                 // stack overflowed.
                 base = Some(Box::new(parse::parse_inner(
@@ -410,7 +410,7 @@ fn parse_bf_segment(
         entries.push(BfRange {
             range: Range { start, end },
             dst_base,
-            // PdfCraft patch (4): a binary CMap doesn't record the length.
+            // PDF patch (4): a binary CMap doesn't record the length.
             code_len: 0,
         });
 

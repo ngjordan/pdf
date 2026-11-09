@@ -77,7 +77,7 @@ pub(crate) enum Decryptor {
 pub(crate) enum DecryptionTarget<'a> {
     String,
     Stream,
-    /// PdfCraft patch (30): a stream that names its own crypt filter.
+    /// PDF patch (30): a stream that names its own crypt filter.
     NamedStream(&'a str),
 }
 
@@ -116,7 +116,7 @@ pub(crate) fn get(
     password: &[u8],
 ) -> Result<Decryptor, DecryptionError> {
     match decryptor(dict, id, password) {
-        // PdfCraft patch (37): a document that encrypts only its embedded files, authorised when
+        // PDF patch (37): a document that encrypts only its embedded files, authorised when
         // one is opened (`/AuthEvent /EFOpen`, ISO 32000-2 §7.6.6, Table 25), opens without a
         // password: its strings and streams are in the clear, and nothing drawn reads an embedded
         // file.
@@ -127,7 +127,7 @@ pub(crate) fn get(
     }
 }
 
-/// PdfCraft patch (37): whether `dict` has crypt filters (V4 or later) that encrypt, each
+/// PDF patch (37): whether `dict` has crypt filters (V4 or later) that encrypt, each
 /// authorised only when an embedded file is opened (`/AuthEvent /EFOpen`), and neither `/StmF` nor
 /// `/StrF` names one. The embedded files use them through `/EFF` or a `/Crypt` filter of their
 /// own; earlier handlers (V1, V2) encrypt everything with RC4.
@@ -195,7 +195,7 @@ fn decryptor(
     };
 
     let byte_length = length / 8;
-    // PdfCraft patch: revisions 2-4 derive an RC4 or AES-128 key from a 16-byte MD5 hash, so
+    // PDF patch: revisions 2-4 derive an RC4 or AES-128 key from a 16-byte MD5 hash, so
     // a longer /Length is malformed (and would slice past the end of the hash).
     if byte_length == 0 || (revision <= 4 && byte_length > 16) {
         return Err(InvalidEncryption);
@@ -214,7 +214,7 @@ fn decryptor(
     };
 
     let mut decryption_key = if revision <= 4 {
-        // PdfCraft patch: (see vendor/README.md hayro-syntax (14)) the password is tried as
+        // PDF patch: (see vendor/README.md hayro-syntax (14)) the password is tried as
         // given and then in PDFDocEncoding, which revisions 2–4 specify.
         let mut found = Err(DecryptionError::PasswordProtected);
         for candidate in legacy_passwords(password) {
@@ -236,7 +236,7 @@ fn decryptor(
         }
         found?
     } else {
-        // PdfCraft patch: (see vendor/README.md hayro-syntax (16)) the password is tried in its
+        // PDF patch: (see vendor/README.md hayro-syntax (16)) the password is tried in its
         // SASLprep form, which revisions 5–6 specify, and then as given.
         let mut found = Err(DecryptionError::PasswordProtected);
         for candidate in aes256_passwords(password) {
@@ -348,7 +348,7 @@ fn decrypt_rc_aes(
 pub(crate) struct DecryptorData {
     stream_filter: CryptDictionary,
     string_filter: CryptDictionary,
-    /// PdfCraft patch (30): `/CF`, for the streams that name a filter of their own.
+    /// PDF patch (30): `/CF`, for the streams that name a filter of their own.
     named: HashMap<String, CryptDictionary>,
 }
 
@@ -366,7 +366,7 @@ impl DecryptorData {
             }
         }
 
-        // PdfCraft patch (30): `/Identity` is never an entry of `/CF`, whatever a file puts there,
+        // PDF patch (30): `/Identity` is never an entry of `/CF`, whatever a file puts there,
         // and `/StmF` and `/StrF` are optional, naming it by default (ISO 32000-2 Table 20).
         mappings.remove("Identity");
         let identity = CryptDictionary::identity(default_length);
@@ -527,7 +527,7 @@ fn compute_hash_rev56(
     Ok(result)
 }
 
-/// `PdfCraft` patch: the byte strings to try as a revision 2–4 password. Revisions 2–4 take the
+/// `PDF` patch: the byte strings to try as a revision 2–4 password. Revisions 2–4 take the
 /// password in `PDFDocEncoding` (ISO 32000-2 §7.6.4.3.2, Algorithm 2 a), but the password arrives
 /// as UTF-8 text: first the bytes as given (what earlier versions used, and what some writers
 /// store), then, for text with characters outside ASCII that `PDFDocEncoding` all has ("ılık€",
@@ -543,7 +543,7 @@ fn legacy_passwords(password: &[u8]) -> Vec<Vec<u8>> {
     out
 }
 
-/// `PdfCraft` patch: `PDFDocEncoding` (ISO 32000-2 Annex D) of `c`, `None` when it has none.
+/// `PDF` patch: `PDFDocEncoding` (ISO 32000-2 Annex D) of `c`, `None` when it has none.
 /// It differs from Latin-1 in 0x18–0x1F and 0x80–0xA0 (0x9F is undefined).
 fn pdf_doc_byte(c: char) -> Option<u8> {
     const LOW: [char; 8] = ['˘', 'ˇ', 'ˆ', '˙', '˝', '˛', '˚', '˜'];
@@ -566,7 +566,7 @@ fn pdf_doc_byte(c: char) -> Option<u8> {
         })
 }
 
-/// `PdfCraft` patch: the byte strings to try as a revision 5–6 password. Revisions 5–6 take the
+/// `PDF` patch: the byte strings to try as a revision 5–6 password. Revisions 5–6 take the
 /// password processed with `SASLprep` (RFC 4013) and in UTF-8, at most 127 bytes (ISO 32000-2
 /// §7.6.4.3.3, Algorithm 2.A a–b), but the password arrives as typed: first its `SASLprep`
 /// form, as iridium-pdf-crypt writes it (a decomposed "café" composed, a fullwidth "ａｂ" narrowed,
@@ -580,7 +580,7 @@ fn aes256_passwords(password: &[u8]) -> Vec<Vec<u8>> {
     }
 }
 
-/// `PdfCraft` patch: `password` processed with `SASLprep`, in UTF-8 and truncated to 127 bytes,
+/// `PDF` patch: `password` processed with `SASLprep`, in UTF-8 and truncated to 127 bytes,
 /// as iridium-pdf-crypt does it: a password `SASLprep` refuses (one with prohibited or unassigned
 /// characters) is taken as given. `None` when `password` isn't UTF-8.
 #[cfg(feature = "std")]
@@ -592,7 +592,7 @@ fn sasl_prepared(password: &[u8]) -> Option<Vec<u8>> {
     Some(bytes)
 }
 
-/// `PdfCraft` patch: without `std`, which stringprep needs, passwords are taken as given.
+/// `PDF` patch: without `std`, which stringprep needs, passwords are taken as given.
 #[cfg(not(feature = "std"))]
 fn sasl_prepared(_: &[u8]) -> Option<Vec<u8>> {
     None
@@ -610,7 +610,7 @@ fn decryption_key_rev1234(
 ) -> Result<Vec<u8>, DecryptionError> {
     let mut md5_input = vec![];
 
-    // (PDFDocEncoding: see `legacy_passwords`, PdfCraft patch.)
+    // (PDFDocEncoding: see `legacy_passwords`, PDF patch.)
     // a) Pad or truncate password to 32 bytes using PASSWORD_PADDING.
     let mut padded_password = [0_u8; 32];
     let copy_len = password.len().min(32);
@@ -750,7 +750,7 @@ fn decryption_key_rev56(
     // a) The UTF-8 password string shall be generated from Unicode input by processing the input string with
     // the SASLprep (Internet RFC 4013) profile of stringprep (Internet RFC 3454) using the Normalize and BiDi
     // options, and then converting to a UTF-8 representation.
-    // (SASLprep: see `aes256_passwords`, PdfCraft patch.)
+    // (SASLprep: see `aes256_passwords`, PDF patch.)
     // b) Truncate the UTF-8 representation to 127 bytes if it is longer than 127 bytes.
     let password = &password[..password.len().min(127)];
 

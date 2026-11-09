@@ -73,7 +73,7 @@ impl Skippable for Array<'_> {
         r.forward_tag(b"[")?;
         r.enter_container()?;
 
-        // PdfCraft patch: leave even when an element's skip fails through `?`.
+        // PDF patch: leave even when an element's skip fails through `?`.
         let result = (|| loop {
             r.skip_white_spaces_and_comments();
 
@@ -191,7 +191,7 @@ impl<'a> FlexArrayIter<'a> {
         self.reader.skip_white_spaces_and_comments();
 
         if !self.reader.at_end() {
-            // PdfCraft patch (32): its items each follow a reference. Read as one that might be, a
+            // PDF patch (32): its items each follow a reference. Read as one that might be, a
             // reference at the start was taken for the whole group, which it can't be, and lost.
             if T::GROUP {
                 return self.reader.read_with_context::<T>(&self.ctx);

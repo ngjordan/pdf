@@ -91,7 +91,7 @@ impl Data {
         &self.data
     }
 
-    /// PdfCraft patch: (hayro-syntax (33)) enter the gate for what an object stream's index depends
+    /// PDF patch: (hayro-syntax (33)) enter the gate for what an object stream's index depends
     /// on, once its data is read and [`Self::get_with`] has let go of it.
     pub(crate) fn enter_loading(&self, id: ObjectIdentifier) -> Option<LoadGuard<'_>> {
         self.loading.enter(id)
@@ -99,7 +99,7 @@ impl Data {
 
     /// Get access to the data of a decoded object stream.
     pub(crate) fn get_with(&self, id: ObjectIdentifier, ctx: &ReaderContext<'_>) -> Option<&[u8]> {
-        // PdfCraft patch: (#307, see vendor/README.md hayro-syntax (10)) register exactly once:
+        // PDF patch: (#307, see vendor/README.md hayro-syntax (10)) register exactly once:
         // racing misses must not allocate different slots
         // for the same id (or reuse the resulting hole for another stream).
         let idx = {
@@ -115,7 +115,7 @@ impl Data {
         let _loading = self.loading.enter(id)?;
         self.decoded
             .get_or_init(idx, || {
-                // PdfCraft patch: (hayro-syntax (33)) only ever an object stream.
+                // PDF patch: (hayro-syntax (33)) only ever an object stream.
                 let stream = ctx.xref().object_stream(id, ctx)?;
                 stream.decoded().ok().map(Cow::into_owned)
             })?
@@ -123,7 +123,7 @@ impl Data {
     }
 }
 
-/// PdfCraft patch: (#307) one cold initializer at a time prevents cross-thread dependency deadlocks.
+/// PDF patch: (#307) one cold initializer at a time prevents cross-thread dependency deadlocks.
 /// The owner may recursively load different streams, up to a fixed depth. No
 /// state mutex is held while parsing or decoding input. no_std is single-threaded
 /// (its Arc/locks are Rc/RefCell), so it needs the same cycle/depth checks only.

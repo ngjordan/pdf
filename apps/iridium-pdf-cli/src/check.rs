@@ -103,7 +103,7 @@ fn edit_round_trip(bytes: &[u8]) {
         }
     }
     if let Some(root) = doc.root() {
-        let _ = doc.update_dict(root, |d| d.set(b"PdfCraftFuzz".to_vec(), Object::Bool(true)));
+        let _ = doc.update_dict(root, |d| d.set(b"PdfFuzz".to_vec(), Object::Bool(true)));
     }
     let classic = SaveOptions { object_streams: false, ..SaveOptions::default() };
     for out in [write_incremental(&doc, &SaveOptions::default()), write_full(&doc, &SaveOptions::default()), write_full(&doc, &classic)]

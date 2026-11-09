@@ -83,7 +83,7 @@ fn decode_arithmetic(
     if width > MAX_DIMENSION || height > MAX_DIMENSION {
         bail!(OverflowError::BitmapDimension);
     }
-    // PdfCraft patch: the product is bounded too (see `bitmap::MAX_GRID_CELLS`).
+    // PDF patch: the product is bounded too (see `bitmap::MAX_GRID_CELLS`).
     if u64::from(width) * u64::from(height) > crate::bitmap::MAX_GRID_CELLS {
         bail!(OverflowError::BitmapDimension);
     }

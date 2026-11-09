@@ -14,41 +14,41 @@ use alloc::vec::Vec;
 // to `u16::MAX`, which should be more than enough.
 pub(crate) const MAX_DIMENSION: u32 = u16::MAX as u32;
 
-/// PdfCraft patch: the most pixels one bitmap may have (2^28, the renderer's
+/// PDF patch: the most pixels one bitmap may have (2^28, the renderer's
 /// `MAX_IMAGE_PIXELS`). Each side alone may be 65535, so a single region could be 4.3 billion
 /// pixels, decoded one by one.
 pub(crate) const MAX_PIXELS: u64 = 1 << 28;
 
-/// PdfCraft patch: the most cells a halftone grid may have, which still gives the largest page
+/// PDF patch: the most cells a halftone grid may have, which still gives the largest page
 /// (see [`MAX_PIXELS`]) cells of 3 × 3, unrotated. Each cell takes a 4-byte value while the grid decodes, so
 /// the pixel bound alone let a 98-byte segment take 1 GiB; this one leaves 128 MiB.
 pub(crate) const MAX_GRID_CELLS: u64 = 1 << 25;
 
-/// PdfCraft patch: the decoding work a stream may ask for, in pixels decoded from their code: four
+/// PDF patch: the decoding work a stream may ask for, in pixels decoded from their code: four
 /// of the largest pages, about 6 s on data the decoder predicts and about 17 s on data it can't, so
 /// a render finishes inside its 20 s watchdog. Each bitmap is bounded on its own, but nothing
 /// bounded how many there are: 1,140 bytes of generic regions took over 40 s, a 795-byte PDF's one
 /// halftone 265 s, and a 923-byte PDF's regions would have taken days.
 pub(crate) const MAX_WORK: u64 = 4 * MAX_PIXELS;
 
-/// PdfCraft patch: the work of reading one integer of an item, what an arithmetic-coded one takes
+/// PDF patch: the work of reading one integer of an item, what an arithmetic-coded one takes
 /// at worst in decisions (see [`MAX_WORK`]), so that a decision costs no more than a pixel. An item
 /// with no pixels still reads its integers: charged a step each, a 22,515-byte PDF of refined text
 /// instances of no size stayed inside `MAX_WORK` and took 730 s.
 pub(crate) const INTEGER_WORK: u64 = 38;
 
-/// PdfCraft patch: the work of a line of a Huffman table built for symbols, about 50 ns (see
+/// PDF patch: the work of a line of a Huffman table built for symbols, about 50 ns (see
 /// [`MAX_WORK`]).
 pub(crate) const HUFFMAN_LINE_WORK: u64 = 10;
 
-/// PdfCraft patch: the work of decoding a bitmap pixel by pixel (see [`MAX_WORK`]). A row costs up
+/// PDF patch: the work of decoding a bitmap pixel by pixel (see [`MAX_WORK`]). A row costs up
 /// to 21 ns however few pixels it has, about 4 pixels' worth, so one of no width isn't free: 16,384
 /// regions of 0 × 65535 took 9 s at a cost of nothing.
 pub(crate) fn decode_work(width: u32, height: u32) -> u64 {
     u64::from(height) * (u64::from(width) + 4)
 }
 
-/// PdfCraft patch: the work of copying a bitmap (see [`MAX_WORK`]): a word at a time, and a row is
+/// PDF patch: the work of copying a bitmap (see [`MAX_WORK`]): a word at a time, and a row is
 /// a copy of its own, so a tall thin bitmap costs its rows, not its pixels.
 pub(crate) fn copy_work(width: u32, height: u32) -> u64 {
     u64::from(height) * (u64::from(width.div_ceil(WORD_BITS)) + 1)
@@ -61,11 +61,11 @@ pub(crate) type Word = u32;
 pub(crate) const WORD_BITS: u32 = Word::BITS;
 pub(crate) const WORD_SHIFT: u32 = WORD_BITS - 1;
 
-/// PdfCraft patch: the words a [`Bitmap`] takes before its pixels. A symbol of width 0 has no
+/// PDF patch: the words a [`Bitmap`] takes before its pixels. A symbol of width 0 has no
 /// pixels and still costs this: 5 KB of zero-width dictionaries held 781 MB.
 pub(crate) const BITMAP_WORDS: usize = size_of::<Bitmap>() / size_of::<Word>();
 
-/// PdfCraft patch: refuse a page past the bounds on a bitmap (see `MAX_PIXELS`). A stream is held
+/// PDF patch: refuse a page past the bounds on a bitmap (see `MAX_PIXELS`). A stream is held
 /// to this when it is opened as well as when its page bitmap is sized: a caller sizes its own
 /// output from the page header in between, and a 743-byte PDF's Indexed image asked for 137 GB.
 pub(crate) fn check_page_size(width: u32, height: u32) -> Result<()> {
@@ -94,7 +94,7 @@ pub(crate) struct Bitmap {
     /// Packed pixel data, one bit per pixel, row-major order.
     /// Each row is padded to a word boundary.
     ///
-    /// PdfCraft patch: the padding is 0s, as pixels past the edge are (6.2.5.2, 6.3.5.2). Generic
+    /// PDF patch: the padding is 0s, as pixels past the edge are (6.2.5.2, 6.3.5.2). Generic
     /// and refinement decoding read the rows above their own pixels a word at a time, padding
     /// included, and a refinement reads its reference the same way: whatever writes whole words
     /// keeps the padding 0 (see `clear_padding`).
@@ -108,7 +108,7 @@ pub(crate) struct Bitmap {
 }
 
 impl Bitmap {
-    /// PdfCraft patch: the words this bitmap holds, its header included.
+    /// PDF patch: the words this bitmap holds, its header included.
     pub(crate) fn words(&self) -> usize {
         self.data.len().saturating_add(BITMAP_WORDS)
     }
@@ -131,7 +131,7 @@ impl Bitmap {
         if width > MAX_DIMENSION || height > MAX_DIMENSION {
             bail!(OverflowError::BitmapDimension);
         }
-        // PdfCraft patch: see `MAX_PIXELS`.
+        // PDF patch: see `MAX_PIXELS`.
         if u64::from(width) * u64::from(height) > MAX_PIXELS {
             bail!(OverflowError::BitmapDimension);
         }
@@ -153,7 +153,7 @@ impl Bitmap {
         Ok(bitmap)
     }
 
-    /// PdfCraft patch: clear the bits past `width` in each row's last word. "All pixels lying
+    /// PDF patch: clear the bits past `width` in each row's last word. "All pixels lying
     /// outside the bounds of the actual bitmap or the reference bitmap have the value 0" (6.3.5.2),
     /// and a refinement reads its reference a word at a time, those bits included: filled whole
     /// with a default pixel of 1, they read as 1s, so a refinement of the page, or of an
@@ -221,7 +221,7 @@ impl Bitmap {
         self.data[word_idx] |= (value as Word) << bit_pos;
     }
 
-    /// PdfCraft patch: combine a decoded region into this page at the region's own location.
+    /// PDF patch: combine a decoded region into this page at the region's own location.
     ///
     /// "Unless otherwise specified, all multi-bit values shall be treated as unsigned values"
     /// (5.4.4), and a region's location (7.4.1.3, 7.4.1.4) is not specified otherwise. One past
@@ -319,7 +319,7 @@ impl Bitmap {
         self.data[(row * self.stride + word_idx) as usize]
     }
 
-    /// PdfCraft patch: the `width` × `height` area of this bitmap at `x`, `y`, as a bitmap there.
+    /// PDF patch: the `width` × `height` area of this bitmap at `x`, `y`, as a bitmap there.
     /// It is what a refinement of the page refines: "a bitmap containing the current contents of
     /// the page buffer, restricted to the area of the page buffer specified by this segment's
     /// region segment information field" (7.4.7.4). Off this bitmap the area is 0, past its width
