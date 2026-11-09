@@ -1,7 +1,7 @@
 param([string] $CraftFontsRoot)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'font-notices.ps1')
-$fixture = Join-Path ([IO.Path]::GetTempPath()) ('pdfcraft-font-notices-' + [guid]::NewGuid())
+$fixture = Join-Path ([IO.Path]::GetTempPath()) ('iridium-pdf-font-notices-' + [guid]::NewGuid())
 function Assert-Rejected([scriptblock] $Action, [string] $Message) {
   $rejected = $false
   try { & $Action | Out-Null } catch { $rejected = $true }

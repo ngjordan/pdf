@@ -1,17 +1,17 @@
 //! Scan & OCR ▸ Enhance scanned file: the dialog (pages, background removal level, edge
 //! shadows, despeckle) and the background run with its progress card. The scans are cleaned
-//! on a worker thread ([`pdfcraft_engine::scan_clean`]); the result is applied as one undoable
+//! on a worker thread ([`iridium_pdf_engine::scan_clean`]); the result is applied as one undoable
 //! step when it is done, unless the document changed meanwhile.
 
 use std::sync::{Arc, Mutex};
 
 use egui::{Align, Layout};
-use pdfcraft_engine::scan_clean::{ScanCleanReport, ScanCleanSettings, ScanCleaned};
-use pdfcraft_engine::{DocId, EditError};
+use iridium_pdf_engine::scan_clean::{ScanCleanReport, ScanCleanSettings, ScanCleaned};
+use iridium_pdf_engine::{DocId, EditError};
 
 use crate::ocr_ui::OcrPages;
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, widgets};
+use crate::{PdfApp, widgets};
 
 /// The dialog's choices (kept between runs).
 #[derive(Clone, Debug, PartialEq)]
@@ -42,7 +42,7 @@ pub struct ScanCleanRun {
     pub progress: Arc<Mutex<ScanCleanProgress>>,
 }
 
-pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (bool, bool) {
+pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfApp, t: &Tokens) -> (bool, bool) {
     let pages = app.active_ids().and_then(|(_, id)| app.session.get(id)).map_or(1, |d| d.info.pages.len().max(1));
     let d = &mut app.scan_clean_draft;
     d.to = d.to.clamp(1, pages);
@@ -78,7 +78,7 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (boo
         ui.horizontal(|ui| {
             let label = ui.label(tl!("Background removal"));
             ui.spacing_mut().slider_width = 220.0;
-            ui.add(egui::Slider::new(&mut d.settings.level, 0..=pdfcraft_engine::camera_clean::MAX_LEVEL).trailing_fill(true))
+            ui.add(egui::Slider::new(&mut d.settings.level, 0..=iridium_pdf_engine::camera_clean::MAX_LEVEL).trailing_fill(true))
                 .labelled_by(label.id)
                 .on_hover_text(tl!("Evens out the paper so a grey or yellowed background turns white, and darkens faint strokes. 0 is off."));
         });
@@ -132,7 +132,7 @@ fn summary(r: &ScanCleanReport) -> String {
     out
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Clean up the scans on the pages chosen in the dialog, in the background.
     pub fn start_scan_clean(&mut self) {
         let Some((vi, id)) = self.active_ids() else { return };
@@ -175,7 +175,7 @@ impl PdfCraftApp {
         #[cfg(not(target_arch = "wasm32"))]
         if self.run_inline {
             work();
-        } else if let Err(e) = std::thread::Builder::new().name("pdfcraft-scan-clean".into()).spawn(work) {
+        } else if let Err(e) = std::thread::Builder::new().name("iridium-pdf-scan-clean".into()).spawn(work) {
             // No worker: report the failure instead of waiting for a result that never comes.
             if let Ok(mut s) = progress.lock() {
                 s.result = Some(Err(EditError::Invalid(e.to_string())));
@@ -246,7 +246,7 @@ impl PdfCraftApp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pdfcraft_engine::scan_clean::SkippedImage;
+    use iridium_pdf_engine::scan_clean::SkippedImage;
 
     #[test]
     fn the_summary_says_what_was_done_and_what_was_left() {

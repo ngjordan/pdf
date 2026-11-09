@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use pdfcraft_annot::{Meta, NewAnnotation, Shape, Style, add_annotation, rect_quad};
-use pdfcraft_cos::{Algorithm, Dict, Document, NewEncryption, Object, SaveOptions, Stream, write_full, write_incremental};
+use iridium_pdf_annot::{Meta, NewAnnotation, Shape, Style, add_annotation, rect_quad};
+use iridium_pdf_cos::{Algorithm, Dict, Document, NewEncryption, Object, SaveOptions, Stream, write_full, write_incremental};
 use sha2::Digest;
 
 use super::*;
@@ -495,7 +495,7 @@ fn an_incremental_remnant_fails_the_proof() {
     // first revision still holds the original content.
     let mut other = open(write_incremental(&doc, &SaveOptions::default()).unwrap());
     let new = other.add(Object::Stream(Stream::flate(Dict::new(), b"BT /F1 10 Tf 10 200 Td (Public) Tj ET")));
-    let page = pdfcraft_model::pages(&other).swap_remove(0);
+    let page = iridium_pdf_model::pages(&other).swap_remove(0);
     other.update_dict(page.obj, |d| d.set(b"Contents".to_vec(), Object::Ref(new))).unwrap();
     let saved = write_incremental(&other, &SaveOptions::default()).unwrap();
     let proof = snap.prove_saved(&saved, None, &ProofOptions::default());
@@ -808,7 +808,7 @@ pub(super) fn attach(doc: &mut Document, obj: Object) {
 /// Add a content stream (with `dict`) after the page's own.
 fn append_content(doc: &mut Document, dict: Dict, data: &[u8]) {
     let new = doc.add(Object::Stream(Stream::from_raw(dict, data.to_vec())));
-    let page = pdfcraft_model::pages(doc).swap_remove(0);
+    let page = iridium_pdf_model::pages(doc).swap_remove(0);
     let first = page.dict.get(b"Contents").cloned().unwrap();
     doc.update_dict(page.obj, |d| d.set(b"Contents".to_vec(), Object::Array(vec![first, Object::Ref(new)]))).unwrap();
 }
@@ -890,7 +890,7 @@ fn only_the_streams_this_run_created_are_exempt() {
     let mut doc = marked_content(blank, Spec::default());
     let mut snap = Snapshot::capture(&doc, None).unwrap();
     let new = doc.add(Object::Stream(Stream::from_raw(Dict::new(), b"0 0 0 rg 8 95 62 17 re f".to_vec())));
-    let page = pdfcraft_model::pages(&doc).swap_remove(0);
+    let page = iridium_pdf_model::pages(&doc).swap_remove(0);
     let first = page.dict.get(b"Contents").cloned().unwrap();
     doc.update_dict(page.obj, |d| d.set(b"Contents".to_vec(), Object::Array(vec![first, Object::Ref(new)]))).unwrap();
     doc.require_full_save();
@@ -960,7 +960,7 @@ fn a_damaged_page_content_tail_makes_the_page_unreadable() {
     let cut = s.raw.len() - 8;
     s.raw = Arc::new(s.raw[..cut].to_vec()).into();
     let mut doc = marked(Spec::default());
-    let page = pdfcraft_model::pages(&doc).swap_remove(0);
+    let page = iridium_pdf_model::pages(&doc).swap_remove(0);
     let new = doc.add(Object::Stream(s));
     doc.update_dict(page.obj, |d| d.set(b"Contents".to_vec(), Object::Ref(new))).unwrap();
     doc.require_full_save();
@@ -1098,7 +1098,7 @@ fn a_file_past_the_proof_budget_is_unverified_never_clean() {
     let content = Stream::flate(Dict::new(), &big);
     drop(big);
     let mut doc = open(build_with(b"BT /F1 10 Tf 10 200 Td (Public) Tj ET", Spec::default()));
-    let page = pdfcraft_model::pages(&doc).swap_remove(0);
+    let page = iridium_pdf_model::pages(&doc).swap_remove(0);
     let new = doc.add(Object::Stream(content));
     doc.update_dict(page.obj, |d| d.set(b"Contents".to_vec(), Object::Ref(new))).unwrap();
     doc.require_full_save();
@@ -1413,7 +1413,7 @@ fn a_null_entry_in_the_contents_array_is_an_empty_piece() {
 
 /// The page's decoded content streams, joined (what the redaction left on the page).
 fn page_content(doc: &Document) -> String {
-    let p = &pdfcraft_model::pages(doc)[0];
+    let p = &iridium_pdf_model::pages(doc)[0];
     let (_, data) = page_streams(doc, &p.dict, 0).unwrap();
     data.iter().map(|d| String::from_utf8_lossy(d).into_owned()).collect::<Vec<_>>().join("\n")
 }

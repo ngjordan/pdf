@@ -1,4 +1,4 @@
-//! pdfcraft-annot — comments (annotations), ISO 32000-2 §12.5, execution plan M5.1–M5.3.
+//! iridium-pdf-annot — comments (annotations), ISO 32000-2 §12.5, execution plan M5.1–M5.3.
 //!
 //! Builders for the comment types Acrobat's commenting tools create (sticky note, highlight,
 //! underline, strikethrough, squiggly, rectangle, oval, line/arrow, freehand ink, text box),
@@ -6,17 +6,17 @@
 //! change its text, recolour, move, resize and delete.
 //!
 //! Addressing: a comment is `(page, index)`, its position in the page's `/Annots` array, which
-//! is what `pdfcraft_render::Annotation::index` reports. Inline annotation dictionaries are
+//! is what `iridium_pdf_render::Annotation::index` reports. Inline annotation dictionaries are
 //! promoted to indirect objects when they are edited (replies need a reference to point at).
 //!
-//! Every edit mutates a `pdfcraft_cos::Document` (copy-on-write); callers snapshot it first
+//! Every edit mutates a `iridium_pdf_cos::Document` (copy-on-write); callers snapshot it first
 //! for undo. Keys we do not understand are left alone.
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 use std::collections::{HashMap, HashSet};
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString, Stream};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, PdfString, Stream};
 
 mod create;
 mod draw;
@@ -82,5 +82,5 @@ pub enum AnnotError {
     #[error("the 3D model is {size} bytes; the largest accepted is {max}")]
     ModelTooLarge { size: usize, max: usize },
     #[error("{0}")]
-    Cos(#[from] pdfcraft_cos::CosError),
+    Cos(#[from] iridium_pdf_cos::CosError),
 }

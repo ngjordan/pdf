@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use pdfcraft_cos::{Document, SaveOptions, write_incremental};
+use iridium_pdf_cos::{Document, SaveOptions, write_incremental};
 
 use super::*;
 
@@ -55,14 +55,14 @@ fn target(doc: &Document, page: usize, want: impl Fn(&EditableObject) -> bool) -
     editable_objects(doc, page).unwrap().into_iter().find(|o| want(o)).unwrap().target
 }
 
-fn render(doc: &Document, page: usize) -> pdfcraft_render::RenderedPage {
+fn render(doc: &Document, page: usize) -> iridium_pdf_render::RenderedPage {
     let bytes = write_incremental(doc, &SaveOptions::default()).unwrap();
-    let mut renderer = pdfcraft_render::PageRenderer::new(Arc::new(bytes), pdfcraft_render::RenderConfig::default());
-    renderer.render(pdfcraft_render::RenderRequest { page, kind: pdfcraft_render::RequestKind::Pixels, scale: 1.0, ..Default::default() })
+    let mut renderer = iridium_pdf_render::PageRenderer::new(Arc::new(bytes), iridium_pdf_render::RenderConfig::default());
+    renderer.render(iridium_pdf_render::RenderRequest { page, kind: iridium_pdf_render::RequestKind::Pixels, scale: 1.0, ..Default::default() })
 }
 
 /// The pixels of `page` in user-space box `r` (a page 300 high at scale 1), shifted by `by`.
-fn pixels(page: &pdfcraft_render::RenderedPage, r: [f64; 4], by: [f64; 2]) -> Vec<u8> {
+fn pixels(page: &iridium_pdf_render::RenderedPage, r: [f64; 4], by: [f64; 2]) -> Vec<u8> {
     let (x0, x1) = ((r[0] + by[0]) as u32, (r[2] + by[0]) as u32);
     let (y0, y1) = ((300.0 - r[3] - by[1]) as u32, (300.0 - r[1] - by[1]) as u32);
     let mut out = Vec::new();
@@ -100,7 +100,7 @@ fn a_copy_takes_the_selected_objects_their_state_and_only_the_resources_they_use
     assert_eq!(names(b"XObject"), Some(vec![b"Im0".to_vec()]));
     assert_eq!(names(b"ExtGState"), Some(vec![b"GS0".to_vec()]));
     assert!(copied.text().contains("Copied") && copied.text().contains("Too") && !copied.text().contains("Skip"), "{}", copied.text());
-    assert_eq!(pdfcraft_content::parse(&copied.content).ops.iter().filter(|o| o.is("q")).count(), 3, "balanced: {content}");
+    assert_eq!(iridium_pdf_content::parse(&copied.content).ops.iter().filter(|o| o.is("q")).count(), 3, "balanced: {content}");
 }
 
 #[test]
@@ -117,10 +117,10 @@ fn pasted_objects_draw_the_same_on_another_page_under_renamed_resources() {
     assert!(red.chunks(4).all(|p| p == [255, 255, 255, 255]), "what wasn't selected isn't pasted");
     // Its own /F1 (Courier) is left alone; the copy's Helvetica comes under another name.
     let fonts =
-        pdfcraft_model::pages(&doc)[1].dict.get(b"Resources").map(|r| doc.resolve(r)).unwrap().as_dict().unwrap().get(b"Font").cloned().unwrap();
+        iridium_pdf_model::pages(&doc)[1].dict.get(b"Resources").map(|r| doc.resolve(r)).unwrap().as_dict().unwrap().get(b"Font").cloned().unwrap();
     let fonts = doc.resolve(&fonts).as_dict().cloned().unwrap();
-    assert_eq!(fonts.get(b"F1"), Some(&Object::Ref(pdfcraft_cos::ObjRef::new(8, 0))));
-    assert!(fonts.iter().any(|(k, v)| k != b"F1" && *v == Object::Ref(pdfcraft_cos::ObjRef::new(7, 0))), "{fonts:?}");
+    assert_eq!(fonts.get(b"F1"), Some(&Object::Ref(iridium_pdf_cos::ObjRef::new(8, 0))));
+    assert!(fonts.iter().any(|(k, v)| k != b"F1" && *v == Object::Ref(iridium_pdf_cos::ObjRef::new(7, 0))), "{fonts:?}");
     let texts: Vec<_> = editable_objects(&doc, 1).unwrap().into_iter().filter_map(|o| o.text).collect();
     assert!(texts.iter().any(|t| t.contains("Copied")) && !texts.iter().any(|t| t.contains("Skip")), "{texts:?}");
     assert_eq!(crate::images::page_images(&doc, 1).unwrap().len(), 1);
@@ -143,7 +143,7 @@ fn a_paste_onto_its_own_page_moves_by_the_offset_and_draws_the_same() {
     assert!(moved.iter().zip(&original).all(|(a, b)| a.abs_diff(*b) <= 2), "the paste draws the same pixels, moved");
     assert_eq!(pixels(&after, area, [0.0, 0.0]), original);
     // Within the document and the page, the resources are the page's own, under their names.
-    let res = pdfcraft_model::pages(&doc)[0].dict.get(b"Resources").map(|r| doc.resolve(r)).unwrap();
+    let res = iridium_pdf_model::pages(&doc)[0].dict.get(b"Resources").map(|r| doc.resolve(r)).unwrap();
     let fonts = res.as_dict().unwrap().get(b"Font").and_then(Object::as_dict).cloned().unwrap();
     assert_eq!(fonts.len(), 2, "{fonts:?}");
     assert_eq!(editable_objects(&doc, 0).unwrap().iter().filter(|o| o.target.kind == ObjectKind::Image).count(), 2);
@@ -220,7 +220,7 @@ fn copying_and_pasting_refuse_what_they_cannot_do_and_change_nothing() {
     let stray = two_pages("Q Q ET 10 10 m 20 20 l BT /F1 20 Tf 20 200 Td (Stray) Tj", "");
     let shown = target(&stray, 0, |o| o.text.as_deref() == Some("Stray"));
     let copied = copy_objects(&stray, 0, &[shown]).unwrap();
-    let ops = pdfcraft_content::parse(&copied.content).ops;
+    let ops = iridium_pdf_content::parse(&copied.content).ops;
     assert_eq!(ops.iter().filter(|o| o.is("q")).count(), ops.iter().filter(|o| o.is("Q")).count());
     assert_eq!(ops.iter().filter(|o| o.is("BT")).count(), ops.iter().filter(|o| o.is("ET")).count());
     let mut work = stray.clone();

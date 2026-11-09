@@ -30,8 +30,8 @@
 
 use std::collections::HashMap;
 
-use pdfcraft_content::{Matrix, Op, parse};
-use pdfcraft_cos::{DecodeBudget, Dict, Document, Object};
+use iridium_pdf_content::{Matrix, Op, parse};
+use iridium_pdf_cos::{DecodeBudget, Dict, Document, Object};
 
 use crate::EditError;
 
@@ -472,7 +472,7 @@ fn moved_pattern(doc: &Document, entry: &Object, placement: Matrix) -> Option<Ob
     dict.set(b"Matrix".to_vec(), Object::Array(moved.0.iter().map(|v| Object::Real(*v)).collect()));
     match stream {
         Some(s) if s.raw.len() > MAX_FORM_BYTES => None,
-        Some(s) => Some(Object::Stream(pdfcraft_cos::Stream { dict, raw: s.raw.clone() })),
+        Some(s) => Some(Object::Stream(iridium_pdf_cos::Stream { dict, raw: s.raw.clone() })),
         None => Some(Object::Dict(dict)),
     }
 }
@@ -491,8 +491,8 @@ const MAX_NESTED_READS: usize = 1024;
 /// being walked shows text itself or through a Form XObject it draws, and whether blend modes
 /// count (they do in a group).
 struct BlendWalk<'a> {
-    path: Vec<pdfcraft_cos::ObjRef>,
-    known: HashMap<pdfcraft_cos::ObjRef, (bool, bool)>,
+    path: Vec<iridium_pdf_cos::ObjRef>,
+    known: HashMap<iridium_pdf_cos::ObjRef, (bool, bool)>,
     reads: usize,
     budget: &'a mut DecodeBudget,
     text: bool,
@@ -580,7 +580,7 @@ fn inherits_resources(doc: &Document, resources: &Dict, op: &Op, budget: &mut De
 
 /// Whether content stream `s` names a resource (or can't be read within `budget` to tell): device
 /// colour spaces are not resources; an inline image counts, as its colour space may be one.
-fn names_resources(doc: &Document, s: &pdfcraft_cos::Stream, budget: &mut DecodeBudget) -> bool {
+fn names_resources(doc: &Document, s: &iridium_pdf_cos::Stream, budget: &mut DecodeBudget) -> bool {
     let Ok(data) = budget.decode_strict(doc, s) else { return true };
     let parsed = parse(&data);
     parsed.skipped > 0

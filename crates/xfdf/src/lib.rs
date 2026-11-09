@@ -17,8 +17,8 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
 use std::io::Write as _;
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString};
-use pdfcraft_forms::{FieldKind, FieldValue};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, PdfString};
+use iridium_pdf_forms::{FieldKind, FieldValue};
 
 mod appearance;
 mod common;
@@ -53,7 +53,7 @@ pub enum DataError {
     #[error("FDF export exceeds the {0} limit; no data was exported")]
     ExportLimit(&'static str),
     #[error(transparent)]
-    Cos(#[from] pdfcraft_cos::CosError),
+    Cos(#[from] iridium_pdf_cos::CosError),
 }
 
 /// What export writes.
@@ -97,7 +97,7 @@ pub struct Report {
 
 /// Form data as XML, CSV or tab-delimited text (Acrobat's Export data formats).
 pub fn export_data(doc: &Document, format: Format) -> String {
-    let fields: Vec<(String, String)> = pdfcraft_forms::fields(doc)
+    let fields: Vec<(String, String)> = iridium_pdf_forms::fields(doc)
         .into_iter()
         .filter(|f| !matches!(f.kind, FieldKind::PushButton | FieldKind::Signature))
         .map(|f| {
@@ -156,7 +156,7 @@ pub fn data_values(bytes: &[u8]) -> Result<Vec<(String, Vec<String>)>, DataError
     }
     if bytes.starts_with(b"%PDF") || bytes.windows(5).take(1024).any(|w| w == b"%PDF-") {
         let doc = Document::open(std::sync::Arc::new(bytes.to_vec())).map_err(|e| DataError::Malformed(e.to_string()))?;
-        return Ok(pdfcraft_forms::fields(&doc)
+        return Ok(iridium_pdf_forms::fields(&doc)
             .into_iter()
             .filter(|f| !matches!(f.kind, FieldKind::PushButton | FieldKind::Signature))
             .map(|f| {

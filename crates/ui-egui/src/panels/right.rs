@@ -1,11 +1,11 @@
 use super::bookmarks::{BmAction, OutlineCtx, outline_item, outline_matches};
 use super::pages::{page_tools, pages, thumbnail_size};
 use super::{
-    Align, Align2, Color32, DocInfo, FieldKind, Layout, Nav, PdfCraftApp, Rect, RightPanel, Sense, Stroke, Tokens, human_size, icons, theme, vec2,
+    Align, Align2, Color32, DocInfo, FieldKind, Layout, Nav, PdfApp, Rect, RightPanel, Sense, Stroke, Tokens, human_size, icons, theme, vec2,
 };
 
 /// Draw the selected right-hand panel and apply its navigation, layer, bookmark or edit actions.
-pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
+pub fn right_panel(app: &mut PdfApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let Some((index, id)) = app.active_ids() else { return };
     let Some(panel) = app.right else { return };
@@ -16,7 +16,7 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let mut attachment_action: Option<(usize, bool)> = None; // (index, open instead of save)
     let mut bm_action: Option<BmAction> = None;
     let mut bm_expand: Option<usize> = None;
-    let mut panel_edit: Option<pdfcraft_engine::Edit> = None;
+    let mut panel_edit: Option<iridium_pdf_engine::Edit> = None;
     let mut field_properties = None;
     let mut panel_command: Option<&'static str> = None;
     let mut sig_action: Option<crate::sign_ui::PanelAction> = None;
@@ -50,7 +50,7 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     RightPanel::Pages => ("Pages", Some(info.pages.len())),
                     RightPanel::Fields => ("Fields", Some(info.fields.len())),
                     RightPanel::Layers => {
-                        ("Layers", Some(info.layer_order.iter().filter(|r| matches!(r.item, pdfcraft_render::LayerItem::Layer(_))).count()))
+                        ("Layers", Some(info.layer_order.iter().filter(|r| matches!(r.item, iridium_pdf_render::LayerItem::Layer(_))).count()))
                     }
                     RightPanel::Attachments => ("Attachments", Some(info.attachments.len())),
                     RightPanel::Signatures => ("Signatures", Some(doc.signatures.iter().filter(|s| s.signed).count())),
@@ -172,7 +172,7 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     ui.data_mut(|d| d.insert_temp(search_id, bookmark_query.clone()));
                     ui.add_space(6.0);
                 }
-                let bookmark_query = pdfcraft_render::text::fold_case(bookmark_query.trim());
+                let bookmark_query = iridium_pdf_render::text::fold_case(bookmark_query.trim());
                 let mut bookmark_matches =
                     if panel == RightPanel::Bookmarks { outline_matches(&info.outline, &bookmark_query) } else { std::collections::HashSet::new() };
                 // A new bookmark must stay nameable even when its initial title doesn't match.
@@ -245,8 +245,8 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                         for row in &info.layer_order {
                             let indent = 16.0 * row.depth.min(8) as f32;
                             let li = match &row.item {
-                                pdfcraft_render::LayerItem::Layer(li) => *li,
-                                pdfcraft_render::LayerItem::Label(label) => {
+                                iridium_pdf_render::LayerItem::Layer(li) => *li,
+                                iridium_pdf_render::LayerItem::Label(label) => {
                                     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 28.0), Sense::hover());
                                     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, true, label));
                                     crate::widgets::paint_left(
@@ -320,7 +320,7 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                             let is_pdf = a.name.to_lowercase().ends_with(".pdf");
                             // Only an attachment of the document itself can be deleted here.
                             let deletable = match &a.source {
-                                pdfcraft_render::AttachmentSource::Document { key } if attachable => Some(key),
+                                iridium_pdf_render::AttachmentSource::Document { key } if attachable => Some(key),
                                 _ => None,
                             };
                             // The whole row answers a double-click and a right-click (#3466), below
@@ -337,7 +337,7 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                                                 egui::Label::new(egui::RichText::new(&a.name).font(theme::medium(13.0))).truncate().selectable(false),
                                             );
                                             let mut meta = a.size.map(human_size).unwrap_or_default();
-                                            if let pdfcraft_render::AttachmentSource::Annotation { page, .. } = a.source {
+                                            if let iridium_pdf_render::AttachmentSource::Annotation { page, .. } = a.source {
                                                 let on_page = crate::i18n::fmt(
                                                     tl!("on page {label}"),
                                                     &[("label", info.pages.get(page).map(|p| p.label.as_str()).unwrap_or("?"))],
@@ -367,7 +367,7 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                                             if let Some(key) = deletable {
                                                 let delete = icons::button(ui, "trash-2", 28.0, false, tl!("Delete attachment"));
                                                 if delete.clicked() {
-                                                    panel_edit = Some(pdfcraft_engine::Edit::DeleteAttachment { key: key.clone() });
+                                                    panel_edit = Some(iridium_pdf_engine::Edit::DeleteAttachment { key: key.clone() });
                                                 }
                                                 buttons.push(delete);
                                             }
@@ -376,7 +376,7 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                                 })
                             });
                             // A double-click opens a PDF in a new tab, as Acrobat opens an attachment;
-                            // any other file is saved, since PdfCraft opens only PDFs.
+                            // any other file is saved, since PDF opens only PDFs.
                             if row.response.double_clicked() {
                                 attachment_action = Some((ai, is_pdf));
                             }
@@ -395,7 +395,7 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                                 if let Some(key) = deletable
                                     && ui.button(tl!("Delete attachment")).clicked()
                                 {
-                                    panel_edit = Some(pdfcraft_engine::Edit::DeleteAttachment { key: key.clone() });
+                                    panel_edit = Some(iridium_pdf_engine::Edit::DeleteAttachment { key: key.clone() });
                                     ui.close();
                                 }
                             });
@@ -503,11 +503,11 @@ fn empty(ui: &mut egui::Ui, t: &Tokens, icon: &str, text: &str) {
 struct FieldsPanel<'a> {
     theme: &'a Tokens,
     info: &'a DocInfo,
-    form: &'a [pdfcraft_engine::FormField],
+    form: &'a [iridium_pdf_engine::FormField],
     preparing: bool,
     selection: &'a mut crate::prepare::PrepareView,
     nav: &'a mut Option<Nav>,
-    edit: &'a mut Option<pdfcraft_engine::Edit>,
+    edit: &'a mut Option<iridium_pdf_engine::Edit>,
 }
 
 fn fields(ui: &mut egui::Ui, panel: FieldsPanel<'_>) -> Option<(String, usize)> {
@@ -587,7 +587,7 @@ fn fields(ui: &mut egui::Ui, panel: FieldsPanel<'_>) -> Option<(String, usize)> 
                         icons::paint(ui, r.shrink(3.0).translate(bpress.offset()), icon, 15.0, t.icon);
                     }
                     if theme::hand(b).on_hover_text(tip).clicked() {
-                        *edit = Some(pdfcraft_engine::Edit::MoveInTabOrder { name: f.name.clone(), earlier });
+                        *edit = Some(iridium_pdf_engine::Edit::MoveInTabOrder { name: f.name.clone(), earlier });
                     }
                 }
             }
@@ -618,7 +618,7 @@ fn fields(ui: &mut egui::Ui, panel: FieldsPanel<'_>) -> Option<(String, usize)> 
 }
 
 /// A Fields panel row's tooltip: the field's kind, its own tooltip and whether it has scripts.
-fn field_tip(f: &pdfcraft_render::Field) -> String {
+fn field_tip(f: &iridium_pdf_render::Field) -> String {
     let kind = format!("{:?}", f.kind);
     let mut tip = crate::i18n::fmt(tl!("{kind} field"), &[("kind", tl!(&kind))]);
     if let Some(tt) = &f.tooltip {
@@ -632,18 +632,18 @@ fn field_tip(f: &pdfcraft_render::Field) -> String {
 
 /// One page's rows of the Fields panel: each field, with the form field and widget a click on
 /// it selects (`None` when the form has no widget of it on that page).
-type FieldRows<'a> = Vec<(&'a pdfcraft_render::Field, Option<(String, usize)>)>;
+type FieldRows<'a> = Vec<(&'a iridium_pdf_render::Field, Option<(String, usize)>)>;
 
 /// The Fields panel's rows: by page ("Unplaced" first), each page's in tab order. A row is paired
 /// with the first form field of its name, as the engine pairs them: one map, built once a frame.
 /// Searching the form for each row, and again inside the sort, was O(fields²) every frame.
-fn field_rows<'a>(fields: &'a [pdfcraft_render::Field], form: &[pdfcraft_engine::FormField]) -> Vec<(Option<usize>, FieldRows<'a>)> {
-    let mut by_name: std::collections::HashMap<&str, &pdfcraft_engine::FormField> = std::collections::HashMap::with_capacity(form.len());
+fn field_rows<'a>(fields: &'a [iridium_pdf_render::Field], form: &[iridium_pdf_engine::FormField]) -> Vec<(Option<usize>, FieldRows<'a>)> {
+    let mut by_name: std::collections::HashMap<&str, &iridium_pdf_engine::FormField> = std::collections::HashMap::with_capacity(form.len());
     for field in form {
         by_name.entry(field.name.as_str()).or_insert(field);
     }
     let rank = |name: &str| by_name.get(name).and_then(|f| f.widgets.iter().map(|w| w.tab).min()).unwrap_or(usize::MAX);
-    let mut ordered: Vec<&pdfcraft_render::Field> = fields.iter().collect();
+    let mut ordered: Vec<&iridium_pdf_render::Field> = fields.iter().collect();
     ordered.sort_by_cached_key(|f| (f.page, rank(&f.name)));
     let mut rows: Vec<(Option<usize>, FieldRows<'a>)> = Vec::new();
     for f in ordered {
@@ -680,8 +680,8 @@ mod field_rows {
     }
 
     /// The fields the engine reads from `bytes`: the inspector's list and the form.
-    fn open(bytes: Vec<u8>) -> (Vec<pdfcraft_render::Field>, Arc<Vec<pdfcraft_engine::FormField>>) {
-        let mut session = pdfcraft_engine::Session::new();
+    fn open(bytes: Vec<u8>) -> (Vec<iridium_pdf_render::Field>, Arc<Vec<iridium_pdf_engine::FormField>>) {
+        let mut session = iridium_pdf_engine::Session::new();
         let id = session.open("form.pdf", None, Arc::new(bytes), None).expect("opens");
         let doc = session.get(id).expect("open");
         (doc.info.fields.clone(), doc.form.clone())

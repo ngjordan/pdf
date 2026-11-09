@@ -321,7 +321,7 @@ impl<'a> Inspector<'a> {
                     descendant.and_then(|d| d.get(b"CIDSystemInfo").ok()).and_then(|o| self.dict(o)).and_then(|c| self.text(c, b"Ordering"));
                 let subset = base.len() > 7 && base.as_bytes()[6] == b'+' && base[..6].bytes().all(|b| b.is_ascii_uppercase());
                 let name = if subset { base[7..].to_string() } else { base };
-                let chosen = pdfcraft_fonts::fallback::substitute(&pdfcraft_fonts::fallback::Request {
+                let chosen = iridium_pdf_fonts::fallback::substitute(&iridium_pdf_fonts::fallback::Request {
                     base_font: &name,
                     embedded,
                     flags,
@@ -382,7 +382,7 @@ impl<'a> Inspector<'a> {
 pub fn attachment_data(bytes: &[u8], password: Option<&str>, att: &Attachment) -> Result<Vec<u8>, String> {
     let run = || -> Result<Vec<u8>, String> {
         // Read through lopdf, which can't read a document opened without its key at all.
-        if pdfcraft_cos::Document::open_with_password(std::sync::Arc::new(bytes.to_vec()), password).is_ok_and(|d| d.embedded_files_locked()) {
+        if iridium_pdf_cos::Document::open_with_password(std::sync::Arc::new(bytes.to_vec()), password).is_ok_and(|d| d.embedded_files_locked()) {
             return Err("the attachment is encrypted: open the document with its password to read it".into());
         }
         let options = load_options(password);
@@ -415,7 +415,7 @@ pub fn attachment_data(bytes: &[u8], password: Option<&str>, att: &Attachment) -
 }
 
 /// An XFA packet's bytes as text: UTF-16 (little- or big-endian, told by a byte order mark or by
-/// how `<` is written) or UTF-8, as `pdfcraft_xfa::packets::decode` reads them. Lossy: only one
+/// how `<` is written) or UTF-8, as `iridium_pdf_xfa::packets::decode` reads them. Lossy: only one
 /// element is looked for.
 pub(super) fn xfa_packet_text(bytes: &[u8]) -> String {
     let utf16 = |b: &[u8], from: fn([u8; 2]) -> u16| {

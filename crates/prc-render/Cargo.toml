@@ -1,5 +1,5 @@
 [package]
-name = "pdfcraft-prc-render"
+name = "iridium-pdf-prc-render"
 description = "Headless CPU renderer for PRC 3D models: camera, depth-buffered triangle fill, headlight shading"
 version.workspace = true
 edition.workspace = true
@@ -11,7 +11,7 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
-pdfcraft-prc.workspace = true
+iridium-pdf-prc.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]

@@ -1,7 +1,7 @@
 //! Print production ▸ Fix hairlines as a tool: strokes narrower than a threshold on the page get a
 //! width (`doc_fix_hairlines`).
 
-use pdfcraft_engine::{Edit, Hairlines};
+use iridium_pdf_engine::{Edit, Hairlines};
 use serde_json::{Value, json};
 
 use crate::{Args, Automation, Result, ToolError};

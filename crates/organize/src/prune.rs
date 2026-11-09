@@ -8,7 +8,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use pdfcraft_cos::{CosError, DecodeBudget, Dict, Document, ObjRef, Object};
+use iridium_pdf_cos::{CosError, DecodeBudget, Dict, Document, ObjRef, Object};
 
 use crate::OrganizeError;
 
@@ -194,7 +194,7 @@ impl Pruner<'_> {
             self.too_deep = true;
             return;
         }
-        for op in pdfcraft_content::parse(data).ops {
+        for op in iridium_pdf_content::parse(data).ops {
             if op.op.as_slice() != b"Do" {
                 continue;
             }

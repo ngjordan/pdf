@@ -2,10 +2,10 @@
 
 use std::sync::Arc;
 
-use pdfcraft_annot::{Meta, NewAnnotation, Shape, Style, add_annotation, rect_quad};
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, SaveOptions, Stream, write_full};
-use pdfcraft_redact::{PatternProblem, RedactError, apply, marks};
-use pdfcraft_testkit::{Pdf, stream_obj};
+use iridium_pdf_annot::{Meta, NewAnnotation, Shape, Style, add_annotation, rect_quad};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, SaveOptions, Stream, write_full};
+use iridium_pdf_redact::{PatternProblem, RedactError, apply, marks};
+use iridium_pdf_testkit::{Pdf, stream_obj};
 
 const SECRET: &[u8] = b"CELLSECRET";
 const CELL: &[u8] = b"BT /F1 20 Tf 40 120 Td (CELLSECRET) Tj ET\n";
@@ -113,7 +113,7 @@ fn pattern_vector_only_control_still_applies_and_preserves_the_cell() {
     assert_eq!((report.paths_removed, report.paths_clipped, report.patterns_removed), (1, 0, 0));
     assert!(marks(&doc).is_empty());
     let reopened = Document::open(Arc::new(saved(&doc))).unwrap();
-    let page = &pdfcraft_model::pages(&reopened)[0];
+    let page = &iridium_pdf_model::pages(&reopened)[0];
     let res = reopened.dict(page.dict.get(b"Resources").unwrap()).unwrap();
     let patterns = reopened.dict(res.get(b"Pattern").unwrap()).unwrap();
     let pattern = reopened.resolve(patterns.get(b"P0").unwrap());
@@ -135,7 +135,7 @@ fn unrelated_font_widths_do_not_exhaust_pattern_budget() {
 #[test]
 fn shared_annotation_appearance_on_unselected_page_is_refused() {
     let mut doc = two_pages();
-    let pages = pdfcraft_model::pages(&doc);
+    let pages = iridium_pdf_model::pages(&doc);
     for page in &pages {
         let mut resources = doc.dict(page.dict.get(b"Resources").unwrap()).unwrap();
         resources.remove(b"Pattern");
@@ -189,7 +189,7 @@ fn pattern_refusal_on_second_page_does_not_change_the_first_page() {
 
 fn two_pages() -> Document {
     let mut doc = fixture(CELL, false, true, false);
-    let source_page = pdfcraft_model::pages(&doc)[0].dict.clone();
+    let source_page = iridium_pdf_model::pages(&doc)[0].dict.clone();
     let mut clean = source_page.clone();
     let mut clean_resources = doc.dict(clean.get(b"Resources").unwrap()).unwrap();
     clean_resources.remove(b"Pattern");
@@ -216,7 +216,7 @@ fn pattern_stream(doc: &Document) -> Stream {
 /// the guard only ever inspects a pattern that some surviving paint still uses. This keeps one,
 /// so the guard has to inspect this cell rather than the pattern simply leaving the file.
 fn keep_pattern_in_use(doc: &mut Document, page: usize) {
-    let page = pdfcraft_model::pages(doc).swap_remove(page);
+    let page = iridium_pdf_model::pages(doc).swap_remove(page);
     let extra = doc.add(Object::Stream(Stream::from_raw(Dict::new(), b"/Pattern cs /P0 scn 300 200 100 40 re f".to_vec())));
     let mut list = match page.dict.get(b"Contents") {
         Some(Object::Array(items)) => items.clone(),
@@ -276,7 +276,7 @@ fn pattern_nested_form_and_nested_pattern_text_are_refused() {
 #[test]
 fn pattern_inside_form_resources_is_refused() {
     let mut doc = fixture(CELL, false, false, false);
-    let page = pdfcraft_model::pages(&doc)[0].clone();
+    let page = iridium_pdf_model::pages(&doc)[0].clone();
     let resources = doc.dict(page.dict.get(b"Resources").unwrap()).unwrap();
     let form = doc.add(Object::Stream(Stream::from_raw(
         Dict::from_iter([
@@ -384,7 +384,7 @@ fn pattern_unused_and_annotation_appearance_resources_are_checked() {
     assert_refused(unused, PatternProblem::Content);
 
     let mut appearance = fixture(CELL, false, false, false);
-    let page = pdfcraft_model::pages(&appearance)[0].clone();
+    let page = iridium_pdf_model::pages(&appearance)[0].clone();
     let mut resources = appearance.dict(page.dict.get(b"Resources").unwrap()).unwrap();
     let patterns = resources.remove(b"Pattern").unwrap();
     appearance.update_dict(page.obj, |dict| dict.set(b"Resources".to_vec(), Object::Dict(resources))).unwrap();
@@ -500,7 +500,10 @@ fn pattern_replacement_text_without_text_showing_is_refused() {
                     b"Properties".to_vec(),
                     Object::Dict(Dict::from_iter([(
                         b"Description".to_vec(),
-                        Object::Dict(Dict::from_iter([(b"Alt".to_vec(), Object::String(pdfcraft_cos::PdfString::literal(b"CELLSECRET".to_vec())))])),
+                        Object::Dict(Dict::from_iter([(
+                            b"Alt".to_vec(),
+                            Object::String(iridium_pdf_cos::PdfString::literal(b"CELLSECRET".to_vec())),
+                        )])),
                     )])),
                 )])),
             );
@@ -548,7 +551,7 @@ fn pattern_opaque_and_external_xobjects_are_refused() {
                 dict.set(b"Subtype".to_vec(), Object::name("Form"));
                 dict.set(
                     b"Ref".to_vec(),
-                    Object::Dict(Dict::from_iter([(b"F".to_vec(), Object::String(pdfcraft_cos::PdfString::literal(b"external.pdf".to_vec())))])),
+                    Object::Dict(Dict::from_iter([(b"F".to_vec(), Object::String(iridium_pdf_cos::PdfString::literal(b"external.pdf".to_vec())))])),
                 );
             }
             subtype => {
@@ -695,7 +698,7 @@ fn a_form_without_resources_keeps_the_page_pattern_it_still_paints() {
     let report = apply(&mut doc, None).unwrap();
     assert_eq!((report.paths_removed, report.patterns_removed), (1, 0));
     let reopened = Document::open(Arc::new(saved(&doc))).unwrap();
-    let page = &pdfcraft_model::pages(&reopened)[0];
+    let page = &iridium_pdf_model::pages(&reopened)[0];
     let res = reopened.dict(page.dict.get(b"Resources").unwrap()).unwrap();
     let patterns = reopened.dict(res.get(b"Pattern").unwrap()).unwrap();
     assert!(patterns.get(b"P0").is_some(), "the form still paints with /P0 outside the mark");
@@ -708,7 +711,7 @@ fn a_shared_appearance_of_a_reply_or_pop_up_removed_on_another_page_is_refused()
     // the text-bearing cell reachable, so the all-pages check must run and refuse.
     for link in ["IRT", "Parent"] {
         let mut doc = two_pages();
-        let pages = pdfcraft_model::pages(&doc);
+        let pages = iridium_pdf_model::pages(&doc);
         for page in &pages {
             let mut resources = doc.dict(page.dict.get(b"Resources").unwrap()).unwrap();
             resources.remove(b"Pattern");

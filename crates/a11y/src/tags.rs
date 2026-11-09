@@ -1,6 +1,6 @@
 //! Properties of reachable indirect structure elements.
 
-use pdfcraft_cos::{CosError, Dict, Document, ObjRef, Object, PdfString};
+use iridium_pdf_cos::{CosError, Dict, Document, ObjRef, Object, PdfString};
 
 use crate::alt;
 
@@ -170,7 +170,7 @@ pub fn move_tag(doc: &mut Document, object: ObjRef, anchor: ObjRef, placement: T
     Ok(())
 }
 
-fn text(doc: &Document, d: &pdfcraft_cos::Dict, key: &[u8]) -> Option<String> {
+fn text(doc: &Document, d: &iridium_pdf_cos::Dict, key: &[u8]) -> Option<String> {
     d.get(key).map(|o| doc.resolve(o)).and_then(|o| o.as_string().map(PdfString::to_text))
 }
 
@@ -180,7 +180,7 @@ fn tag_type_name(doc: &Document, d: &Dict) -> Option<Vec<u8>> {
 
 /// List reachable, indirect tags in structure-tree order.
 pub fn tags(doc: &Document) -> Vec<TagInfo> {
-    let pages = pdfcraft_model::pages(doc);
+    let pages = iridium_pdf_model::pages(doc);
     let page_index: std::collections::HashMap<ObjRef, usize> = pages.iter().enumerate().map(|(i, p)| (p.obj, i)).collect();
     alt::elements(doc)
         .into_iter()
@@ -207,7 +207,7 @@ pub fn tags(doc: &Document) -> Vec<TagInfo> {
 /// levels. Child structure elements do not count as direct marks.
 pub fn tag_content(doc: &Document, object: ObjRef) -> Result<Vec<TagContentItem>, TagError> {
     let Some(element) = alt::elements(doc).into_iter().find(|e| e.object == object) else { return Err(TagError::NotATag(object)) };
-    let pages = pdfcraft_model::pages(doc);
+    let pages = iridium_pdf_model::pages(doc);
     let page_index: std::collections::HashMap<ObjRef, usize> = pages.iter().enumerate().map(|(i, p)| (p.obj, i)).collect();
     let mut marks = Vec::new();
     let mut seen = std::collections::HashSet::new();

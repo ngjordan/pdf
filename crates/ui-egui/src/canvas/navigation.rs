@@ -252,7 +252,7 @@ impl DocView {
         let page = labels
             .iter()
             .position(|l| !l.is_empty() && l.eq_ignore_ascii_case(t))
-            .or_else(|| pdfcraft_engine::print::position(t).or_else(|| t.parse::<usize>().ok()).filter(|n| *n >= 1).map(|n| n - 1));
+            .or_else(|| iridium_pdf_engine::print::position(t).or_else(|| t.parse::<usize>().ok()).filter(|n| *n >= 1).map(|n| n - 1));
         match page {
             Some(p) if p < self.page_count => {
                 self.go_to_page(p);

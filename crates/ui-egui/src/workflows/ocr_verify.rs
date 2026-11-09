@@ -16,14 +16,14 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use pdfcraft_engine::ocr::{
+use iridium_pdf_engine::ocr::{
     ConfidenceBand, EngineChoice, MergeStrategy, OcrGuard, OcrPage, OcrSettings, OutputMode, PlacedWord, band_for, clamp_region,
 };
-use pdfcraft_engine::{DocId, Session};
+use iridium_pdf_engine::{DocId, Session};
 
 use super::ocr_ui;
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, widgets};
+use crate::{PdfApp, widgets};
 
 /// Where the screen stands. Run is enabled in Idle, ReviewReady and RecoverableError; the
 /// review tools (Accept, Reject, navigation, the inspector, re-OCR) only in ReviewReady, and
@@ -135,7 +135,7 @@ pub fn is_uncertain(page: &OcrPage, key: (usize, usize), review: &Review) -> boo
     if w.text.trim().is_empty() || review.dictionary.contains(&w.text.to_lowercase()) {
         return false;
     }
-    pdfcraft_engine::ocr::is_suspect(w.confidence)
+    iridium_pdf_engine::ocr::is_suspect(w.confidence)
 }
 
 /// Candidate corrections for `text`: dictionary words and the page's own words within edit
@@ -292,7 +292,7 @@ fn read_dictionary(path: &std::path::Path) -> Result<String, String> {
     let mut text = String::new();
     match std::fs::File::open(path) {
         Ok(file) => {
-            file.take((pdfcraft_engine::ocr::dictionary::MAX_BYTES + 1) as u64).read_to_string(&mut text).map_err(|e| e.to_string())?;
+            file.take((iridium_pdf_engine::ocr::dictionary::MAX_BYTES + 1) as u64).read_to_string(&mut text).map_err(|e| e.to_string())?;
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
         Err(e) => return Err(e.to_string()),
@@ -417,7 +417,7 @@ impl OcrVerify {
                         !self.review.removed.contains(&(p, *i))
                             && !w.text.trim().is_empty()
                             && !self.review.dictionary.contains(&w.text.to_lowercase())
-                            && pdfcraft_engine::ocr::is_suspect(w.confidence)
+                            && iridium_pdf_engine::ocr::is_suspect(w.confidence)
                     })
                     .count()
             })
@@ -573,7 +573,7 @@ impl OcrVerify {
 
     /// Validate the complete file and persist atomically before changing review state.
     fn updated_dictionary(&self, add: &[&str], remove: &[&str]) -> Result<(BTreeSet<String>, bool), String> {
-        use pdfcraft_engine::ocr::dictionary;
+        use iridium_pdf_engine::ocr::dictionary;
         let path = self.dictionary_dir.as_ref().map(|dir| dictionary_path(dir, &self.dictionary_language)).transpose()?;
         let current =
             if let Some(path) = &path { read_dictionary(path)? } else { self.review.dictionary.iter().cloned().collect::<Vec<_>>().join("\n") };
@@ -600,7 +600,7 @@ impl OcrVerify {
                 return;
             }
         };
-        match read_dictionary(&path).and_then(|text| pdfcraft_engine::ocr::dictionary::words(&text)) {
+        match read_dictionary(&path).and_then(|text| iridium_pdf_engine::ocr::dictionary::words(&text)) {
             Ok(words) => self.review.dictionary = words,
             Err(why) => self.message = format!("OCR dictionary: {why}"),
         }
@@ -925,7 +925,7 @@ impl OcrVerify {
     /// anything runs — the render, the recognition and the engine probe (a `--list-langs`
     /// process for Tesseract) happen off it, with the status line and a Cancel while they run.
     /// The reading is applied by [`Self::poll_reread`] when it lands.
-    pub fn start_reread(&mut self, app: &mut PdfCraftApp, page: usize, region: Option<[f32; 4]>) {
+    pub fn start_reread(&mut self, app: &mut PdfApp, page: usize, region: Option<[f32; 4]>) {
         if self.phase != Phase::ReviewReady || self.reread.is_some() {
             return; // one re-read at a time, and never under a run
         }
@@ -964,7 +964,7 @@ impl OcrVerify {
         self.message = if is_region { tl!("Re-reading the region…").to_string() } else { tl!("Re-reading the page…").to_string() };
         let p = progress.clone();
         let work = move || {
-            let result = pdfcraft_engine::ocr::recognizers(&job.settings).and_then(|r| {
+            let result = iridium_pdf_engine::ocr::recognizers(&job.settings).and_then(|r| {
                 let found = job.run(&r, |_, _| !p.lock().map(|s| s.cancel).unwrap_or(false));
                 let words: Vec<PlacedWord> = found.into_iter().flat_map(|pg| pg.words).collect();
                 if words.is_empty() {
@@ -982,7 +982,7 @@ impl OcrVerify {
             }
         };
         // The OS can refuse a new thread: then nothing runs, and the page's words stay as they were.
-        if let Err(e) = launch(app, "pdfcraft-ocr-reread", work) {
+        if let Err(e) = launch(app, "iridium-pdf-ocr-reread", work) {
             self.message = format!("the re-read could not start: {e}");
             app.notify_error(self.message.clone());
             return;
@@ -992,7 +992,7 @@ impl OcrVerify {
 
     /// The web build is downloading the models: remember what was asked for and say so; it
     /// starts when they land ([`Self::poll_models`]). Before, the read ran at once and failed
-    /// with the desktop's "set PDFCRAFT_MODELS" message, which means nothing in a browser.
+    /// with the desktop's "set IRIDIUM_PDF_MODELS" message, which means nothing in a browser.
     #[cfg(target_arch = "wasm32")]
     fn wait_for_models(&mut self, what: AwaitingModels) {
         self.awaiting_models = Some(what);
@@ -1001,11 +1001,11 @@ impl OcrVerify {
 
     /// The web build: start what waited for the models once the download is over.
     #[cfg(target_arch = "wasm32")]
-    pub(crate) fn poll_models(&mut self, app: &mut PdfCraftApp) {
+    pub(crate) fn poll_models(&mut self, app: &mut PdfApp) {
         if self.awaiting_models.is_none() {
             return;
         }
-        use pdfcraft_engine::ocr::{EngineChoice, engine_unavailable_reason};
+        use iridium_pdf_engine::ocr::{EngineChoice, engine_unavailable_reason};
         if engine_unavailable_reason(EngineChoice::Ocrs).is_none() {
             // The models are in. An engine the browser can never run (Tesseract) says why
             // rather than waiting for ever.
@@ -1019,7 +1019,7 @@ impl OcrVerify {
     /// The model download is over: run what waited for it, or say why it can't. Nothing runs
     /// once the screen is closed.
     #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-    pub(crate) fn models_landed(&mut self, app: &mut PdfCraftApp, outcome: Result<(), String>) {
+    pub(crate) fn models_landed(&mut self, app: &mut PdfApp, outcome: Result<(), String>) {
         let Some(what) = self.awaiting_models.take() else { return };
         self.message.clear();
         if let Err(e) = outcome {
@@ -1049,7 +1049,7 @@ impl OcrVerify {
     /// words, a region re-read the words inside the drawn rectangle. A cancel discards the
     /// reading, and so does a refusal — a document changed since the review began no longer
     /// matches the page the words were read from. Called every frame while a re-read is out.
-    pub(crate) fn poll_reread(&mut self, app: &mut PdfCraftApp) {
+    pub(crate) fn poll_reread(&mut self, app: &mut PdfApp) {
         if self.phase != Phase::ReviewReady {
             return;
         }
@@ -1194,7 +1194,7 @@ impl OcrVerify {
         self.progress = None;
     }
 
-    pub(crate) fn start_run(&mut self, app: &mut PdfCraftApp) {
+    pub(crate) fn start_run(&mut self, app: &mut PdfApp) {
         let Some((_, id)) = app.active_ids() else { return };
         if !self.can_run() || self.phase == Phase::Running {
             return;
@@ -1233,7 +1233,7 @@ impl OcrVerify {
         let progress = Arc::new(Mutex::new(ocr_ui::OcrProgress { total: job.pages.len(), ..Default::default() }));
         let p = progress.clone();
         let work = move || {
-            let result = pdfcraft_engine::ocr::recognizers(&settings).map(|r| {
+            let result = iridium_pdf_engine::ocr::recognizers(&settings).map(|r| {
                 job.run(&r, |done, total| {
                     let Ok(mut s) = p.lock() else { return false };
                     s.done = done;
@@ -1248,7 +1248,7 @@ impl OcrVerify {
         // The OS can refuse a new thread. Then nothing runs: a review already on the screen stays
         // as it was, and an empty screen shows why (Run stays enabled, and nothing holds the
         // document open).
-        if let Err(e) = launch(app, "pdfcraft-ocr-verify", work) {
+        if let Err(e) = launch(app, "iridium-pdf-ocr-verify", work) {
             self.message = format!("the recognition could not start: {e}");
             if self.phase == Phase::Idle {
                 self.phase = Phase::RecoverableError;
@@ -1268,7 +1268,7 @@ impl OcrVerify {
     }
 
     /// Take the worker's result, once it is done.
-    pub(crate) fn poll(&mut self, app: &mut PdfCraftApp) {
+    pub(crate) fn poll(&mut self, app: &mut PdfApp) {
         if self.phase != Phase::Running {
             return;
         }
@@ -1297,7 +1297,7 @@ impl OcrVerify {
 
 /// Run `work` on a worker thread named `name` (inline under `run_inline` and on the web).
 /// Whether it started: the OS can refuse a new thread.
-fn launch(app: &PdfCraftApp, name: &str, work: impl FnOnce() + Send + 'static) -> std::io::Result<()> {
+fn launch(app: &PdfApp, name: &str, work: impl FnOnce() + Send + 'static) -> std::io::Result<()> {
     #[cfg(test)]
     if tests::FAIL_LAUNCH.with(std::cell::Cell::get) {
         return Err(std::io::Error::other("no thread for this test"));
@@ -1350,7 +1350,7 @@ fn band_color(band: ConfidenceBand) -> egui::Color32 {
 }
 
 /// The OCR Verify screen (Scan & OCR ▸ Correct recognized text), in the document area.
-pub(crate) fn show(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
+pub(crate) fn show(app: &mut PdfApp, ui: &mut egui::Ui) {
     use egui::{Key, Modifiers};
     follow_active_document(app);
     let ctx = ui.ctx().clone();
@@ -1420,7 +1420,7 @@ pub(crate) fn show(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
 /// With no reading in hand (before a run, or after a review was accepted or rejected), the
 /// source pane shows the document in front at the page it is on, so the screen never opens on
 /// a blank pane (#6485). A run or a review keeps the document and page it was made for.
-fn follow_active_document(app: &mut PdfCraftApp) {
+fn follow_active_document(app: &mut PdfApp) {
     if app.ocr_verify.has_reading() {
         return;
     }
@@ -1445,7 +1445,7 @@ fn pane_title(ui: &mut egui::Ui, t: &Tokens, name: &str, focused: bool) {
 
 /// Toolbar: every control is live — the choices feed the next run (and are persisted), Run
 /// starts a recognition, Accept/Reject/navigate/verify only act in ReviewReady.
-fn toolbar(app: &mut PdfCraftApp, ui: &mut egui::Ui, n: &mut Intents) {
+fn toolbar(app: &mut PdfApp, ui: &mut egui::Ui, n: &mut Intents) {
     let v = &app.ocr_verify;
     let d = &mut app.ocr_draft;
     let review = v.phase == Phase::ReviewReady;
@@ -1455,7 +1455,7 @@ fn toolbar(app: &mut PdfCraftApp, ui: &mut egui::Ui, n: &mut Intents) {
     // Row 1: the settings (each written back into the persisted draft).
     ui.horizontal_wrapped(|ui| {
         craft_ui::ComboBox::from_id_salt("ocr-verify-language").width(150.0).selected_text(language_name(&d.language)).show_ui(ui, |ui| {
-            for (code, name) in pdfcraft_engine::ocr::LANGUAGES {
+            for (code, name) in iridium_pdf_engine::ocr::LANGUAGES {
                 ui.selectable_value(&mut d.language, (*code).to_string(), *name);
             }
         });
@@ -1533,7 +1533,7 @@ fn toolbar(app: &mut PdfCraftApp, ui: &mut egui::Ui, n: &mut Intents) {
 
 /// A language code's dropdown text: its name and its code ("English (en)").
 fn language_name(code: &str) -> String {
-    pdfcraft_engine::ocr::LANGUAGES.iter().find(|l| l.0 == code).map_or_else(|| code.to_owned(), |l| format!("{} ({})", l.1, l.0))
+    iridium_pdf_engine::ocr::LANGUAGES.iter().find(|l| l.0 == code).map_or_else(|| code.to_owned(), |l| format!("{} ({})", l.1, l.0))
 }
 
 /// The Engine dropdown's text.
@@ -1562,7 +1562,7 @@ fn engine_combo(ui: &mut egui::Ui, engine: &mut EngineChoice, strategy: &mut Mer
     ocr_ui::keep_asking_while_probing(ui.ctx());
     craft_ui::ComboBox::from_id_salt("ocr-verify-engine").width(120.0).selected_text(engine_label(*engine)).show_ui(ui, |ui| {
         for (choice, label) in [(EngineChoice::Auto, tl!("Automatic")), (EngineChoice::Ocrs, "ocrs"), (EngineChoice::Tesseract, "Tesseract")] {
-            let why = pdfcraft_engine::ocr::engine_unavailable_reason(choice);
+            let why = iridium_pdf_engine::ocr::engine_unavailable_reason(choice);
             let resp = ui.add_enabled(why.is_none(), egui::Button::selectable(*engine == choice, label));
             let clicked = resp.clicked();
             match why {
@@ -1630,10 +1630,10 @@ fn output_combo(ui: &mut egui::Ui, mode: &mut OutputMode) {
 
 /// The info strip: where the review stands, in facts — page, average confidence, how many
 /// words ask for review, the share verified, and the engine · strategy that read it.
-fn info_strip(app: &PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
+fn info_strip(app: &PdfApp, ui: &mut egui::Ui, t: &Tokens) {
     let v = &app.ocr_verify;
     let read = v.pages.iter().filter(|p| p.skipped.is_none()).count();
-    let avg = v.page(v.current).and_then(pdfcraft_engine::ocr::OcrPage::mean_confidence);
+    let avg = v.page(v.current).and_then(iridium_pdf_engine::ocr::OcrPage::mean_confidence);
     let cells = [
         (tl!("PAGE"), v.page_indicator(v.doc.and_then(|d| app.session.get(d)).map(|d| d.info.pages.len()))),
         (tl!("AVG CONFIDENCE"), avg.map_or_else(|| "—".into(), |c| format!("{c:.0}%"))),
@@ -1655,14 +1655,14 @@ fn info_strip(app: &PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
 
 /// The page list: one row per read page, with its live word count and a flag for the words
 /// that still ask for review. Clicking shows the page.
-fn pages_pane(app: &mut PdfCraftApp, ui: &mut egui::Ui, n: &mut Intents) {
+fn pages_pane(app: &mut PdfApp, ui: &mut egui::Ui, n: &mut Intents) {
     let v = &app.ocr_verify;
     egui::ScrollArea::vertical().show(ui, |ui| {
         for pg in &v.pages {
             let p = pg.page;
             let (live, suspects) = (
                 pg.words.iter().filter(|w| !w.text.trim().is_empty()).count(),
-                pg.words.iter().filter(|w| !w.text.trim().is_empty() && pdfcraft_engine::ocr::is_suspect(w.confidence)).count(),
+                pg.words.iter().filter(|w| !w.text.trim().is_empty() && iridium_pdf_engine::ocr::is_suspect(w.confidence)).count(),
             );
             let marked = if pg.skipped.is_some() {
                 format!(" · {}", tl!("skipped"))
@@ -1690,7 +1690,7 @@ fn pages_pane(app: &mut PdfCraftApp, ui: &mut egui::Ui, n: &mut Intents) {
 /// to the page). Words are coloured by their confidence band; removed words are struck out and
 /// dimmed, corrected words outlined. The context menu re-reads a region or the page, and
 /// accepts or rejects the page.
-fn source_pane(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, n: &mut Intents) {
+fn source_pane(app: &mut PdfApp, ui: &mut egui::Ui, t: &Tokens, n: &mut Intents) {
     let page = app.ocr_verify.current;
     let review = app.ocr_verify.phase == Phase::ReviewReady;
     ensure_preview(app, page);
@@ -1815,7 +1815,7 @@ fn source_pane(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, n: &mut Int
 /// does not lie on the page). The region is already in view space (the drag stored it so), so
 /// it is only scaled: mapping it through `user_to_view` again would mirror it vertically (and
 /// misplace it on rotated or cropped pages).
-fn pane_region(region: [f32; 4], info: &pdfcraft_render::PageInfo, img_rect: egui::Rect) -> Option<egui::Rect> {
+fn pane_region(region: [f32; 4], info: &iridium_pdf_render::PageInfo, img_rect: egui::Rect) -> Option<egui::Rect> {
     let scale = img_rect.width() / info.width.max(1.0);
     let to_pane = |v: [f32; 2]| egui::pos2(img_rect.left() + v[0] * scale, img_rect.top() + v[1] * scale);
     let a = to_pane([region[0], region[1]]);
@@ -1869,7 +1869,7 @@ pub fn legend_rows() -> [(ConfidenceBand, String); 3] {
 /// Render (or re-render) the source pane's page preview when the shown page changed. One
 /// synchronous render per page; the texture is cached until then, and a failed render is not
 /// retried until the document changes ([`FailedPreview`]).
-fn ensure_preview(app: &mut PdfCraftApp, page: usize) {
+fn ensure_preview(app: &mut PdfApp, page: usize) {
     let doc = app.ocr_verify.doc;
     // A preview of another document or page never stands in for this one, even when this
     // page cannot be rendered.
@@ -1892,9 +1892,9 @@ fn ensure_preview(app: &mut PdfCraftApp, page: usize) {
     tests::PREVIEW_RENDERS.with(|n| n.set(n.get().saturating_add(1)));
     // Screen scale (the boxes are drawn on top of it); the recognition dpi is irrelevant here.
     let scale = 2.0_f32.min((900.0 / info.width.max(1.0)).min(1200.0 / info.height.max(1.0))).max(0.2);
-    let config = pdfcraft_render::RenderConfig { password: d.password.as_deref().map(std::sync::Arc::from), ..Default::default() };
-    let mut r = pdfcraft_render::PageRenderer::new(d.bytes.clone(), config);
-    let shot = r.render(pdfcraft_render::RenderRequest { page, kind: pdfcraft_render::RequestKind::Pixels, scale, ..Default::default() });
+    let config = iridium_pdf_render::RenderConfig { password: d.password.as_deref().map(std::sync::Arc::from), ..Default::default() };
+    let mut r = iridium_pdf_render::PageRenderer::new(d.bytes.clone(), config);
+    let shot = r.render(iridium_pdf_render::RenderRequest { page, kind: iridium_pdf_render::RequestKind::Pixels, scale, ..Default::default() });
     let failed = shot.error.is_some() || shot.width == 0 || shot.height == 0;
     #[cfg(test)]
     let failed = failed || tests::FAIL_RENDER.with(std::cell::Cell::get);
@@ -1918,7 +1918,7 @@ fn ensure_preview(app: &mut PdfCraftApp, page: usize) {
 /// The RECOGNIZED pane: the page's words as the engine read them — a preview, not
 /// authoritative (the source pane's boxes and the inspector are where corrections happen).
 /// Removed words show struck out; clicking a word selects it in the inspector.
-fn text_pane(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, n: &mut Intents) {
+fn text_pane(app: &mut PdfApp, ui: &mut egui::Ui, t: &Tokens, n: &mut Intents) {
     let v = &app.ocr_verify;
     let Some(pg) = v.page(v.current) else { return };
     if let Some(why) = &pg.skipped {
@@ -1951,7 +1951,7 @@ fn text_pane(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, n: &mut Inten
 /// confidence, engine, review state), the correction field (Enter commits; clearing removes
 /// the word; the original box never moves), Remove/Restore, + Dictionary, the per-word
 /// Verified toggle, and suggestions within edit distance 2.
-fn inspector(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, n: &mut Intents) {
+fn inspector(app: &mut PdfApp, ui: &mut egui::Ui, t: &Tokens, n: &mut Intents) {
     let v = &app.ocr_verify;
     let Some(key) = v.selected else {
         ui.label(egui::RichText::new(tl!("Select a word on the page to inspect it")).small().color(t.text_muted));
@@ -2028,7 +2028,7 @@ fn inspector(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, n: &mut Inten
 }
 
 /// The magnified crop of the selected word, drawn out of the page preview's texture.
-fn zoom_crop(app: &PdfCraftApp, ui: &mut egui::Ui, key: (usize, usize), t: &Tokens) {
+fn zoom_crop(app: &PdfApp, ui: &mut egui::Ui, key: (usize, usize), t: &Tokens) {
     let Some(preview) = &app.ocr_verify.preview else { return };
     let Some(tex) = &preview.texture else { return };
     let Some(w) = app.ocr_verify.word(key) else { return };
@@ -2064,7 +2064,7 @@ fn zoom_crop(app: &PdfCraftApp, ui: &mut egui::Ui, key: (usize, usize), t: &Toke
 
 /// Run `f` with the screen's state moved out of the app (a step that needs both the state and
 /// the rest of the app would otherwise borrow it twice). The state is put back afterwards.
-pub(crate) fn with_state(app: &mut PdfCraftApp, f: impl FnOnce(&mut OcrVerify, &mut PdfCraftApp)) {
+pub(crate) fn with_state(app: &mut PdfApp, f: impl FnOnce(&mut OcrVerify, &mut PdfApp)) {
     let mut v = std::mem::take(&mut app.ocr_verify);
     f(&mut v, app);
     app.ocr_verify = v;
@@ -2072,7 +2072,7 @@ pub(crate) fn with_state(app: &mut PdfCraftApp, f: impl FnOnce(&mut OcrVerify, &
 
 /// Apply what the frame's controls asked for. The guards live in the [`OcrVerify`] methods:
 /// outside ReviewReady, Accept/Reject/Re-OCR and edits are ignored, not acted on.
-fn apply(app: &mut PdfCraftApp, n: Intents) {
+fn apply(app: &mut PdfApp, n: Intents) {
     with_state(app, |v, app| {
         if n.exit {
             v.open = false;
@@ -2172,7 +2172,7 @@ fn apply(app: &mut PdfCraftApp, n: Intents) {
 /// Accept: searchable mode applies the review to the open document as one undoable step;
 /// editable mode asks where to write the new `<name>_ocr.pdf`. Stale sessions and empty
 /// reviews are typed failures the user sees (the edits are kept).
-fn do_accept(v: &mut OcrVerify, app: &mut PdfCraftApp) {
+fn do_accept(v: &mut OcrVerify, app: &mut PdfApp) {
     let doc = v.doc;
     match app.ocr_draft.output_mode {
         OutputMode::Searchable => match v.accept(&mut app.session) {
@@ -2198,7 +2198,7 @@ fn do_accept(v: &mut OcrVerify, app: &mut PdfCraftApp) {
 /// cancelled dialog keeps the review. The write is the [`Phase::Saving`] state: it ends the
 /// review when the file lands, and returns to ReviewReady when it does not, so a failed or
 /// cancelled save can simply be tried again.
-fn save_editable(app: &mut PdfCraftApp, bytes: Arc<Vec<u8>>, name: String, doc: Option<DocId>) {
+fn save_editable(app: &mut PdfApp, bytes: Arc<Vec<u8>>, name: String, doc: Option<DocId>) {
     let source = doc.and_then(|id| app.session.get(id)).and_then(|d| d.path.clone());
     // The chosen file is the open source when both resolve to the same path (a new file does
     // not exist yet, so fall back to its folder and name).
@@ -2258,7 +2258,7 @@ fn save_editable(app: &mut PdfCraftApp, bytes: Arc<Vec<u8>>, name: String, doc: 
 /// review is done), back to ReviewReady when it fails — the reviewer sees the error and can
 /// accept again without re-reading the document. Desktop only: the web build downloads instead.
 #[cfg(not(target_arch = "wasm32"))]
-fn write_editable(app: &mut PdfCraftApp, target: &std::path::Path, bytes: Arc<Vec<u8>>) {
+fn write_editable(app: &mut PdfApp, target: &std::path::Path, bytes: Arc<Vec<u8>>) {
     with_state(app, |v, _| v.phase = Phase::Saving);
     match crate::editing::write_atomically(&target.to_string_lossy(), &bytes) {
         Ok(()) => {
@@ -2273,7 +2273,7 @@ fn write_editable(app: &mut PdfCraftApp, target: &std::path::Path, bytes: Arc<Ve
 }
 
 /// Pull the document's changed appearance into its view after an apply.
-fn refresh_view(app: &mut PdfCraftApp, doc: DocId) {
+fn refresh_view(app: &mut PdfApp, doc: DocId) {
     if let Some(info) = app.session.get(doc).map(|d| d.info.clone())
         && let Some(view) = app.views.iter_mut().find(|view| view.id == doc)
     {
@@ -2284,7 +2284,7 @@ fn refresh_view(app: &mut PdfCraftApp, doc: DocId) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pdfcraft_engine::Session;
+    use iridium_pdf_engine::Session;
 
     thread_local! {
         /// [`launch`] refuses to start a worker, as the OS can.
@@ -2444,7 +2444,7 @@ mod tests {
         let (id, mut v) = loaded(&mut s, &[Some(95.0)]);
         assert!(v.correct((0, 0), "Corrected"), "the correction commits");
         // The document changed since the job started: the result no longer applies.
-        s.apply(id, pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }).expect("fixture");
+        s.apply(id, iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }).expect("fixture");
         let why = v.accept(&mut s).expect_err("the stale result is refused");
         assert!(why.contains("changed"), "{why}");
         assert_eq!(v.phase, Phase::RecoverableError, "Run is enabled again");
@@ -2480,8 +2480,8 @@ mod tests {
     /// The text the document's page `page` carries now, as the renderer extracts it.
     fn page_text(s: &Session, id: DocId, page: usize) -> String {
         let doc = s.get(id).expect("open");
-        let mut r = pdfcraft_render::PageRenderer::new(doc.bytes.clone(), pdfcraft_render::RenderConfig::default());
-        let request = pdfcraft_render::RenderRequest { page, kind: pdfcraft_render::RequestKind::Text, scale: 1.0, ..Default::default() };
+        let mut r = iridium_pdf_render::PageRenderer::new(doc.bytes.clone(), iridium_pdf_render::RenderConfig::default());
+        let request = iridium_pdf_render::RenderRequest { page, kind: iridium_pdf_render::RequestKind::Text, scale: 1.0, ..Default::default() };
         r.render(request).text.map(|t| t.plain_text()).unwrap_or_default()
     }
 
@@ -2550,7 +2550,7 @@ mod tests {
         let mut s = Session::new();
         let (id, mut v) = blank_review(&mut s, vec![vec![word("one", Some(95.0))], vec![word("two", Some(95.0))]]);
         assert_eq!(v.accept_page(&mut s, 0), Ok(1));
-        s.apply(id, pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }).expect("an unrelated edit");
+        s.apply(id, iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }).expect("an unrelated edit");
         let why = v.accept_page(&mut s, 1).expect_err("stale after an outside edit");
         assert!(why.contains("changed since recognition started"), "{why}");
         assert_eq!(v.phase, Phase::RecoverableError);
@@ -2588,9 +2588,9 @@ mod tests {
 
     /// A blank two-page-shaped review inside a real app (the document open, Run set to go
     /// inline), one word list per page, against a real job's guard.
-    fn app_review(words: Vec<Vec<PlacedWord>>) -> (PdfCraftApp, DocId) {
+    fn app_review(words: Vec<Vec<PlacedWord>>) -> (PdfApp, DocId) {
         let blank = Session::new().create_blank(612.0, 792.0, words.len()).expect("fixture").to_vec();
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.run_inline = true;
         app.open_bytes("blank.pdf", None, blank).expect("fixture");
         let id = app.active_ids().expect("open").1;
@@ -2605,7 +2605,7 @@ mod tests {
     }
 
     /// The status the tests see, from the app's last toast.
-    fn toast(app: &mut PdfCraftApp) -> String {
+    fn toast(app: &mut PdfApp) -> String {
         app.toast.take().map(|t| t.0).unwrap_or_default()
     }
 
@@ -2644,7 +2644,7 @@ mod tests {
     }
 
     /// The web build: a Run OCR asked for while the models download runs once they land, rather
-    /// than failing at once with the desktop's "set PDFCRAFT_MODELS" message.
+    /// than failing at once with the desktop's "set IRIDIUM_PDF_MODELS" message.
     #[test]
     fn a_run_that_waited_for_the_models_starts_when_they_land() {
         let (mut app, _) = app_review(vec![vec![word("one", Some(95.0))]]);
@@ -2730,7 +2730,7 @@ mod tests {
         let (mut app, id) = app_review(vec![vec![word("one", Some(95.0))], vec![word("two", Some(95.0))]]);
         app.ocr_verify.reread = Some(finished_reread(None, Ok(vec![word("late", Some(95.0))])));
         app.ocr_verify.current = 1;
-        app.session.apply(id, pdfcraft_engine::Edit::RotatePages { pages: vec![1], degrees: 90 }).expect("an edit");
+        app.session.apply(id, iridium_pdf_engine::Edit::RotatePages { pages: vec![1], degrees: 90 }).expect("an edit");
         with_state(&mut app, OcrVerify::poll_reread);
         let words: Vec<_> = app.ocr_verify.page(1).expect("page").words.iter().map(|w| w.text.clone()).collect();
         assert_eq!(words, ["two"], "the late reading is not applied");
@@ -2807,7 +2807,7 @@ mod tests {
         let mut s = Session::new();
         let (id, v) = loaded(&mut s, &[Some(95.0)]);
         assert!(v.editable_output(&s).is_ok(), "an untouched document is fine");
-        s.apply(id, pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }).expect("an edit");
+        s.apply(id, iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }).expect("an edit");
         let err = v.editable_output(&s).expect_err("a changed document is refused");
         assert!(err.contains("changed since recognition started"), "{err}");
     }
@@ -2817,7 +2817,7 @@ mod tests {
     /// save dialog never touches the review either — Accept can simply be tried again.
     #[test]
     fn editable_save_lands_and_a_failed_or_cancelled_one_keeps_the_review() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.run_inline = true;
         let text = app.session.create_from_text("t", "Recognize these scanned words").expect("fixture");
         let id = app.session.open("t.pdf", None, text, None).expect("fixture");
@@ -2831,7 +2831,7 @@ mod tests {
         app.ocr_draft.output_mode = OutputMode::EditableText;
         // A destination that cannot be written (the "folder" is a regular file): the write
         // fails, the review stays in ReviewReady with the edit, Accept is enabled again.
-        let blocker = std::env::temp_dir().join(format!("pdfcraft-ocr-save-block-{}", std::process::id()));
+        let blocker = std::env::temp_dir().join(format!("iridium-pdf-ocr-save-block-{}", std::process::id()));
         std::fs::write(&blocker, b"not a folder").expect("fixture");
         app.export_dir_override = Some(blocker.to_string_lossy().into_owned());
         with_state(&mut app, do_accept);
@@ -2847,7 +2847,7 @@ mod tests {
         assert_eq!(app.ocr_verify.text_of((0, 0)), Some("Edited"));
         assert_eq!(app.ocr_verify.doc, Some(id), "the review still belongs to its document");
         // A real destination: the file lands under `<name>_ocr.pdf` and the review ends.
-        let dir = std::env::temp_dir().join(format!("pdfcraft-ocr-save-out-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-ocr-save-out-{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("fixture");
         app.pick_override = Some(vec![dir.join("t_ocr.pdf").to_string_lossy().into_owned()]);
         with_state(&mut app, do_accept);
@@ -2967,7 +2967,7 @@ mod tests {
         let (_, mut v) = loaded(&mut session, &[Some(40.0)]);
         let locale = crate::i18n::current().code();
         let language = if locale == "en" { "fr" } else { "en" };
-        let dir = std::env::temp_dir().join(format!("pdfcraft-ocr-dictionary-language-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-ocr-dictionary-language-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join(format!("ocr-dictionary-{locale}.txt")), "wrong\n").unwrap();
         let path = dir.join(format!("ocr-dictionary-{language}.txt"));
@@ -2986,7 +2986,7 @@ mod tests {
     fn dictionary_limit_and_normalization_failures_preserve_file_and_review() {
         let mut session = Session::new();
         let (_, mut v) = loaded(&mut session, &[Some(40.0)]);
-        let dir = std::env::temp_dir().join(format!("pdfcraft-ocr-dictionary-limits-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-ocr-dictionary-limits-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("ocr-dictionary-en.txt");
         let full: String = (0..65536).map(|i| format!("word{i}\n")).collect();
@@ -3003,7 +3003,7 @@ mod tests {
         assert_eq!(v.review.dictionary, before);
         assert_eq!(std::fs::read_to_string(&path).unwrap(), full);
         let full_bytes: String = (0..8192).map(|i| format!("{i:05}{}\n", "a".repeat(506))).collect();
-        assert_eq!(full_bytes.len(), pdfcraft_engine::ocr::dictionary::MAX_BYTES);
+        assert_eq!(full_bytes.len(), iridium_pdf_engine::ocr::dictionary::MAX_BYTES);
         std::fs::write(&path, &full_bytes).unwrap();
         v.load_dictionary_pref();
         let before = v.review.dictionary.clone();
@@ -3022,7 +3022,7 @@ mod tests {
     fn dictionary_undo_persists_and_failed_undo_keeps_history() {
         let mut session = Session::new();
         let (_, mut v) = loaded(&mut session, &[Some(40.0)]);
-        let dir = std::env::temp_dir().join(format!("pdfcraft-ocr-dictionary-undo-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-ocr-dictionary-undo-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("ocr-dictionary-en.txt");
         std::fs::write(&path, "original\n").unwrap();
@@ -3076,10 +3076,10 @@ mod tests {
     #[test]
     fn the_region_outline_is_where_it_was_drawn() {
         let img = egui::Rect::from_min_size(egui::pos2(10.0, 20.0), egui::vec2(306.0, 396.0));
-        let upright = pdfcraft_render::PageInfo { width: 612.0, height: 792.0, label: "1".into(), crop: [0.0, 0.0, 612.0, 792.0], rotation: 0 };
+        let upright = iridium_pdf_render::PageInfo { width: 612.0, height: 792.0, label: "1".into(), crop: [0.0, 0.0, 612.0, 792.0], rotation: 0 };
         let r = pane_region([100.0, 50.0, 200.0, 150.0], &upright, img).expect("on the page");
         assert_eq!((r.left(), r.top(), r.right(), r.bottom()), (60.0, 45.0, 110.0, 95.0), "top region stays at the top");
-        let turned = pdfcraft_render::PageInfo { width: 792.0, height: 612.0, label: "1".into(), crop: [36.0, 36.0, 648.0, 828.0], rotation: 90 };
+        let turned = iridium_pdf_render::PageInfo { width: 792.0, height: 612.0, label: "1".into(), crop: [36.0, 36.0, 648.0, 828.0], rotation: 90 };
         let img = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(396.0, 306.0));
         let r = pane_region([100.0, 50.0, 200.0, 150.0], &turned, img).expect("on the page");
         assert_eq!((r.left(), r.top(), r.right(), r.bottom()), (50.0, 25.0, 100.0, 75.0));
@@ -3093,7 +3093,7 @@ mod tests {
         use egui_kittest::kittest::Queryable;
         let bytes = Session::new().create_from_text("t", "Recognize these scanned words").expect("fixture").to_vec();
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.open_bytes("scan.pdf", None, bytes.clone()).expect("fixture");
             app
         });
@@ -3171,7 +3171,7 @@ mod tests {
     /// the new page cannot be rendered: the pane never shows another page's image.
     #[test]
     fn a_preview_of_another_page_is_dropped() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         let text = app.session.create_from_text("t", "Recognize these scanned words").expect("fixture");
         let id = app.session.open("t.pdf", None, text, None).expect("fixture");
         app.ocr_verify.doc = Some(id);
@@ -3190,7 +3190,7 @@ mod tests {
     /// is rejected the document closes.
     #[test]
     fn closing_the_reviewed_document_brings_its_review_forward() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         let bytes = Session::new().create_from_text("t", "Recognize these scanned words").expect("fixture").to_vec();
         for name in ["a.pdf", "b.pdf", "c.pdf"] {
             app.open_bytes(name, None, bytes.clone()).expect("fixture");
@@ -3221,8 +3221,8 @@ mod tests {
     }
 
     /// Three open documents with a review of the first one, a word of it corrected.
-    fn reviewing_the_first_of_three() -> (PdfCraftApp, DocId) {
-        let mut app = PdfCraftApp::new();
+    fn reviewing_the_first_of_three() -> (PdfApp, DocId) {
+        let mut app = PdfApp::new();
         let bytes = Session::new().create_from_text("t", "Recognize these scanned words").expect("fixture").to_vec();
         for name in ["a.pdf", "b.pdf", "c.pdf"] {
             app.open_bytes(name, None, bytes.clone()).expect("fixture");
@@ -3302,7 +3302,7 @@ mod tests {
     /// and holds no document open, and a review already on the screen stays as it was.
     #[test]
     fn a_run_that_cannot_start_keeps_the_review_and_holds_nothing() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         let bytes = Session::new().create_from_text("t", "Recognize these scanned words").expect("fixture").to_vec();
         for name in ["a.pdf", "b.pdf"] {
             app.open_bytes(name, None, bytes.clone()).expect("fixture");
@@ -3337,7 +3337,7 @@ mod tests {
         let mut s = Session::new();
         let (id, mut v) = loaded(&mut s, &[Some(95.0)]);
         assert!(v.correct((0, 0), "Corrected"));
-        s.apply(id, pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }).expect("fixture");
+        s.apply(id, iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }).expect("fixture");
         assert!(v.accept(&mut s).is_err(), "the stale reading is refused");
         assert_eq!(v.phase, Phase::RecoverableError);
         assert!(v.holds_reading_of(id), "its document stays open");
@@ -3358,7 +3358,7 @@ mod tests {
     #[test]
     fn the_web_leave_warning_asks_while_a_review_is_open() {
         use std::sync::atomic::Ordering;
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         let bytes = Session::new().create_from_text("t", "Recognize these scanned words").expect("fixture").to_vec();
         app.open_bytes("a.pdf", None, bytes).expect("fixture");
         let a = app.views[0].id;
@@ -3381,7 +3381,7 @@ mod tests {
     /// changes; once the review is rejected, the application quits.
     #[test]
     fn quitting_brings_an_open_review_forward() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         let bytes = Session::new().create_from_text("t", "Recognize these scanned words").expect("fixture").to_vec();
         for name in ["a.pdf", "b.pdf"] {
             app.open_bytes(name, None, bytes.clone()).expect("fixture");
@@ -3422,7 +3422,7 @@ mod tests {
     /// document changes; a page that renders clears the failure.
     #[test]
     fn a_page_that_cannot_render_is_not_rendered_on_every_frame() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         let text = app.session.create_from_text("t", "Recognize these scanned words").expect("fixture");
         let id = app.session.open("t.pdf", None, text, None).expect("fixture");
         app.ocr_verify.doc = Some(id);
@@ -3436,12 +3436,12 @@ mod tests {
             ensure_preview(&mut app, 0);
         }
         assert_eq!(renders(), before + 1, "repaints do not render it again");
-        app.session.apply(id, pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }).expect("an edit");
+        app.session.apply(id, iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }).expect("an edit");
         ensure_preview(&mut app, 0);
         assert_eq!(renders(), before + 2, "a changed document is tried again");
         // A page that renders clears the failure.
         FAIL_RENDER.with(|f| f.set(false));
-        app.session.apply(id, pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }).expect("an edit");
+        app.session.apply(id, iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }).expect("an edit");
         ensure_preview(&mut app, 0);
         assert!(app.ocr_verify.preview.is_some());
         assert!(app.ocr_verify.preview_failed.is_none());

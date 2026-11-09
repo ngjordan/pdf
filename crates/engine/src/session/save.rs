@@ -19,7 +19,7 @@ impl Session {
             return Ok(editor.saved.clone());
         }
         // What the user removed again before saving (a cleared redaction mark) stays out of the file.
-        let opts = SaveOptions { mod_date: self.now().map(pdfcraft_cos::pdf_date), drop_unlinked: true, ..SaveOptions::default() };
+        let opts = SaveOptions { mod_date: self.now().map(iridium_pdf_cos::pdf_date), drop_unlinked: true, ..SaveOptions::default() };
         // A restored snapshot can be based on an earlier revision. Append to the last saved
         // file so that revision stays in the chain. A full rewrite (redaction, new encryption,
         // a reconstructed file) still writes the current graph on its own.
@@ -29,7 +29,7 @@ impl Session {
             if on_saved || rewrite {
                 write_incremental(&cos, &opts)
             } else {
-                let mut base = pdfcraft_cos::Document::open_with_password(editor.saved.clone(), editor.saved_keys.reopen.as_deref())?;
+                let mut base = iridium_pdf_cos::Document::open_with_password(editor.saved.clone(), editor.saved_keys.reopen.as_deref())?;
                 base.overlay_changes_from(&cos)?;
                 write_incremental(&base, &opts)
             }
@@ -46,7 +46,7 @@ impl Session {
             return Err(EditError::Signed);
         }
         let editor = doc.editor.as_ref().ok_or_else(|| EditError::ReadOnly(doc.read_only_reason.clone().unwrap_or_default()))?;
-        let opts = SaveOptions { mod_date: self.now().map(pdfcraft_cos::pdf_date), ..SaveOptions::default() };
+        let opts = SaveOptions { mod_date: self.now().map(iridium_pdf_cos::pdf_date), ..SaveOptions::default() };
         let cos = writable(&editor.cos)?;
         guard(|| write_full(&cos, &opts)).map_err(EditError::Write)?.map(Arc::new).map_err(|e| EditError::Write(e.to_string()))
     }
@@ -57,8 +57,8 @@ impl Session {
     pub fn check_save(&self, id: DocId, bytes: &Arc<Vec<u8>>) -> Result<(), EditError> {
         let doc = self.get(id).ok_or(EditError::NoDocument)?;
         let Some(editor) = doc.editor.as_ref() else { return Ok(()) };
-        pdfcraft_cos::Document::open_with_password(bytes.clone(), editor.keys.reopen.as_deref()).map_err(|e| EditError::Reopen(e.to_string()))?;
-        pdfcraft_render::check_pages(bytes.clone(), doc.password.as_deref(), doc.info.pages.len()).map_err(|e| EditError::Reopen(e.to_string()))
+        iridium_pdf_cos::Document::open_with_password(bytes.clone(), editor.keys.reopen.as_deref()).map_err(|e| EditError::Reopen(e.to_string()))?;
+        iridium_pdf_render::check_pages(bytes.clone(), doc.password.as_deref(), doc.info.pages.len()).map_err(|e| EditError::Reopen(e.to_string()))
     }
 
     /// Record a successful save of `bytes` (to `path`, if any): rebase editing on the saved file
@@ -70,10 +70,10 @@ impl Session {
             // password when known, so saving never downgrades this session's rights).
             let keys = editor.keys.clone();
             // The saved file carries no Password-field values (#3943, #3944); the open document keeps them.
-            let typed = pdfcraft_forms::password_values(&editor.cos);
+            let typed = iridium_pdf_forms::password_values(&editor.cos);
             editor.cos =
-                pdfcraft_cos::Document::open_with_password(bytes.clone(), keys.reopen.as_deref()).map_err(|e| EditError::Reopen(e.to_string()))?;
-            pdfcraft_forms::restore_password_values(&mut editor.cos, &typed).map_err(|e| EditError::Reopen(e.to_string()))?;
+                iridium_pdf_cos::Document::open_with_password(bytes.clone(), keys.reopen.as_deref()).map_err(|e| EditError::Reopen(e.to_string()))?;
+            iridium_pdf_forms::restore_password_values(&mut editor.cos, &typed).map_err(|e| EditError::Reopen(e.to_string()))?;
             if !typed.is_empty() && doc.info.xfa.is_some() {
                 let mut datasets = None;
                 let _ = xfa_sync_datasets(&mut editor.cos, doc.xfa_template.as_deref(), &mut datasets);
@@ -103,12 +103,12 @@ impl Session {
             return Ok(());
         }
         editor.cos.unlock(password).map_err(|e| match e {
-            pdfcraft_cos::CosError::WrongPassword => EditError::WrongPassword,
+            iridium_pdf_cos::CosError::WrongPassword => EditError::WrongPassword,
             other => EditError::Protection(other.to_string()),
         })?;
         // Saving a state that keeps the security it was opened with reopens it with the same
         // passwords, so it reopens as owner.
-        let reopen_as_owner = |cos: &pdfcraft_cos::Document, keys: &mut Keys| {
+        let reopen_as_owner = |cos: &iridium_pdf_cos::Document, keys: &mut Keys| {
             if !cos.encryption_changed() {
                 keys.reopen = Some(password.to_owned());
             }
@@ -137,7 +137,7 @@ impl Session {
         candidates.push(Keys::default());
         let (cos, keys) = candidates
             .into_iter()
-            .find_map(|k| pdfcraft_cos::Document::open_with_password(base.clone(), k.reopen.as_deref()).ok().map(|c| (c, k)))
+            .find_map(|k| iridium_pdf_cos::Document::open_with_password(base.clone(), k.reopen.as_deref()).ok().map(|c| (c, k)))
             .ok_or_else(|| EditError::Reopen("the saved file can't be opened".into()))?;
         editor.cos = cos;
         editor.keys = keys;
@@ -194,16 +194,19 @@ impl Session {
             if d.dirty && d.generation != d.snapshot_generation {
                 // The working bytes hold typed Password-field values (#3926, #3944): a recovery file
                 // is written from a copy without them, and none is written if that copy fails.
-                let bytes =
-                    match d.editor.as_ref().filter(|e| pdfcraft_forms::has_password_values(&e.cos) || pdfcraft_xfa::has_password_values(&e.cos)) {
-                        Some(e) => match writable(&e.cos)
-                            .and_then(|c| write_incremental(&c, &SaveOptions::default()).map_err(|e| EditError::Write(e.to_string())))
-                        {
-                            Ok(b) => Arc::new(b),
-                            Err(_) => continue,
-                        },
-                        None => d.bytes.clone(),
-                    };
+                let bytes = match d
+                    .editor
+                    .as_ref()
+                    .filter(|e| iridium_pdf_forms::has_password_values(&e.cos) || iridium_pdf_xfa::has_password_values(&e.cos))
+                {
+                    Some(e) => match writable(&e.cos)
+                        .and_then(|c| write_incremental(&c, &SaveOptions::default()).map_err(|e| EditError::Write(e.to_string())))
+                    {
+                        Ok(b) => Arc::new(b),
+                        Err(_) => continue,
+                    },
+                    None => d.bytes.clone(),
+                };
                 d.snapshot_generation = d.generation;
                 out.push(RecoverySnapshot {
                     doc: d.id,
@@ -241,14 +244,14 @@ impl Session {
     }
 
     /// The certificates trusted for signing.
-    pub fn trusted_certificates(&self) -> &[pdfcraft_sign::Certificate] {
+    pub fn trusted_certificates(&self) -> &[iridium_pdf_sign::Certificate] {
         &self.trust.certs
     }
 
     /// Replace the trusted certificates, revalidate every open document's signatures,
     /// and rebuild its display copy and renderer to match (working file untouched,
     /// generation/dirty unchanged: trust alone is not an edit).
-    pub fn set_trusted_certificates(&mut self, certs: Vec<pdfcraft_sign::Certificate>) {
+    pub fn set_trusted_certificates(&mut self, certs: Vec<iridium_pdf_sign::Certificate>) {
         self.trust = Arc::new(TrustStore { certs });
         for doc in &mut self.docs {
             Self::revalidate(doc, self.trust.clone());
@@ -271,7 +274,7 @@ impl Session {
     }
 
     /// The words the caption of a named-layer signature appearance is drawn with
-    /// ([`pdfcraft_sign::show_status_layers`]), in the interface language. When they change, every
+    /// ([`iridium_pdf_sign::show_status_layers`]), in the interface language. When they change, every
     /// open document's display copy and renderer are rebuilt; like trust, this is not an edit.
     /// Returns whether they changed.
     pub fn set_signature_captions(&mut self, captions: StatusCaptions) -> bool {
@@ -303,7 +306,7 @@ impl Session {
     /// The signing time as a PDF date in local time with its offset (`D:…+02'00'`).
     pub fn signing_date(&self) -> String {
         let offset = self.local_offset();
-        let local = pdfcraft_cos::pdf_date(self.now().unwrap_or(0) + offset);
+        let local = iridium_pdf_cos::pdf_date(self.now().unwrap_or(0) + offset);
         let stamp = local.trim_end_matches('Z');
         if offset == 0 {
             return format!("{stamp}Z");
@@ -315,7 +318,7 @@ impl Session {
     /// Sign the document's current state with `id` (Use a certificate ▸ Digitally sign). Returns
     /// the signed file; the caller saves it and then calls [`Session::mark_signed`]. An empty
     /// `opts.date` takes the session clock.
-    pub fn sign(&self, doc: DocId, id: &pdfcraft_sign::DigitalId, mut opts: SignOptions) -> Result<Arc<Vec<u8>>, EditError> {
+    pub fn sign(&self, doc: DocId, id: &iridium_pdf_sign::DigitalId, mut opts: SignOptions) -> Result<Arc<Vec<u8>>, EditError> {
         let d = self.get(doc).ok_or(EditError::NoDocument)?;
         // Encrypted documents are signed under their permissions (the signer checks them).
         let editor = d.editor.as_ref().ok_or_else(|| EditError::ReadOnly(d.read_only_reason.clone().unwrap_or_default()))?;
@@ -324,7 +327,7 @@ impl Session {
         }
         // A typed Password-field value is not signed into the file (#3926), as it isn't saved.
         let cos = drawn_for_first_signature(writable(&editor.cos)?);
-        Ok(Arc::new(pdfcraft_sign::sign(&cos, id, &opts)?))
+        Ok(Arc::new(iridium_pdf_sign::sign(&cos, id, &opts)?))
     }
 
     /// [`Session::sign`], embedding an RFC 3161 signature timestamp (PAdES B-T) produced by
@@ -332,9 +335,9 @@ impl Session {
     pub fn sign_with_timestamp(
         &self,
         doc: DocId,
-        id: &pdfcraft_sign::DigitalId,
+        id: &iridium_pdf_sign::DigitalId,
         mut opts: SignOptions,
-        tsa: &dyn pdfcraft_sign::TimestampAuthority,
+        tsa: &dyn iridium_pdf_sign::TimestampAuthority,
     ) -> Result<Arc<Vec<u8>>, EditError> {
         let d = self.get(doc).ok_or(EditError::NoDocument)?;
         let editor = d.editor.as_ref().ok_or_else(|| EditError::ReadOnly(d.read_only_reason.clone().unwrap_or_default()))?;
@@ -342,7 +345,7 @@ impl Session {
             opts.date = self.signing_date();
         }
         let cos = drawn_for_first_signature(writable(&editor.cos)?);
-        let signed = Arc::new(pdfcraft_sign::sign_with_timestamp(&cos, id, &opts, tsa)?);
+        let signed = Arc::new(iridium_pdf_sign::sign_with_timestamp(&cos, id, &opts, tsa)?);
         // Checked like a save before anyone writes it (#2166).
         self.check_save(doc, &signed)?;
         Ok(signed)
@@ -350,23 +353,23 @@ impl Session {
 
     /// Append a standalone document timestamp (RFC 3161, `/ETSI.RFC3161`) covering the file's
     /// current state. An empty `date` takes the session clock; the transport is the caller's.
-    pub fn timestamp_document(&self, doc: DocId, tsa: &dyn pdfcraft_sign::TimestampAuthority, date: String) -> Result<Arc<Vec<u8>>, EditError> {
+    pub fn timestamp_document(&self, doc: DocId, tsa: &dyn iridium_pdf_sign::TimestampAuthority, date: String) -> Result<Arc<Vec<u8>>, EditError> {
         let d = self.get(doc).ok_or(EditError::NoDocument)?;
         let editor = d.editor.as_ref().ok_or_else(|| EditError::ReadOnly(d.read_only_reason.clone().unwrap_or_default()))?;
         let date = if date.is_empty() { self.signing_date() } else { date };
         let cos = writable(&editor.cos)?;
-        let stamped = Arc::new(pdfcraft_sign::timestamp_document(&cos, tsa, &date)?);
+        let stamped = Arc::new(iridium_pdf_sign::timestamp_document(&cos, tsa, &date)?);
         self.check_save(doc, &stamped)?;
         Ok(stamped)
     }
 
     /// Embed revocation evidence into the catalog's `/DSS` with `/VRI` entries per signature
     /// (PAdES B-LT): an incremental update that never rewrites signed bytes.
-    pub fn embed_ltv(&self, doc: DocId, evidence: &pdfcraft_sign::dss::Evidence) -> Result<Arc<Vec<u8>>, EditError> {
+    pub fn embed_ltv(&self, doc: DocId, evidence: &iridium_pdf_sign::dss::Evidence) -> Result<Arc<Vec<u8>>, EditError> {
         let d = self.get(doc).ok_or(EditError::NoDocument)?;
         let editor = d.editor.as_ref().ok_or_else(|| EditError::ReadOnly(d.read_only_reason.clone().unwrap_or_default()))?;
         let cos = writable(&editor.cos)?;
-        let embedded = Arc::new(pdfcraft_sign::dss::embed(&cos, evidence)?);
+        let embedded = Arc::new(iridium_pdf_sign::dss::embed(&cos, evidence)?);
         self.check_save(doc, &embedded)?;
         Ok(embedded)
     }
@@ -389,20 +392,20 @@ impl Session {
 /// viewers show each field's stored appearance; a filled field whose stored appearance draws no
 /// text (an empty placeholder such as `/Tx BMC EMC`, or a stale look) would go blank. So every
 /// text and choice field is drawn from its value first, as the document is displayed
-/// ([`pdfcraft_forms::with_field_appearances`]), and the signature covers that look.
+/// ([`iridium_pdf_forms::with_field_appearances`]), and the signature covers that look.
 ///
-/// One exception: where PdfCraft's drawing would show a character as `?` (the field's font can't
+/// One exception: where PDF's drawing would show a character as `?` (the field's font can't
 /// hold it) and the field's own appearance draws text, the field keeps its own appearance, which
 /// the program that filled it drew with a font that has the character. A field whose own
-/// appearance draws no text gets PdfCraft's drawing, `?` and all. Later signatures change
+/// appearance draws no text gets PDF's drawing, `?` and all. Later signatures change
 /// nothing here: redrawing would count as a change to the earlier signatures.
-fn drawn_for_first_signature(cos: std::borrow::Cow<'_, pdfcraft_cos::Document>) -> std::borrow::Cow<'_, pdfcraft_cos::Document> {
-    use pdfcraft_forms::FieldKind;
-    if !pdfcraft_forms::need_appearances(&cos) || pdfcraft_sign::has_signatures(&cos) {
+fn drawn_for_first_signature(cos: std::borrow::Cow<'_, iridium_pdf_cos::Document>) -> std::borrow::Cow<'_, iridium_pdf_cos::Document> {
+    use iridium_pdf_forms::FieldKind;
+    if !iridium_pdf_forms::need_appearances(&cos) || iridium_pdf_sign::has_signatures(&cos) {
         return cos;
     }
-    let Some(mut drawn) = pdfcraft_forms::with_field_appearances(&cos) else { return cos };
-    for f in pdfcraft_forms::fields(&cos) {
+    let Some(mut drawn) = iridium_pdf_forms::with_field_appearances(&cos) else { return cos };
+    for f in iridium_pdf_forms::fields(&cos) {
         if !matches!(f.kind, FieldKind::Text | FieldKind::Combo | FieldKind::List) {
             continue;
         }
@@ -410,7 +413,7 @@ fn drawn_for_first_signature(cos: std::borrow::Cow<'_, pdfcraft_cos::Document>) 
             let own = cos.get(w.obj).as_dict().filter(|d| draws_text(&cos, d)).and_then(|d| d.get(b"AP").cloned());
             // `.1`: the first character the drawing showed as `?`.
             if let Some(ap) = own
-                && pdfcraft_forms::appearance::field_appearance_drawn(&cos, &f, w, &f.value, true).1.is_some()
+                && iridium_pdf_forms::appearance::field_appearance_drawn(&cos, &f, w, &f.value, true).1.is_some()
             {
                 drawn.update_dict(w.obj, |d| d.set(b"AP".to_vec(), ap)).ok();
             }
@@ -421,27 +424,27 @@ fn drawn_for_first_signature(cos: std::borrow::Cow<'_, pdfcraft_cos::Document>) 
 
 /// Whether the widget's normal appearance stream (`/AP /N`) shows text, itself or through the
 /// form XObjects it paints (a background-only one doesn't count).
-fn draws_text(cos: &pdfcraft_cos::Document, widget: &pdfcraft_cos::Dict) -> bool {
+fn draws_text(cos: &iridium_pdf_cos::Document, widget: &iridium_pdf_cos::Dict) -> bool {
     let ap = widget.get(b"AP").map(|ap| cos.resolve(ap));
     let normal = ap.as_deref().and_then(|ap| ap.as_dict()).and_then(|ap| ap.get(b"N")).map(|n| cos.resolve(n));
-    let Some(pdfcraft_cos::Object::Stream(s)) = normal.as_deref() else { return false };
+    let Some(iridium_pdf_cos::Object::Stream(s)) = normal.as_deref() else { return false };
     stream_draws_text(cos, s, &mut 16)
 }
 
 /// Whether the form stream `s` shows text, following `Do` into its form XObjects. `budget` caps
 /// the streams opened along the way; running out (deep nesting, a cycle, many XObjects) counts
 /// as text, so the field keeps its own appearance as it would without the look inside.
-fn stream_draws_text(cos: &pdfcraft_cos::Document, s: &pdfcraft_cos::Stream, budget: &mut u8) -> bool {
+fn stream_draws_text(cos: &iridium_pdf_cos::Document, s: &iridium_pdf_cos::Stream, budget: &mut u8) -> bool {
     let Ok(data) = s.decoded() else { return false };
     let resources = s.dict.get(b"Resources").map(|r| cos.resolve(r));
     let xobjects = resources.as_deref().and_then(|r| r.as_dict()).and_then(|r| r.get(b"XObject")).map(|x| cos.resolve(x));
-    for op in pdfcraft_content::ops(&data) {
+    for op in iridium_pdf_content::ops(&data) {
         match op.op.as_slice() {
             b"Tj" | b"TJ" | b"'" | b"\"" => return true,
             b"Do" => {
                 let name = op.operands.first().and_then(|n| n.as_name());
                 let x = name.and_then(|n| xobjects.as_deref().and_then(|x| x.as_dict()).and_then(|x| x.get(n))).map(|x| cos.resolve(x));
-                let Some(pdfcraft_cos::Object::Stream(f)) = x.as_deref() else { continue };
+                let Some(iridium_pdf_cos::Object::Stream(f)) = x.as_deref() else { continue };
                 if f.dict.name(b"Subtype") != Some(b"Form") {
                     continue;
                 }

@@ -4,8 +4,8 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString, Stream};
-use pdfcraft_fonts::{literal, win_ansi};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, PdfString, Stream};
+use iridium_pdf_fonts::{literal, win_ansi};
 
 use crate::XfaError;
 use crate::layout::{Action, BorderShape, Form, Item, Page, Rounded, Turned, Widget, WidgetKind};
@@ -30,7 +30,7 @@ pub const SOM_KEY: &[u8] = b"PCSom";
 /// laid out again.
 pub const LAYOUT_KEY: &[u8] = b"PCXfaLayout";
 /// Private key on generated push buttons whose template has a click script: the button has no
-/// PDF action (the script is XFA's, not Acrobat JavaScript); PdfCraft runs the script by the
+/// PDF action (the script is XFA's, not Acrobat JavaScript); PDF runs the script by the
 /// field's SOM path.
 pub const CLICK_KEY: &[u8] = b"PCXfaClick";
 /// Private key on generated date fields: text the date pattern doesn't read is kept, and shown,
@@ -630,11 +630,11 @@ impl Emitter<'_> {
                 Item::Text(s) => {
                     // The form's own text, set in the standard fonts: what they can't draw is
                     // shown as `?` and reported once (the layout goes on), never silently.
-                    if let Some(c) = pdfcraft_fonts::first_undrawable(&s.text) {
+                    if let Some(c) = iridium_pdf_fonts::first_undrawable(&s.text) {
                         const PREFIX: &str = "some of the form's text has characters the standard fonts can't draw";
                         if !self.warnings.iter().any(|w| w.starts_with(PREFIX)) {
                             self.warnings.push(format!(
-                                "{PREFIX} (the first is \"{}\" (U+{:04X})); they are shown as ? until PdfCraft can embed fonts for them",
+                                "{PREFIX} (the first is \"{}\" (U+{:04X})); they are shown as ? until PDF can embed fonts for them",
                                 c.escape_debug(),
                                 u32::from(c)
                             ));
@@ -701,7 +701,7 @@ impl Emitter<'_> {
     /// A link annotation over span `s` (on a page `page_height` tall), when its text links
     /// somewhere: over the text it draws, without the spaces around it, and opening its address.
     /// A span that goes on the link `last` ended in, on the same line, widens that annotation
-    /// instead (a link whose text changes style partway is one link). An address PdfCraft
+    /// instead (a link whose text changes style partway is one link). An address PDF
     /// wouldn't open from a document leaves the text as plain text, with one warning for the form.
     fn text_link(
         &mut self,
@@ -750,7 +750,7 @@ impl Emitter<'_> {
 
     /// Where span `s` links to and the rectangle (PDF user space, on a page `page_height` tall)
     /// over the text it draws, without the spaces around it. `None` for text that links nowhere,
-    /// draws nothing, or links to an address PdfCraft wouldn't open from a document, which is
+    /// draws nothing, or links to an address PDF wouldn't open from a document, which is
     /// warned about once for the form.
     fn link_piece(&mut self, s: &Span, page_height: f64) -> Option<(String, [f64; 4])> {
         let href = s.link.as_deref()?;
@@ -760,7 +760,7 @@ impl Emitter<'_> {
         }
         let Some(target) = link_target(href) else {
             if !self.warnings.iter().any(|w| w.starts_with(LINK_LEFT_OUT)) {
-                self.warnings.push(format!("{LINK_LEFT_OUT}: PdfCraft makes links only of web (http, https) and email (mailto) addresses"));
+                self.warnings.push(format!("{LINK_LEFT_OUT}: PDF makes links only of web (http, https) and email (mailto) addresses"));
             }
             return None;
         };
@@ -777,7 +777,7 @@ fn write_button_action(action: Option<&Action>, d: &mut Dict) {
     match action {
         Some(Action::Script(_)) => {
             // An XFA click script is no Acrobat JavaScript: no PDF action, which other
-            // viewers would run; PdfCraft finds the script by the field's SOM path.
+            // viewers would run; PDF finds the script by the field's SOM path.
             d.set(CLICK_KEY.to_vec(), Object::Bool(true));
         }
         Some(action) => {
@@ -857,10 +857,10 @@ struct LinkPiece {
 /// How the layout warning about a link left out starts.
 const LINK_LEFT_OUT: &str = "a link in the form's text was left as plain text";
 
-/// The longest link address kept, in characters: as long as PdfCraft opens from a document.
+/// The longest link address kept, in characters: as long as PDF opens from a document.
 const MAX_LINK: usize = 2048;
 
-/// `href` as the address of a link PdfCraft makes from a form's text: a web (http, https) or
+/// `href` as the address of a link PDF makes from a form's text: a web (http, https) or
 /// email (mailto) address, trimmed, of at most [`MAX_LINK`] characters and without control
 /// characters. `None` for anything else (scripts, files, data, relative paths). Opening it still
 /// goes through the app's own checks and prompt.

@@ -1,8 +1,8 @@
 //! The optimizer on absurd image sizes, drawing matrices and settings: it may refuse or leave
 //! things alone, but never panics, hangs or allocates without bound.
 
-use pdfcraft_cos::{Dict, Document, Object, Stream};
-use pdfcraft_optimize::{Compression, ImageSettings, Settings, optimize};
+use iridium_pdf_cos::{Dict, Document, Object, Stream};
+use iridium_pdf_optimize::{Compression, ImageSettings, Settings, optimize};
 
 fn image_dict(w: i64, h: i64, bpc: i64, cs: &str) -> Dict {
     let mut d = Dict::new();
@@ -20,7 +20,7 @@ fn doc_with(img: Stream, content: &str) -> Document {
 }
 
 /// Like [`doc_with`], also returning the image's object so a test can read it back.
-fn doc_with_image(img: Stream, content: &str) -> (Document, pdfcraft_cos::ObjRef) {
+fn doc_with_image(img: Stream, content: &str) -> (Document, iridium_pdf_cos::ObjRef) {
     let mut doc = Document::new_empty();
     let im = doc.add(Object::Stream(img));
     let pages = doc.root().and_then(|r| doc.get(r).as_dict().and_then(|d| d.reference(b"Pages"))).unwrap();

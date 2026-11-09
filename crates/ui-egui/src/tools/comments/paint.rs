@@ -160,8 +160,8 @@ fn paint_gesture(painter: &egui::Painter, cx: &PageCx<'_>, view: &DocView) {
 
 /// One copied comment's outline on screen (`at` maps a user-space point, moved to where the
 /// bundle hangs), in the comment's colour.
-fn paint_outline(painter: &egui::Painter, outline: &pdfcraft_engine::CommentOutline, at: &dyn Fn([f64; 2]) -> Pos2) {
-    use pdfcraft_engine::CommentOutline as O;
+fn paint_outline(painter: &egui::Painter, outline: &iridium_pdf_engine::CommentOutline, at: &dyn Fn([f64; 2]) -> Pos2) {
+    use iridium_pdf_engine::CommentOutline as O;
     let color = |c: &Option<[f64; 3]>| {
         c.map(|[r, g, b]| Color32::from_rgb((r.clamp(0.0, 1.0) * 255.0) as u8, (g.clamp(0.0, 1.0) * 255.0) as u8, (b.clamp(0.0, 1.0) * 255.0) as u8))
             .unwrap_or(SELECT_BLUE)

@@ -3,11 +3,11 @@
 
 use egui::{Key, Modifiers};
 use egui_kittest::Harness;
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_ui_egui::PdfApp;
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.run_inline = true;
         app.set_option("language", "en").unwrap();
         app.open_bytes("form.pdf", None, include_bytes!("../data/form.pdf").to_vec()).unwrap();
@@ -18,7 +18,7 @@ fn harness() -> Harness<'static, PdfCraftApp> {
 }
 
 /// Run frames until `ready`, rendering in between (renders arrive between frames).
-fn wait(h: &mut Harness<'static, PdfCraftApp>, what: &str, ready: impl Fn(&PdfCraftApp) -> bool) {
+fn wait(h: &mut Harness<'static, PdfApp>, what: &str, ready: impl Fn(&PdfApp) -> bool) {
     for _ in 0..600 {
         h.run_steps(1);
         if ready(h.state()) {
@@ -39,11 +39,11 @@ fn a_late_edit_drops_both_views_stale_demand() {
     h.run_steps(4);
     assert_eq!(h.state().views.len(), 2);
     assert_eq!(h.state().views[0].id, h.state().views[1].id, "one document in both panes");
-    let portrait = |s: &PdfCraftApp, i: usize| s.views[i].drawn_page_size(0).is_some_and(|[w, hgt]| hgt > w);
-    let landscape = |s: &PdfCraftApp, i: usize| s.views[i].drawn_page_size(0).is_some_and(|[w, hgt]| w > hgt);
+    let portrait = |s: &PdfApp, i: usize| s.views[i].drawn_page_size(0).is_some_and(|[w, hgt]| hgt > w);
+    let landscape = |s: &PdfApp, i: usize| s.views[i].drawn_page_size(0).is_some_and(|[w, hgt]| w > hgt);
     wait(&mut h, "both panes drawn", |s| portrait(s, 0) && portrait(s, 1));
     let id = h.state().views[0].id;
-    let rotation = |h: &Harness<'static, PdfCraftApp>| h.state().session.get(id).unwrap().info.pages[0].rotation;
+    let rotation = |h: &Harness<'static, PdfApp>| h.state().session.get(id).unwrap().info.pages[0].rotation;
     h.state_mut().set_option("palette", "rotate pages clockwise").unwrap();
     h.run_steps(2);
     assert!(h.state().palette_open);

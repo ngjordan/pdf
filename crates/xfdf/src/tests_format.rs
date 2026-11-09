@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use base64::Engine as _;
-use pdfcraft_cos::{SaveOptions, Stream, write_full};
+use iridium_pdf_cos::{SaveOptions, Stream, write_full};
 use proptest::prelude::*;
 
 use super::*;
@@ -31,7 +31,7 @@ fn pages(n: usize) -> Document {
 }
 
 fn page_ref(doc: &Document, i: usize) -> ObjRef {
-    pdfcraft_model::pages(doc)[i].obj
+    iridium_pdf_model::pages(doc)[i].obj
 }
 
 /// Add an annotation dictionary to page 0 as an object of its own.
@@ -545,7 +545,7 @@ fn unreadable_appearances_are_skipped_recorded_and_drawn_again() {
         assert_eq!(report.comments, 1, "{why}: the comment itself is imported");
         assert_eq!(report.skipped.len(), 1, "{why}: {:?}", report.skipped);
         assert!(report.skipped[0].starts_with("x: "), "{why}: {:?}", report.skipped);
-        // PdfCraft draws the square from its own entries instead.
+        // PDF draws the square from its own entries instead.
         let d = named(&dst, "x");
         let n = sub_dict(&dst, &d, b"AP").get(b"N").map(|o| dst.resolve(o));
         assert!(matches!(n.as_deref(), Some(Object::Stream(_))), "{why}: drawn again");
@@ -577,7 +577,7 @@ fn many_appearances_share_one_import_budget() {
 }
 
 #[test]
-fn an_imported_redaction_mark_is_always_drawn_by_pdfcraft() {
+fn an_imported_redaction_mark_is_always_drawn_by_iridium_pdf() {
     let inner = b64(
         r#"<DICT KEY="AP"><STREAM KEY="N"><ARRAY KEY="BBox"><INT VAL="0"/><INT VAL="0"/><INT VAL="1"/><INT VAL="1"/></ARRAY><DATA ENCODING="ASCII">%nothing</DATA></STREAM></DICT>"#,
     );
@@ -1007,7 +1007,7 @@ fn rich_text_keeps_the_namespaces_it_inherits() {
     );
 }
 
-/// A redaction mark is drawn by PdfCraft whatever the file says: a cloudy border (which a
+/// A redaction mark is drawn by PDF whatever the file says: a cloudy border (which a
 /// redaction has none of) or text the standard fonts can't draw left the file's blank appearance
 /// in place, and the mark removed content nobody saw marked.
 #[test]

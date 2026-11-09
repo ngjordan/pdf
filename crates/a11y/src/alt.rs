@@ -3,8 +3,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use pdfcraft_content::Matrix;
-use pdfcraft_cos::{DecodeBudget, Dict, Document, ObjRef, Object, PdfString, Stream};
+use iridium_pdf_content::Matrix;
+use iridium_pdf_cos::{DecodeBudget, Dict, Document, ObjRef, Object, PdfString, Stream};
 
 /// A Figure element (after the role map).
 #[derive(Clone, Debug, PartialEq)]
@@ -28,7 +28,7 @@ pub enum AltError {
     #[error("the figure's content may be in a damaged or unreadable content stream, or after the damage, so nothing was changed")]
     Damaged,
     #[error("{0}")]
-    Cos(#[from] pdfcraft_cos::CosError),
+    Cos(#[from] iridium_pdf_cos::CosError),
 }
 
 /// Why a structure tag cannot safely become an artifact.
@@ -57,7 +57,7 @@ pub enum ArtifactError {
     #[error("the tag's marked content may be in a damaged or unreadable content stream, or after the damage, so nothing was changed")]
     Damaged,
     #[error(transparent)]
-    Cos(#[from] pdfcraft_cos::CosError),
+    Cos(#[from] iridium_pdf_cos::CosError),
 }
 
 pub(crate) fn tree_root(doc: &Document) -> Option<Dict> {
@@ -162,7 +162,7 @@ fn page_properties(doc: &Document, page: &Dict) -> Dict {
 }
 
 /// The marked-content id a `BDC` opens, whether its property list is inline or named in `props`.
-fn bdc_mcid(doc: &Document, props: &Dict, op: &pdfcraft_content::Op) -> Option<i64> {
+fn bdc_mcid(doc: &Document, props: &Dict, op: &iridium_pdf_content::Op) -> Option<i64> {
     match op.operands.get(1)? {
         Object::Dict(d) => d.get(b"MCID").and_then(Object::as_int),
         Object::Name(n) => props.get(n).map(|x| doc.resolve(x)).and_then(|x| x.as_dict().and_then(|d| d.get(b"MCID").and_then(Object::as_int))),
@@ -223,7 +223,7 @@ fn close(marks: &mut Vec<Mark>, matching: &mut usize, out: &mut HashMap<i64, [f6
 
 /// The page-space box a `Do` operator paints: a form's transformed `/BBox`, or the unit square for an image.
 /// `None` when the operand is not a resolvable XObject or the form's box is malformed.
-fn xobject_bbox(doc: &Document, xobjects: &Dict, op: &pdfcraft_content::Op, top: &Matrix) -> Option<[f64; 4]> {
+fn xobject_bbox(doc: &Document, xobjects: &Dict, op: &iridium_pdf_content::Op, top: &Matrix) -> Option<[f64; 4]> {
     let r = op.name(0).and_then(|n| xobjects.get(n)).and_then(Object::as_ref)?;
     Some(match &*doc.get(r) {
         Object::Stream(s) if s.dict.name(b"Subtype") == Some(b"Form") => {
@@ -254,7 +254,7 @@ pub(crate) fn content_bboxes(doc: &Document, page: &Dict, ids: &HashSet<i64>) ->
     let mut matching = 0usize;
     let mut out = HashMap::new();
     let mut path: Vec<(f64, f64)> = Vec::new();
-    for op in pdfcraft_content::parse(&page_content(doc, page)).ops {
+    for op in iridium_pdf_content::parse(&page_content(doc, page)).ops {
         crate::count_mark_reads(1);
         let inside = matching > 0;
         let top = ctm.last().copied().unwrap_or(Matrix([1.0, 0.0, 0.0, 1.0, 0.0, 0.0]));
@@ -320,7 +320,7 @@ pub(crate) fn content_bboxes(doc: &Document, page: &Dict, ids: &HashSet<i64>) ->
 pub fn figures(doc: &Document) -> Vec<Figure> {
     let Some(root) = tree_root(doc) else { return Vec::new() };
     let role_map = root.get(b"RoleMap").map(|o| doc.resolve(o)).and_then(|o| o.as_dict().cloned()).unwrap_or_default();
-    let pages = pdfcraft_model::pages(doc);
+    let pages = iridium_pdf_model::pages(doc);
     let index: HashMap<ObjRef, usize> = pages.iter().enumerate().map(|(i, p)| (p.obj, i)).collect();
     let figures: Vec<(Element, Option<usize>)> = elements(doc)
         .into_iter()
@@ -421,7 +421,7 @@ fn decode_page_streams(doc: &Document, page: &Dict) -> Option<Vec<DecodedStream>
     Some(streams)
 }
 
-fn marked_id(doc: &Document, props: &Dict, op: &pdfcraft_content::Op, ids: &HashSet<i64>) -> Option<i64> {
+fn marked_id(doc: &Document, props: &Dict, op: &iridium_pdf_content::Op, ids: &HashSet<i64>) -> Option<i64> {
     (op.op == b"BDC").then(|| bdc_mcid(doc, props, op)).flatten().filter(|n| ids.contains(n))
 }
 
@@ -442,17 +442,17 @@ enum Marked {
 /// With `require_all`, every id in `ids` must appear on the page before any stream is rewritten.
 fn artifact_marked_content(
     doc: &mut Document,
-    page: &pdfcraft_model::Page,
+    page: &iridium_pdf_model::Page,
     streams: Vec<DecodedStream>,
     ids: &HashSet<i64>,
     require_all: bool,
-) -> Result<Marked, pdfcraft_cos::CosError> {
+) -> Result<Marked, iridium_pdf_cos::CosError> {
     let props = page_properties(doc, &page.dict);
     // The pieces are the streams, in order.
     let decoded: Vec<&[u8]> = streams.iter().filter_map(|(_, s)| s.as_ref().map(|(_, bytes, _)| bytes.as_slice())).collect();
     let read: Vec<Read> = streams.iter().filter_map(|(_, s)| s.as_ref().map(|(_, _, read)| *read)).collect();
     let damage = read.iter().position(|r| *r == Read::Damaged);
-    let pieces = pdfcraft_content::Pieces::join(&decoded);
+    let pieces = iridium_pdf_content::Pieces::join(&decoded);
     let mut found = HashSet::new();
     let mut edits = Vec::new();
     for op in pieces.parse().ops {
@@ -518,7 +518,7 @@ fn artifact_marked_content(
 pub fn mark_decorative(doc: &mut Document, obj: ObjRef) -> Result<(), AltError> {
     let d = check_figure(doc, obj)?;
     let ids: HashSet<i64> = mcids(doc, &d).into_iter().collect();
-    let pages = pdfcraft_model::pages(doc);
+    let pages = iridium_pdf_model::pages(doc);
     let pg = d.get(b"Pg").and_then(Object::as_ref).or_else(|| elements(doc).into_iter().find(|e| e.object == obj).and_then(|e| e.page));
     if let Some(page) = pg.and_then(|p| pages.iter().find(|x| x.obj == p)).filter(|_| !ids.is_empty()) {
         let streams = decode_page_streams(doc, &page.dict).ok_or(AltError::TooLarge)?;
@@ -565,7 +565,7 @@ pub fn mark_tag_artifact(doc: &mut Document, obj: ObjRef) -> Result<(), Artifact
     if ids.is_empty() {
         return Err(ArtifactError::NoMarkedContent);
     }
-    let pages = pdfcraft_model::pages(doc);
+    let pages = iridium_pdf_model::pages(doc);
     let page_ref = element.page.ok_or(ArtifactError::NoPage)?;
     let page = pages.iter().find(|page| page.obj == page_ref).ok_or(ArtifactError::NoPage)?;
     let parent = element.dict.get(b"P").and_then(Object::as_ref).ok_or(ArtifactError::NoParent)?;

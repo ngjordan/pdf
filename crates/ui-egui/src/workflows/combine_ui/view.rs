@@ -1,9 +1,9 @@
 use super::files::{CombineFile, CombineView, Lock, RowAction};
 use super::table::{TableEvents, table};
-use super::{Align, BTreeSet, CornerRadius, ERROR, Layout, Modifiers, PdfCraftApp, Rect, Stroke, Tokens, icons, theme, vec2, widgets};
+use super::{Align, BTreeSet, CornerRadius, ERROR, Layout, Modifiers, PdfApp, Rect, Stroke, Tokens, icons, theme, vec2, widgets};
 
 /// The Combine files page.
-pub(crate) fn page(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
+pub(crate) fn page(app: &mut PdfApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let files_hovering = ui.ctx().input(|i| !i.raw.hovered_files.is_empty());
     // Ranges are checked before anything below reads them.
@@ -279,7 +279,7 @@ pub(crate) fn page(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
 const SKIP_PROMPT_NAMES: usize = 8;
 
 /// "Leave out files that can't be read?": names them and why, then combines the others, or not.
-fn skip_prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
+fn skip_prompt(app: &mut PdfApp, ctx: &egui::Context) {
     if !app.combine_tab.confirm_skip {
         return;
     }
@@ -332,7 +332,7 @@ fn skip_prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
 
 /// Unlock…'s password box, floating below what opened it. Enter unlocks, Escape or a click
 /// elsewhere closes it.
-fn unlock_prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
+fn unlock_prompt(app: &mut PdfApp, ctx: &egui::Context) {
     let Some(mut prompt) = app.combine_tab.unlock.take() else { return };
     let t = Tokens::get(ctx);
     let files: Vec<&CombineFile> = app.combine_draft.iter().filter(|f| prompt.rows.contains(&f.id)).collect();
@@ -539,7 +539,7 @@ fn zoom_keys(ui: &egui::Ui, zoom: f32) -> Option<f32> {
 
 /// The grid's card size, at the right of the toolbar (right to left: larger, the percentage, the
 /// slider, smaller), as the page grid's.
-fn zoom_controls(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, edge: f32) {
+fn zoom_controls(app: &mut PdfApp, ui: &mut egui::Ui, t: &Tokens, edge: f32) {
     use crate::combine_grid::{ZOOM_RANGE, zoom_step};
     let zoom = app.combine_zoom;
     // Two buttons, the percentage, the slider and the spaces between: on a line of their own when
@@ -578,7 +578,7 @@ fn zoom_controls(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, edge: f32
     });
 }
 
-fn empty_state(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, files_hovering: bool) {
+fn empty_state(app: &mut PdfApp, ui: &mut egui::Ui, t: &Tokens, files_hovering: bool) {
     ui.vertical_centered(|ui| {
         ui.add_space((ui.available_height() / 2.0 - 70.0).max(16.0));
         ui.add(icons::image("files", 40.0, if files_hovering { t.accent } else { t.text_faint }));
@@ -606,7 +606,7 @@ fn empty_state(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, files_hover
 }
 
 /// "Add files…" with a menu of the other ways to add: folders (desktop).
-fn add_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
+fn add_menu(app: &mut PdfApp, ui: &mut egui::Ui) {
     if !cfg!(not(target_arch = "wasm32")) {
         if widgets::icon_pill(ui, "plus", tl!("Add files…"), false).clicked() {
             app.combine_dialog();

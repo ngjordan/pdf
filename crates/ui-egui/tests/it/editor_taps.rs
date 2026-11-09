@@ -6,7 +6,7 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_ui_egui::PdfApp;
 
 use crate::support::input::touch_tap;
 
@@ -58,9 +58,9 @@ fn text_pdf() -> Vec<u8> {
 }
 
 /// The app with `pdf` open at 150 % and its first frames run.
-fn open(pdf: Vec<u8>) -> Harness<'static, PdfCraftApp> {
+fn open(pdf: Vec<u8>) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("test.pdf", None, pdf).unwrap();
         app.set_option("left", "closed").unwrap();
@@ -75,7 +75,7 @@ fn open(pdf: Vec<u8>) -> Harness<'static, PdfCraftApp> {
 
 /// A mouse click: move, press and release in frames of their own, and the pointer stays there.
 /// (`drop_at` also sends `PointerGone` a frame later, as if the mouse left the window.)
-fn mouse_click(h: &mut Harness<'_, PdfCraftApp>, p: egui::Pos2) {
+fn mouse_click(h: &mut Harness<'_, PdfApp>, p: egui::Pos2) {
     h.hover_at(p);
     h.run_steps(1);
     h.drag_at(p);
@@ -85,30 +85,30 @@ fn mouse_click(h: &mut Harness<'_, PdfCraftApp>, p: egui::Pos2) {
 }
 
 /// Where field `name`'s widget is on screen.
-fn field(h: &Harness<'_, PdfCraftApp>, name: &str) -> egui::Rect {
+fn field(h: &Harness<'_, PdfApp>, name: &str) -> egui::Rect {
     widget(h, name, 0)
 }
 
 /// Where widget `w` of field `name` is on screen.
-fn widget(h: &Harness<'_, PdfCraftApp>, name: &str, w: usize) -> egui::Rect {
+fn widget(h: &Harness<'_, PdfApp>, name: &str, w: usize) -> egui::Rect {
     let s = h.state();
     let doc = s.session.get(s.views[0].id).unwrap();
     let f = doc.form.iter().find(|f| f.name == name).unwrap();
-    pdfcraft_ui_egui::forms_ui::field_screen_rect(&s.views[0], &doc.info, f, w).expect("on screen")
+    iridium_pdf_ui_egui::forms_ui::field_screen_rect(&s.views[0], &doc.info, f, w).expect("on screen")
 }
 
-fn value(h: &Harness<'_, PdfCraftApp>, name: &str) -> Vec<String> {
+fn value(h: &Harness<'_, PdfApp>, name: &str) -> Vec<String> {
     let s = h.state();
     s.session.get(s.views[0].id).unwrap().form.iter().find(|f| f.name == name).unwrap().value.clone()
 }
 
 /// The field whose editor or list is open.
-fn focus(h: &Harness<'_, PdfCraftApp>) -> Option<String> {
+fn focus(h: &Harness<'_, PdfApp>) -> Option<String> {
     h.state().views[0].forms.focus.as_ref().map(|f| f.name.clone())
 }
 
 /// The Green row of the list box: the second, rows being 11.5 pt under a 2 pt inset.
-fn green(h: &Harness<'_, PdfCraftApp>) -> egui::Pos2 {
+fn green(h: &Harness<'_, PdfApp>) -> egui::Pos2 {
     let r = field(h, "colour");
     egui::pos2(r.center().x, r.min.y + 19.0 * r.height() / 70.0)
 }
@@ -183,18 +183,18 @@ fn touch_tap_inside_an_open_text_field_keeps_typing_there() {
 const MONTHS: [&str; 12] = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 /// Adds a date field `due` at x 40..160, y 240..260, its calendar under it.
-fn add_date_field(h: &mut Harness<'_, PdfCraftApp>) {
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::AddField {
+fn add_date_field(h: &mut Harness<'_, PdfApp>) {
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddField {
         page: 0,
         rect: [40.0, 240.0, 160.0, 260.0],
-        kind: pdfcraft_engine::NewField::Date,
+        kind: iridium_pdf_engine::NewField::Date,
         name: Some("due".into()),
     });
     h.run_steps(4);
 }
 
 /// Next month's calendar heading, and its 15th as the date field writes it.
-fn next_month(h: &Harness<'_, PdfCraftApp>) -> (String, String) {
+fn next_month(h: &Harness<'_, PdfApp>) -> (String, String) {
     let (y, m, _) = h.state().session.today();
     let (ny, nm) = if m == 12 { (y + 1, 1) } else { (y, m + 1) };
     (format!("{} {ny}", MONTHS[(nm - 1) as usize]), format!("{nm:02}/15/{ny}"))
@@ -305,7 +305,7 @@ fn touch_tap_on_a_radio_button_keeps_the_group_focused() {
 // that same frame, which hides a click away.
 
 /// Opens the line of `text_pdf` for typing with Edit text.
-fn edit_paragraph(h: &mut Harness<'_, PdfCraftApp>) {
+fn edit_paragraph(h: &mut Harness<'_, PdfApp>) {
     assert!(h.state_mut().execute("edit.edit_text"));
     h.run_steps(2);
     let r = h.state().views[0].page_screen_rect(0).expect("page on screen");
@@ -318,7 +318,7 @@ fn edit_paragraph(h: &mut Harness<'_, PdfCraftApp>) {
 }
 
 /// The open paragraph's line spacing, if a paragraph is open.
-fn line_spacing(h: &Harness<'_, PdfCraftApp>) -> Option<f64> {
+fn line_spacing(h: &Harness<'_, PdfApp>) -> Option<f64> {
     h.state().views[0].line_editor.as_ref().map(|e| e.extras.line_spacing)
 }
 

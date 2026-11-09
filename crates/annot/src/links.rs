@@ -1,7 +1,7 @@
 //! Links (ISO 32000-2 §12.5.6.5): create, edit and remove link annotations with Acrobat's Link
 //! Properties (appearance and a go-to-page or open-a-web-page action).
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, PdfString};
 
 use crate::{AnnotError, annots, page_ref, page_refs, set_annots};
 
@@ -14,7 +14,7 @@ pub enum LinkAction {
         zoom: LinkZoom,
     },
     Uri(String),
-    /// Something PdfCraft doesn't edit yet (named destination, JavaScript…): kept as is.
+    /// Something PDF doesn't edit yet (named destination, JavaScript…): kept as is.
     Other(String),
 }
 

@@ -26,8 +26,8 @@ pub(crate) fn failed(e: impl std::fmt::Display) -> ToolError {
     ToolError::Failed(e.to_string())
 }
 
-impl From<pdfcraft_engine::EditError> for ToolError {
-    fn from(e: pdfcraft_engine::EditError) -> Self {
+impl From<iridium_pdf_engine::EditError> for ToolError {
+    fn from(e: iridium_pdf_engine::EditError) -> Self {
         failed(e)
     }
 }

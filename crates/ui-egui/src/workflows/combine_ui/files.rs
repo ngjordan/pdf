@@ -157,13 +157,13 @@ impl ConflictPreview {
     /// changed. A file split into parts is combined as one file, once — each group's first
     /// entry stands for it, as the combine does — and every part shows the file's preview.
     /// A file that cannot be opened previews as nothing (its row says why).
-    pub(super) fn refresh(&mut self, session: &pdfcraft_engine::Session, files: &[CombineFile]) {
+    pub(super) fn refresh(&mut self, session: &iridium_pdf_engine::Session, files: &[CombineFile]) {
         let key = (files.iter().map(|f| f.id).collect(), files.iter().map(|f| f.password.is_some()).collect());
         if self.key == key && self.per_file.len() == files.len() {
             return;
         }
         let mut groups: Vec<u64> = Vec::new();
-        let mut sources: Vec<pdfcraft_engine::CombineSource> = Vec::new();
+        let mut sources: Vec<iridium_pdf_engine::CombineSource> = Vec::new();
         let mut passwords: Vec<Option<&str>> = Vec::new();
         for f in files {
             if groups.contains(&f.group) {
@@ -213,18 +213,18 @@ pub(super) enum AssessError {
 pub(super) fn assess(bytes: &Arc<Vec<u8>>, password: Option<&str>) -> Result<Assessed, AssessError> {
     // The engine that combines decides whether the password works; the inspector (which may
     // not accept every password the engine does, e.g. an RC4 owner password) adds the details.
-    let check = pdfcraft_engine::combine_source_check(bytes, password);
+    let check = iridium_pdf_engine::combine_source_check(bytes, password);
     if check == Err(SourceProblem::WrongPassword) {
         return Err(AssessError::WrongPassword);
     }
-    let info = pdfcraft_render::inspect(bytes.clone(), password);
+    let info = iridium_pdf_render::inspect(bytes.clone(), password);
     if let (Err(SourceProblem::Unreadable(e)), Err(_)) = (&check, &info) {
         return Err(AssessError::Unreadable(e.clone()));
     }
     let info = info.ok();
     let pages = match &info {
         Some(i) => i.pages.len(),
-        None => pdfcraft_engine::source_page_count(bytes, password).unwrap_or(0),
+        None => iridium_pdf_engine::source_page_count(bytes, password).unwrap_or(0),
     };
     let sizes: Arc<[(f32, f32)]> = match &info {
         Some(i) => i.pages.iter().map(|p| (p.width, p.height)).collect(),
@@ -271,7 +271,7 @@ pub(crate) struct Incoming {
     /// Something to tell the user about where it came from.
     pub note: Option<String>,
     /// The open document it is, when it came from a tab.
-    pub open_doc: Option<pdfcraft_engine::DocId>,
+    pub open_doc: Option<iridium_pdf_engine::DocId>,
 }
 
 impl Incoming {
@@ -323,7 +323,7 @@ pub struct CombineFile {
     /// Where it came from, shown among the warnings (e.g. an open document's unsaved changes).
     pub(super) origin_note: Option<String>,
     /// The open document it is, when it came from a tab: Add open documents leaves it out.
-    pub(super) open_doc: Option<pdfcraft_engine::DocId>,
+    pub(super) open_doc: Option<iridium_pdf_engine::DocId>,
     /// The range last checked and the result: the number of pages it takes and the first of
     /// them (0-based), or why it is wrong.
     pub(super) checked: Option<(String, RangeCheck)>,
@@ -378,7 +378,7 @@ impl CombineFile {
         if self.range.trim().is_empty() {
             return Ok((0..self.pages).collect());
         }
-        match pdfcraft_engine::print::select_pages(self.pages, Some(&self.range), &[], pdfcraft_engine::print::Subset::All, false) {
+        match iridium_pdf_engine::print::select_pages(self.pages, Some(&self.range), &[], iridium_pdf_engine::print::Subset::All, false) {
             Ok(p) if p.is_empty() => Err(tl!("No pages selected").to_string()),
             Ok(p) => Ok(p),
             Err(e) => Err(e.to_string()),
@@ -396,7 +396,7 @@ impl CombineFile {
             // checks the first page against the page count.)
             Ok((self.pages, 0))
         } else {
-            match pdfcraft_engine::print::select_pages(self.pages, Some(&self.range), &[], pdfcraft_engine::print::Subset::All, false) {
+            match iridium_pdf_engine::print::select_pages(self.pages, Some(&self.range), &[], iridium_pdf_engine::print::Subset::All, false) {
                 Ok(p) => match p.first() {
                     Some(first) => Ok((p.len(), *first)),
                     None => Err(tl!("No pages selected").to_string()),

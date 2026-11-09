@@ -3,11 +3,11 @@
 //! subject, modified) and Review History (status changes), with Acrobat's Locked box.
 
 use egui::{Align, Layout};
-use pdfcraft_engine::{CommentProps, Edit, LineEnding, NoteIcon};
+use iridium_pdf_engine::{CommentProps, Edit, LineEnding, NoteIcon};
 
 use crate::comments::swatch_grid;
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, widgets};
+use crate::{PdfApp, widgets};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PropsTab {
@@ -49,7 +49,7 @@ fn ending_label(ending: LineEnding) -> &'static str {
     }
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Attach file: ask for a file (or take `attach_override`) and attach it at `at`.
     pub fn attach_file_comment(&mut self, page: usize, at: [f64; 2]) {
         match self.attach_override.take() {
@@ -74,8 +74,8 @@ impl PdfCraftApp {
     /// Add a file attachment comment at `at` on `page` of the active document.
     fn add_attachment_comment(&mut self, page: usize, at: [f64; 2], file: String, data: Vec<u8>) {
         let tool = crate::comments::CommentTool::Attach;
-        let shape = pdfcraft_engine::Shape::Attachment { at, icon: pdfcraft_engine::AttachIcon::PushPin, file, data };
-        let edit = Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+        let shape = iridium_pdf_engine::Shape::Attachment { at, icon: iridium_pdf_engine::AttachIcon::PushPin, file, data };
+        let edit = Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
             page,
             shape,
             style: self.comment_prefs.style(tool),
@@ -150,13 +150,13 @@ impl PdfCraftApp {
     }
 
     /// Give every selected comment of the active document `color`, as one undo step.
-    pub fn colour_selected_comments(&mut self, color: pdfcraft_engine::Rgb) {
+    pub fn colour_selected_comments(&mut self, color: iridium_pdf_engine::Rgb) {
         self.colour_selection(color, |_| true);
     }
 
     /// Give the selected comments that `only` picks `color`, as one undo step: those whose look can
     /// change and that aren't locked (a locked one would refuse the whole step).
-    pub(crate) fn colour_selection(&mut self, color: pdfcraft_engine::Rgb, only: impl Fn(&pdfcraft_render::Annotation) -> bool) {
+    pub(crate) fn colour_selection(&mut self, color: iridium_pdf_engine::Rgb, only: impl Fn(&iridium_pdf_render::Annotation) -> bool) {
         let Some((i, id)) = self.active_ids() else { return };
         let Some(doc) = self.session.get(id) else { return };
         let keys = self.views.get(i).map(|v| v.comments.selection()).unwrap_or_default();
@@ -193,8 +193,8 @@ impl PdfCraftApp {
 
 /// The border shape `p` draws: a Thickness of 0 takes an oval or a circle away with the line, as
 /// the toolbar's Border ▸ None does.
-fn drawn_border_shape(p: &CommentProps) -> Option<pdfcraft_engine::BorderShape> {
-    p.border_shape.map(|s| if p.width.is_some_and(|w| w <= 0.0) { pdfcraft_engine::BorderShape::Rectangle } else { s })
+fn drawn_border_shape(p: &CommentProps) -> Option<iridium_pdf_engine::BorderShape> {
+    p.border_shape.map(|s| if p.width.is_some_and(|w| w <= 0.0) { iridium_pdf_engine::BorderShape::Rectangle } else { s })
 }
 
 /// Which of the comment's parts show an opacity of their own: (its fill, its text). A text box's
@@ -305,7 +305,7 @@ fn changes(o: &CommentProps, e: &CommentProps, page: usize, index: usize, t: &Co
 }
 
 /// Draw the dialog; returns (apply, cancel).
-pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (bool, bool) {
+pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfApp, t: &Tokens) -> (bool, bool) {
     let history: Vec<(String, String, String)> = app
         .active_ids()
         .and_then(|(_, id)| app.session.get(id))
@@ -314,7 +314,7 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (boo
             let me = doc.info.annotations.iter().find(|a| a.page == d.page && a.index == d.index && !a.is_reply());
             // Every state change set on it, including a reviewer's later ones, which reply to
             // their earlier (ISO 32000-2 §12.5.6.3).
-            let states = pdfcraft_render::ReviewStates::new(&doc.info.annotations);
+            let states = iridium_pdf_render::ReviewStates::new(&doc.info.annotations);
             me.map(|a| states.history(a))
                 .unwrap_or_default()
                 .iter()
@@ -385,7 +385,7 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (boo
                         craft_ui::ComboBox::from_id_salt("border-shape")
                             .selected_text(tl!(shape.name()))
                             .show_ui(ui, |ui| {
-                                for s in pdfcraft_engine::BorderShape::ALL {
+                                for s in iridium_pdf_engine::BorderShape::ALL {
                                     ui.selectable_value(shape, s, tl!(s.name()));
                                 }
                             })
@@ -484,7 +484,7 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (boo
                 ui.add(crate::widgets::line(&mut e.subject).desired_width(280.0)).labelled_by(l.id);
                 ui.end_row();
                 ui.label(tl!("Modified"));
-                ui.label(e.modified.as_deref().map(pdfcraft_render::pretty_date).unwrap_or_else(|| "—".into()));
+                ui.label(e.modified.as_deref().map(iridium_pdf_render::pretty_date).unwrap_or_else(|| "—".into()));
                 ui.end_row();
             });
         }

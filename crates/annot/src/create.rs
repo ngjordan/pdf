@@ -270,7 +270,7 @@ pub fn add_annotation(doc: &mut Document, new: &NewAnnotation, meta: &Meta) -> R
             d.set(b"Name".to_vec(), Object::name(mark.name()));
             border(&mut d);
             // Drawn upright for the page as displayed, as a stamp is (#2392).
-            let turn = pdfcraft_model::pages(doc).get(new.page).map_or(0, |p| p.rotation(doc));
+            let turn = iridium_pdf_model::pages(doc).get(new.page).map_or(0, |p| p.rotation(doc));
             if matches!(turn, 90 | 180 | 270) {
                 d.set(b"PCStampRotate".to_vec(), Object::Int(turn));
             }
@@ -278,14 +278,14 @@ pub fn add_annotation(doc: &mut Document, new: &NewAnnotation, meta: &Meta) -> R
         Shape::Stamp { stamp, by, .. } => {
             d.set(b"C".to_vec(), rgb(style.color));
             d.set(b"Name".to_vec(), Object::name(stamp.name()));
-            // Marks the stamp as drawn by PdfCraft: other stamps with standard names keep
+            // Marks the stamp as drawn by PDF: other stamps with standard names keep
             // their own artwork.
             d.set(b"PCStamp".to_vec(), Object::Bool(true));
             if let Some(b) = by {
                 d.set(b"PCByLine".to_vec(), PdfString::text(b));
             }
             // The label is drawn for the page as displayed. A later page rotation is a new edit.
-            let turn = pdfcraft_model::pages(doc).get(new.page).map_or(0, |p| p.rotation(doc));
+            let turn = iridium_pdf_model::pages(doc).get(new.page).map_or(0, |p| p.rotation(doc));
             if matches!(turn, 90 | 180 | 270) {
                 d.set(b"PCStampRotate".to_vec(), Object::Int(turn));
             }
@@ -305,7 +305,7 @@ pub fn add_annotation(doc: &mut Document, new: &NewAnnotation, meta: &Meta) -> R
             // An image signature's rectangle is in user space; on a turned page its appearance is
             // turned back (see `appearance::build`), so it reads upright as displayed.
             if *image && matches!(clean.as_str(), "Signature" | "Initials") {
-                let turn = pdfcraft_model::pages(doc).get(new.page).map_or(0, |p| p.rotation(doc));
+                let turn = iridium_pdf_model::pages(doc).get(new.page).map_or(0, |p| p.rotation(doc));
                 if turn != 0 {
                     d.set(b"PCPictureRotate".to_vec(), Object::Int(turn));
                 }
@@ -363,7 +363,7 @@ pub fn add_annotation(doc: &mut Document, new: &NewAnnotation, meta: &Meta) -> R
             let mut ef = Dict::new();
             ef.set(b"Type".to_vec(), Object::name("EmbeddedFile"));
             ef.set(b"Params".to_vec(), Object::Dict(params));
-            let ef = doc.add(Object::Stream(pdfcraft_cos::Stream::flate(ef, data)));
+            let ef = doc.add(Object::Stream(iridium_pdf_cos::Stream::flate(ef, data)));
             let mut efd = Dict::new();
             efd.set(b"F".to_vec(), Object::Ref(ef));
             efd.set(b"UF".to_vec(), Object::Ref(ef));
@@ -403,7 +403,7 @@ pub fn add_annotation(doc: &mut Document, new: &NewAnnotation, meta: &Meta) -> R
             rich_text(&mut d);
             if !matches!(new.shape, Shape::Callout { .. }) {
                 // The text is laid out for the page as displayed, like a stamp's label.
-                let turn = pdfcraft_model::pages(doc).get(new.page).map_or(0, |p| p.rotation(doc));
+                let turn = iridium_pdf_model::pages(doc).get(new.page).map_or(0, |p| p.rotation(doc));
                 if matches!(turn, 90 | 180 | 270) {
                     d.set(b"PCTextRotate".to_vec(), Object::Int(turn));
                 }
@@ -425,7 +425,7 @@ pub fn add_annotation(doc: &mut Document, new: &NewAnnotation, meta: &Meta) -> R
     if d.name(b"Subtype") == Some(b"Redact")
         && let Some((what, c)) = appearance::undrawable_text(&d)
     {
-        return Err(AnnotError::Undrawable(pdfcraft_fonts::undrawable_message(what, c)));
+        return Err(AnnotError::Undrawable(iridium_pdf_fonts::undrawable_message(what, c)));
     }
     refuse_undrawable_thai(d.name(b"Subtype") == Some(b"FreeText"), &new.contents)?;
     let r = doc.add(Object::Dict(d.clone()));
@@ -443,7 +443,7 @@ pub fn add_annotation(doc: &mut Document, new: &NewAnnotation, meta: &Meta) -> R
 /// fits inside the padding `pad`, as the appearance lays it out at `size`. Other text, and a box
 /// tall enough already, keep the box they were given.
 fn fit_thai_ink(tb: [f64; 4], turn: i64, text: &str, size: f64, pad: f64) -> [f64; 4] {
-    if !text.chars().any(pdfcraft_fonts::shaped_text::is_thai) {
+    if !text.chars().any(iridium_pdf_fonts::shaped_text::is_thai) {
         return tb;
     }
     let [x0, y0, x1, y1] = normalize(tb);

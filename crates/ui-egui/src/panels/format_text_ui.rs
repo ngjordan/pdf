@@ -2,15 +2,15 @@
 //! alignment; bold, italic, underline, superscript and subscript; line and paragraph spacing;
 //! horizontal scale and character spacing. One panel serves a paragraph being edited (with the
 //! fonts already on its page and the spacing controls) and added text (the standard families,
-//! size, colour, style, alignment and character spacing). What PdfCraft can't apply yet (lists,
+//! size, colour, style, alignment and character spacing). What PDF can't apply yet (lists,
 //! paragraph spacing, or line spacing and scale for added text) is shown
 //! disabled and says so.
 //!
 //! The icons are Lucide's (AGENTS.md §1); only the arrangement follows Acrobat.
 
 use egui::{Align, Color32, CornerRadius, Layout, Rect, Sense, Stroke, vec2};
-use pdfcraft_engine::text_script::Script;
-use pdfcraft_engine::{AddedText, FontFamily, TextAlign};
+use iridium_pdf_engine::text_script::Script;
+use iridium_pdf_engine::{AddedText, FontFamily, TextAlign};
 
 use crate::edit_text_ui::Extras;
 use crate::theme::Tokens;
@@ -57,7 +57,7 @@ pub(crate) struct Paragraphs<'a> {
 impl Paragraphs<'_> {
     /// The paragraphs a selection touches, or `None` with nothing selected.
     fn selected(&self) -> Option<std::ops::RangeInclusive<usize>> {
-        self.selection.clone().filter(|r| !r.is_empty()).map(|r| pdfcraft_engine::paragraph_align::selected(self.text, r))
+        self.selection.clone().filter(|r| !r.is_empty()).map(|r| iridium_pdf_engine::paragraph_align::selected(self.text, r))
     }
 
     /// The alignment the buttons show: the first selected paragraph's, or the box's.
@@ -72,8 +72,8 @@ impl Paragraphs<'_> {
         }
         match self.selected() {
             Some(which) => {
-                let count = pdfcraft_engine::paragraph_align::count(self.text);
-                look.aligns = pdfcraft_engine::paragraph_align::set(&look.aligns, count, which, align, self.tidy.then_some(look.align));
+                let count = iridium_pdf_engine::paragraph_align::count(self.text);
+                look.aligns = iridium_pdf_engine::paragraph_align::set(&look.aligns, count, which, align, self.tidy.then_some(look.align));
             }
             None => {
                 look.align = align;
@@ -199,7 +199,7 @@ pub(crate) fn panel(
                                 ui.separator();
 
                                 let query_lower = query.trim().to_lowercase();
-                                let mut families: std::collections::BTreeMap<&str, Vec<&pdfcraft_engine::text_fonts::FontFile>> =
+                                let mut families: std::collections::BTreeMap<&str, Vec<&iridium_pdf_engine::text_fonts::FontFile>> =
                                     std::collections::BTreeMap::new();
                                 for font in &list {
                                     if query_lower.is_empty()
@@ -330,7 +330,7 @@ pub(crate) fn panel(
         }
         if let Some(p) = &paragraphs {
             for (script, icon, tip) in [(Script::Super, "superscript", tl!("Superscript")), (Script::Sub, "subscript", tl!("Subscript"))] {
-                let on = pdfcraft_engine::text_script::is_in(p.text, p.selection.as_ref(), script);
+                let on = iridium_pdf_engine::text_script::is_in(p.text, p.selection.as_ref(), script);
                 if icons::button(ui, icon, 30.0, on, tip).clicked() {
                     out.script = Some(script);
                 }
@@ -441,7 +441,7 @@ fn row<R>(ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui) -> R) -> R {
     .inner
 }
 
-/// A control PdfCraft doesn't have yet: its icon, disabled, saying so when hovered.
+/// A control PDF doesn't have yet: its icon, disabled, saying so when hovered.
 fn planned(ui: &mut egui::Ui, icon: &str, label: &str) {
     let _ = ui
         .add_enabled_ui(false, |ui| icons::button(ui, icon, 30.0, false, label))
@@ -669,7 +669,7 @@ mod typed_size_tests {
         let padding = 2.0 * style.spacing.button_padding.x;
         assert!(field.rect().width() - padding >= width, "Mixed must fit inside the input margins");
         assert!(h.get_by_label("Alignment").rect().right() <= 272.0, "the wider size field must leave room for the rest of the format row");
-        if let Ok(path) = std::env::var("PDFCRAFT_MIXED_PANEL_SHOT") {
+        if let Ok(path) = std::env::var("IRIDIUM_PDF_MIXED_PANEL_SHOT") {
             h.render().unwrap().save(path).unwrap();
         }
     }
@@ -695,7 +695,7 @@ mod typed_size_tests {
         h.state_mut().1 = true;
         h.run_steps(2);
         assert_eq!(field(&h).as_deref(), Some("Mixed"), "collapsing to a mixed block must refresh even when its representative size stays 24");
-        if let Ok(path) = std::env::var("PDFCRAFT_MIXED_SIZE_SHOT") {
+        if let Ok(path) = std::env::var("IRIDIUM_PDF_MIXED_SIZE_SHOT") {
             h.render().unwrap().save(path).unwrap();
         }
         h.state_mut().1 = false;

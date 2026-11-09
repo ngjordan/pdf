@@ -4,8 +4,8 @@
 use egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_render::ReadingColors;
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_render::ReadingColors;
+use iridium_pdf_ui_egui::PdfApp;
 
 /// One valid page (proper xref, so no repair banner covers the dialog): black text on white.
 fn pdf() -> Vec<u8> {
@@ -59,7 +59,7 @@ fn pending_pages_use_document_reading_background() {
         (ReadingColors::GREEN_ON_BLACK, Color32::BLACK),
         (custom, Color32::from_rgb(0x18, 0x24, 0x30)),
     ] {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("pending.pdf", None, pdf_pages(3)).unwrap();
         let id = app.views[0].id;
@@ -72,7 +72,7 @@ fn pending_pages_use_document_reading_background() {
             // race the assertion or hide the pending-page background.
             let mut output =
                 ctx.run_ui(RawInput { screen_rect: Some(Rect::from_min_size(pos2(0.0, 0.0), vec2(900.0, 600.0))), ..Default::default() }, |ui| {
-                    pdfcraft_ui_egui::canvas::document_area(&mut app, 0, ui);
+                    iridium_pdf_ui_egui::canvas::document_area(&mut app, 0, ui);
                 });
             output.textures_delta.clear();
             let view = &app.views[0];
@@ -103,7 +103,7 @@ fn png() -> Vec<u8> {
 #[test]
 fn reading_colours_preference_round_trips() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, pdf()).expect("opens");
         app.set_option("dialog", "preferences").unwrap();
@@ -124,11 +124,11 @@ fn reading_colours_preference_round_trips() {
     h.run_steps(1);
 
     // The choice survives a restart through the same path the settings file uses.
-    let mut restored = PdfCraftApp::new();
+    let mut restored = PdfApp::new();
     restored.restore(&h.state().persist());
     assert_eq!(restored.reading_colors, ReadingColors::WHITE_ON_BLACK);
     // A settings file without the field keeps Off.
-    let mut fresh = PdfCraftApp::new();
+    let mut fresh = PdfApp::new();
     fresh.restore(r#"{"theme": "dark"}"#);
     assert_eq!(fresh.reading_colors, ReadingColors::default());
     // A corrupt value fails to deserialize and falls back to Off instead of panicking.
@@ -141,7 +141,7 @@ fn reading_colours_preference_round_trips() {
 #[test]
 fn reading_presets_follow_appearance_and_do_not_change_the_interface_theme() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.set_option("dialog", "preferences").unwrap();
         app
@@ -168,7 +168,7 @@ fn reading_presets_follow_appearance_and_do_not_change_the_interface_theme() {
         assert_eq!(h.state().theme_preference, theme);
         assert_eq!(h.query_by_label("Original").is_some(), expected.params.is_none());
     }
-    if let Ok(path) = std::env::var("PDFCRAFT_READING_SHOT") {
+    if let Ok(path) = std::env::var("IRIDIUM_PDF_READING_SHOT") {
         h.render().unwrap().save(path).unwrap();
     }
 }
@@ -176,7 +176,7 @@ fn reading_presets_follow_appearance_and_do_not_change_the_interface_theme() {
 #[test]
 fn reading_colours_seed_on_open() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.reading_colors = ReadingColors::WHITE_ON_BLACK;
         app.open_bytes("doc.pdf", None, pdf()).expect("opens");
@@ -196,7 +196,7 @@ fn reading_colours_seed_on_open() {
     // incremental save.
     {
         let s = &mut h.state_mut().session;
-        s.apply(id, pdfcraft_engine::Edit::SetInfo { key: "Title".into(), value: "Second".into() }).unwrap();
+        s.apply(id, iridium_pdf_engine::Edit::SetInfo { key: "Title".into(), value: "Second".into() }).unwrap();
         let saved = s.save_bytes(id).unwrap();
         s.mark_saved(id, saved, None).unwrap();
     }

@@ -141,7 +141,7 @@ mod manifest_tests {
     /// input accepts another script and a missing asset still fails.
     #[test]
     fn required_native_manifest_rejects_non_hans_faces_after_parsing() {
-        let root = std::env::temp_dir().join(format!("pdfcraft-required-hans-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("iridium-pdf-required-hans-{}", std::process::id()));
         std::fs::create_dir_all(&root).unwrap();
         std::fs::write(root.join("face.ttf"), b"synthetic manifest fixture").unwrap();
         let path = root.join("manifest.txt");

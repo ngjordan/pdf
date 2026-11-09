@@ -1,6 +1,6 @@
 use super::{Host, Reply, Value, json};
 
-impl Host for crate::PdfCraftApp {
+impl Host for crate::PdfApp {
     /// Cancel any in-progress pointer gesture in every open view.
     fn cancel_pointer_gestures(&mut self) {
         for view in &mut self.views {
@@ -166,7 +166,7 @@ impl Host for crate::PdfCraftApp {
     }
 
     fn command(&mut self, id: &str) -> Reply {
-        let spec = pdfcraft_engine::commands::command(id).ok_or_else(|| format!("unknown command {id:?} (see ui.commands)"))?;
+        let spec = iridium_pdf_engine::commands::command(id).ok_or_else(|| format!("unknown command {id:?} (see ui.commands)"))?;
         if !self.command_enabled(spec) {
             return Err(format!("{id} is disabled right now"));
         }
@@ -175,7 +175,7 @@ impl Host for crate::PdfCraftApp {
     }
 
     fn commands(&self) -> Value {
-        let mut list: Vec<Value> = pdfcraft_engine::commands::COMMANDS
+        let mut list: Vec<Value> = iridium_pdf_engine::commands::COMMANDS
             .iter()
             .map(|c| json!({ "id": c.id, "label": c.label, "menu": c.menu, "enabled": self.command_enabled(c), "shortcut": c.shortcut.map(|s| s.label(cfg!(target_os = "macos"))) }))
             .collect();

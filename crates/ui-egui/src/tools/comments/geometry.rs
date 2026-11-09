@@ -43,7 +43,7 @@ pub(super) fn point_handle(cx: &PageCx<'_>, a: &Annotation, p: Pos2) -> Option<u
 /// next end or corner of a line, arrow, connected lines, polygon or cloud.
 pub(crate) fn held(last: Option<&[f64; 2]>, to: [f64; 2], shift: bool) -> [f64; 2] {
     match last {
-        Some(l) if shift => pdfcraft_engine::measure::snap::ortho(*l, to),
+        Some(l) if shift => iridium_pdf_engine::measure::snap::ortho(*l, to),
         _ => to,
     }
 }
@@ -149,7 +149,7 @@ pub(crate) fn caret_snap(text: &PageText, vx: f32, vy: f32) -> Option<([f32; 2],
     if !(slack.is_finite() && slack > 0.0) || vx < x0 - slack || vx > x1 + slack || vy < y0 - slack || vy > y1 + slack {
         return None;
     }
-    // The em box runs from 0.2 em below the baseline to 0.8 em above it (`pdfcraft_render`'s
+    // The em box runs from 0.2 em below the baseline to 0.8 em above it (`iridium_pdf_render`'s
     // text extraction); `quad` is its bottom edge in the writing direction, then its top edge
     // backwards. Take the side of the box the click is nearer to: its foot and head.
     let [q0, q1, q2, q3] = g.quad;
@@ -175,13 +175,13 @@ pub fn snug_text_box_rect(at: [f64; 2], text: &str, size: f64, rotation: i64) ->
 }
 
 fn sized_text_box_rect(at: [f64; 2], text: &str, size: f64, rotation: i64, min_width: f64) -> [f64; 4] {
-    use pdfcraft_engine::annot_text::{text_width, wrap};
+    use iridium_pdf_engine::annot_text::{text_width, wrap};
     let pad = 2.0;
     let longest = text.lines().map(|l| text_width(l, size)).fold(0.0, f64::max);
     let w = (longest + 2.0 * pad + 4.0).clamp(min_width, 300.0);
     let lines = wrap(text, size, w - 2.0 * pad).len().max(1);
     let h = lines as f64 * size * 1.2 + 2.0 * pad + 2.0;
-    pdfcraft_engine::text_box_at(rotation, at, w, h).unwrap_or([at[0], at[1] - h, at[0] + w, at[1]])
+    iridium_pdf_engine::text_box_at(rotation, at, w, h).unwrap_or([at[0], at[1] - h, at[0] + w, at[1]])
 }
 
 /// The box dragged between user-space points `a` and `b`: its displayed top-left corner (user
@@ -198,7 +198,7 @@ pub(super) fn drawn_box(page: &PageInfo, a: [f64; 2], b: [f64; 2]) -> ([f64; 2],
 /// appearance lays it out. When the text needs more lines the box grows down, and moves up to stay
 /// on the page; text that cannot fit even so keeps the drawn height and is clipped.
 pub fn drawn_text_box_rect(page: &PageInfo, at: [f64; 2], size: [f64; 2], text: &str, font_size: f64, border: f64) -> [f64; 4] {
-    use pdfcraft_engine::annot_text::wrap;
+    use iridium_pdf_engine::annot_text::wrap;
     let pad = 2.0 + border.max(0.0);
     let [w, drawn] = size;
     let lines = wrap(text, font_size, (w - 2.0 * pad).max(1.0)).len().max(1);
@@ -207,7 +207,7 @@ pub fn drawn_text_box_rect(page: &PageInfo, at: [f64; 2], size: [f64; 2], text: 
     let bottom = f64::from(page.height);
     let (top, h) = if needed <= drawn || needed > bottom { (vy, drawn) } else { (vy.min(bottom - needed).max(0.0), needed) };
     let at = page.view_to_user(vx as f32, top as f32).map(f64::from);
-    pdfcraft_engine::text_box_at(i64::from(page.rotation), at, w, h).unwrap_or([at[0], at[1] - h, at[0] + w, at[1]])
+    iridium_pdf_engine::text_box_at(i64::from(page.rotation), at, w, h).unwrap_or([at[0], at[1] - h, at[0] + w, at[1]])
 }
 
 /// The `/Rotate` of `page` (0 when it is unknown).

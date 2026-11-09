@@ -2,7 +2,7 @@ use super::{Dict, Object, PartOpacity, PdfString, Rgb, Stream, color, ext_gstate
 
 /// The label and colour of a standard rubber stamp name (ISO 32000-2 Table 184), for a stamp
 /// another program wrote without an appearance. Names are matched byte for byte, as PDF names
-/// are compared (§7.3.5). Eight are stamps of PdfCraft's palette; the other six take a label of
+/// are compared (§7.3.5). Eight are stamps of PDF's palette; the other six take a label of
 /// their own and the palette's colour for their meaning.
 fn standard_stamp(name: &[u8]) -> Option<(&'static str, Rgb)> {
     use crate::StampKind::*;
@@ -33,7 +33,7 @@ const PLACEHOLDER_GREY: Rgb = [0.45, 0.45, 0.45];
 ///
 /// For display only ([`crate::with_missing_appearances`]): [`build`] declines these stamps, so
 /// edits (restyling, flattening) never write this drawing into the file. `None` for any other
-/// annotation, one of PdfCraft's own stamps, a dictionary with an `/AP` (a stamp's own artwork is
+/// annotation, one of PDF's own stamps, a dictionary with an `/AP` (a stamp's own artwork is
 /// never replaced; the display copy passes the dictionary without an `/AP` that has no normal
 /// appearance), or a `/Rect` that isn't finite or is under a point wide or high.
 pub(crate) fn display_stamp(d: &Dict) -> Option<Stream> {
@@ -103,7 +103,7 @@ fn line_length(v: Option<f64>) -> f64 {
 
 /// The caption a Line with `/Cap true` shows (ISO 32000-2 Table 178): its `/Contents`, else the
 /// plain text of its `/RC`, on one line and cut to [`MAX_CAPTION_CHARS`]. `None` without a
-/// caption, and for PdfCraft's own measurements, whose label (`/PCMeasureValue`) is the caption.
+/// caption, and for PDF's own measurements, whose label (`/PCMeasureValue`) is the caption.
 pub(super) fn line_caption(d: &Dict) -> Option<String> {
     if !matches!(d.get(b"Cap"), Some(Object::Bool(true))) || d.contains(b"PCMeasureValue") {
         return None;
@@ -411,9 +411,9 @@ pub(super) fn ellipse(x0: f64, y0: f64, x1: f64, y1: f64) -> String {
     s
 }
 
-/// PdfCraft's note icons, drawn in a 20 × 20 box: a speech bubble for `/Comment`, a page
+/// PDF's note icons, drawn in a 20 × 20 box: a speech bubble for `/Comment`, a page
 /// with a folded corner for everything else, both filled with the note colour.
-/// File attachment icons in a 20 × 20 box: PdfCraft's own drawings.
+/// File attachment icons in a 20 × 20 box: PDF's own drawings.
 pub(super) fn attach_icon(name: &str, col: Rgb) -> String {
     let mut s = format!("{}{}1.2 w 1 j 1 J\n", rg(col), rg_stroke(col));
     match name {
@@ -465,7 +465,7 @@ fn circle_path(x: f64, y: f64, r: f64) -> String {
 
 /// A note's icon in a 20 × 20 box: filled in `col`, outlined in dark grey. Each name of
 /// [`crate::NoteIcon`] has its own shape, so the icon a note names is the one it shows (ISO
-/// 32000-2 §12.5.6.4, Table 175); a name PdfCraft doesn't know draws as `Note`.
+/// 32000-2 §12.5.6.4, Table 175); a name PDF doesn't know draws as `Note`.
 pub(super) fn note_icon(name: &str, col: Rgb) -> String {
     let mut s = format!("{}0.25 0.25 0.25 RG 0.8 w 1 j 1 J\n", rg(col));
     match name {

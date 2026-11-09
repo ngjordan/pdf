@@ -2,7 +2,7 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use pdfcraft_ui_egui::{Dialog, PdfCraftApp, QuickTool};
+use iridium_pdf_ui_egui::{Dialog, PdfApp, QuickTool};
 
 const FIXTURE: &[u8] = b"%PDF-1.7
 1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
@@ -12,9 +12,9 @@ const FIXTURE: &[u8] = b"%PDF-1.7
 trailer << /Root 1 0 R >>
 %%EOF";
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, FIXTURE.to_vec()).unwrap();
         app.set_option("left", "closed").unwrap();
@@ -25,7 +25,7 @@ fn harness() -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn size(h: &Harness<'static, PdfCraftApp>, page: usize) -> (f32, f32) {
+fn size(h: &Harness<'static, PdfApp>, page: usize) -> (f32, f32) {
     let s = h.state();
     let p = &s.session.get(s.views[0].id).unwrap().info.pages[page];
     (p.width, p.height)
@@ -55,9 +55,9 @@ fn quick_toolbar_crop_crops_the_page_and_undo_restores_it() {
 
 #[test]
 fn quick_toolbar_crop_is_disabled_when_page_assembly_is_forbidden() {
-    let mut doc = pdfcraft_cos::Document::open(std::sync::Arc::new(FIXTURE.to_vec())).unwrap();
-    doc.set_encryption(&pdfcraft_cos::NewEncryption {
-        algorithm: pdfcraft_cos::Algorithm::Aes256,
+    let mut doc = iridium_pdf_cos::Document::open(std::sync::Arc::new(FIXTURE.to_vec())).unwrap();
+    doc.set_encryption(&iridium_pdf_cos::NewEncryption {
+        algorithm: iridium_pdf_cos::Algorithm::Aes256,
         user_password: "",
         owner_password: "owner",
         permissions: 0b0100,
@@ -65,9 +65,9 @@ fn quick_toolbar_crop_is_disabled_when_page_assembly_is_forbidden() {
         seed: [5; 32],
     })
     .unwrap();
-    let bytes = pdfcraft_cos::write_full(&doc, &Default::default()).unwrap();
+    let bytes = iridium_pdf_cos::write_full(&doc, &Default::default()).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("restricted.pdf", None, bytes).unwrap();
         app.set_option("left", "closed").unwrap();
@@ -94,7 +94,7 @@ fn quick_toolbar_crop_is_hidden_on_home_and_in_read_mode() {
     assert!(h.query_by_label("Crop pages").is_none());
 }
 
-fn crop_middle_half(h: &mut Harness<'static, PdfCraftApp>) {
+fn crop_middle_half(h: &mut Harness<'static, PdfApp>) {
     let r = h.state().views[0].page_screen_rect(0).unwrap();
     // The middle half of the page in both directions.
     let (a, b) = (r.min + r.size() * 0.25, r.min + r.size() * 0.75);

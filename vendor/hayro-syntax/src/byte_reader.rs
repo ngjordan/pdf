@@ -3,7 +3,7 @@
 use core::cell::Cell;
 use core::ops::Range;
 
-/// PdfCraft patch: how deeply direct arrays and dictionaries may nest (the same cap as `pdfcraft-cos`; a
+/// PdfCraft patch: how deeply direct arrays and dictionaries may nest (the same cap as `iridium-pdf-cos`; a
 /// chain of 64 direct stitching functions is exactly this deep).
 const MAX_CONTAINER_DEPTH: usize = 128;
 

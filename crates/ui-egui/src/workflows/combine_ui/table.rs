@@ -1,8 +1,7 @@
 use super::files::{Columns, Lock, RowAction, SortKey};
 use super::parts::{ago, utc_stamp};
 use super::{
-    Align, Color32, Column, CornerRadius, ERROR, Layout, Modifiers, PdfCraftApp, Rect, Sense, Stroke, TableBuilder, Tokens, WARNING, icons, theme,
-    vec2,
+    Align, Color32, Column, CornerRadius, ERROR, Layout, Modifiers, PdfApp, Rect, Sense, Stroke, TableBuilder, Tokens, WARNING, icons, theme, vec2,
 };
 
 /// A column heading being dragged to a new place.
@@ -30,7 +29,7 @@ pub(super) struct TableEvents {
 
 /// The file table.
 pub(super) fn table(
-    app: &mut PdfCraftApp,
+    app: &mut PdfApp,
     ui: &mut egui::Ui,
     t: &Tokens,
     checks: &[Result<usize, String>],
@@ -155,7 +154,7 @@ fn heading(ui: &mut egui::Ui, t: &Tokens, key: SortKey, sort: Option<(SortKey, b
 /// Draw the Combine files table body: reorder handles, editable page ranges with validation, file metadata
 /// and per-row warnings.
 struct TableBody<'a> {
-    app: &'a mut PdfCraftApp,
+    app: &'a mut PdfApp,
     theme: &'a Tokens,
     rows: &'a Rows<'a>,
     widths: [f32; 5],

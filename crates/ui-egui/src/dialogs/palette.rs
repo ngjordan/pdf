@@ -2,10 +2,10 @@
 //! catalogue, with a fuzzy-ish substring match.
 
 use egui::{Align2, CornerRadius, Rect, Sense, Stroke, vec2};
-use pdfcraft_engine::catalog::{Availability, TOOL_GROUPS};
+use iridium_pdf_engine::catalog::{Availability, TOOL_GROUPS};
 
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, icons};
+use crate::{PdfApp, icons};
 
 struct Hit {
     /// The tool panel to open (tools and catalogue items); `None` for plain commands.
@@ -17,7 +17,7 @@ struct Hit {
     ready: bool,
 }
 
-/// Where `needle` (folded with [`pdfcraft_render::text::fold_case`]) matches `hay`, for ranking.
+/// Where `needle` (folded with [`iridium_pdf_render::text::fold_case`]) matches `hay`, for ranking.
 fn score(hay: &str, needle: &str) -> Option<usize> {
     score_for_direction(hay, needle, crate::i18n::current().rtl())
 }
@@ -27,7 +27,7 @@ fn score_for_direction(hay: &str, needle: &str, rtl: bool) -> Option<usize> {
     if needle.is_empty() {
         return Some(0);
     }
-    let h = pdfcraft_render::text::fold_case(hay);
+    let h = iridium_pdf_render::text::fold_case(hay);
     if let Some(p) = h.find(needle) {
         return Some(p);
     }
@@ -44,7 +44,7 @@ fn score_for_direction(hay: &str, needle: &str, rtl: bool) -> Option<usize> {
 }
 
 /// Draw the command palette and dispatch the chosen command or tool group.
-pub fn show(app: &mut PdfCraftApp, ctx: &egui::Context) {
+pub fn show(app: &mut PdfApp, ctx: &egui::Context) {
     let palette_rect_id = egui::Id::unique("palette_rect");
     if !app.palette_open {
         return;
@@ -54,11 +54,11 @@ pub fn show(app: &mut PdfCraftApp, ctx: &egui::Context) {
         app.palette_open = false;
         return;
     }
-    let q = pdfcraft_render::text::fold_case(app.palette_query.trim());
+    let q = iridium_pdf_render::text::fold_case(app.palette_query.trim());
     let mut hits: Vec<(usize, Hit)> = Vec::new();
     let active = app.active_ids().map(|(_, id)| id);
-    for spec in pdfcraft_engine::commands::COMMANDS {
-        let label = pdfcraft_engine::commands::current_label(spec, &app.session, active);
+    for spec in iridium_pdf_engine::commands::COMMANDS {
+        let label = iridium_pdf_engine::commands::current_label(spec, &app.session, active);
         let translated = crate::i18n::command_label(&label);
         if let Some(s) = score(&translated, &q).or_else(|| score(&label, &q)).or_else(|| score(spec.id, &q).map(|s| s + 50)) {
             hits.push((
@@ -93,7 +93,7 @@ pub fn show(app: &mut PdfCraftApp, ctx: &egui::Context) {
         }
         for sec in g.sections {
             for i in sec.items {
-                if pdfcraft_engine::commands::command(i.command).is_some() {
+                if iridium_pdf_engine::commands::command(i.command).is_some() {
                     continue; // listed above as a command
                 }
                 if let Some(s) = score(tl!(i.label), &q).or_else(|| score(i.label, &q)).or_else(|| score(i.command, &q).map(|s| s + 50)) {
@@ -234,7 +234,7 @@ pub fn show(app: &mut PdfCraftApp, ctx: &egui::Context) {
 #[cfg(test)]
 mod search {
     use super::{score, score_for_direction};
-    use pdfcraft_render::text::fold_case;
+    use iridium_pdf_render::text::fold_case;
 
     /// Word-order tolerance is RTL-only and still requires every requested word.
     #[test]

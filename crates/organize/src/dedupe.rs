@@ -23,7 +23,7 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
-use pdfcraft_cos::{Document, ObjRef, Object};
+use iridium_pdf_cos::{Document, ObjRef, Object};
 
 const RESOURCE_TYPES: &[&[u8]] = &[b"Font", b"FontDescriptor", b"ExtGState", b"Pattern", b"Encoding", b"CMap", b"Halftone"];
 const COLOR_SPACE_FAMILIES: &[&[u8]] = &[b"ICCBased", b"Indexed", b"Separation", b"DeviceN", b"CalRGB", b"CalGray", b"Lab", b"Pattern"];
@@ -48,7 +48,7 @@ const RESOURCE_CATEGORIES: &[&[u8]] = &[b"ExtGState", b"ColorSpace", b"Pattern",
 /// Whether `d` carries annotation, page, field, or structure identity rather than resource data.
 /// Annotations often omit `/Type /Annot` (ISO 32000-2 Table 166 requires `/Subtype` and `/Rect`),
 /// whereas resource dictionaries and category maps never carry `/Rect`, `/Popup`, `/IRT`, or `/FT`.
-fn is_identity_dict(doc: &Document, d: &pdfcraft_cos::Dict) -> bool {
+fn is_identity_dict(doc: &Document, d: &iridium_pdf_cos::Dict) -> bool {
     if let Some(t) = d.get(b"Type").map(|v| doc.resolve(v)).as_deref().and_then(Object::as_name)
         && !RESOURCE_TYPES.contains(&t)
     {
@@ -305,7 +305,7 @@ pub fn dedupe_resources(doc: &mut Document, candidates: &[ObjRef], index_existin
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pdfcraft_cos::{Dict, Stream};
+    use iridium_pdf_cos::{Dict, Stream};
 
     fn stream(data: &[u8]) -> Object {
         Object::Stream(Stream { dict: Dict::new(), raw: data.to_vec().into() })

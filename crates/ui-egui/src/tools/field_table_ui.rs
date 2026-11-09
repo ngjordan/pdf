@@ -11,12 +11,12 @@ use std::ops::RangeInclusive;
 use std::sync::Arc;
 
 use egui::{Align, Color32, CornerRadius, Layout, Rect, RichText, Sense, Stroke, pos2, vec2};
-use pdfcraft_engine::field_table::{self, Cell, FieldTable, MAX_COLUMNS, MAX_FIRST_ROW, MAX_ROWS, TableError};
-use pdfcraft_engine::{DocId, Edit, FormField};
-use pdfcraft_render::PageInfo;
+use iridium_pdf_engine::field_table::{self, Cell, FieldTable, MAX_COLUMNS, MAX_FIRST_ROW, MAX_ROWS, TableError};
+use iridium_pdf_engine::{DocId, Edit, FormField};
+use iridium_pdf_render::PageInfo;
 
 use crate::canvas::PageXform;
-use crate::{Dialog, PdfCraftApp, i18n, theme, widgets};
+use crate::{Dialog, PdfApp, i18n, theme, widgets};
 
 const SELECT_BLUE: Color32 = Color32::from_rgb(0x14, 0x73, 0xE6);
 const ERROR_RED: Color32 = Color32::from_rgb(0xD1, 0x3B, 0x3B);
@@ -134,7 +134,7 @@ impl FieldTableDraft {
 }
 
 /// Show the window while [`Dialog::FieldTable`] is open, and add the table when asked to.
-pub(crate) fn show(app: &mut PdfCraftApp, ctx: &egui::Context) {
+pub(crate) fn show(app: &mut PdfApp, ctx: &egui::Context) {
     // The window belongs to one page of one document, while that document is being prepared.
     let active = app.active_ids().map(|(_, id)| id);
     let preparing = app.is_preparing();
@@ -193,7 +193,7 @@ pub(crate) fn show(app: &mut PdfCraftApp, ctx: &egui::Context) {
 }
 
 /// Drop the table being set up, and the dialog with it if it is still the open one.
-fn close(app: &mut PdfCraftApp) {
+fn close(app: &mut PdfApp) {
     app.field_table_draft = None;
     if app.dialog == Some(Dialog::FieldTable) {
         app.dialog = None;
@@ -452,7 +452,7 @@ pub(crate) fn paint_preview(painter: &egui::Painter, xf: &PageXform, page: usize
 
 #[cfg(test)]
 mod tests {
-    use pdfcraft_engine::field_table::TableColumn;
+    use iridium_pdf_engine::field_table::TableColumn;
 
     use super::*;
 

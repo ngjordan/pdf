@@ -529,11 +529,11 @@ fn gesture_request(gesture: Gesture, from: egui::Pos2, to: egui::Pos2) -> (&'sta
     }
 }
 
-fn marquee_harness() -> (Harness<'static, crate::PdfCraftApp>, ControlClient) {
+fn marquee_harness() -> (Harness<'static, crate::PdfApp>, ControlClient) {
     let client_slot: Arc<Mutex<Option<ControlClient>>> = Arc::new(Mutex::new(None));
     let slot = client_slot.clone();
     let h = Harness::builder().with_size(egui::vec2(1200.0, 900.0)).with_step_dt(0.01).build_eframe(move |cc| {
-        let mut app = crate::PdfCraftApp::new();
+        let mut app = crate::PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("synthetic-form.pdf", None, include_bytes!("../../tests/data/form.pdf").to_vec()).unwrap();
         app.set_option("quick", "marquee-zoom").unwrap();
@@ -544,7 +544,7 @@ fn marquee_harness() -> (Harness<'static, crate::PdfCraftApp>, ControlClient) {
     (h, client)
 }
 
-fn marquee_step(h: &mut Harness<'static, crate::PdfCraftApp>) {
+fn marquee_step(h: &mut Harness<'static, crate::PdfApp>) {
     let ctx = h.ctx.clone();
     let mut raw = std::mem::take(h.input_mut());
     h.state_mut().prepare_raw_input(&ctx, &mut raw);
@@ -553,7 +553,7 @@ fn marquee_step(h: &mut Harness<'static, crate::PdfCraftApp>) {
 }
 
 /// The actual laid-out page rect and a short point gesture inside it.
-fn gesture_target(h: &Harness<'static, crate::PdfCraftApp>) -> (egui::Pos2, egui::Pos2) {
+fn gesture_target(h: &Harness<'static, crate::PdfApp>) -> (egui::Pos2, egui::Pos2) {
     let page = h.state().views[0].page_screen_rect(0).expect("the actual PDF page was laid out").intersect(h.state().views[0].viewport_rect());
     assert!(page.width() > 100.0 && page.height() > 100.0, "a visible hit target: {page:?}");
     let from = page.center();
@@ -563,7 +563,7 @@ fn gesture_target(h: &Harness<'static, crate::PdfCraftApp>) -> (egui::Pos2, egui
 }
 
 /// Step until the public request has really reached egui and can still be interrupted.
-fn await_gesture_admission(h: &mut Harness<'static, crate::PdfCraftApp>, gesture: Gesture) -> bool {
+fn await_gesture_admission(h: &mut Harness<'static, crate::PdfApp>, gesture: Gesture) -> bool {
     let mut admitted = false;
     for _ in 0..8 {
         marquee_step(h);
@@ -581,7 +581,7 @@ fn await_gesture_admission(h: &mut Harness<'static, crate::PdfCraftApp>, gesture
 }
 
 /// The request is queued exactly once, with the expected terminal batch not yet applied.
-fn assert_interruptible_admission(h: &Harness<'static, crate::PdfCraftApp>, gesture: Gesture, from: egui::Pos2) {
+fn assert_interruptible_admission(h: &Harness<'static, crate::PdfApp>, gesture: Gesture, from: egui::Pos2) {
     {
         let shared = h.state().control.as_ref().unwrap().shared.lock().unwrap();
         assert_eq!(shared.inject.len(), 1, "only the actual public request is queued");
@@ -615,7 +615,7 @@ fn assert_interruptible_admission(h: &Harness<'static, crate::PdfCraftApp>, gest
 
 /// Expire the admission both through hidden logic and through the next input hook, then
 /// assert that cancellation left no gesture, zoom or edit behind.
-fn assert_timed_out_gesture(h: &mut Harness<'static, crate::PdfCraftApp>, reply: &Receiver<Reply>, hidden_logic: bool, zoom: f32, bytes: &[u8]) {
+fn assert_timed_out_gesture(h: &mut Harness<'static, crate::PdfApp>, reply: &Receiver<Reply>, hidden_logic: bool, zoom: f32, bytes: &[u8]) {
     age_input(h.state_mut().control.as_mut().unwrap());
     if hidden_logic {
         let ctx = h.ctx.clone();
@@ -643,13 +643,7 @@ fn assert_timed_out_gesture(h: &mut Harness<'static, crate::PdfCraftApp>, reply:
 }
 
 /// Complete one public gesture and check its real event trace and one-step zoom.
-fn complete_positive_gesture(
-    h: &mut Harness<'static, crate::PdfCraftApp>,
-    client: &ControlClient,
-    gesture: Gesture,
-    positive: Gesture,
-    bytes: &[u8],
-) {
+fn complete_positive_gesture(h: &mut Harness<'static, crate::PdfApp>, client: &ControlClient, gesture: Gesture, positive: Gesture, bytes: &[u8]) {
     let (from, to) = gesture_target(h);
     let zoom = h.state().views[0].zoom;
     let (method, params) = gesture_request(positive, from, to);

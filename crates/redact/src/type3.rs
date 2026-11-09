@@ -2,8 +2,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use pdfcraft_content::Pieces;
-use pdfcraft_cos::{CosError, Dict, Document, ObjRef, Object};
+use iridium_pdf_content::Pieces;
+use iridium_pdf_cos::{CosError, Dict, Document, ObjRef, Object};
 
 use crate::{RedactError, page_streams};
 
@@ -131,7 +131,7 @@ struct UsedInGlyphs {
 }
 
 fn collect_used_resources_in_stream(data: &[u8], used: &mut UsedInGlyphs) -> Result<(), CosError> {
-    let parsed = pdfcraft_content::parse(data);
+    let parsed = iridium_pdf_content::parse(data);
     if parsed.skipped > 0 {
         return Err(CosError::Syntax { offset: 0, detail: "redaction could not fully inspect glyph stream syntax".into() });
     }
@@ -140,7 +140,7 @@ fn collect_used_resources_in_stream(data: &[u8], used: &mut UsedInGlyphs) -> Res
 }
 
 /// Record the resource name `op` uses, if any.
-fn record_used(op: &pdfcraft_content::Op, used: &mut UsedInGlyphs) {
+fn record_used(op: &iridium_pdf_content::Op, used: &mut UsedInGlyphs) {
     {
         match op.op.as_slice() {
             b"Do" => {
@@ -327,7 +327,7 @@ fn scan_content_stream(
 
 /// Apply an operator that changes or uses the current font: `Tf`, `gs`, and the text-showing
 /// operators, which record the glyphs they draw.
-fn apply_text_op(ctx: &mut ScanContext<'_>, res: &Dict, op: &pdfcraft_content::Op, current_font: &mut Option<FontKey>) {
+fn apply_text_op(ctx: &mut ScanContext<'_>, res: &Dict, op: &iridium_pdf_content::Op, current_font: &mut Option<FontKey>) {
     match op.op.as_slice() {
         b"Tf" => {
             if let Some(name) = op.name(0) {
@@ -461,7 +461,7 @@ fn resourceless_appearances(doc: &Document, page: &Dict) -> Vec<ObjRef> {
 /// already. Tiling patterns are not read here: a tiling pattern must have resources of its own,
 /// so its cell draws through them, and Apply Redactions refuses one without them
 /// (`pattern_guard`).
-fn add_soft_mask_ops(doc: &Document, res: &Dict, ops: &mut Vec<pdfcraft_content::Op>, known: usize) -> Result<(), CosError> {
+fn add_soft_mask_ops(doc: &Document, res: &Dict, ops: &mut Vec<iridium_pdf_content::Op>, known: usize) -> Result<(), CosError> {
     let xobjects = res_dict(doc, res, b"XObject");
     let states = res_dict(doc, res, b"ExtGState");
     let mut seen = HashSet::new();
@@ -490,7 +490,7 @@ fn add_soft_mask_ops(doc: &Document, res: &Dict, ops: &mut Vec<pdfcraft_content:
         if s.dict.get(b"Resources").is_some_and(|ro| doc.resolve(ro).as_dict().is_some()) {
             continue;
         }
-        let parsed = pdfcraft_content::parse(&s.decoded()?);
+        let parsed = iridium_pdf_content::parse(&s.decoded()?);
         if parsed.skipped > 0 || ops.len().saturating_add(parsed.ops.len()) > 2_000_000 {
             return Err(CosError::Syntax { offset: 0, detail: "redaction could not fully inspect soft mask content".into() });
         }
@@ -551,7 +551,7 @@ pub(crate) fn prune_type3_from_resources(doc: &Document, res: &mut Dict, content
             // One total for all of them, as for the content: each appearance under the cap could
             // still add up to far more than it. Their decoded bytes share one page's allowance
             // too, and each is decoded only in its turn, so they are never all held at once.
-            let mut budget = pdfcraft_cos::DecodeBudget::page();
+            let mut budget = iridium_pdf_cos::DecodeBudget::page();
             for r in resourceless_appearances(doc, page) {
                 let Object::Stream(s) = &*doc.get(r) else { continue };
                 let data = budget.decode(s)?;
@@ -669,7 +669,7 @@ pub(crate) fn unlink_type3(doc: &mut Document) -> Result<(), RedactError> {
     }
 
     // Scan all page contents and reachable forms to discover surviving glyph usage.
-    let page_list = pdfcraft_model::pages(doc);
+    let page_list = iridium_pdf_model::pages(doc);
     let mut used_glyphs: HashMap<FontKey, HashSet<Vec<u8>>> = HashMap::new();
     let mut seen_drawn_forms = HashSet::new();
 

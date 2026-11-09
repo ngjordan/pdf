@@ -22,7 +22,7 @@
 
 use std::collections::BTreeMap;
 
-use pdfcraft_cos::{DecodeBudget, ObjRef, Object};
+use iridium_pdf_cos::{DecodeBudget, ObjRef, Object};
 use roxmltree::Node;
 
 /// How deep arrays, structures and qualifiers are followed. No type nests nearly this deep, so a

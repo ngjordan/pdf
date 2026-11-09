@@ -13,7 +13,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, PdfString};
 
 use crate::{OrganizeError, walk};
 
@@ -83,7 +83,7 @@ pub enum OutlineError {
     #[error("{0}")]
     Organize(#[from] OrganizeError),
     #[error("{0}")]
-    Cos(#[from] pdfcraft_cos::CosError),
+    Cos(#[from] iridium_pdf_cos::CosError),
 }
 
 type Result<T> = std::result::Result<T, OutlineError>;

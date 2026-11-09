@@ -3,7 +3,7 @@
 //! "SECRET" is drawn from the pen position before `q`, over the "B". Find's boxes come from the
 //! renderer's text, which places it there; redaction measures the content itself, and while it
 //! carried the pen across `Q` the two disagreed and `redact_apply` refused to change anything.
-use pdfcraft_automation::{Automation, Content};
+use iridium_pdf_automation::{Automation, Content};
 use serde_json::{Value, json};
 
 /// The content, the text that stays after SECRET is redacted, and the text that goes with it.
@@ -59,7 +59,7 @@ fn text(a: &mut Automation, doc: &Value) -> String {
 #[test]
 fn find_and_redact_removes_text_after_a_q_q_inside_its_text_object() {
     for (case, (content, kept, gone)) in CASES.iter().enumerate() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-redact-after-q-{}-{case}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-redact-after-q-{}-{case}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("in.pdf"), pdf(content)).unwrap();

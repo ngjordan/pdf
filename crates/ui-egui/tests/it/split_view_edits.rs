@@ -3,12 +3,12 @@
 
 use egui::{Key, Modifiers, Pos2};
 use egui_kittest::Harness;
-use pdfcraft_ui_egui::PdfCraftApp;
-use pdfcraft_ui_egui::panes::Place;
+use iridium_pdf_ui_egui::PdfApp;
+use iridium_pdf_ui_egui::panes::Place;
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.run_inline = true;
         app.set_option("language", "en").unwrap();
         app.open_bytes("form.pdf", None, include_bytes!("../data/form.pdf").to_vec()).unwrap();
@@ -22,20 +22,20 @@ fn harness() -> Harness<'static, PdfCraftApp> {
 }
 
 /// The centre of field `name`'s first widget in tab `view`, once that tab has drawn its page.
-fn field_center(h: &Harness<'static, PdfCraftApp>, view: usize, name: &str) -> Option<Pos2> {
+fn field_center(h: &Harness<'static, PdfApp>, view: usize, name: &str) -> Option<Pos2> {
     let s = h.state();
     let doc = s.session.get(s.views[view].id)?;
     let f = doc.form.iter().find(|f| f.name == name)?;
-    pdfcraft_ui_egui::forms_ui::field_screen_rect(&s.views[view], &doc.info, f, 0).map(|r| r.center())
+    iridium_pdf_ui_egui::forms_ui::field_screen_rect(&s.views[view], &doc.info, f, 0).map(|r| r.center())
 }
 
-fn value(h: &Harness<'static, PdfCraftApp>, name: &str) -> Vec<String> {
+fn value(h: &Harness<'static, PdfApp>, name: &str) -> Vec<String> {
     let s = h.state();
     s.session.get(s.views[0].id).unwrap().form.iter().find(|f| f.name == name).unwrap().value.clone()
 }
 
 /// A press and release at `p`.
-fn click(h: &mut Harness<'static, PdfCraftApp>, p: Pos2) {
+fn click(h: &mut Harness<'static, PdfApp>, p: Pos2) {
     h.hover_at(p);
     h.run_steps(1);
     h.drag_at(p);
@@ -88,7 +88,7 @@ fn typing_in_one_pane_survives_an_edit_in_the_other() {
 /// and write the file without it.
 #[test]
 fn save_in_the_second_pane_keeps_its_typing() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-split-save-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-split-save-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let out = dir.join("out.pdf");
     let mut h = harness();

@@ -1,6 +1,6 @@
-use super::{PdfCraftApp, QuickTool};
+use super::{PdfApp, QuickTool};
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Whether the app draws the window's title bar, buttons and resize edges: the desktop leaves
     /// the frame to the app and Use system title bar is off.
     pub fn draws_window_frame(&self) -> bool {

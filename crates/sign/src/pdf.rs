@@ -14,7 +14,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString, SaveOptions, Stream};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, PdfString, SaveOptions, Stream};
 
 use crate::SignError;
 use crate::cms::SignedData;

@@ -1,4 +1,4 @@
-# pdfcraft-xfdf
+# iridium-pdf-xfdf
 
 Layer L4: comment and form data exchange (execution plan M5.6, M6.7).
 
@@ -9,7 +9,7 @@ let txt = export_data(&doc, Format::Txt);               // or Xml, Csv
 let report = import(&mut doc, &bytes)?;                 // XFDF, FDF, XML, CSV or text, detected
 ```
 
-- **XFDF** (ISO 19444-1): every comment type PdfCraft knows (text, free text, line, square,
+- **XFDF** (ISO 19444-1): every comment type PDF knows (text, free text, line, square,
   circle, polygon, polyline, markup, stamp, caret, ink, attachments, sound, redact) with rect,
   name, author, subject, dates, flags, colours, opacity, width, icon, quads, line ends, ink,
   default appearance, callouts (`callout`, `fringe`, `intent`, `head`), pop-ups and reply threads
@@ -26,7 +26,7 @@ let report = import(&mut doc, &bytes)?;                 // XFDF, FDF, XML, CSV o
   stamps, base 64 of the dictionary written as `DICT`/`STREAM`/`ARRAY`/`NAME`/`INT`/`FIXED`/`BOOL`/
   `STRING`/`NULL` elements with stream data in `DATA` (XFDF 3.0 "Stream encoding": `filtered`/`ascii`
   or `raw`/`hex`), the shape XFDF files from other tools carry. Copy and paste carries every
-  comment's appearance but a redaction mark's, which PdfCraft always draws and import never
+  comment's appearance but a redaction mark's, which PDF always draws and import never
   reads. Import keeps an appearance it can read and otherwise draws the comment and records the reason in
   `Report::skipped` (the engine puts it in the repair log); it refuses one over 16 MiB, 64 MiB per
   import, 64 nesting levels or 100,000 values. Export leaves out one past those limits or whose
@@ -68,6 +68,6 @@ or `+` or `-` when it isn't a plain number) with a leading `'`; CSV import takes
 export added, so exported data imports back unchanged.
 
 Import replaces comments with the same `/NM` (and drops the replaced comment's pop-up), keeps the
-appearance the file carries or draws one where PdfCraft can, and sets values through the form's own checks (formats,
+appearance the file carries or draws one where PDF can, and sets values through the form's own checks (formats,
 validation, recalculation); read-only fields take imported values, as in Acrobat. XML is read
 with `roxmltree`.

@@ -4,7 +4,7 @@
 //! declares `/WinAnsiEncoding` and the nonsymbolic flag: code 0x6D (`m`) is `mu`, as for
 //! `/Symbol` itself (hayro-interpret patch (98)).
 
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest};
 use std::sync::Arc;
 
 /// A page showing "abmp" at 40 pt in a non-embedded font `font` (the inside of its dictionary).

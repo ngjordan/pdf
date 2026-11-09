@@ -1,7 +1,7 @@
 //! A contributor-original synthetic page reproducing #4907: an outline that ends in a cubic whose
 //! control points all sit 0.001 pt from its start was not drawn at all, because the stroker put
 //! NaN into its outline and the rasterizer dropped the whole path.
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest};
 use std::sync::Arc;
 
 /// A one-page 100 × 20 pt PDF drawing `content`, with a cross-reference table.

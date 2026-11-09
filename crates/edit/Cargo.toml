@@ -1,5 +1,5 @@
 [package]
-name = "pdfcraft-edit"
+name = "iridium-pdf-edit"
 description = "Page content editing: headers and footers, watermarks, backgrounds, Bates numbers (ISO 32000-2 §14.8)"
 version.workspace = true
 edition.workspace = true
@@ -9,11 +9,11 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-pdfcraft-annot = { workspace = true }
-pdfcraft-cos = { workspace = true }
-pdfcraft-content = { workspace = true }
-pdfcraft-fonts = { workspace = true }
-pdfcraft-model = { workspace = true }
+iridium-pdf-annot = { workspace = true }
+iridium-pdf-cos = { workspace = true }
+iridium-pdf-content = { workspace = true }
+iridium-pdf-fonts = { workspace = true }
+iridium-pdf-model = { workspace = true }
 thiserror = { workspace = true }
 # A backdrop copy's tag records a hash of the operators before the fill it turned off (backdrop.rs).
 sha2 = "0.11"
@@ -27,5 +27,5 @@ icu_segmenter = { version = "2.3", default-features = false, features = ["compil
 
 [dev-dependencies]
 hayro-syntax = { workspace = true }
-pdfcraft-render = { workspace = true }
+iridium-pdf-render = { workspace = true }
 proptest = { workspace = true }

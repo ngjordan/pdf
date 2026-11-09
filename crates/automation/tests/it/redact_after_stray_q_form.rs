@@ -2,7 +2,7 @@
 //! come from the renderer's text and redaction measures the content itself, so the two must agree
 //! that the form's stray `Q`s do not undo the page's `cm` (vendored hayro-interpret patch 68).
 
-use pdfcraft_automation::{Automation, Content};
+use iridium_pdf_automation::{Automation, Content};
 use serde_json::{Value, json};
 
 const CONTENT: &str = "q 1 0 0 1 20 -100 cm BT /F1 12 Tf 72 700 Td (AAAA) Tj ET /X Do \
@@ -50,7 +50,7 @@ fn text(a: &mut Automation, doc: &Value) -> String {
 
 #[test]
 fn find_and_redact_removes_text_drawn_after_a_form_with_stray_q() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-redact-stray-q-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-redact-stray-q-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("in.pdf"), pdf()).unwrap();

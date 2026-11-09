@@ -21,7 +21,7 @@ pub fn exists(name: &str) -> bool {
 }
 
 pub(crate) fn source(name: &str) -> egui::ImageSource<'static> {
-    // PdfCraft caches an unknown name under the resolved fallback name.
+    // PDF caches an unknown name under the resolved fallback name.
     white_icons().source(white_icons().canonical_name(name).unwrap_or("square"))
 }
 
@@ -87,7 +87,7 @@ mod tests {
     use super::*;
     #[test]
     fn every_catalog_icon_exists() {
-        for g in pdfcraft_engine::catalog::TOOL_GROUPS {
+        for g in iridium_pdf_engine::catalog::TOOL_GROUPS {
             assert!(super::exists(g.icon), "missing icon {}", g.icon);
             for s in g.sections {
                 for i in s.items {
@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn every_command_icon_exists() {
-        for c in pdfcraft_engine::commands::COMMANDS {
+        for c in iridium_pdf_engine::commands::COMMANDS {
             assert!(super::exists(c.icon), "missing icon {} ({})", c.icon, c.id);
         }
     }

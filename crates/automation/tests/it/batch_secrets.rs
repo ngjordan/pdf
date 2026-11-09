@@ -3,8 +3,8 @@
 //! The passwords are set on the document and passed to the tool, and must never come back out: a
 //! result that echoes one has leaked it into logs, transcripts and MCP callers.
 
-use pdfcraft_automation::{Automation, Content};
-use pdfcraft_engine::{Changes, Edit, Protection, Session};
+use iridium_pdf_automation::{Automation, Content};
+use iridium_pdf_engine::{Changes, Edit, Protection, Session};
 use serde_json::{Value, json};
 
 /// The known test passwords; neither may appear in a result or an error.

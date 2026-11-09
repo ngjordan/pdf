@@ -1,4 +1,4 @@
-//! Appearance streams (§12.5.5) for the comment types PdfCraft creates, execution plan M5.2.
+//! Appearance streams (§12.5.5) for the comment types PDF creates, execution plan M5.2.
 //!
 //! [`build`] draws a normal appearance (`/AP /N`) from the annotation dictionary and the
 //! objects it points at, so the same code serves new comments and restyled ones. Drawings are in page space with
@@ -8,14 +8,14 @@
 //! itself; for the other values, callers that hold the document follow references first
 //! (`draw::with_direct_values`).
 //!
-//! The note icons are PdfCraft's own drawings (AGENTS.md §1). Text boxes use the standard
+//! The note icons are PDF's own drawings (AGENTS.md §1). Text boxes use the standard
 //! Helvetica font with WinAnsi encoding, and draw Thai from the craft-fonts Thai face as Type 3
-//! glyphs (`pdfcraft_fonts::shaped_text`, the writer Add text uses); line breaking uses
+//! glyphs (`iridium_pdf_fonts::shaped_text`, the writer Add text uses); line breaking uses
 //! [`text_width`], the standard-14 metrics and the Thai face's shaped advances.
 
-use pdfcraft_cos::{Dict, Object, PdfString, Stream};
-use pdfcraft_fonts::shaped_text;
-use pdfcraft_fonts::{first_undrawable, helvetica_width, literal, win_ansi, wrap_with};
+use iridium_pdf_cos::{Dict, Object, PdfString, Stream};
+use iridium_pdf_fonts::shaped_text;
+use iridium_pdf_fonts::{first_undrawable, helvetica_width, literal, win_ansi, wrap_with};
 
 /// The width of `text` at `size` as appearances draw it: Helvetica, with Thai shaped in the Thai
 /// face that text boxes draw it with.
@@ -56,7 +56,7 @@ pub fn arrow_size(w: f64) -> f64 {
 }
 
 /// Nominal radius of a cloudy border's bumps for a line of width `w` (intensity 1). ISO 32000-2
-/// Table 169 leaves the size open; this is the size PdfCraft's polygon clouds already had, so
+/// Table 169 leaves the size open; this is the size PDF's polygon clouds already had, so
 /// squares, circles and text boxes match them.
 pub fn cloud_radius(w: f64) -> f64 {
     6.0 + 1.5 * w.max(0.0)
@@ -295,14 +295,15 @@ fn nums(d: &Dict, key: &[u8]) -> Option<Vec<f64>> {
 }
 
 /// The usable `/QuadPoints` quads, by the rule redaction apply reads them with
-/// ([`pdfcraft_geom::quad_points::usable_quads`]): a malformed or non-finite quad is not drawn (it
+/// ([`iridium_pdf_geom::quad_points::usable_quads`]): a malformed or non-finite quad is not drawn (it
 /// would write `NaN` into the stream) and the others still are. The array and its entries are
 /// resolved first, as the other readers resolve them, so an indirect quad is drawn too. `None`
 /// when none is usable.
 fn quads(context: &AppearanceContext<'_>) -> Option<Vec<[f64; 8]>> {
     let doc = context.doc;
-    let q =
-        pdfcraft_geom::quad_points::usable_quads(doc.resolve(context.dict.get(b"QuadPoints")?).as_array()?.iter().map(|x| doc.resolve(x).as_f64()));
+    let q = iridium_pdf_geom::quad_points::usable_quads(
+        doc.resolve(context.dict.get(b"QuadPoints")?).as_array()?.iter().map(|x| doc.resolve(x).as_f64()),
+    );
     (!q.is_empty()).then_some(q)
 }
 
@@ -442,7 +443,7 @@ pub fn parse_da(d: &Dict) -> (Rgb, f64) {
 
 /// How opaque a comment's parts are drawn, 0–1: its line or border (`/CA`); its fill or
 /// background (`/ca`, which PDF 2.0 gives the non-stroking operations; without it, as the line);
-/// and a text box's text (`/PCTextOpacity`, PdfCraft's own; without it, as the fill, since text
+/// and a text box's text (`/PCTextOpacity`, PDF's own; without it, as the fill, since text
 /// is filled too). A comment with only `/CA` is drawn at that opacity throughout, as before.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PartOpacity {
@@ -645,13 +646,13 @@ impl AppearanceDrawing {
 
 /// Draw the normal appearance of an annotation, or `None` if this subtype/variant isn't supported.
 /// Text the standard fonts can't draw comes out as `?`: [`undrawable_text`] says which, and
-/// [`crate::set_appearance`] marks the annotation with it (`pdfcraft_fonts::UNDRAWN_MARK`).
+/// [`crate::set_appearance`] marks the annotation with it (`iridium_pdf_fonts::UNDRAWN_MARK`).
 pub fn build(doc: &Document, d: &Dict) -> Option<Stream> {
     build_on_page(doc, d, None)
 }
 
 /// [`build`] for an annotation on a page whose visible region is `page` (`Page::crop` in
-/// pdfcraft-model): a text markup, line, polyline, polygon or ink annotation whose points reach
+/// iridium-pdf-model): a text markup, line, polyline, polygon or ink annotation whose points reach
 /// past its `/Rect` is drawn through them as far as the page shows ([`point_reach`]), and its
 /// appearance's `/BBox` says how far ([`widened_rect`]). Without a page it is drawn within `/Rect`.
 pub(crate) fn build_on_page(doc: &Document, d: &Dict, page: Option<[f64; 4]>) -> Option<Stream> {
@@ -739,7 +740,7 @@ fn drawn_points(doc: &Document, d: &Dict) -> Option<(Vec<f64>, f64)> {
             if entries.len() / 8 > MAX_MARKUP_QUADS {
                 return None;
             }
-            let quads = pdfcraft_geom::quad_points::usable_quads(entries.iter().map(|x| doc.resolve(x).as_f64()));
+            let quads = iridium_pdf_geom::quad_points::usable_quads(entries.iter().map(|x| doc.resolve(x).as_f64()));
             if quads.is_empty() {
                 return None;
             }
@@ -880,7 +881,7 @@ fn draw_body(context: &AppearanceContext<'_>, drawing: &mut AppearanceDrawing) -
 }
 
 fn finish_appearance(context: &AppearanceContext<'_>, mut drawing: AppearanceDrawing) -> Option<Stream> {
-    // PdfCraft measurement captions are kept separate from the comment's free-form text.
+    // PDF measurement captions are kept separate from the comment's free-form text.
     // A restyle regenerates the path and its value together.
     let mut out = drawing.content.into_bytes();
     out.extend(drawing.tail);
@@ -1248,13 +1249,13 @@ fn draw_stamp(context: &AppearanceContext<'_>, mut drawing: AppearanceDrawing) -
         let turn = picture_turn(d);
         if image && turn != 0 {
             // The page's view matrix without its offset: display axes in user space.
-            let m = pdfcraft_model::view_matrix_for(turn, [0.0; 4]);
+            let m = iridium_pdf_model::view_matrix_for(turn, [0.0; 4]);
             let matrix = [m[0], m[1], m[2], m[3], 0.0, 0.0];
             stream.dict.set(b"Matrix".to_vec(), Object::Array(matrix.iter().map(|x| Object::Real(*x)).collect()));
         }
         return Some(stream);
     }
-    // Only PdfCraft's own Fill & Sign marks are drawn here.
+    // Only PDF's own Fill & Sign marks are drawn here.
     let name = d.name(b"Name")?;
     let col = stroke.unwrap_or([0.0; 3]);
     // A mark or stamp placed on a turned page is drawn upright in its displayed box, then
@@ -1273,7 +1274,7 @@ fn draw_stamp(context: &AppearanceContext<'_>, mut drawing: AppearanceDrawing) -
     };
     let turned = |mut stream: Stream| {
         if turn != 0 {
-            let m = pdfcraft_model::view_matrix_for(turn, rect);
+            let m = iridium_pdf_model::view_matrix_for(turn, rect);
             stream.dict.set(b"Matrix".to_vec(), Object::Array(m.iter().copied().map(Object::Real).collect()));
         }
         stream
@@ -1301,7 +1302,7 @@ fn draw_stamp(context: &AppearanceContext<'_>, mut drawing: AppearanceDrawing) -
         }
         b"PCLine" => c.push_str(&format!("{}{} w 1 J\n{}", rg_stroke(col), n(h.clamp(0.5, 2.0)), path(crate::FillMark::Line))),
         other => {
-            // Only stamps PdfCraft made: others keep their own artwork.
+            // Only stamps PDF made: others keep their own artwork.
             if !matches!(d.get(b"PCStamp"), Some(Object::Bool(true))) {
                 return None;
             }
@@ -1385,7 +1386,7 @@ fn draw_free_text(context: &AppearanceContext<'_>, mut drawing: AppearanceDrawin
         if dw < 1.0 || dh < 1.0 {
             return None;
         }
-        ([0.0, 0.0, dw, dh], Some(pdfcraft_model::view_matrix_for(turn, rect)))
+        ([0.0, 0.0, dw, dh], Some(iridium_pdf_model::view_matrix_for(turn, rect)))
     };
     let full = rect;
     let mut rect = rect;

@@ -50,13 +50,14 @@ impl FontResolver<'_> {
             return Ok(Some(source.font.clone()));
         }
         if let Some((name, _)) = self.metrics.iter().find(|(_, metrics)| {
-            pdfcraft_fonts::embedding::face_key(&metrics.base_font) == pdfcraft_fonts::embedding::face_key(&source.base_font)
+            iridium_pdf_fonts::embedding::face_key(&metrics.base_font) == iridium_pdf_fonts::embedding::face_key(&source.base_font)
                 && source_encodes(metrics, text)
         }) {
             return Ok(Some(name.clone()));
         }
-        if let Some(face) =
-            pdfcraft_fonts::embedding::matching_faces(&source.base_font).into_iter().find(|face| pdfcraft_fonts::embedding::covers(face.bytes, text))
+        if let Some(face) = iridium_pdf_fonts::embedding::matching_faces(&source.base_font)
+            .into_iter()
+            .find(|face| iridium_pdf_fonts::embedding::covers(face.bytes, text))
         {
             return self.embed_face(face.name(), face.bytes, face.family, "the full source font could not be loaded").map(Some);
         }
@@ -65,7 +66,7 @@ impl FontResolver<'_> {
             .entry(source.font.clone())
             .or_insert_with(|| source_program(self.doc, self.fonts, &source.font).map(std::sync::Arc::new))
             .clone()
-            .filter(|bytes| pdfcraft_fonts::embedding::covers(bytes, text))
+            .filter(|bytes| iridium_pdf_fonts::embedding::covers(bytes, text))
         else {
             return Ok(None);
         };
@@ -73,7 +74,7 @@ impl FontResolver<'_> {
         if let Some(name) = self.full_faces.get(&key) {
             return Ok(Some(name.clone()));
         }
-        let family = pdfcraft_fonts::embedding::names(&bytes).map_or_else(|_| source.base_font.clone(), |(family, _)| family);
+        let family = iridium_pdf_fonts::embedding::names(&bytes).map_or_else(|_| source.base_font.clone(), |(family, _)| family);
         self.embed_face(key, &bytes, &family, "the source font could not be loaded").map(Some)
     }
 
@@ -81,7 +82,7 @@ impl FontResolver<'_> {
         if let Some(name) = self.full_faces.get(&key) {
             return Ok(name.clone());
         }
-        let name = pdfcraft_fonts::embedding::embed(self.doc, self.fonts, bytes, family).map_err(EditError::Invalid)?;
+        let name = iridium_pdf_fonts::embedding::embed(self.doc, self.fonts, bytes, family).map_err(EditError::Invalid)?;
         let font =
             self.fonts.get(name.as_bytes()).and_then(|resource| self.doc.dict(resource)).ok_or_else(|| EditError::Invalid(missing_message.into()))?;
         self.metrics.insert(name.clone(), Metrics::from_dict(self.doc, &font));
@@ -106,12 +107,12 @@ impl FontResolver<'_> {
 
 struct LegacyFace {
     /// Shared by every resource name of one font object: its program is decoded and kept once.
-    glyphs: Option<std::rc::Rc<pdfcraft_fonts::pdf::LegacyThaiFont>>,
+    glyphs: Option<std::rc::Rc<iridium_pdf_fonts::pdf::LegacyThaiFont>>,
     metrics: Metrics,
     /// Weight and slant ([`FontStyle::of`]).
     style: FontStyle,
     /// The font object the resource names, when it is given by reference.
-    object: Option<pdfcraft_cos::ObjRef>,
+    object: Option<iridium_pdf_cos::ObjRef>,
     /// Its text-space fallback ([`source_space`]), in ems.
     space: f64,
 }
@@ -164,7 +165,7 @@ impl CharacterPreparation<'_> {
         let Self { doc, first, lines, draft, spans, style, overrides, fonts, metrics, max_glyphs } = self;
         let thai_choice = builtin_thai_choice(fonts);
         let mut thai = ThaiShaping::default();
-        let mut thai_programs = pdfcraft_cos::DecodeBudget::new(MAX_THAI_PROGRAMS, 0);
+        let mut thai_programs = iridium_pdf_cos::DecodeBudget::new(MAX_THAI_PROGRAMS, 0);
         let mut chars = Vec::new();
         let mut substituted = None;
         let mut fallback = FallbackBuilder::new(max_glyphs);
@@ -176,13 +177,14 @@ impl CharacterPreparation<'_> {
             // Interface fallback fonts never enter a PDF.
             let selected_resource = overrides.get(&index).and_then(|r| r.resource.as_deref()).or(style.resource.as_deref());
             let use_thai_outlines = if selected_resource == Some(thai_choice.as_str()) {
-                let face = pdfcraft_fonts::document_thai_font().ok_or_else(|| {
+                let face = iridium_pdf_fonts::document_thai_font().ok_or_else(|| {
                     EditError::Invalid(format!(
                         "the bundled Thai font ({thai_choice}) is not in this build, which has no craft-fonts Thai face; load a complete Thai font or choose one the page lists"
                     ))
                 })?;
                 if !covers_rows(face.bytes, span) {
-                    let missing = span.chars().find(|&c| !row_break(c) && !pdfcraft_fonts::embedding::covers(face.bytes, c.encode_utf8(&mut [0; 4])));
+                    let missing =
+                        span.chars().find(|&c| !row_break(c) && !iridium_pdf_fonts::embedding::covers(face.bytes, c.encode_utf8(&mut [0; 4])));
                     return Err(EditError::Invalid(match missing {
                         Some(c) => format!("{} has no glyph for {c} (U+{:04X}); choose a font that covers the text", face.family, u32::from(c)),
                         None => format!("{} cannot show every character in this selection; choose a font that covers the text", face.family),
@@ -194,7 +196,7 @@ impl CharacterPreparation<'_> {
                 selected_resource.is_none() && matching_thai_outline(resolver.doc, resolver.fonts, source, span)
             };
             if use_thai_outlines {
-                substituted = pdfcraft_fonts::document_thai_font().map(|f| f.family.to_owned());
+                substituted = iridium_pdf_fonts::document_thai_font().map(|f| f.family.to_owned());
             }
             let existing_thai = if !use_thai_outlines {
                 let chosen = match selected_resource {
@@ -373,7 +375,7 @@ enum ShapedFont {
     ThaiOutlines,
 }
 struct ShapedText {
-    run: pdfcraft_fonts::source_shaping::ShapedRun,
+    run: iridium_pdf_fonts::source_shaping::ShapedRun,
     font: ShapedFont,
 }
 type ShapedRunCache = HashMap<(usize, usize), ShapedText>;
@@ -423,7 +425,7 @@ fn embed_shaped_resources(doc: &mut Document, fonts: &mut Dict, runs: &ShapedRun
             ShapedFont::ThaiOutlines => crate::added::thai_glyph_resources(doc, fonts, &shaped.run)?,
             ShapedFont::Program { bytes, family } => {
                 let mappings: Vec<_> = shaped.run.glyphs.iter().map(|glyph| (glyph.text.clone(), glyph.id)).collect();
-                let resource = pdfcraft_fonts::embedding::embed_mapping(doc, fonts, bytes, family, &mappings).map_err(EditError::Invalid)?;
+                let resource = iridium_pdf_fonts::embedding::embed_mapping(doc, fonts, bytes, family, &mappings).map_err(EditError::Invalid)?;
                 (0..shaped.run.glyphs.len())
                     .map(|i| {
                         let code = u16::try_from(i.saturating_add(1)).map_err(|_| EditError::Invalid("shaped glyph limit".into()))?;
@@ -441,7 +443,7 @@ fn embed_shaped_resources(doc: &mut Document, fonts: &mut Dict, runs: &ShapedRun
 struct ShapedRunDrawing<'a> {
     doc: &'a Document,
     fonts: &'a Dict,
-    shaped: &'a pdfcraft_fonts::source_shaping::ShapedRun,
+    shaped: &'a iridium_pdf_fonts::source_shaping::ShapedRun,
     resources: &'a [(String, Vec<u8>)],
     text: &'a str,
     matrix: [f64; 6],
@@ -453,7 +455,7 @@ impl ShapedRunDrawing<'_> {
     /// Draw and return the run's advance in text space, including cluster-safe spacing.
     fn draw(&self, block_ops: &mut Vec<Op>, state: &mut TextState) -> Result<f64, EditError> {
         let Self { doc, fonts, shaped, resources, text, matrix: tm, size, thai } = *self;
-        let n = pdfcraft_content::num;
+        let n = iridium_pdf_content::num;
         let (resource, _) = self.resources.first().ok_or_else(|| EditError::Invalid("shaped run has no glyphs".into()))?;
         let mut properties = Dict::new();
         properties.set(b"ActualText".to_vec(), Object::String(PdfString::text(text)));
@@ -548,7 +550,7 @@ impl ShapedRunDrawing<'_> {
 fn validate_contextual_rows(rows: &[Vec<StyledChar>], kept: &[bool]) -> Result<(), EditError> {
     for (row, _) in rows.iter().zip(kept).filter(|(_, retained)| !**retained) {
         let text: String = row.iter().map(|character| character.0).collect();
-        if pdfcraft_fonts::source_shaping::required(&text)
+        if iridium_pdf_fonts::source_shaping::required(&text)
             && row.first().is_some_and(|first| row.iter().any(|character| character.1 != first.1 || character.2 != first.2))
         {
             return Err(EditError::Invalid(
@@ -668,7 +670,7 @@ fn page_font_metrics(
     (fonts, metrics)
 }
 
-fn paragraph_geometry(doc: &Document, page: &pdfcraft_model::Page, block: &TextBlock, style: &BlockStyle) -> Result<(f64, f64, f64), EditError> {
+fn paragraph_geometry(doc: &Document, page: &iridium_pdf_model::Page, block: &TextBlock, style: &BlockStyle) -> Result<(f64, f64, f64), EditError> {
     if [style.size, style.line_spacing, style.char_spacing, style.scale, style.width].iter().flatten().any(|value| !value.is_finite())
         || style.color.is_some_and(|color| color.iter().any(|value| !value.is_finite()))
     {
@@ -891,18 +893,19 @@ fn legacy_thai_font(
     source: &TextLine,
     span: &str,
     cache: &mut HashMap<String, LegacyFace>,
-    budget: &mut pdfcraft_cos::DecodeBudget,
+    budget: &mut iridium_pdf_cos::DecodeBudget,
 ) -> Result<Option<ThaiSpan>, EditError> {
     if !source.base_font.rsplit('+').next().unwrap_or(&source.base_font).starts_with("THSarabunPSK")
         || !span.chars().any(|c| matches!(u32::from(c), 0x0e00..=0x0e7f))
     {
         return Ok(None);
     }
-    let family = pdfcraft_fonts::embedding::face_key(&source.base_font);
+    let family = iridium_pdf_fonts::embedding::face_key(&source.base_font);
     let mut candidates = vec![source.font.clone()];
     candidates.extend(fonts.iter().filter_map(|(name, font)| {
         let font = doc.dict(font)?;
-        (pdfcraft_fonts::embedding::face_key(&Metrics::from_dict(doc, &font).base_font) == family).then(|| String::from_utf8_lossy(name).into_owned())
+        (iridium_pdf_fonts::embedding::face_key(&Metrics::from_dict(doc, &font).base_font) == family)
+            .then(|| String::from_utf8_lossy(name).into_owned())
     }));
     for name in candidates.into_iter().take(128) {
         if cache.contains_key(&name) {
@@ -916,7 +919,7 @@ fn legacy_thai_font(
             None => {
                 let metrics = Metrics::from_dict(doc, &font);
                 let space = source_space(doc, fonts, &metrics);
-                let glyphs = pdfcraft_fonts::pdf::LegacyThaiFont::from_pdf(doc, &font, space, budget).ok().flatten().map(std::rc::Rc::new);
+                let glyphs = iridium_pdf_fonts::pdf::LegacyThaiFont::from_pdf(doc, &font, space, budget).ok().flatten().map(std::rc::Rc::new);
                 let style = FontStyle::of(doc, &font, &metrics);
                 LegacyFace { glyphs, metrics, style, object, space }
             }
@@ -955,11 +958,11 @@ fn legacy_thai_font(
     Ok(Some(ThaiSpan::InPlace(source.font.clone())))
 }
 
-/// Whether a subset of the face `family` (a [`face_key`](pdfcraft_fonts::embedding::face_key))
+/// Whether a subset of the face `family` (a [`face_key`](iridium_pdf_fonts::embedding::face_key))
 /// in `cache` can be shaped in place: a THSarabunPSK program with its own Thai mark positioning,
 /// or a verified legacy positional one.
 fn has_thai_source_face(cache: &HashMap<String, LegacyFace>, family: &str) -> bool {
-    cache.values().any(|face| face.glyphs.is_some() && pdfcraft_fonts::embedding::face_key(&face.metrics.base_font) == family)
+    cache.values().any(|face| face.glyphs.is_some() && iridium_pdf_fonts::embedding::face_key(&face.metrics.base_font) == family)
 }
 
 /// A visual row may use several subsets of the same exact face (often a separate subset for
@@ -969,13 +972,13 @@ fn shape_existing_thai(cache: &HashMap<String, LegacyFace>, primary: &str, text:
         return Err(EditError::Invalid("the Thai source row exceeds its shaping budget".into()));
     }
     let first = cache.get(primary).ok_or_else(|| EditError::Invalid("the Thai source face is missing".into()))?;
-    let family = pdfcraft_fonts::embedding::face_key(&first.metrics.base_font);
+    let family = iridium_pdf_fonts::embedding::face_key(&first.metrics.base_font);
     let mut candidates = vec![(primary, first)];
     candidates.extend(
         cache
             .iter()
             .filter(|(name, face)| {
-                name.as_str() != primary && face.style == first.style && pdfcraft_fonts::embedding::face_key(&face.metrics.base_font) == family
+                name.as_str() != primary && face.style == first.style && iridium_pdf_fonts::embedding::face_key(&face.metrics.base_font) == family
             })
             .map(|(name, face)| (name.as_str(), face)),
     );
@@ -984,7 +987,7 @@ fn shape_existing_thai(cache: &HashMap<String, LegacyFace>, primary: &str, text:
         tail.sort_by_key(|(name, _)| *name);
     }
     let thai = |c: char| matches!(u32::from(c), 0x0e01..=0x0e5b | 0xf700..=0xf71a);
-    let mut run = pdfcraft_fonts::source_shaping::ShapedRun { glyphs: Vec::new(), advance: 0.0 };
+    let mut run = iridium_pdf_fonts::source_shaping::ShapedRun { glyphs: Vec::new(), advance: 0.0 };
     let mut resources = Vec::new();
     let mut chars = text.char_indices().peekable();
     while let Some((at, ch)) = chars.next() {
@@ -1055,7 +1058,7 @@ fn shape_existing_thai(cache: &HashMap<String, LegacyFace>, primary: &str, text:
                     u32::from(ch)
                 )));
             };
-            run.glyphs.push(pdfcraft_fonts::source_shaping::ShapedGlyph { id: Default::default(), position: [run.advance, 0.0], text: logical });
+            run.glyphs.push(iridium_pdf_fonts::source_shaping::ShapedGlyph { id: Default::default(), position: [run.advance, 0.0], text: logical });
             resources.push((name.to_owned(), code));
             run.advance += width;
         }
@@ -1068,7 +1071,7 @@ fn shape_existing_thai(cache: &HashMap<String, LegacyFace>, primary: &str, text:
 
 /// Shape `text` in the first candidate subset that has every glyph it needs, and name it. The
 /// error is the first subset's reason (empty when no candidate has a usable glyph program).
-fn shape_in_one_subset<'a>(candidates: &[(&'a str, &LegacyFace)], text: &str) -> Result<(&'a str, pdfcraft_fonts::pdf::ExistingThaiRun), String> {
+fn shape_in_one_subset<'a>(candidates: &[(&'a str, &LegacyFace)], text: &str) -> Result<(&'a str, iridium_pdf_fonts::pdf::ExistingThaiRun), String> {
     let mut why = String::new();
     for (name, face) in candidates {
         let Some(font) = &face.glyphs else { continue };
@@ -1097,7 +1100,7 @@ fn thai_clusters(text: &str) -> Vec<&str> {
 /// Whether the approved Thai face can replace this source, whose embedded subset cannot
 /// shape the replacement. A usable complete source program always takes precedence.
 fn matching_thai_outline(doc: &Document, fonts: &Dict, source: &TextLine, span: &str) -> bool {
-    let Some(face) = pdfcraft_fonts::document_thai_font() else { return false };
+    let Some(face) = iridium_pdf_fonts::document_thai_font() else { return false };
     // The bundled face is Regular and upright. A source its descriptor or name marks bold or
     // italic keeps that style, so completing it with these outlines would be a silent change:
     // it needs an explicit choice instead. (Variable-font instances often keep the family name.)
@@ -1109,7 +1112,7 @@ fn matching_thai_outline(doc: &Document, fonts: &Dict, source: &TextLine, span: 
         return false;
     }
     if !span.chars().any(|c| matches!(u32::from(c), 0x0e00..=0x0e7f))
-        || !pdfcraft_fonts::embedding::matching_faces(&source.base_font).iter().any(|f| std::ptr::eq(*f, face))
+        || !iridium_pdf_fonts::embedding::matching_faces(&source.base_font).iter().any(|f| std::ptr::eq(*f, face))
         || !covers_rows(face.bytes, span)
     {
         return false;
@@ -1117,16 +1120,16 @@ fn matching_thai_outline(doc: &Document, fonts: &Dict, source: &TextLine, span: 
     // A registered complete matching program also completes the source subset.
     // Do not replace it with bundled outlines merely because the original resource is a subset.
     // Only one in the source's style does (`program_candidates`), so only that one counts here.
-    let family = pdfcraft_fonts::embedding::face_key(&source.base_font);
+    let family = iridium_pdf_fonts::embedding::face_key(&source.base_font);
     !fonts.iter().filter_map(|(_, font)| doc.dict(font)).any(|font| {
         let metrics = Metrics::from_dict(doc, &font);
-        pdfcraft_fonts::embedding::face_key(&metrics.base_font) == family
+        iridium_pdf_fonts::embedding::face_key(&metrics.base_font) == family
             && FontStyle::of(doc, &font, &metrics) == style
-            && pdfcraft_fonts::pdf::embedded_sfnt(doc, &font).is_some_and(|bytes| {
-                pdfcraft_fonts::embedding::validate(&bytes).is_ok()
-                    && pdfcraft_fonts::source_shaping::has_thai_layout(&bytes)
+            && iridium_pdf_fonts::pdf::embedded_sfnt(doc, &font).is_some_and(|bytes| {
+                iridium_pdf_fonts::embedding::validate(&bytes).is_ok()
+                    && iridium_pdf_fonts::source_shaping::has_thai_layout(&bytes)
                     && covers_rows(&bytes, span)
-                    && span.split(row_break).all(|row| pdfcraft_fonts::source_shaping::shape(&bytes, row).is_ok())
+                    && span.split(row_break).all(|row| iridium_pdf_fonts::source_shaping::shape(&bytes, row).is_ok())
             })
     })
 }
@@ -1134,17 +1137,17 @@ fn matching_thai_outline(doc: &Document, fonts: &Dict, source: &TextLine, span: 
 /// Whether a complete program draws every row of `span`. [`row_break`] characters move to the next
 /// row and are never drawn, so they need no glyph (#6272); `embedding::covers` exempts only CR and LF.
 fn covers_rows(bytes: &[u8], span: &str) -> bool {
-    span.split(row_break).all(|row| pdfcraft_fonts::embedding::covers(bytes, row))
+    span.split(row_break).all(|row| iridium_pdf_fonts::embedding::covers(bytes, row))
 }
 
 /// Use the same Thai script selection and mark/cluster positioning as Add Text, including
 /// rows beginning with Latin or digits (guessing from their first character would select Latin).
-fn shape_thai_row(text: &str) -> Result<pdfcraft_fonts::source_shaping::ShapedRun, EditError> {
+fn shape_thai_row(text: &str) -> Result<iridium_pdf_fonts::source_shaping::ShapedRun, EditError> {
     if text.len() > 262_144 || text.contains(row_break) {
         return Err(EditError::Invalid("shape one bounded text row at a time".into()));
     }
     let clusters =
-        pdfcraft_fonts::shape_thai(text).map_err(|e| EditError::Invalid(format!("the matching Thai font cannot shape this text ({e:?})")))?;
+        iridium_pdf_fonts::shape_thai(text).map_err(|e| EditError::Invalid(format!("the matching Thai font cannot shape this text ({e:?})")))?;
     let mut glyphs = Vec::new();
     let mut advance = 0.0;
     for cluster in clusters {
@@ -1152,7 +1155,7 @@ fn shape_thai_row(text: &str) -> Result<pdfcraft_fonts::source_shaping::ShapedRu
             if glyphs.len() >= 65_534 {
                 return Err(EditError::Invalid("shaped row exceeds its geometry budget".into()));
             }
-            glyphs.push(pdfcraft_fonts::source_shaping::ShapedGlyph {
+            glyphs.push(iridium_pdf_fonts::source_shaping::ShapedGlyph {
                 id: id.into(),
                 position: [advance + x, y],
                 text: if i == 0 { cluster.text.clone() } else { String::new() },
@@ -1163,13 +1166,13 @@ fn shape_thai_row(text: &str) -> Result<pdfcraft_fonts::source_shaping::ShapedRu
     if !advance.is_finite() {
         return Err(EditError::Invalid("shaped row exceeds its geometry budget".into()));
     }
-    Ok(pdfcraft_fonts::source_shaping::ShapedRun { glyphs, advance })
+    Ok(iridium_pdf_fonts::source_shaping::ShapedRun { glyphs, advance })
 }
 
 /// The resources whose complete program may shape text in the face of `base_font`: `source`
 /// (the resource `name`) first, then the page's other fonts of that face (at most 128).
 fn program_candidates(doc: &Document, fonts: &Dict, name: &str, source: Dict, base_font: &str) -> Vec<(String, Dict)> {
-    let key = pdfcraft_fonts::embedding::face_key(base_font);
+    let key = iridium_pdf_fonts::embedding::face_key(base_font);
     let style = FontStyle::of(doc, &source, &Metrics::from_dict(doc, &source));
     let mut candidates = vec![(name.to_owned(), source)];
     candidates.extend(
@@ -1178,7 +1181,7 @@ fn program_candidates(doc: &Document, fonts: &Dict, name: &str, source: Dict, ba
             .filter_map(|(n, f)| Some((String::from_utf8_lossy(n).into_owned(), doc.dict(f)?)))
             .filter(|(_, f)| {
                 let m = Metrics::from_dict(doc, f);
-                pdfcraft_fonts::embedding::face_key(&m.base_font) == key && FontStyle::of(doc, f, &m) == style
+                iridium_pdf_fonts::embedding::face_key(&m.base_font) == key && FontStyle::of(doc, f, &m) == style
             })
             .take(128),
     );
@@ -1209,12 +1212,12 @@ impl FontStyle {
 
 /// `text` shaped by `font`'s embedded program with its own layout, when the program covers it and
 /// may be embedded again (`embed_mapping` refuses one that may not, so a later program is tried).
-fn shape_with_program(doc: &Document, font: &Dict, text: &str) -> Option<(Vec<u8>, pdfcraft_fonts::source_shaping::ShapedRun)> {
-    let bytes = pdfcraft_fonts::pdf::embedded_sfnt(doc, font)?;
-    if pdfcraft_fonts::embedding::validate(&bytes).is_err() || !pdfcraft_fonts::embedding::covers(&bytes, text) {
+fn shape_with_program(doc: &Document, font: &Dict, text: &str) -> Option<(Vec<u8>, iridium_pdf_fonts::source_shaping::ShapedRun)> {
+    let bytes = iridium_pdf_fonts::pdf::embedded_sfnt(doc, font)?;
+    if iridium_pdf_fonts::embedding::validate(&bytes).is_err() || !iridium_pdf_fonts::embedding::covers(&bytes, text) {
         return None;
     }
-    let shaped = pdfcraft_fonts::source_shaping::shape(&bytes, text).ok()?;
+    let shaped = iridium_pdf_fonts::source_shaping::shape(&bytes, text).ok()?;
     Some((bytes, shaped))
 }
 
@@ -1234,7 +1237,7 @@ fn shape_source(doc: &Document, fonts: &Dict, thai: &ThaiShaping, name: &str, te
             .ok_or_else(|| EditError::Invalid(format!("{family} cannot shape this text with its own layout; choose a font that covers it")))?;
         return Ok(Some(ShapedText { run: shaped, font: ShapedFont::Program { bytes, family } }));
     }
-    if !pdfcraft_fonts::source_shaping::required(text) {
+    if !iridium_pdf_fonts::source_shaping::required(text) {
         return Ok(None);
     }
     let source =
@@ -1244,7 +1247,7 @@ fn shape_source(doc: &Document, fonts: &Dict, thai: &ThaiShaping, name: &str, te
     // may (`legacy_thai_font` already gave the span to one that can).
     let in_place = (family.rsplit('+').next().unwrap_or(&family).starts_with("THSarabunPSK")
         && text.chars().any(|c| matches!(u32::from(c), 0x0e00..=0x0e7f))
-        && has_thai_source_face(&thai.legacy, &pdfcraft_fonts::embedding::face_key(&family)))
+        && has_thai_source_face(&thai.legacy, &iridium_pdf_fonts::embedding::face_key(&family)))
     .then(|| shape_existing_thai(&thai.legacy, name, text));
     let in_place = match in_place {
         Some(Ok(shaped)) => return Ok(Some(shaped)),
@@ -1259,7 +1262,7 @@ fn shape_source(doc: &Document, fonts: &Dict, thai: &ThaiShaping, name: &str, te
     if let Some(error) = in_place {
         return Err(error);
     }
-    let fallback = pdfcraft_fonts::document_thai_font()
+    let fallback = iridium_pdf_fonts::document_thai_font()
         .filter(|_| text.chars().any(|c| matches!(u32::from(c), 0x0e00..=0x0e7f)))
         .map(|face| format!("; or select {} in the document-font menu to replace it", face.family))
         .unwrap_or_default();
@@ -1568,7 +1571,7 @@ fn splice_with_marker(
             last.push(b'\n');
         }
         // `splice` never visits `ops.len()`, so a close after the final operator is appended.
-        last.extend_from_slice(&pdfcraft_content::serialize_ops(&[Op::new("EMC", vec![])]));
+        last.extend_from_slice(&iridium_pdf_content::serialize_ops(&[Op::new("EMC", vec![])]));
     }
     data
 }
@@ -1719,7 +1722,7 @@ pub(crate) fn rewrite_styled_block(
     let shaped = prepare_shaped_rows(doc, &fonts, &thai, &rows, &kept, advance)?;
     let ShapedRows { runs: shaped_runs, advances: segment_advances, char_advances } = shaped;
     let glyph_resources = embed_shaped_resources(doc, &mut fonts, &shaped_runs)?;
-    let n = pdfcraft_content::num;
+    let n = iridium_pdf_content::num;
     let mut block_ops = vec![Op::new("q", vec![])];
     block_ops.extend(reveal_ops(block, lines, style, o.ctm)?);
     let back = Matrix([o.ctm[0], o.ctm[1], o.ctm[2], o.ctm[3], 0.0, 0.0])

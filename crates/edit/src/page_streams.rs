@@ -1,7 +1,7 @@
 //! A page's content streams rewritten one at a time: each stream keeps its own dictionary
 //! (and so its marks, such as `/PCMark`), and only the streams that changed are replaced.
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, Stream};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, Stream};
 
 use crate::EditError;
 

@@ -150,7 +150,7 @@ mod tests {
             QuickTool::Redact,
             QuickTool::AddText,
             QuickTool::EditText,
-            QuickTool::Stamp(pdfcraft_engine::StampKind::DynApproved),
+            QuickTool::Stamp(iridium_pdf_engine::StampKind::DynApproved),
             QuickTool::CustomStamp(0),
             QuickTool::Link,
             QuickTool::SignArea { certify: false },
@@ -270,7 +270,7 @@ mod tests {
         let ctx = egui::Context::default();
         let on_a_link = || claims(&[(Layer::ToolArea, CursorIcon::Crosshair, None), (Layer::Link, CursorIcon::PointingHand, Some("tip"))]);
         assert_eq!(frame(&ctx, None, &mut on_a_link(), QuickTool::Select), (CursorIcon::PointingHand, Some("tip".into())));
-        let stamp = QuickTool::Stamp(pdfcraft_engine::StampKind::DynApproved);
+        let stamp = QuickTool::Stamp(iridium_pdf_engine::StampKind::DynApproved);
         assert_eq!(frame(&ctx, None, &mut on_a_link(), stamp), (CursorIcon::Crosshair, None), "the stamp's crosshair, and no link tip");
         // Nothing the tool reaches: the cursor stays as the frame set it.
         let mut only_a_link = claims(&[(Layer::Link, CursorIcon::PointingHand, Some("tip"))]);
@@ -284,7 +284,7 @@ mod tests {
     #[test]
     fn a_description_shows_with_any_tool_unless_the_winner_has_a_tip_of_its_own() {
         let ctx = egui::Context::default();
-        let stamp = QuickTool::Stamp(pdfcraft_engine::StampKind::DynApproved);
+        let stamp = QuickTool::Stamp(iridium_pdf_engine::StampKind::DynApproved);
         let link = (Layer::Link, CursorIcon::PointingHand, Some("https://example.org/"));
         let described = |claimed: &[(Layer, CursorIcon, Option<&str>)]| {
             let mut cursor = claims(claimed);

@@ -12,7 +12,7 @@ pub(crate) struct ImageCx<'a> {
     pub xf: &'a PageXform,
     pub ptr: &'a PagePointer,
     pub page: usize,
-    pub doc: &'a pdfcraft_engine::Document,
+    pub doc: &'a iridium_pdf_engine::Document,
     pub info: &'a DocInfo,
     /// What the press the pages hold is to this page.
     pub press: PagePress,
@@ -136,14 +136,14 @@ const CROP_GRIP_REACH: f32 = 10.0;
 
 /// The picture `image` being cropped to `keep`, on screen: its whole frame, and the box kept
 /// within it. `None` when either has no area.
-fn crop_frames(xf: &PageXform, info: &DocInfo, page: usize, image: &pdfcraft_engine::PageImage, keep: [f64; 4]) -> Option<(Rect, Rect)> {
+fn crop_frames(xf: &PageXform, info: &DocInfo, page: usize, image: &iridium_pdf_engine::PageImage, keep: [f64; 4]) -> Option<(Rect, Rect)> {
     let full = xf.user_rect(info, page, image.rect.map(|v| v as f32));
     let b = if full.is_positive() { full } else { xf.user_rect(info, page, image.visible_rect.unwrap_or(image.rect).map(|v| v as f32)) };
     let k = xf.user_rect(info, page, keep.map(|v| v as f32)).intersect(b);
     (b.is_finite() && b.is_positive() && b.size().is_finite() && k.is_finite() && k.is_positive()).then_some((b, k))
 }
 
-pub(crate) use pdfcraft_content::Matrix;
+pub(crate) use iridium_pdf_content::Matrix;
 
 /// The displayed crop frame, expressed in page user space, rather than the full image placement.
 fn resize_frame(obb: &ImageObb, xf: &PageXform, info: &DocInfo, page: usize) -> Matrix {
@@ -268,7 +268,7 @@ fn same_rect(a: [f64; 4], b: [f64; 4]) -> bool {
 /// Crop mode for the selected image `i` whose visible frame is `b` (screen). Returns `true`
 /// (the pointer is the crop's while it lasts; its keys are read by [`picture_keys`]).
 #[allow(clippy::cognitive_complexity)]
-fn crop_input(cx: &ImageCx<'_>, view: &mut DocView, i: usize, image: &pdfcraft_engine::PageImage) -> bool {
+fn crop_input(cx: &ImageCx<'_>, view: &mut DocView, i: usize, image: &iridium_pdf_engine::PageImage) -> bool {
     let ImageCx { ui, resp, xf, ptr, page, info, press, gate, .. } = *cx;
     let painter = ui.painter();
     let Some(mode) = view.image_selection.as_mut().and_then(|s| s.crop.as_mut()) else { return false };
@@ -468,16 +468,16 @@ fn crop_input(cx: &ImageCx<'_>, view: &mut DocView, i: usize, image: &pdfcraft_e
 
 /// Done in crop mode: it ends, and the picture `image` of the selection keeps the box kept (or
 /// all of itself again).
-fn apply_crop_mode(view: &mut DocView, image: &pdfcraft_engine::PageImage) {
+fn apply_crop_mode(view: &mut DocView, image: &iridium_pdf_engine::PageImage) {
     let Some(s) = view.image_selection.as_mut() else { return };
     let Some(keep) = s.crop.take().map(|mode| mode.keep) else { return };
     let (page, index) = (s.page, s.index);
     if same_rect(keep, image.rect) {
         if image.has_editor_crop() {
-            view.pending_edit = Some(Edit::EditPageImage { page, index, change: pdfcraft_engine::ImageEdit::RemoveCrop });
+            view.pending_edit = Some(Edit::EditPageImage { page, index, change: iridium_pdf_engine::ImageEdit::RemoveCrop });
         }
     } else if image.visible_rect != Some(keep) {
-        view.pending_edit = Some(Edit::EditPageImage { page, index, change: pdfcraft_engine::ImageEdit::Crop(keep) });
+        view.pending_edit = Some(Edit::EditPageImage { page, index, change: iridium_pdf_engine::ImageEdit::Crop(keep) });
     }
 }
 
@@ -488,7 +488,7 @@ fn apply_crop_mode(view: &mut DocView, image: &pdfcraft_engine::PageImage) {
 /// Enter applies the crop and Escape leaves it, though not while a button is down (`held`): Escape
 /// then cancels the press the pages hold, if any (`canvas::cancel_on_escape`), and crop mode stays.
 /// Nothing while a text field has the keyboard.
-pub(crate) fn picture_keys(ctx: &egui::Context, view: &mut DocView, page: usize, images: &[pdfcraft_engine::PageImage], held: bool) {
+pub(crate) fn picture_keys(ctx: &egui::Context, view: &mut DocView, page: usize, images: &[iridium_pdf_engine::PageImage], held: bool) {
     if ctx.egui_wants_keyboard_input() || view.page_screen_rect(page).is_none() {
         return;
     }
@@ -517,7 +517,7 @@ pub(crate) fn picture_keys(ctx: &egui::Context, view: &mut DocView, page: usize,
         // Added content's selection follows the picture's (`content_ui::sync_image_selection`), and
         // goes with it: once the picture is gone it would be the next added item's.
         view.content.selected = None;
-        view.pending_edit = Some(Edit::EditPageImage { page, index, change: pdfcraft_engine::ImageEdit::Delete });
+        view.pending_edit = Some(Edit::EditPageImage { page, index, change: iridium_pdf_engine::ImageEdit::Delete });
     }
 }
 
@@ -565,7 +565,7 @@ pub(crate) fn handle_hit(
     xf: &PageXform,
     page: usize,
     info: &DocInfo,
-    images: &[pdfcraft_engine::PageImage],
+    images: &[iridium_pdf_engine::PageImage],
     view: &DocView,
     p: Pos2,
 ) -> Option<Hit> {
@@ -590,7 +590,14 @@ pub(crate) fn handle_hit(
 /// they show the hand. `None` when no picture on `page` is being cropped, or `p` is off the page,
 /// its grips and its controls: the box and the picture stop at the page's edge, as a clipped
 /// artwork's whole frame can reach over the next pages.
-pub(crate) fn crop_hit(xf: &PageXform, page: usize, info: &DocInfo, images: &[pdfcraft_engine::PageImage], view: &DocView, p: Pos2) -> Option<Hit> {
+pub(crate) fn crop_hit(
+    xf: &PageXform,
+    page: usize,
+    info: &DocInfo,
+    images: &[iridium_pdf_engine::PageImage],
+    view: &DocView,
+    p: Pos2,
+) -> Option<Hit> {
     let s = view.image_selection.as_ref().filter(|s| s.page == page)?;
     let mode = s.crop.as_ref()?;
     let part = crop_part(xf, info, page, images.get(s.index), mode, p)?;
@@ -606,7 +613,14 @@ pub(crate) fn crop_hit(xf: &PageXform, page: usize, info: &DocInfo, images: &[pd
 /// What of crop mode `mode` on the picture `image` lies under `p` ([`crop_hit`]): a control (as
 /// [`CropPart::Page`]), a grip, the box kept, the picture outside it, or the rest of the page;
 /// `None` off the page, its grips and its controls.
-fn crop_part(xf: &PageXform, info: &DocInfo, page: usize, image: Option<&pdfcraft_engine::PageImage>, mode: &CropMode, p: Pos2) -> Option<CropPart> {
+fn crop_part(
+    xf: &PageXform,
+    info: &DocInfo,
+    page: usize,
+    image: Option<&iridium_pdf_engine::PageImage>,
+    mode: &CropMode,
+    p: Pos2,
+) -> Option<CropPart> {
     if mode.controls.iter().any(|r| r.contains(p)) {
         return Some(CropPart::Page);
     }
@@ -632,13 +646,20 @@ fn crop_part(xf: &PageXform, info: &DocInfo, page: usize, image: Option<&pdfcraf
 /// The picture under `p` (its shape, not only its box; for the selected one, its frame, a hole in it
 /// included): a click selects it, a drag moves the selected one. On the text layer, asked before
 /// the paragraphs: editable text on top of a picture takes the press.
-pub(crate) fn body_hit(xf: &PageXform, page: usize, info: &DocInfo, images: &[pdfcraft_engine::PageImage], view: &DocView, p: Pos2) -> Option<Hit> {
+pub(crate) fn body_hit(
+    xf: &PageXform,
+    page: usize,
+    info: &DocInfo,
+    images: &[iridium_pdf_engine::PageImage],
+    view: &DocView,
+    p: Pos2,
+) -> Option<Hit> {
     if !xf.rect.contains(p) {
         return None;
     }
     let (x, y) = xf.screen_to_view(p);
     let user = info.pages.get(page)?.view_to_user(x, y).map(f64::from);
-    let on_picture = |im: &pdfcraft_engine::PageImage| {
+    let on_picture = |im: &iridium_pdf_engine::PageImage| {
         im.visible_rect.is_some_and(|r| xf.user_rect(info, page, r.map(|v| v as f32)).contains(p)) && im.contains(user)
     };
     // The selected picture's frame is its own, a hole in it and a picture over it included.
@@ -711,7 +732,7 @@ pub(super) fn turn_degrees(centre: Pos2, pointer: Pos2, snap: bool) -> f32 {
 /// selects it, a drag of the selected one moves, resizes or turns it. Returns `true` when the
 /// pointer was used.
 #[allow(clippy::cognitive_complexity)]
-pub(crate) fn image_input(cx: &ImageCx<'_>, images: &[pdfcraft_engine::PageImage], view: &mut DocView) -> bool {
+pub(crate) fn image_input(cx: &ImageCx<'_>, images: &[iridium_pdf_engine::PageImage], view: &mut DocView) -> bool {
     let ImageCx { ui, resp, xf, ptr, page, doc, info, press, gate } = *cx;
     let boxes: Vec<Rect> = images.iter().map(|im| crate::canvas::image_screen_rect(im, xf, info, page)).collect();
     let painter = ui.painter();
@@ -868,7 +889,7 @@ pub(crate) fn image_input(cx: &ImageCx<'_>, images: &[pdfcraft_engine::PageImage
                 }
                 if degrees.abs() >= 0.05 {
                     view.pending_edit =
-                        Some(Edit::EditPageImage { page, index: i, change: pdfcraft_engine::ImageEdit::RotateBy(f64::from(degrees)) });
+                        Some(Edit::EditPageImage { page, index: i, change: iridium_pdf_engine::ImageEdit::RotateBy(f64::from(degrees)) });
                 }
             }
             return true;
@@ -936,8 +957,11 @@ pub(crate) fn image_input(cx: &ImageCx<'_>, images: &[pdfcraft_engine::PageImage
                         s.settled = (preview != b).then(|| (left_at.unwrap_or_else(|| norm(b)), norm(preview)));
                     }
                     if preview != b {
-                        view.pending_edit =
-                            Some(Edit::EditPageImage { page, index: i, change: pdfcraft_engine::ImageEdit::Move(user_box(xf, info, page, target)) });
+                        view.pending_edit = Some(Edit::EditPageImage {
+                            page,
+                            index: i,
+                            change: iridium_pdf_engine::ImageEdit::Move(user_box(xf, info, page, target)),
+                        });
                     }
                 }
 
@@ -992,10 +1016,10 @@ pub(crate) fn image_input(cx: &ImageCx<'_>, images: &[pdfcraft_engine::PageImage
                     if matches!(drag.target, DragTarget::Move) {
                         let (dx, dy) = (px - sx, py - sy);
                         let new_rect = [image.rect[0] + dx, image.rect[1] + dy, image.rect[2] + dx, image.rect[3] + dy];
-                        view.pending_edit = Some(Edit::EditPageImage { page, index: i, change: pdfcraft_engine::ImageEdit::Move(new_rect) });
+                        view.pending_edit = Some(Edit::EditPageImage { page, index: i, change: iridium_pdf_engine::ImageEdit::Move(new_rect) });
                     } else if let Some(inv) = Matrix(drag.initial_matrix).invert() {
                         let t = inv.then(&m_new);
-                        view.pending_edit = Some(Edit::EditPageImage { page, index: i, change: pdfcraft_engine::ImageEdit::Transform(t.0) });
+                        view.pending_edit = Some(Edit::EditPageImage { page, index: i, change: iridium_pdf_engine::ImageEdit::Transform(t.0) });
                     }
                 }
             }
@@ -1052,7 +1076,7 @@ pub(crate) fn picture_context(page: usize, index: Option<usize>, view: &mut DocV
 pub(crate) fn image_context_menu(
     ui: &mut egui::Ui,
     view: &mut DocView,
-    images: &[pdfcraft_engine::PageImage],
+    images: &[iridium_pdf_engine::PageImage],
     page: usize,
     hit: usize,
     can_paste: bool,
@@ -1061,7 +1085,7 @@ pub(crate) fn image_context_menu(
     rotation: u16,
 ) {
     let Some(img) = images.get(hit) else { return };
-    use pdfcraft_engine::ImageEdit as E;
+    use iridium_pdf_engine::ImageEdit as E;
     let raster = !img.is_form;
 
     // Whether `entry` was clicked; a click closes the menu.
@@ -1128,7 +1152,7 @@ pub(crate) fn image_context_menu(
     }
 
     ui.menu_button(tl!("Arrange image"), |ui| {
-        use pdfcraft_engine::ArrangeOrder as A;
+        use iridium_pdf_engine::ArrangeOrder as A;
         for (order, label) in [
             (A::BringToFront, tl!("Bring to front")),
             (A::SendToBack, tl!("Send to back")),

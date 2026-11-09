@@ -106,7 +106,7 @@ impl TriangleMesh {
     /// `[0, 0, 0, w]`) bends the surface per point, so the stored normals are dropped.
     ///
     /// ```
-    /// use pdfcraft_prc::{Matrix, TriangleMesh};
+    /// use iridium_pdf_prc::{Matrix, TriangleMesh};
     /// let mut mirror = Matrix::IDENTITY;
     /// mirror.0[0][0] = -1.0;
     /// let mut mesh = TriangleMesh::default();

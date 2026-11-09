@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use pdfcraft_automation::{Automation, Content};
+use iridium_pdf_automation::{Automation, Content};
 use serde_json::{Value, json};
 
 /// One triangle at z = 0 facing +z, with corners (-1,-1), (1,-1) and (0,1), as a PRC file of one
@@ -37,7 +37,7 @@ fn pdf(subtype: &str, hex: &str) -> Vec<u8> {
 /// A fresh folder with `prc.pdf` and `u3d.pdf` in `in`, `outside.pdf` beside it, and an
 /// automation rooted at `in`.
 fn setup(test: &str) -> (PathBuf, Automation) {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-model3d-{test}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-model3d-{test}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("in")).unwrap();
     std::fs::write(dir.join("in/prc.pdf"), pdf("PRC", TRIANGLE_PRC_HEX)).unwrap();

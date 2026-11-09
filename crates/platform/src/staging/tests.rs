@@ -2,7 +2,7 @@ use super::*;
 
 /// A fresh, empty folder for one test.
 fn test_dir(test: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-platform-staging-{}-{test}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-platform-staging-{}-{test}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
@@ -18,9 +18,9 @@ fn file_name(p: &Path) -> String {
 fn each_form_keeps_its_exact_name() {
     let dir = test_dir("forms");
     let (tools, _) = create_staging(&dir, "out.pdf", StagingName::SuffixThenTag, [0xab]).unwrap();
-    assert_eq!(file_name(&tools), ".out.pdf.00000000000000ab.pdfcraft-tmp");
+    assert_eq!(file_name(&tools), ".out.pdf.00000000000000ab.iridium-pdf-tmp");
     let (desktop, _) = create_staging(&dir, "out.pdf", StagingName::TagThenSuffix, [0xab]).unwrap();
-    assert_eq!(file_name(&desktop), ".out.pdf.pdfcraft-00000000000000ab.tmp");
+    assert_eq!(file_name(&desktop), ".out.pdf.iridium-pdf-00000000000000ab.tmp");
     assert_eq!(std::fs::read(&tools).unwrap(), b"", "a new, empty file");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -31,10 +31,10 @@ fn a_long_name_is_cut_to_128_bytes_between_characters() {
     // One byte, then four-byte characters: the 128-byte limit falls inside the 32nd one.
     let name = format!("a{}.pdf", "\u{1F600}".repeat(40));
     let (tmp, _) = create_staging(&dir, &name, StagingName::SuffixThenTag, [1]).unwrap();
-    assert_eq!(file_name(&tmp), format!(".a{}.0000000000000001.pdfcraft-tmp", "\u{1F600}".repeat(31)));
+    assert_eq!(file_name(&tmp), format!(".a{}.0000000000000001.iridium-pdf-tmp", "\u{1F600}".repeat(31)));
     // One-byte characters: exactly 128 of them are kept.
     let (tmp, _) = create_staging(&dir, &"x".repeat(200), StagingName::SuffixThenTag, [2]).unwrap();
-    assert_eq!(file_name(&tmp), format!(".{}.0000000000000002.pdfcraft-tmp", "x".repeat(128)));
+    assert_eq!(file_name(&tmp), format!(".{}.0000000000000002.iridium-pdf-tmp", "x".repeat(128)));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -77,7 +77,7 @@ fn running_out_of_suffixes_refuses_and_creates_nothing() {
 #[test]
 fn only_the_first_sixteen_names_are_tried() {
     let dir = test_dir("cap");
-    let name = |s: u64| dir.join(format!(".out.pdf.{s:016x}.pdfcraft-tmp"));
+    let name = |s: u64| dir.join(format!(".out.pdf.{s:016x}.iridium-pdf-tmp"));
     for s in 1..=STAGING_ATTEMPTS as u64 {
         std::fs::write(name(s), "PLANTED").unwrap();
     }
@@ -127,9 +127,9 @@ fn atomic_saves_keep_finder_tags_and_binary_extended_attributes() {
     let dir = test_dir("xattrs");
     let target = dir.join("out.pdf");
     let attributes: &[(&str, &[u8])] = &[
-        ("com.apple.metadata:_kMDItemUserTags", b"<plist version=\"1.0\"><array><string>PdfCraft\n6</string></array></plist>"),
-        ("com.pdfcraft.test.binary", b"\0\xff\x80original\0"),
-        ("com.pdfcraft.test.empty", b""),
+        ("com.apple.metadata:_kMDItemUserTags", b"<plist version=\"1.0\"><array><string>PDF\n6</string></array></plist>"),
+        ("com.iridium_pdf.test.binary", b"\0\xff\x80original\0"),
+        ("com.iridium_pdf.test.empty", b""),
     ];
     std::fs::write(&target, b"OLD").unwrap();
     for (name, value) in attributes {
@@ -172,12 +172,12 @@ fn a_failed_flush_keeps_the_original_extended_attributes() {
     let dir = test_dir("xattrs-flush");
     let target = dir.join("out.pdf");
     std::fs::write(&target, b"OLD").unwrap();
-    setxattr(&target, "com.pdfcraft.test", b"original", XattrFlags::empty()).unwrap();
+    setxattr(&target, "com.iridium_pdf.test", b"original", XattrFlags::empty()).unwrap();
     let e = write_atomically_with(&target, b"NEW", StagingName::TagThenSuffix, [9], |_| Err(std::io::Error::other("flush refused"))).unwrap_err();
     assert!(e.to_string().contains("flush refused"));
     assert_eq!(std::fs::read(&target).unwrap(), b"OLD");
     let mut value = [0u8; 64];
-    let len = getxattr(&target, "com.pdfcraft.test", &mut value[..]).unwrap();
+    let len = getxattr(&target, "com.iridium_pdf.test", &mut value[..]).unwrap();
     assert_eq!(&value[..len], b"original");
     assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
     std::fs::remove_dir_all(dir).unwrap();
@@ -280,7 +280,7 @@ fn replacing_a_symlink_does_not_copy_attributes_from_its_referent() {
     let dir = test_dir("xattrs-symlink");
     let outside = test_dir("xattrs-outside").join("private.pdf");
     std::fs::write(&outside, b"PRIVATE").unwrap();
-    setxattr(&outside, "com.pdfcraft.test", b"private metadata", XattrFlags::empty()).unwrap();
+    setxattr(&outside, "com.iridium_pdf.test", b"private metadata", XattrFlags::empty()).unwrap();
     let target = dir.join("out.pdf");
     std::os::unix::fs::symlink(&outside, &target).unwrap();
     write_atomically(&target, b"NEW", StagingName::TagThenSuffix).unwrap();
@@ -288,8 +288,8 @@ fn replacing_a_symlink_does_not_copy_attributes_from_its_referent() {
     assert_eq!(std::fs::read(&target).unwrap(), b"NEW");
     assert!(!target.symlink_metadata().unwrap().file_type().is_symlink());
     let mut bytes = [0u8; 64];
-    assert_eq!(getxattr(&target, "com.pdfcraft.test", &mut bytes[..]).unwrap_err(), rustix::io::Errno::NOATTR);
-    let len = getxattr(&outside, "com.pdfcraft.test", &mut bytes[..]).unwrap();
+    assert_eq!(getxattr(&target, "com.iridium_pdf.test", &mut bytes[..]).unwrap_err(), rustix::io::Errno::NOATTR);
+    let len = getxattr(&outside, "com.iridium_pdf.test", &mut bytes[..]).unwrap();
     assert_eq!(&bytes[..len], b"private metadata");
     std::fs::remove_dir_all(dir).unwrap();
     std::fs::remove_dir_all(outside.parent().unwrap()).unwrap();

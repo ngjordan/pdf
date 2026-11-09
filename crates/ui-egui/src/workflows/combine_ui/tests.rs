@@ -39,9 +39,9 @@ fn locked() -> Vec<u8> {
         out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
     }
     out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
-    let mut doc = pdfcraft_cos::Document::open(Arc::new(out)).unwrap();
-    doc.set_encryption(&pdfcraft_cos::NewEncryption {
-        algorithm: pdfcraft_cos::Algorithm::Aes256,
+    let mut doc = iridium_pdf_cos::Document::open(Arc::new(out)).unwrap();
+    doc.set_encryption(&iridium_pdf_cos::NewEncryption {
+        algorithm: iridium_pdf_cos::Algorithm::Aes256,
         user_password: "pw",
         owner_password: "owner",
         permissions: -1,
@@ -49,13 +49,13 @@ fn locked() -> Vec<u8> {
         seed: [4; 32],
     })
     .unwrap();
-    pdfcraft_cos::write_full(&doc, &Default::default()).unwrap()
+    iridium_pdf_cos::write_full(&doc, &Default::default()).unwrap()
 }
 
 #[test]
 fn duplicate_warnings_reuse_results_and_track_removal_and_parts() {
     let bytes = locked();
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.stage_combine(vec![("same.pdf".into(), bytes.clone())]);
     let mut part = app.combine_draft[0].clone();
     part.id = 99;
@@ -84,7 +84,7 @@ fn the_same_image_or_text_file_added_twice_is_a_duplicate() {
     image::RgbaImage::from_pixel(12, 4, image::Rgba([20, 30, 40, 255])).write_to(&mut png, image::ImageFormat::Png).unwrap();
     let png = png.into_inner();
     let warnings = |first: (&str, &[u8]), second: (&str, &[u8])| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.session = std::mem::take(&mut app.session).with_clock(|| NOW.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
         for (name, bytes) in [first, second] {
             app.stage_combine(vec![(name.into(), bytes.to_vec())]);
@@ -101,7 +101,7 @@ fn the_same_image_or_text_file_added_twice_is_a_duplicate() {
 fn every_read_of_a_file_is_new_even_after_undo() {
     // Regression: the read counter lived in the undo history, so unlock → undo → unlock (with
     // another password) could repeat a value and keep a thumbnail of the other read.
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.stage_combine(vec![("secret.pdf".into(), locked())]);
     let added = app.combine_draft[0].auth;
     assert!(app.combine_unlock_rows(&[0], "pw"));
@@ -115,7 +115,7 @@ fn every_read_of_a_file_is_new_even_after_undo() {
 
 #[test]
 fn moves_by_rank_never_lose_or_repeat_a_file() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.stage_combine((0..6).map(|i| (format!("f{i}.pdf"), locked())).collect());
     let mut ids: Vec<u64> = app.combine_draft.iter().map(|f| f.id).collect();
     for (moving, gap) in [(vec![0usize, 2, 4], 6), (vec![5], 0), (vec![1, 3], 3)] {
@@ -150,7 +150,7 @@ fn page_lists_become_the_shortest_range() {
     // Whatever comes out reads back as the same pages.
     for pages in [vec![0, 1, 2, 5, 4, 3, 3, 7], vec![9, 0, 9, 1], vec![2, 1, 0, 1, 2]] {
         let range = range_of(&pages, 10);
-        let back = pdfcraft_engine::print::select_pages(10, Some(&range), &[], pdfcraft_engine::print::Subset::All, false).unwrap();
+        let back = iridium_pdf_engine::print::select_pages(10, Some(&range), &[], iridium_pdf_engine::print::Subset::All, false).unwrap();
         assert_eq!(back, pages, "{range}");
     }
 }
@@ -217,7 +217,7 @@ fn removing_pages_drops_emptied_parts_and_joins_what_meets() {
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
 fn a_password_answered_after_combine_opens_behind_the_combine_tab() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.open_bytes("locked.pdf", None, locked()).unwrap();
     assert!(app.password_prompt.is_some() && app.views.is_empty());
     app.combine_paths(&[]);
@@ -227,7 +227,7 @@ fn a_password_answered_after_combine_opens_behind_the_combine_tab() {
     assert_eq!(app.views.len(), 1, "the document is open");
     assert!(app.combine_showing(), "and the Combine files tab still shows");
 
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.open_bytes("locked.pdf", None, locked()).unwrap();
     app.password_prompt.as_mut().unwrap().then = Some("export.text");
     app.combine_paths(&[]);

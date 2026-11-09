@@ -9,7 +9,7 @@ use std::sync::Arc;
 /// group's colour space, and a subtractive space's components are complemented before the
 /// blend function and back after it (ISO 32000-2 §11.3.4); of the nonseparable modes,
 /// §11.3.5.3 blends C, M and Y as complemented R, G and B and takes K from the backdrop
-/// (from the source for Luminosity). PdfCraft blended the colours converted to RGB, so
+/// (from the source for Luminosity). PDF blended the colours converted to RGB, so
 /// magenta under black with Difference came out magenta instead of green. Vendored
 /// hayro-interpret patch (70) and hayro patch (27): an isolated group (§11.4.7: its own
 /// transparent backdrop) blending in DeviceCMYK is blended in CMYK.

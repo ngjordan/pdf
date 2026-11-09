@@ -133,7 +133,7 @@ pub fn run_shared(script: &str, event: &Event, doc: &DocInfo, fields: Arc<Vec<Fi
         let english = crate::format::printd_english();
         std::thread::scope(|scope| {
             let spawned = std::thread::Builder::new()
-                .name("pdfcraft-js".into())
+                .name("iridium-pdf-js".into())
                 .stack_size(SCRIPT_STACK)
                 .spawn_scoped(scope, || crate::format::with_english_printd(english, || run_here(script, event, doc, fields, kept, skipped, limits)));
             match spawned {
@@ -219,7 +219,7 @@ fn run_here(
         install(&mut ctx)?;
         let (ev, value_store) = event_object(&mut ctx, event)?;
         ctx.register_global_property(js_string!("event"), ev.clone(), Attribute::all())?;
-        // One document script that throws (calling a method PdfCraft lacks, say) must not keep
+        // One document script that throws (calling a method PDF lacks, say) must not keep
         // every field script in the form from running: what it defined before the error, and
         // the other scripts, stay available (#3940).
         for &(i, d) in doc_scripts {

@@ -1,15 +1,15 @@
 //! Edit ▸ Copy, Cut and Paste of objects selected together in Edit a PDF (#5989).
 //!
 //! A copy ([`ObjectClip`]) holds what the objects draw and the resources that drawing names
-//! ([`pdfcraft_edit::copy_objects`]), with a snapshot of the document they came from, so it can
+//! ([`iridium_pdf_edit::copy_objects`]), with a snapshot of the document they came from, so it can
 //! be pasted into any open document, also after the original changes or closes. Within the same
 //! document, while the objects it refers to are unchanged, a paste draws them again from the same
-//! fonts and images; otherwise it first copies them over ([`pdfcraft_organize::import_value`]):
+//! fonts and images; otherwise it first copies them over ([`iridium_pdf_organize::import_value`]):
 //! each once, through cycles, sharing what the target already holds, and within a size limit.
 
 use std::sync::Arc;
 
-use pdfcraft_cos::Object;
+use iridium_pdf_cos::Object;
 
 use crate::{DocId, Document, Edit, EditError, EditableObject, ObjectTarget};
 
@@ -18,15 +18,15 @@ const MAX_IMPORT_OBJECTS: usize = 20_000;
 /// The most stream data (fonts, images…) a paste copies into another document.
 const MAX_IMPORT_BYTES: usize = 256 << 20;
 /// How far each further paste onto the same page steps down and to the right, in points, as
-/// pasted added content steps ([`pdfcraft_edit::added::PASTE_STEP`]).
-const STEP: f64 = pdfcraft_edit::added::PASTE_STEP;
+/// pasted added content steps ([`iridium_pdf_edit::added::PASTE_STEP`]).
+const STEP: f64 = iridium_pdf_edit::added::PASTE_STEP;
 
 /// Objects copied from one page of a document.
 #[derive(Clone)]
 pub struct ObjectClip {
-    copied: pdfcraft_edit::CopiedObjects,
+    copied: iridium_pdf_edit::CopiedObjects,
     /// The document as it was when copied: what the copy's resources refer to.
-    source: pdfcraft_cos::Document,
+    source: iridium_pdf_cos::Document,
     doc: DocId,
     page: usize,
 }
@@ -74,7 +74,7 @@ impl Document {
     pub fn copy_objects(&self, page: usize, targets: &[ObjectTarget]) -> Result<ObjectClip, EditError> {
         self.check_copying()?;
         let editor = self.editor.as_ref().ok_or_else(|| EditError::ReadOnly("the document can't be read".into()))?;
-        let copied = pdfcraft_edit::copy_objects(&editor.cos, page, targets)?;
+        let copied = iridium_pdf_edit::copy_objects(&editor.cos, page, targets)?;
         Ok(ObjectClip { copied, source: editor.cos.clone(), doc: self.id, page })
     }
 
@@ -159,23 +159,23 @@ fn delete_one(page: usize, t: ObjectTarget) -> Edit {
 /// exactly over it (fake bold, a paste onto itself), which renumbers paragraphs before it too: so
 /// each paragraph is found again by its text and box, and one already gone with another is done.
 pub(crate) fn delete(
-    doc: &mut pdfcraft_cos::Document,
+    doc: &mut iridium_pdf_cos::Document,
     page: usize,
     objects: &[ObjectTarget],
-    mut run: impl FnMut(&mut pdfcraft_cos::Document, &Edit) -> Result<(), EditError>,
+    mut run: impl FnMut(&mut iridium_pdf_cos::Document, &Edit) -> Result<(), EditError>,
 ) -> Result<(), EditError> {
     use crate::ObjectKind;
     let mut targets = objects.to_vec();
     targets.sort_by_key(|t| (t.kind == ObjectKind::Added, std::cmp::Reverse(t.index)));
     targets.dedup();
-    let blocks = pdfcraft_edit::text_blocks(doc, page)?;
+    let blocks = iridium_pdf_edit::text_blocks(doc, page)?;
     for t in targets {
         let edit = match t.kind {
             ObjectKind::Text => {
                 let key = blocks.get(t.index).map(crate::BlockKey::of).ok_or_else(|| {
-                    EditError::Edit(pdfcraft_edit::EditError::Invalid("a selected paragraph no longer exists; select the objects again".into()))
+                    EditError::Edit(iridium_pdf_edit::EditError::Invalid("a selected paragraph no longer exists; select the objects again".into()))
                 })?;
-                let Some(block) = key.find(&pdfcraft_edit::text_blocks(doc, page)?, t.index) else { continue };
+                let Some(block) = key.find(&iridium_pdf_edit::text_blocks(doc, page)?, t.index) else { continue };
                 delete_one(page, ObjectTarget { kind: t.kind, index: block })
             }
             _ => delete_one(page, t),
@@ -186,23 +186,24 @@ pub(crate) fn delete(
 }
 
 /// [`Edit::PasteObjects`]: the copy's resources as `doc` holds them, then the paste.
-pub(crate) fn paste(doc: &mut pdfcraft_cos::Document, page: usize, clip: &ObjectClip, offset: [f64; 2]) -> Result<(), EditError> {
+pub(crate) fn paste(doc: &mut iridium_pdf_cos::Document, page: usize, clip: &ObjectClip, offset: [f64; 2]) -> Result<(), EditError> {
     let resources = Object::Dict(clip.copied.resources.clone());
-    let refused =
-        |e: pdfcraft_organize::OrganizeError| EditError::Edit(pdfcraft_edit::EditError::Invalid(format!("the copied objects can't be pasted: {e}")));
-    let used = pdfcraft_organize::reachable(&clip.source, &resources, MAX_IMPORT_OBJECTS, MAX_IMPORT_BYTES).map_err(refused)?;
+    let refused = |e: iridium_pdf_organize::OrganizeError| {
+        EditError::Edit(iridium_pdf_edit::EditError::Invalid(format!("the copied objects can't be pasted: {e}")))
+    };
+    let used = iridium_pdf_organize::reachable(&clip.source, &resources, MAX_IMPORT_OBJECTS, MAX_IMPORT_BYTES).map_err(refused)?;
     // Still the objects the copy was made from: the same document, and each of them unchanged.
     let same = doc.source_identity() == clip.source.source_identity()
         && used.iter().all(|r| {
             let (here, there) = (doc.get(*r), clip.source.get(*r));
             Arc::ptr_eq(&here, &there) || here == there
         });
-    let resources = if same { resources } else { pdfcraft_organize::import_value(doc, &clip.source, &resources).map_err(refused)? };
+    let resources = if same { resources } else { iridium_pdf_organize::import_value(doc, &clip.source, &resources).map_err(refused)? };
     let Object::Dict(resources) = resources else {
-        return Err(EditError::Edit(pdfcraft_edit::EditError::Invalid("the copied objects' resources could not be copied".into())));
+        return Err(EditError::Edit(iridium_pdf_edit::EditError::Invalid("the copied objects' resources could not be copied".into())));
     };
-    let copied = pdfcraft_edit::CopiedObjects { resources, ..clip.copied.clone() };
-    pdfcraft_edit::paste_objects(doc, page, &copied, offset)?;
+    let copied = iridium_pdf_edit::CopiedObjects { resources, ..clip.copied.clone() };
+    iridium_pdf_edit::paste_objects(doc, page, &copied, offset)?;
     Ok(())
 }
 

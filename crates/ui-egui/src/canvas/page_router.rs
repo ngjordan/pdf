@@ -12,7 +12,7 @@
 //! reads the router: its methods are `canvas`'s alone.
 
 use egui::CursorIcon;
-use pdfcraft_engine::ObjectTarget;
+use iridium_pdf_engine::ObjectTarget;
 
 use crate::QuickTool;
 use crate::page_cursor::Layer;
@@ -272,7 +272,7 @@ mod tests {
         let hits = [hit(Layer::Comment, 0), hit(Layer::Link, 1), hit(Layer::Comment, 2)];
         assert_eq!(top(hits.clone(), QuickTool::Select).map(|h| h.owner), Some(hits[2].owner));
         // A stamp reaches neither links nor comments.
-        let stamp = QuickTool::Stamp(pdfcraft_engine::StampKind::DynApproved);
+        let stamp = QuickTool::Stamp(iridium_pdf_engine::StampKind::DynApproved);
         assert_eq!(top(hits, stamp), None);
         assert_eq!(top([hit(Layer::Placed, 3), hit(Layer::Comment, 4)], stamp).map(|h| h.owner), Some(hit(Layer::Placed, 3).owner));
     }

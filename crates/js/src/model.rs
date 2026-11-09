@@ -232,7 +232,7 @@ pub enum Request {
     /// `this.pageNum = n` (0-based).
     GoToPage(usize),
     LaunchUrl(String),
-    /// `this.submitForm(url)`: never sent on PdfCraft's own.
+    /// `this.submitForm(url)`: never sent on PDF's own.
     Submit(String),
     /// `field.setFocus()`.
     Focus(String),

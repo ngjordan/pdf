@@ -4,7 +4,7 @@ use crate::support;
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::{By, NodeT, Queryable};
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_ui_egui::PdfApp;
 
 /// A tiny PDF with two pages, two bookmarks and one sticky note.
 const FIXTURE: &[u8] = b"%PDF-1.7
@@ -19,9 +19,9 @@ const FIXTURE: &[u8] = b"%PDF-1.7
 trailer << /Root 1 0 R >>
 %%EOF";
 
-fn harness(setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, PdfCraftApp> {
+fn harness(setup: impl FnOnce(&mut PdfApp) + 'static) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         setup(&mut app);
         app
@@ -34,14 +34,14 @@ fn harness(setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, P
 #[test]
 fn home_shows_welcome_and_tools() {
     let h = harness(|_| {});
-    h.get_by_label_contains("Welcome to PdfCraft");
+    h.get_by_label_contains("Welcome to PDF");
     assert!(h.query_all_by_label("Organize pages").count() >= 2, "tool list + home card");
     h.get_by_label("Open file");
 }
 
 #[test]
 fn tools_panel_side_preference_moves_and_persists() {
-    use pdfcraft_ui_egui::Dialog;
+    use iridium_pdf_ui_egui::Dialog;
 
     let mut h = harness(|_| {});
     h.state_mut().dialog = Some(Dialog::Preferences);
@@ -51,7 +51,7 @@ fn tools_panel_side_preference_moves_and_persists() {
     h.run_steps(3);
     assert!(h.state().side_panels.tools_on_right());
     let saved = h.state().persist();
-    let mut restored = PdfCraftApp::new();
+    let mut restored = PdfApp::new();
     restored.restore(&saved);
     assert!(restored.side_panels.tools_on_right());
     h.get_by_label("Left").click();
@@ -61,7 +61,7 @@ fn tools_panel_side_preference_moves_and_persists() {
 
 /// Every piece of text painted on the last frame: its whole text, whether it was cut with "…",
 /// and where it was drawn.
-fn painted_text(h: &Harness<'static, PdfCraftApp>) -> Vec<(String, bool, egui::Rect)> {
+fn painted_text(h: &Harness<'static, PdfApp>) -> Vec<(String, bool, egui::Rect)> {
     h.output()
         .shapes
         .iter()
@@ -78,7 +78,7 @@ fn long_recent_names_and_paths_are_cut_before_the_page_count() {
     let path = format!("/{}/{name}", "A folder with a long name".repeat(8));
     let h = harness({
         let (name, path) = (name.clone(), path.clone());
-        move |app| app.recent.push(pdfcraft_ui_egui::RecentFile { name, path, pages: 7, size: 2048 })
+        move |app| app.recent.push(iridium_pdf_ui_egui::RecentFile { name, path, pages: 7, size: 2048 })
     });
     let text = painted_text(&h);
     let detail = text.iter().find(|(s, ..)| s.starts_with("7 pages")).expect("the row shows its page count").2;
@@ -93,10 +93,10 @@ fn long_recent_names_and_paths_are_cut_before_the_page_count() {
 fn home_removes_one_recent_file_or_clears_them_all() {
     // Tall enough that the Recent list is on screen without scrolling.
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1600.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         for name in ["first.pdf", "second.pdf", "third.pdf"] {
-            app.recent.push(pdfcraft_ui_egui::RecentFile { name: name.into(), path: format!("/nowhere/{name}"), pages: 1, size: 0 });
+            app.recent.push(iridium_pdf_ui_egui::RecentFile { name: name.into(), path: format!("/nowhere/{name}"), pages: 1, size: 0 });
         }
         app
     });
@@ -111,7 +111,7 @@ fn home_removes_one_recent_file_or_clears_them_all() {
     h.get_by_label("Clear Recent Files").click();
     h.run_steps(2);
     assert!(h.state().recent.is_empty(), "Clear empties the list");
-    h.get_by_label_contains("Files you open in PdfCraft appear here");
+    h.get_by_label_contains("Files you open in PDF appear here");
     assert!(h.query_by_label("Clear Recent Files").is_none(), "and goes away with nothing left to clear");
 }
 
@@ -120,7 +120,7 @@ fn every_catalog_tool_is_listed_after_view_more() {
     let mut h = harness(|_| {});
     h.get_by_label("View more").click();
     h.run_steps(3);
-    for g in pdfcraft_engine::catalog::TOOL_GROUPS {
+    for g in iridium_pdf_engine::catalog::TOOL_GROUPS {
         assert!(h.query_all_by_label(g.label).count() >= 1, "tool {} missing from All tools", g.label);
     }
 }
@@ -131,10 +131,10 @@ fn expanded_all_tools_lists_every_tool_by_category_and_searches() {
     h.get_by_label("Expand all tools").click();
     h.run_steps(3);
     assert!(h.state().all_tools_full);
-    for c in pdfcraft_engine::catalog::TOOL_CATEGORIES {
+    for c in iridium_pdf_engine::catalog::TOOL_CATEGORIES {
         h.get_by_label(c.label);
     }
-    for g in pdfcraft_engine::catalog::TOOL_GROUPS {
+    for g in iridium_pdf_engine::catalog::TOOL_GROUPS {
         assert!(h.query_all_by_label(g.label).count() >= 1, "tool {} missing from the expanded view", g.label);
     }
     // An item name finds its tool; the other categories drop out.
@@ -151,7 +151,7 @@ fn expanded_all_tools_lists_every_tool_by_category_and_searches() {
     h.get_by_label("Organize pages").click();
     h.run_steps(3);
     assert!(!h.state().all_tools_full);
-    assert_eq!(h.state().left, pdfcraft_ui_egui::LeftPanel::Tool("organize"));
+    assert_eq!(h.state().left, iridium_pdf_ui_egui::LeftPanel::Tool("organize"));
     h.get_by_label("Back to all tools");
 }
 
@@ -172,7 +172,7 @@ fn collapse_and_escape_close_the_expanded_all_tools() {
 #[test]
 fn escape_in_a_dialog_over_the_expanded_all_tools_leaves_the_view_open() {
     let mut h = harness(|app| app.set_option("tools", "full").unwrap());
-    h.state_mut().dialog = Some(pdfcraft_ui_egui::Dialog::About);
+    h.state_mut().dialog = Some(iridium_pdf_ui_egui::Dialog::About);
     h.run_steps(3);
     h.key_press(egui::Key::Escape);
     h.run_steps(3);
@@ -192,7 +192,7 @@ fn escape_in_the_command_palette_over_the_expanded_all_tools_leaves_the_view_ope
 
 #[test]
 fn another_workspace_from_the_mode_option_puts_the_expanded_all_tools_away() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("tools", "full").unwrap();
     app.set_option("mode", "all").unwrap();
     assert!(app.all_tools_full, "All tools itself keeps the view");
@@ -203,14 +203,14 @@ fn another_workspace_from_the_mode_option_puts_the_expanded_all_tools_away() {
 
 #[test]
 fn opening_a_document_puts_the_expanded_all_tools_away() {
-    use pdfcraft_ui_egui::Mode;
+    use iridium_pdf_ui_egui::Mode;
     // All tools as the default workspace: no workspace change, but the document must show.
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("tools", "full").unwrap();
     app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens");
     assert!(!app.all_tools_full, "the document shows, not the catalogue over it");
     // Read as the default workspace: coming back to All tools later shows the sidebar.
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("default-mode", "read").unwrap();
     app.set_option("tools", "full").unwrap();
     app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens");
@@ -220,7 +220,7 @@ fn opening_a_document_puts_the_expanded_all_tools_away() {
 
 #[test]
 fn choosing_a_tool_puts_the_expanded_all_tools_away() {
-    use pdfcraft_ui_egui::LeftPanel;
+    use iridium_pdf_ui_egui::LeftPanel;
     let mut h = harness(|app| app.set_option("tools", "full").unwrap());
     h.state_mut().set_option("tool", "organize").unwrap();
     h.run_steps(3);
@@ -238,7 +238,7 @@ fn another_tab_coming_forward_puts_the_expanded_all_tools_away() {
     h.state_mut().set_option("home", "").unwrap();
     h.run_steps(3);
     assert!(!h.state().all_tools_full);
-    h.get_by_label_contains("Welcome to PdfCraft");
+    h.get_by_label_contains("Welcome to PDF");
     // Another document's tab.
     let mut h = harness(|app| {
         app.open_bytes("one.pdf", None, FIXTURE.to_vec()).expect("fixture opens");
@@ -258,12 +258,12 @@ fn going_home_with_no_document_puts_the_expanded_all_tools_away() {
     h.state_mut().set_option("home", "").unwrap();
     h.run_steps(3);
     assert!(!h.state().all_tools_full);
-    h.get_by_label_contains("Welcome to PdfCraft");
+    h.get_by_label_contains("Welcome to PDF");
 }
 
 #[test]
 fn expanding_all_tools_from_read_mode_restores_the_right_panel() {
-    use pdfcraft_ui_egui::{Mode, RightPanel};
+    use iridium_pdf_ui_egui::{Mode, RightPanel};
     let mut h = harness(|app| app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens"));
     h.state_mut().right = Some(RightPanel::Bookmarks);
     h.state_mut().execute("view.read_mode");
@@ -277,7 +277,7 @@ fn expanding_all_tools_from_read_mode_restores_the_right_panel() {
 
 #[test]
 fn expanding_all_tools_from_edit_puts_edit_text_down() {
-    use pdfcraft_ui_egui::{LeftPanel, Mode, QuickTool};
+    use iridium_pdf_ui_egui::{LeftPanel, Mode, QuickTool};
     let mut h = harness(|app| app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens"));
     support::outside_menus(&h, "Edit").click();
     h.run_steps(3);
@@ -300,11 +300,11 @@ fn opening_a_pdf_shows_comments_and_bookmarks() {
     h.get_by_label("Beta section");
 }
 
-/// #1590: side panes the user closed stay closed when PdfCraft restarts and opens another PDF,
+/// #1590: side panes the user closed stay closed when PDF restarts and opens another PDF,
 /// even one with comments and bookmarks, which would otherwise open on the Comments panel.
 #[test]
 fn closed_side_panes_stay_closed_after_a_restart_and_opening_a_pdf() {
-    use pdfcraft_ui_egui::RightPanel;
+    use iridium_pdf_ui_egui::RightPanel;
     let mut h = harness(|app| app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens"));
     assert_eq!(h.state().right, Some(RightPanel::Comments));
     assert!(h.state().left_open);
@@ -330,7 +330,7 @@ fn closed_side_panes_stay_closed_after_a_restart_and_opening_a_pdf() {
 /// (`/PageMode /UseOutlines`), within a session and after a restart.
 #[test]
 fn closed_right_panel_stays_closed_for_a_document_asking_for_its_outline() {
-    use pdfcraft_ui_egui::RightPanel;
+    use iridium_pdf_ui_egui::RightPanel;
     let pdf = || String::from_utf8(FIXTURE.to_vec()).unwrap().replace("/Outlines 6 0 R", "/Outlines 6 0 R /PageMode /UseOutlines").into_bytes();
     let mut h = harness(|app| app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens"));
     assert_eq!(h.state().right, Some(RightPanel::Comments));
@@ -348,33 +348,33 @@ fn closed_right_panel_stays_closed_for_a_document_asking_for_its_outline() {
 
 #[test]
 fn navigation_rail_toggles_between_right_and_left_and_persists() {
-    use pdfcraft_ui_egui::Dialog;
+    use iridium_pdf_ui_egui::Dialog;
 
     let mut h = harness(|app| app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens"));
-    assert_eq!(h.state().side_panels.rail_side, pdfcraft_ui_egui::side_panels::ToolsSide::Right);
+    assert_eq!(h.state().side_panels.rail_side, iridium_pdf_ui_egui::side_panels::ToolsSide::Right);
     h.get_by_label("Dock navigation rail on Left").click();
     h.run_steps(3);
-    assert_eq!(h.state().side_panels.rail_side, pdfcraft_ui_egui::side_panels::ToolsSide::Left);
+    assert_eq!(h.state().side_panels.rail_side, iridium_pdf_ui_egui::side_panels::ToolsSide::Left);
     let saved = h.state().persist();
     let mut h2 = harness(move |app| {
         app.restore(&saved);
     });
-    assert_eq!(h2.state().side_panels.rail_side, pdfcraft_ui_egui::side_panels::ToolsSide::Left);
+    assert_eq!(h2.state().side_panels.rail_side, iridium_pdf_ui_egui::side_panels::ToolsSide::Left);
     h2.state_mut().dialog = Some(Dialog::Preferences);
     h2.run_steps(3);
     h2.get_by_label("Navigation rail side: Right").click();
     h2.run_steps(3);
-    assert_eq!(h2.state().side_panels.rail_side, pdfcraft_ui_egui::side_panels::ToolsSide::Right);
+    assert_eq!(h2.state().side_panels.rail_side, iridium_pdf_ui_egui::side_panels::ToolsSide::Right);
     h2.get_by_label("Navigation rail side: Left").click();
     h2.run_steps(3);
-    assert_eq!(h2.state().side_panels.rail_side, pdfcraft_ui_egui::side_panels::ToolsSide::Left);
+    assert_eq!(h2.state().side_panels.rail_side, iridium_pdf_ui_egui::side_panels::ToolsSide::Left);
 }
 
 /// Read mode hides the tools, not the navigation panes: the rail's Bookmarks button opens the
 /// bookmarks when Read is the default workspace (#932), and the left tool pane stays hidden.
 #[test]
 fn read_mode_rail_buttons_open_their_panels() {
-    use pdfcraft_ui_egui::{Mode, RightPanel};
+    use iridium_pdf_ui_egui::{Mode, RightPanel};
     let mut h = harness(|app| {
         app.default_mode = Mode::Read;
         app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens");
@@ -406,7 +406,7 @@ fn read_mode_rail_buttons_open_their_panels() {
 /// mode is still a View command.
 #[test]
 fn the_mode_bar_has_no_read_tab() {
-    use pdfcraft_ui_egui::Mode;
+    use iridium_pdf_ui_egui::Mode;
     let mut h = harness(|app| app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens"));
     for label in ["All tools", "Edit", "Convert", "E-Sign"] {
         assert!(h.query_all_by_label(label).next().is_some(), "the {label} tab is there");
@@ -449,7 +449,7 @@ fn a_document_asking_for_full_screen_is_asked_about_first() {
 /// Switching to Read mode closes the open pane, and switching back reopens it.
 #[test]
 fn read_mode_closes_the_panes_and_leaving_it_brings_them_back() {
-    use pdfcraft_ui_egui::{Mode, RightPanel};
+    use iridium_pdf_ui_egui::{Mode, RightPanel};
     let mut h = harness(|app| app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens"));
     assert_eq!(h.state().right, Some(RightPanel::Comments));
     h.state_mut().run_command("view.read_mode");
@@ -474,7 +474,7 @@ fn read_mode_closes_the_panes_and_leaving_it_brings_them_back() {
 /// Read mode hides the quick toolbar too, and puts down the tool that was in use (#2646).
 #[test]
 fn read_mode_hides_the_quick_toolbar() {
-    use pdfcraft_ui_egui::{Mode, QuickTool};
+    use iridium_pdf_ui_egui::{Mode, QuickTool};
     let mut h = harness(|app| app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens"));
     h.get_by_label("Hand (H)").click();
     h.run_steps(2);
@@ -493,7 +493,7 @@ fn read_mode_hides_the_quick_toolbar() {
 /// mode from the mode bar does: the hidden toolbar would leave no way to see or change it.
 #[test]
 fn opening_into_read_mode_puts_the_tool_down() {
-    use pdfcraft_ui_egui::{Mode, QuickTool};
+    use iridium_pdf_ui_egui::{Mode, QuickTool};
     let mut h = harness(|app| app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens"));
     assert_eq!(h.state().mode, Mode::AllTools);
     h.state_mut().set_option("quick", "hand").unwrap();
@@ -508,7 +508,7 @@ fn opening_into_read_mode_puts_the_tool_down() {
 /// pane saved on the way in, and closing Comments keeps its close preference.
 #[test]
 fn a_pane_closed_in_read_mode_stays_closed_when_leaving_it() {
-    use pdfcraft_ui_egui::{Mode, RightPanel};
+    use iridium_pdf_ui_egui::{Mode, RightPanel};
     let mut h = harness(|app| app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens"));
     assert_eq!(h.state().right, Some(RightPanel::Comments));
     h.state_mut().run_command("view.read_mode");
@@ -571,7 +571,7 @@ fn a_middle_click_closes_the_tab() {
     assert_eq!(app.views.len(), 1);
     assert_eq!(app.session.get(app.views[0].id).unwrap().name, "second.pdf");
     assert!(app.close_request.is_none(), "a clean document closes without asking");
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
     h.run_steps(2);
     h.get_by_label("second.pdf (edited)").click_button(egui::PointerButton::Middle);
     h.run_steps(3);
@@ -584,12 +584,12 @@ fn a_link_prompt_above_a_save_prompt_owns_its_keys() {
     for key in [egui::Key::Escape, egui::Key::Enter] {
         let mut h = harness(|app| {
             app.open_bytes("first.pdf", None, FIXTURE.to_vec()).unwrap();
-            app.apply_edit(pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
-            app.close_request = Some(pdfcraft_ui_egui::CloseRequest::Tab(app.views[0].id));
+            app.apply_edit(iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
+            app.close_request = Some(iridium_pdf_ui_egui::CloseRequest::Tab(app.views[0].id));
         });
         h.run_steps(3);
         h.state_mut().pending_link =
-            Some(pdfcraft_ui_egui::PendingLink { url: "https://example.org".to_owned(), origin: pdfcraft_ui_egui::LinkOrigin::Link });
+            Some(iridium_pdf_ui_egui::PendingLink { url: "https://example.org".to_owned(), origin: iridium_pdf_ui_egui::LinkOrigin::Link });
         h.run_steps(3);
         h.key_press(key);
         h.run_steps(3);
@@ -638,7 +638,7 @@ fn overflowing_tabs_can_be_reached_by_scrolling() {
     h.run_steps(4);
     assert_eq!(h.state().views.len(), 19);
     assert!(h.state().active.is_some_and(|i| i < 19));
-    if let Ok(dir) = std::env::var("PDFCRAFT_TAB_SHOTS") {
+    if let Ok(dir) = std::env::var("IRIDIUM_PDF_TAB_SHOTS") {
         let _gpu = crate::gpu();
         crate::support::settle(&mut h);
         h.render().unwrap().save(format!("{dir}/overflow-tabs.png")).unwrap();
@@ -646,7 +646,7 @@ fn overflowing_tabs_can_be_reached_by_scrolling() {
 }
 
 /// Whether a node labelled `label` is there and enabled (`None`: not there).
-fn enabled(h: &Harness<'static, PdfCraftApp>, label: &str) -> Option<bool> {
+fn enabled(h: &Harness<'static, PdfApp>, label: &str) -> Option<bool> {
     h.query_by_label(label)?;
     Some(h.query_by(|n| n.label().as_deref() == Some(label) && n.is_disabled()).is_none())
 }
@@ -722,7 +722,7 @@ fn the_integrated_title_bar_is_the_traffic_light_band() {
 fn narrow_tab_strips_accept_vertical_wheel_scrolling() {
     for width in [600.0, 900.0] {
         let mut h = Harness::builder().with_size(egui::vec2(width, 700.0)).build_eframe(|_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             for i in 0..12 {
                 app.open_bytes(&format!("narrow-{i:02}.pdf"), None, FIXTURE.to_vec()).unwrap();
@@ -753,7 +753,7 @@ fn narrow_tab_strips_accept_vertical_wheel_scrolling() {
         h.run_steps(4);
         assert_eq!(h.state().active, Some(11));
         assert!(h.get_by_label_contains("Display theme:").rect().right() <= width);
-        if let Ok(dir) = std::env::var("PDFCRAFT_TAB_SHOTS") {
+        if let Ok(dir) = std::env::var("IRIDIUM_PDF_TAB_SHOTS") {
             let _gpu = crate::gpu();
             crate::support::settle(&mut h);
             h.render().unwrap().save(format!("{dir}/tabs-{width}.png")).unwrap();
@@ -763,7 +763,7 @@ fn narrow_tab_strips_accept_vertical_wheel_scrolling() {
 
 #[test]
 fn garbage_input_is_rejected_without_panicking() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("language", "en").unwrap();
     assert!(app.open_bytes("junk.pdf", None, b"this is not a pdf".to_vec()).is_err());
     assert!(app.open_bytes("empty.pdf", None, Vec::new()).is_err());
@@ -852,39 +852,39 @@ fn drag_selects_text_and_copy_returns_it() {
 
 #[test]
 fn persistence_round_trips_and_tolerates_garbage() {
-    let mut a = PdfCraftApp::new();
+    let mut a = PdfApp::new();
     a.set_option("language", "en").unwrap();
     a.set_option("theme", "dark").unwrap();
     let json = a.persist();
-    let mut b = PdfCraftApp::new();
+    let mut b = PdfApp::new();
     b.set_option("language", "en").unwrap();
     b.restore(&json);
-    assert_eq!(b.theme, pdfcraft_ui_egui::theme::ThemeKind::Dark);
+    assert_eq!(b.theme, iridium_pdf_ui_egui::theme::ThemeKind::Dark);
     b.restore("{not json");
     b.restore("{\"recent\": 5, \"theme\": \"Purple\"}");
-    assert_eq!(b.theme, pdfcraft_ui_egui::theme::ThemeKind::Dark);
+    assert_eq!(b.theme, iridium_pdf_ui_egui::theme::ThemeKind::Dark);
 }
 
 /// A tool's saved "no fill" (`"fill": null`) clears a fill it had as its default; a missing or
 /// malformed fill keeps it (#340).
 #[test]
 fn a_saved_no_fill_clears_a_comment_tool_default_fill() {
-    use pdfcraft_ui_egui::comments::CommentTool;
-    let filled = |a: &mut PdfCraftApp| {
+    use iridium_pdf_ui_egui::comments::CommentTool;
+    let filled = |a: &mut PdfApp| {
         let mut s = a.comment_prefs.style(CommentTool::Rectangle);
         s.fill = Some([0.2, 0.4, 0.6]);
         a.comment_prefs.set_style(CommentTool::Rectangle, s);
     };
-    let mut a = PdfCraftApp::new();
+    let mut a = PdfApp::new();
     filled(&mut a);
     a.restore(r#"{"comment_styles":[{"tool":"comment.square","fill":null}]}"#);
     assert_eq!(a.comment_prefs.style(CommentTool::Rectangle).fill, None, "null clears the fill");
-    let mut b = PdfCraftApp::new();
+    let mut b = PdfApp::new();
     filled(&mut b);
     b.restore(r#"{"comment_styles":[{"tool":"comment.square","color":[0,0,1]},{"tool":"comment.square","fill":"red"}]}"#);
     assert_eq!(b.comment_prefs.style(CommentTool::Rectangle).fill, Some([0.2, 0.4, 0.6]), "missing or malformed keeps it");
     // A round trip keeps a cleared fill cleared.
-    let mut c = PdfCraftApp::new();
+    let mut c = PdfApp::new();
     c.restore(&a.persist());
     assert_eq!(c.comment_prefs.style(CommentTool::Rectangle).fill, None);
 }
@@ -893,15 +893,15 @@ fn a_saved_no_fill_clears_a_comment_tool_default_fill() {
 /// colour it had; a missing or malformed one keeps it.
 #[test]
 fn a_saved_same_as_text_clears_a_comment_tool_border_colour() {
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_ui_egui::comments::CommentTool;
     let red = Some([0.89, 0.13, 0.13]);
-    let mut a = PdfCraftApp::new();
+    let mut a = PdfApp::new();
     a.comment_prefs.set_border_color(CommentTool::TextBox, red);
     a.restore(r#"{"comment_styles":[{"tool":"comment.freetext","border_color":"red"}]}"#);
     assert_eq!(a.comment_prefs.style(CommentTool::TextBox).border_color, red, "malformed keeps it");
     a.restore(r#"{"comment_styles":[{"tool":"comment.freetext","border_color":null}]}"#);
     assert_eq!(a.comment_prefs.style(CommentTool::TextBox).border_color, None, "null clears it");
-    let mut b = PdfCraftApp::new();
+    let mut b = PdfApp::new();
     b.comment_prefs.set_border_color(CommentTool::TextBox, red);
     b.restore(&a.persist());
     assert_eq!(b.comment_prefs.style(CommentTool::TextBox).border_color, None, "a round trip keeps it cleared");
@@ -911,8 +911,8 @@ fn a_saved_same_as_text_clears_a_comment_tool_border_colour() {
 /// values are clamped or ignored, never trusted (#340).
 #[test]
 fn comment_style_settings_clamp_and_refuse_hostile_values() {
-    use pdfcraft_ui_egui::comments::CommentTool;
-    let mut a = PdfCraftApp::new();
+    use iridium_pdf_ui_egui::comments::CommentTool;
+    let mut a = PdfApp::new();
     a.restore(
         r#"{"comment_styles":[
             {"tool":"comment.highlight","color":[2,-1,0.5],"opacity":99,"width":-4},
@@ -933,14 +933,14 @@ fn comment_style_settings_clamp_and_refuse_hostile_values() {
 /// text keeps none, and the quick bar's Opacity (the whole comment's) clears them.
 #[test]
 fn part_opacity_defaults_persist_and_clamp() {
-    use pdfcraft_ui_egui::comments::CommentTool;
-    let mut a = PdfCraftApp::new();
+    use iridium_pdf_ui_egui::comments::CommentTool;
+    let mut a = PdfApp::new();
     a.comment_prefs.set_part_opacity(CommentTool::Rectangle, Some(0.3), None);
     a.comment_prefs.set_part_opacity(CommentTool::TextBox, Some(0.2), Some(1.0));
     a.comment_prefs.set_part_opacity(CommentTool::Line, Some(0.5), Some(0.5));
-    let mut b = PdfCraftApp::new();
+    let mut b = PdfApp::new();
     b.restore(&a.persist());
-    let parts = |app: &PdfCraftApp, tool| {
+    let parts = |app: &PdfApp, tool| {
         let s = app.comment_prefs.style(tool);
         (s.fill_opacity, s.text_opacity)
     };
@@ -1039,7 +1039,7 @@ impl egui::DroppedFile for Dropped {
 #[test]
 fn dropping_a_pdf_on_the_window_opens_it() {
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app
     });
@@ -1058,13 +1058,13 @@ fn dropping_a_pdf_on_the_window_opens_it() {
 
 #[test]
 fn dropping_an_open_pdf_again_focuses_its_tab() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-drop-dedup-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-drop-dedup-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("dropped.pdf");
     std::fs::write(&path, FIXTURE).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app
     });
@@ -1084,14 +1084,14 @@ fn dropping_an_open_pdf_again_focuses_its_tab() {
 fn a_file_dropped_on_the_page_grid_is_read_from_disk_and_inserted() {
     // The grid's drop reads a file from its path when its turn to be inserted comes, and inserts it
     // at the end when the pointer doesn't say where it went (about a second).
-    let dir = std::env::temp_dir().join(format!("pdfcraft-grid-drop-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-grid-drop-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("dropped.pdf");
-    let setup = PdfCraftApp::new();
+    let setup = PdfApp::new();
     let pdf = setup.session.create_from_text("dropped", "from disk").unwrap();
     std::fs::write(&path, pdf.as_slice()).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         let grid = app.session.create_from_text("grid", "one page").unwrap();
         app.open_bytes("grid.pdf", None, grid.to_vec()).unwrap();
@@ -1099,7 +1099,7 @@ fn a_file_dropped_on_the_page_grid_is_read_from_disk_and_inserted() {
         app
     });
     h.run_steps(3);
-    let pages = |h: &egui_kittest::Harness<'_, PdfCraftApp>| {
+    let pages = |h: &egui_kittest::Harness<'_, PdfApp>| {
         let app = h.state();
         app.session.get(app.views[0].id).unwrap().info.pages.len()
     };
@@ -1120,7 +1120,7 @@ fn a_file_dropped_on_the_page_grid_is_read_from_disk_and_inserted() {
 #[test]
 fn pdfs_dropped_on_the_combine_tab_join_its_list() {
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app
     });
@@ -1129,7 +1129,7 @@ fn pdfs_dropped_on_the_combine_tab_join_its_list() {
     h.state_mut().execute("page.combine");
     h.run_steps(2);
     // An absolute path is read from disk, with its modified time.
-    let path = std::env::temp_dir().join(format!("pdfcraft-combine-drop-{}.pdf", std::process::id()));
+    let path = std::env::temp_dir().join(format!("iridium-pdf-combine-drop-{}.pdf", std::process::id()));
     std::fs::write(&path, FIXTURE).unwrap();
     let on_disk: egui::DroppedFileHandle = std::sync::Arc::new(Dropped { path: path.clone(), bytes: Vec::new() });
     let in_memory: egui::DroppedFileHandle = std::sync::Arc::new(Dropped { path: "second.pdf".into(), bytes: FIXTURE.to_vec() });
@@ -1145,13 +1145,13 @@ fn pdfs_dropped_on_the_combine_tab_join_its_list() {
 
 #[test]
 fn a_folder_dropped_on_the_combine_tab_adds_its_pdfs() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-combine-drop-dir-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-combine-drop-dir-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("inner")).unwrap();
     std::fs::write(dir.join("one.pdf"), FIXTURE).unwrap();
     std::fs::write(dir.join("inner").join("two.pdf"), FIXTURE).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app
     });
@@ -1167,28 +1167,28 @@ fn a_folder_dropped_on_the_combine_tab_adds_its_pdfs() {
 }
 
 /// The Combine files tab, showing, with one file in its list already.
-fn combine_tab_with_one_file() -> Harness<'static, PdfCraftApp> {
+fn combine_tab_with_one_file() -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app
     });
     h.run_steps(3);
     h.state_mut().set_option("combine-view", "list").unwrap();
     h.state_mut().execute("page.combine");
-    h.state_mut().use_files(pdfcraft_ui_egui::FilePurpose::Combine, vec![("first.pdf".into(), FIXTURE.to_vec())]);
+    h.state_mut().use_files(iridium_pdf_ui_egui::FilePurpose::Combine, vec![("first.pdf".into(), FIXTURE.to_vec())]);
     h.run_steps(2);
     h
 }
 
-fn combine_names(h: &Harness<'_, PdfCraftApp>) -> Vec<String> {
+fn combine_names(h: &Harness<'_, PdfApp>) -> Vec<String> {
     h.state().combine_draft.iter().map(|f| f.name.clone()).collect()
 }
 
 #[test]
 fn files_dropped_on_the_combine_tab_join_the_end_of_its_list_in_the_order_dropped() {
     let mut h = combine_tab_with_one_file();
-    let dir = std::env::temp_dir().join(format!("pdfcraft-combine-drop-order-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-combine-drop-order-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     // Files on disk come with their path (and no bytes); browsers hand over only a name and bytes.
@@ -1217,7 +1217,7 @@ fn files_dropped_on_the_combine_tab_join_the_end_of_its_list_in_the_order_droppe
 #[test]
 fn a_file_combine_does_not_take_is_left_out_of_a_drop_and_named() {
     let mut h = combine_tab_with_one_file();
-    let path = std::env::temp_dir().join(format!("pdfcraft-combine-drop-{}.zip", std::process::id()));
+    let path = std::env::temp_dir().join(format!("iridium-pdf-combine-drop-{}.zip", std::process::id()));
     std::fs::write(&path, b"PK\x03\x04").unwrap();
     let dropped: [egui::DroppedFileHandle; 4] = [
         std::sync::Arc::new(Dropped { path: "report.docx".into(), bytes: b"PK\x03\x04".to_vec() }),
@@ -1249,8 +1249,8 @@ fn a_pdf_dropped_on_a_document_opens_while_the_combine_tab_waits_behind_it() {
 #[test]
 fn files_and_quit_from_the_operating_system() {
     // #73: macOS hands Finder double-clicks, Open With and Dock drops over as Apple events.
-    use pdfcraft_ui_egui::OsEvent;
-    let name = format!("pdfcraft-os-open-{}.pdf", std::process::id());
+    use iridium_pdf_ui_egui::OsEvent;
+    let name = format!("iridium-pdf-os-open-{}.pdf", std::process::id());
     let path = std::env::temp_dir().join(&name);
     std::fs::write(&path, FIXTURE).unwrap();
     let queue = std::rc::Rc::new(std::cell::RefCell::new(vec![OsEvent::Open(vec![path.to_string_lossy().into_owned()])]));
@@ -1278,12 +1278,12 @@ fn files_and_quit_from_the_operating_system() {
     assert!(closing);
 }
 
-/// #585: File Explorer's "Combine files in PdfCraft" starts one launch per selected file, and the
-/// running PdfCraft collects them (an `OsEvent::Combine` each) into its Combine files tab.
+/// #585: File Explorer's "Combine files in PDF" starts one launch per selected file, and the
+/// running PDF collects them (an `OsEvent::Combine` each) into its Combine files tab.
 #[test]
 fn files_to_combine_from_the_operating_system() {
-    use pdfcraft_ui_egui::OsEvent;
-    let dir = std::env::temp_dir().join(format!("pdfcraft-os-combine-{}", std::process::id()));
+    use iridium_pdf_ui_egui::OsEvent;
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-os-combine-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let paths: Vec<String> = ["one.pdf", "two.pdf"]
         .iter()
@@ -1310,8 +1310,8 @@ fn files_to_combine_from_the_operating_system() {
 /// instead of hiding it; an Open that comes after Combine still shows its document.
 #[test]
 fn an_open_finishing_after_combine_keeps_the_combine_tab() {
-    use pdfcraft_ui_egui::OsEvent;
-    let dir = std::env::temp_dir().join(format!("pdfcraft-os-combine-pending-{}", std::process::id()));
+    use iridium_pdf_ui_egui::OsEvent;
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-os-combine-pending-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let paths: Vec<String> = ["opening.pdf", "combined.pdf", "later.pdf"]
         .iter()
@@ -1351,13 +1351,13 @@ fn an_open_finishing_after_combine_keeps_the_combine_tab() {
 
 #[test]
 fn default_workspace_mode_persists_and_tolerates_invalid_settings() {
-    use pdfcraft_ui_egui::Mode;
+    use iridium_pdf_ui_egui::Mode;
     for mode in [Mode::AllTools, Mode::Read, Mode::Edit, Mode::Convert, Mode::Sign] {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.default_mode = mode;
         app.set_option("mode", "sign").unwrap();
-        let mut restored = PdfCraftApp::new();
+        let mut restored = PdfApp::new();
         restored.set_option("language", "en").unwrap();
         restored.restore(&app.persist());
         assert_eq!(restored.default_mode, mode);
@@ -1365,7 +1365,7 @@ fn default_workspace_mode_persists_and_tolerates_invalid_settings() {
         assert_eq!(restored.mode, mode, "session override must not be persisted");
     }
     for json in ["{}", "{not json", r#"{"default_mode": null}"#, r#"{"default_mode": 5}"#, r#"{"default_mode": "unknown"}"#] {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.restore(json);
         assert_eq!(app.default_mode, Mode::AllTools);
@@ -1376,8 +1376,8 @@ fn default_workspace_mode_persists_and_tolerates_invalid_settings() {
 
 #[test]
 fn newly_opened_pdfs_use_the_default_workspace() {
-    use pdfcraft_ui_egui::{LeftPanel, Mode};
-    let mut app = PdfCraftApp::new();
+    use iridium_pdf_ui_egui::{LeftPanel, Mode};
+    let mut app = PdfApp::new();
     app.set_option("language", "en").unwrap();
     app.restore(r#"{"default_mode": "edit"}"#);
     app.open_bytes("first.pdf", None, FIXTURE.to_vec()).unwrap();
@@ -1392,16 +1392,16 @@ fn newly_opened_pdfs_use_the_default_workspace() {
         String::from_utf8(FIXTURE.to_vec()).unwrap().replace("/Outlines 6 0 R", "/Outlines 6 0 R /PageLayout /TwoColumnLeft /PageMode /UseOutlines");
     app.open_bytes("initial-view.pdf", None, pdf.into_bytes()).unwrap();
     assert_eq!(app.mode, Mode::Read);
-    assert_eq!(app.views.last().unwrap().layout, pdfcraft_ui_egui::canvas::PageLayout::TwoUp);
-    assert_eq!(app.right, Some(pdfcraft_ui_egui::RightPanel::Bookmarks));
+    assert_eq!(app.views.last().unwrap().layout, iridium_pdf_ui_egui::canvas::PageLayout::TwoUp);
+    assert_eq!(app.right, Some(iridium_pdf_ui_egui::RightPanel::Bookmarks));
 }
 
 #[test]
 fn explicit_mode_overrides_default_before_and_after_open() {
-    use pdfcraft_ui_egui::Mode;
+    use iridium_pdf_ui_egui::Mode;
     for before in [false, true] {
         for (value, mode) in [("all", Mode::AllTools), ("read", Mode::Read), ("edit", Mode::Edit), ("convert", Mode::Convert), ("sign", Mode::Sign)] {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.default_mode = Mode::Read;
             if before {
@@ -1424,7 +1424,7 @@ fn explicit_mode_overrides_default_before_and_after_open() {
 #[test]
 fn preferences_selects_default_workspace_for_next_open() {
     use egui::accesskit::Role;
-    use pdfcraft_ui_egui::Mode;
+    use iridium_pdf_ui_egui::Mode;
     let mut h = harness(|app| app.set_option("dialog", "preferences").unwrap());
     h.get_by_label("Default workspace mode");
     h.get_by_role_and_label(Role::RadioButton, "Read").scroll_to_me();
@@ -1445,8 +1445,8 @@ fn preferences_selects_default_workspace_for_next_open() {
 #[test]
 fn use_system_title_bar_swaps_the_header_bar_for_the_window_frame() {
     use egui::accesskit::Role;
-    use pdfcraft_ui_egui::window_controls::Layout;
-    fn decorations(h: &Harness<'static, PdfCraftApp>) -> Option<bool> {
+    use iridium_pdf_ui_egui::window_controls::Layout;
+    fn decorations(h: &Harness<'static, PdfApp>) -> Option<bool> {
         h.output().viewport_output.values().flat_map(|v| v.commands.iter()).find_map(|c| match c {
             egui::ViewportCommand::Decorations(on) => Some(*on),
             _ => None,
@@ -1471,7 +1471,7 @@ fn use_system_title_bar_swaps_the_header_bar_for_the_window_frame() {
     assert!(h.query_by_label("Minimize").is_none(), "and the tab strip loses its buttons");
     let saved = h.state().persist();
     assert!(saved.contains(r#""system_title_bar":true"#), "{saved}");
-    let mut restored = PdfCraftApp::new();
+    let mut restored = PdfApp::new();
     restored.restore(&saved);
     assert!(restored.system_title_bar);
     restored.set_option("system-title-bar", "false").unwrap();
@@ -1490,7 +1490,7 @@ fn use_system_title_bar_swaps_the_header_bar_for_the_window_frame() {
 #[test]
 fn preferences_choose_animation_effects_and_the_choice_is_saved() {
     use egui::accesskit::Role;
-    use pdfcraft_ui_egui::motion::AnimationEffects;
+    use iridium_pdf_ui_egui::motion::AnimationEffects;
     let mut h = harness(|app| app.set_option("dialog", "preferences").unwrap());
     assert_eq!(h.state().animation_effects, AnimationEffects::System);
     h.get_by_label("Animation effects");
@@ -1508,10 +1508,10 @@ fn preferences_choose_animation_effects_and_the_choice_is_saved() {
     }
     let saved = h.state().persist();
     assert!(saved.contains(r#""animation_effects":"off""#), "{saved}");
-    let mut restored = PdfCraftApp::new();
+    let mut restored = PdfApp::new();
     restored.restore(&saved);
     assert_eq!(restored.animation_effects, AnimationEffects::Off);
-    let mut fresh = PdfCraftApp::new();
+    let mut fresh = PdfApp::new();
     fresh.restore(&saved.replace(r#""animation_effects":"off""#, r#""animation_effects":"sideways""#));
     assert_eq!(fresh.animation_effects, AnimationEffects::System);
     // The control channel and the command line take the same three names.
@@ -1523,8 +1523,8 @@ fn preferences_choose_animation_effects_and_the_choice_is_saved() {
 
 #[test]
 fn explicit_mode_preserves_independent_tool_and_panel_options() {
-    use pdfcraft_ui_egui::LeftPanel;
-    let mut app = PdfCraftApp::new();
+    use iridium_pdf_ui_egui::LeftPanel;
+    let mut app = PdfApp::new();
     app.set_option("language", "en").unwrap();
     app.set_option("tool", "export").unwrap();
     app.set_option("left", "closed").unwrap();
@@ -1538,9 +1538,9 @@ fn explicit_mode_preserves_independent_tool_and_panel_options() {
 
 #[test]
 fn opening_a_pdf_keeps_a_closed_left_panel_and_the_chosen_tool() {
-    use pdfcraft_ui_egui::{LeftPanel, Mode};
+    use iridium_pdf_ui_egui::{LeftPanel, Mode};
     // `--left closed` without `--mode`, default workspace Edit: the panel stays closed.
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("language", "en").unwrap();
     app.default_mode = Mode::Edit;
     app.set_option("left", "closed").unwrap();
@@ -1548,7 +1548,7 @@ fn opening_a_pdf_keeps_a_closed_left_panel_and_the_chosen_tool() {
     assert_eq!(app.mode, Mode::Edit);
     assert!(!app.left_open);
     // Default All Tools: opening another PDF leaves the tool panel the user picked.
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("language", "en").unwrap();
     app.set_option("tool", "export").unwrap();
     app.open_bytes("first.pdf", None, FIXTURE.to_vec()).unwrap();
@@ -1557,7 +1557,7 @@ fn opening_a_pdf_keeps_a_closed_left_panel_and_the_chosen_tool() {
     assert_eq!(app.left, LeftPanel::Tool("export"));
 }
 
-fn three_tab_harness() -> Harness<'static, PdfCraftApp> {
+fn three_tab_harness() -> Harness<'static, PdfApp> {
     harness(|app| {
         for name in ["first.pdf", "middle.pdf", "last.pdf"] {
             app.open_bytes(name, None, FIXTURE.to_vec()).unwrap();
@@ -1565,7 +1565,7 @@ fn three_tab_harness() -> Harness<'static, PdfCraftApp> {
     })
 }
 
-fn close_named_tab(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
+fn close_named_tab(h: &mut Harness<'static, PdfApp>, name: &str) {
     // The close button has no separate accessible label. Its centre is defined by
     // chrome::tab relative to the actual accessible tab rectangle, not a viewport guess.
     let pos = h.get_by_role_and_label(egui::accesskit::Role::Tab, name).rect().right_center() - egui::vec2(16.0, 0.0);
@@ -1615,7 +1615,7 @@ fn closing_the_last_active_tab_selects_the_previous_one_then_home() {
         assert!(app.session.get(ids[removed]).is_none());
     }
     assert_eq!(h.state().active, None);
-    h.get_by_label_contains("Welcome to PdfCraft");
+    h.get_by_label_contains("Welcome to PDF");
 }
 
 #[test]
@@ -1624,12 +1624,12 @@ fn cancelling_then_discarding_an_earlier_dirty_tab_preserves_the_selected_docume
     let ids: Vec<_> = h.state().views.iter().map(|view| view.id).collect();
     h.get_by_label("first.pdf").click();
     h.run_steps(3);
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::SetInfo { key: "Title".into(), value: "Unsaved title".into() }));
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::SetInfo { key: "Title".into(), value: "Unsaved title".into() }));
     h.run_steps(3);
     h.get_by_label("middle.pdf").click();
     h.run_steps(3);
     close_named_tab(&mut h, "first.pdf (edited)");
-    assert_eq!(h.state().close_request, Some(pdfcraft_ui_egui::CloseRequest::Tab(ids[0])));
+    assert_eq!(h.state().close_request, Some(iridium_pdf_ui_egui::CloseRequest::Tab(ids[0])));
     h.get_by_label("Cancel").click();
     h.run_steps(3);
     assert_eq!(h.state().views.len(), 3);
@@ -1653,7 +1653,7 @@ fn long_german_tool_labels_stay_within_the_sidebar() {
     if crate::support::skip_without_catalogs("long_german_tool_labels_stay_within_the_sidebar") {
         return;
     }
-    use pdfcraft_ui_egui::{LeftPanel, Mode};
+    use iridium_pdf_ui_egui::{LeftPanel, Mode};
     let mut h = harness(|app| app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens"));
     h.state_mut().set_option("language", "de").unwrap();
     h.state_mut().mode = Mode::AllTools;
@@ -1693,7 +1693,7 @@ fn document_tabs_expose_selection_and_activate_from_keyboard() {
             assert_eq!(doc.bytes.as_slice(), FIXTURE);
             assert!(!doc.dirty);
         }
-        if let Ok(dir) = std::env::var("PDFCRAFT_TAB_SHOTS") {
+        if let Ok(dir) = std::env::var("IRIDIUM_PDF_TAB_SHOTS") {
             let _gpu = crate::gpu();
             crate::support::settle(&mut h);
             h.render().unwrap().save(format!("{dir}/focused-tab-{key:?}.png")).unwrap();
@@ -1710,7 +1710,7 @@ fn document_tab_identity_survives_dirty_labels_and_removing_an_earlier_document(
     h.get_by_role_and_label(Role::Tab, "middle.pdf").focus();
     h.run_steps(2);
     let middle_id = h.get_by_role_and_label(Role::Tab, "middle.pdf").accesskit_node().id();
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::SetInfo { key: "Title".into(), value: "Unsaved title".into() }));
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::SetInfo { key: "Title".into(), value: "Unsaved title".into() }));
     h.run_steps(3);
     let dirty = h.get_by_role_and_label(Role::Tab, "middle.pdf (edited)");
     assert_eq!(dirty.accesskit_node().id(), middle_id);
@@ -1743,7 +1743,7 @@ fn combine_tab_uses_tab_interaction_without_changing_close_or_document_state() {
 }
 
 /// Presses the named tab, drags it to `to` in a few steps and, unless `release` is false, lets go.
-fn drag_named_tab(h: &mut Harness<'static, PdfCraftApp>, name: &str, to: egui::Pos2, release: bool) {
+fn drag_named_tab(h: &mut Harness<'static, PdfApp>, name: &str, to: egui::Pos2, release: bool) {
     let from = h.get_by_role_and_label(egui::accesskit::Role::Tab, name).rect().center();
     h.event(egui::Event::PointerMoved(from));
     h.event(egui::Event::PointerButton { pos: from, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
@@ -1763,7 +1763,7 @@ fn dragging_a_tab_moves_it_and_keeps_the_same_document_active() {
     use egui::accesskit::Role;
     let mut h = three_tab_harness();
     let ids: Vec<_> = h.state().views.iter().map(|view| view.id).collect();
-    let tab = |h: &Harness<'static, PdfCraftApp>, name: &str| h.get_by_role_and_label(Role::Tab, name).rect();
+    let tab = |h: &Harness<'static, PdfApp>, name: &str| h.get_by_role_and_label(Role::Tab, name).rect();
     // first.pdf past the end; last.pdf, the active one, keeps the focus at its new place.
     let to = tab(&h, "last.pdf").right_center() + egui::vec2(20.0, 0.0);
     drag_named_tab(&mut h, "first.pdf", to, true);
@@ -1782,7 +1782,7 @@ fn dragging_a_tab_moves_it_and_keeps_the_same_document_active() {
         assert_eq!(doc.bytes.as_slice(), FIXTURE);
         assert!(!doc.dirty);
     }
-    if let Ok(dir) = std::env::var("PDFCRAFT_TAB_SHOTS") {
+    if let Ok(dir) = std::env::var("IRIDIUM_PDF_TAB_SHOTS") {
         let _gpu = crate::gpu();
         let to = tab(&h, "first.pdf").left_center() - egui::vec2(10.0, 0.0);
         drag_named_tab(&mut h, "last.pdf", to, false);
@@ -1799,7 +1799,7 @@ fn the_drop_line_shows_in_front_of_the_first_tab() {
     let mut h = three_tab_harness();
     let first = h.get_by_role_and_label(Role::Tab, "first.pdf").rect();
     // Pixels in the strip just left of the first tab that are strongly blue (the accent line).
-    let blue_left_of = |h: &mut Harness<'static, PdfCraftApp>, rect: egui::Rect| {
+    let blue_left_of = |h: &mut Harness<'static, PdfApp>, rect: egui::Rect| {
         let image = h.render().unwrap();
         let scale = image.width() as f32 / h.ctx.content_rect().width();
         let x0 = ((rect.left() - 3.0) * scale).max(0.0) as u32;
@@ -1822,7 +1822,7 @@ fn the_drop_line_shows_in_front_of_the_first_tab() {
     drag_named_tab(&mut h, "last.pdf", to, false);
     let during = blue_left_of(&mut h, first);
     assert!(during > before + 10, "no drop line left of the first tab ({before} -> {during})");
-    if let Ok(dir) = std::env::var("PDFCRAFT_TAB_SHOTS") {
+    if let Ok(dir) = std::env::var("IRIDIUM_PDF_TAB_SHOTS") {
         h.render().unwrap().save(format!("{dir}/dragging-to-front.png")).unwrap();
     }
 }
@@ -1855,7 +1855,7 @@ fn the_combine_tab_does_not_move_and_documents_stay_in_order() {
 /// is boxed and editable with one click; another tab puts the tool down again.
 #[test]
 fn the_edit_tab_turns_on_edit_text_and_images() {
-    use pdfcraft_ui_egui::{Mode, QuickTool};
+    use iridium_pdf_ui_egui::{Mode, QuickTool};
     let mut h = harness(|app| app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens"));
     assert_eq!(h.state().quick_tool, QuickTool::Select);
     support::outside_menus(&h, "Edit").click();
@@ -1879,7 +1879,7 @@ fn the_edit_tab_turns_on_edit_text_and_images() {
 /// not the grid behind the Edit panel.
 #[test]
 fn organize_pages_from_the_edit_panel_opens_its_panel() {
-    use pdfcraft_ui_egui::LeftPanel;
+    use iridium_pdf_ui_egui::LeftPanel;
     let mut h = harness(|app| app.open_bytes("fixture.pdf", None, FIXTURE.to_vec()).expect("fixture opens"));
     support::outside_menus(&h, "Edit").click();
     h.run_steps(3);
@@ -1907,19 +1907,19 @@ fn the_edit_panel_keeps_the_add_update_remove_menu() {
     assert_eq!(enabled(&h, "Remove watermark"), Some(false), "nothing to remove yet");
     h.get_by_label("Add watermark…").click();
     h.run_steps(3);
-    assert_eq!(h.state().dialog, Some(pdfcraft_ui_egui::Dialog::Marks(pdfcraft_engine::MarkKind::Watermark)));
+    assert_eq!(h.state().dialog, Some(iridium_pdf_ui_egui::Dialog::Marks(iridium_pdf_engine::MarkKind::Watermark)));
 }
 
 /// #3282: in a short window the rail's panel buttons scroll above the page navigation instead of
 /// being drawn under the page number field.
 #[test]
 fn short_window_rail_buttons_scroll_clear_of_page_navigation() {
-    use pdfcraft_ui_egui::side_panels::ToolsSide;
+    use iridium_pdf_ui_egui::side_panels::ToolsSide;
 
     for side in [ToolsSide::Right, ToolsSide::Left] {
         let (width, height) = (1000.0, 560.0);
         let mut h = Harness::builder().with_size(egui::vec2(width, height)).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.side_panels.rail_side = side;
             app.open_bytes("short.pdf", None, FIXTURE.to_vec()).unwrap();
@@ -1930,7 +1930,7 @@ fn short_window_rail_buttons_scroll_clear_of_page_navigation() {
             ToolsSide::Left => r.right() <= 48.0,
             ToolsSide::Right => r.left() >= width - 48.0,
         };
-        let rail = |h: &Harness<'static, PdfCraftApp>, label: &str| {
+        let rail = |h: &Harness<'static, PdfApp>, label: &str| {
             h.query_all_by_label(label).map(|n| n.rect()).find(|r| in_rail(*r)).unwrap_or_else(|| panic!("{label} in the rail"))
         };
         let page = h.get(By::new().role(egui::accesskit::Role::TextInput).value("1")).rect();
@@ -1994,8 +1994,8 @@ fn pages_fixture(n: usize) -> Vec<u8> {
 /// and not at all with the preference off. Settings are untrusted: bad entries are ignored.
 #[test]
 fn a_file_opened_again_shows_its_last_view() {
-    use pdfcraft_ui_egui::canvas::{Fit, PageLayout};
-    let path = std::env::temp_dir().join(format!("pdfcraft-last-view-{}.pdf", std::process::id())).to_string_lossy().into_owned();
+    use iridium_pdf_ui_egui::canvas::{Fit, PageLayout};
+    let path = std::env::temp_dir().join(format!("iridium-pdf-last-view-{}.pdf", std::process::id())).to_string_lossy().into_owned();
     let p = path.clone();
     let mut h = harness(move |app| app.open_bytes("doc.pdf", Some(p), pages_fixture(3)).expect("opens"));
     let p = path.clone();
@@ -2033,7 +2033,7 @@ fn a_file_opened_again_shows_its_last_view() {
     let v = &h.state().views[0];
     assert_eq!((v.current, v.fit, v.layout, v.continuous, v.cover), (0, Fit::Width, PageLayout::Single, true, false));
     // Garbage in the settings is ignored, a usable entry among it is kept.
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.restore(&format!(
         r#"{{"restore_last_view": "yes", "last_views": [5, {{"path": ""}}, {{"path": "{}", "page": -1, "zoom": "huge", "display": "single"}}, {{"path": "{}", "page": 1, "zoom": "fit-page", "display": "two-up"}}]}}"#,
         path.replace('\\', "/"),
@@ -2047,8 +2047,8 @@ fn a_file_opened_again_shows_its_last_view() {
 /// #1767: a fixed zoom with a fraction comes back as it was, not rounded to a whole percent.
 #[test]
 fn a_fractional_zoom_is_remembered_exactly() {
-    use pdfcraft_ui_egui::canvas::Fit;
-    let path = std::env::temp_dir().join(format!("pdfcraft-last-view-frac-{}.pdf", std::process::id())).to_string_lossy().into_owned();
+    use iridium_pdf_ui_egui::canvas::Fit;
+    let path = std::env::temp_dir().join(format!("iridium-pdf-last-view-frac-{}.pdf", std::process::id())).to_string_lossy().into_owned();
     let p = path.clone();
     let mut h = harness(move |app| app.open_bytes("doc.pdf", Some(p), pages_fixture(3)).expect("opens"));
     h.state_mut().views[0].set_zoom(0.625);
@@ -2069,8 +2069,8 @@ fn a_fractional_zoom_is_remembered_exactly() {
 /// screen for the remembered view.
 #[test]
 fn full_screen_neither_is_remembered_nor_hides_the_last_view() {
-    use pdfcraft_ui_egui::canvas::{Fit, PageLayout};
-    let path = std::env::temp_dir().join(format!("pdfcraft-last-view-fs-{}.pdf", std::process::id())).to_string_lossy().into_owned();
+    use iridium_pdf_ui_egui::canvas::{Fit, PageLayout};
+    let path = std::env::temp_dir().join(format!("iridium-pdf-last-view-fs-{}.pdf", std::process::id())).to_string_lossy().into_owned();
     let p = path.clone();
     let mut h = harness(move |app| app.open_bytes("doc.pdf", Some(p), pages_fixture(3)).expect("opens"));
     {

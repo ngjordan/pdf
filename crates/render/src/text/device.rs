@@ -430,11 +430,11 @@ pub(super) fn ligature_letters(text: String) -> String {
     out
 }
 
-/// Whether `PDFCRAFT_TEXT_DEBUG` is set. `draw_glyph` runs once per glyph and `getenv` scans the
+/// Whether `IRIDIUM_PDF_TEXT_DEBUG` is set. `draw_glyph` runs once per glyph and `getenv` scans the
 /// whole environment under a lock, so read it once.
 fn text_debug() -> bool {
     static DEBUG: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *DEBUG.get_or_init(|| std::env::var_os("PDFCRAFT_TEXT_DEBUG").is_some())
+    *DEBUG.get_or_init(|| std::env::var_os("IRIDIUM_PDF_TEXT_DEBUG").is_some())
 }
 
 impl<'a> Device<'a> for TextDevice {
@@ -576,7 +576,7 @@ impl<'a> Device<'a> for TextDevice {
     fn actual_text(&mut self, text: &[u8]) {
         // A replacement nested in another is already covered by the outer one.
         if self.actual.is_none() && self.excluded_depth.is_none() {
-            self.actual = Some((self.depth, pdfcraft_cos::PdfString::literal(text).to_text(), Vec::new()));
+            self.actual = Some((self.depth, iridium_pdf_cos::PdfString::literal(text).to_text(), Vec::new()));
         }
     }
     fn end_marked_content(&mut self) {

@@ -11,9 +11,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let page: usize = page.parse::<usize>()?.checked_sub(1).ok_or("pages are numbered from 1")?;
     let bytes = std::sync::Arc::new(std::fs::read(path)?);
-    let doc = pdfcraft_cos::Document::open(bytes).map_err(|e| format!("{e:?}"))?;
+    let doc = iridium_pdf_cos::Document::open(bytes).map_err(|e| format!("{e:?}"))?;
     let start = Instant::now();
-    let g = pdfcraft_measure::snap::geometry(&doc, page)?;
+    let g = iridium_pdf_measure::snap::geometry(&doc, page)?;
     let extracted = start.elapsed();
     println!("extracted {} segments in {} ms: truncated {} unreadable {}", g.segment_count(), extracted.as_millis(), g.truncated, g.unreadable);
     // Snaps at points spread over the drawing, with a 6-unit tolerance (a few pixels on screen).
@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let start = Instant::now();
     let mut hits = 0;
     for &p in &points {
-        if g.snap(p, 6.0, pdfcraft_measure::snap::SnapOptions::default())?.is_some() {
+        if g.snap(p, 6.0, iridium_pdf_measure::snap::SnapOptions::default())?.is_some() {
             hits += 1;
         }
     }

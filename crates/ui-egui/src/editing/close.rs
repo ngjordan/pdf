@@ -1,4 +1,4 @@
-use super::PdfCraftApp;
+use super::PdfApp;
 use super::save::SaveTarget;
 
 /// What the user was doing when we asked whether to save.
@@ -6,14 +6,14 @@ use super::save::SaveTarget;
 pub enum CloseRequest {
     /// Close this document's tab. By id, not tab index: tabs can close and shift while a save
     /// panel is open.
-    Tab(pdfcraft_engine::DocId),
+    Tab(iridium_pdf_engine::DocId),
     /// Quit the application once every dirty document is resolved.
     Quit,
     /// File ▸ Close all: like Quit, but the application stays open.
     All,
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Close a tab, asking first if it has unsaved changes. A document under OCR review stays
     /// open until the review is accepted or rejected.
     pub fn request_close_tab(&mut self, index: usize) {
@@ -162,7 +162,7 @@ impl PdfCraftApp {
 
     /// The tab a close question about document `id` is about: the active one when it shows `id`
     /// (in split view two tabs can), else the document's first.
-    pub(crate) fn asking_tab(&self, id: pdfcraft_engine::DocId) -> Option<usize> {
+    pub(crate) fn asking_tab(&self, id: iridium_pdf_engine::DocId) -> Option<usize> {
         self.active.filter(|&a| self.views.get(a).is_some_and(|v| v.id == id)).or_else(|| self.views.iter().position(|v| v.id == id))
     }
 
@@ -266,13 +266,13 @@ impl PdfCraftApp {
         }
     }
 
-    /// Ask for the user's attention when the "save changes?" question opens while PdfCraft is in
+    /// Ask for the user's attention when the "save changes?" question opens while PDF is in
     /// the background (Quit in the Dock menu, logging out, or an agent quitting), and withdraw the
     /// request once the user comes back or the question is answered.
     ///
     /// The question holds up the quit the user asked for, so the request is critical, as AppKit
     /// makes it for a modal panel that an inactive app presents: the Dock icon bounces until
-    /// PdfCraft is active, Windows flashes the taskbar button until the window is in front, and
+    /// PDF is active, Windows flashes the taskbar button until the window is in front, and
     /// X11 sets the urgency hint, which stays until it is reset. A question that opens in front
     /// asks nothing, and neither does leaving it open: the user has seen it. Each document asked
     /// about when quitting is a new question, so one that opens in the background asks even after

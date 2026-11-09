@@ -9,7 +9,7 @@
 
 use std::sync::Arc;
 
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
 /// The rendering scale for 110 dpi: a step of 20 points is 30.56 pixels, not a whole number.
 const SCALE: f64 = 110.0 / 72.0;

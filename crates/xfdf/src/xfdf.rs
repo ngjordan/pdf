@@ -11,8 +11,8 @@ use super::*;
 /// references: other tools write comments straight into the page's array, without an object of
 /// their own, and those copy too.
 fn annots_with_replies(doc: &Document, which: &[(usize, usize)]) -> HashSet<(usize, usize)> {
-    let pages = pdfcraft_model::pages(doc);
-    let annots = |p: &pdfcraft_model::Page| -> Vec<Object> {
+    let pages = iridium_pdf_model::pages(doc);
+    let annots = |p: &iridium_pdf_model::Page| -> Vec<Object> {
         p.dict.get(b"Annots").map(|a| doc.resolve(a)).and_then(|a| a.as_array().cloned()).unwrap_or_default()
     };
     /// An annotation's position, its reference (when it has one) and its parent's (`/IRT`).
@@ -50,9 +50,9 @@ fn annots_with_replies(doc: &Document, which: &[(usize, usize)]) -> HashSet<(usi
 
 /// Every comment as an XFDF element (one line per comment, replies included), or only those at
 /// the positions in `only`.
-/// The namespace of PdfCraft's own attributes in XFDF (`pdfcraft:keys`): other readers skip them.
-pub(crate) const PDFCRAFT_NS: &str = "https://github.com/storytold/pdfcraft#xfdf";
-/// At most this much text in a `pdfcraft:keys` attribute is read.
+/// The namespace of PDF's own attributes in XFDF (`iridium_pdf:keys`): other readers skip them.
+pub(crate) const IRIDIUM_PDF_NS: &str = "https://github.com/ngjordan/iridium-pdf#xfdf";
+/// At most this much text in a `iridium_pdf:keys` attribute is read.
 const MAX_OWN_KEYS: usize = 64 * 1024;
 
 /// A value that means the same in another document: no reference or stream into this one.
@@ -65,7 +65,7 @@ fn portable(o: &Object, depth: usize) -> bool {
     }
 }
 
-/// The annotation's own PdfCraft keys (`/PC…`: a Fill & Sign item, a turned comment's box and
+/// The annotation's own PDF keys (`/PC…`: a Fill & Sign item, a turned comment's box and
 /// angle, …) as one PDF dictionary, for a copy that is what the original was. Values that point
 /// into this document stay behind.
 fn own_keys(d: &Dict) -> Option<String> {
@@ -73,7 +73,7 @@ fn own_keys(d: &Dict) -> Option<String> {
     // Each value must also write as text: XML can't hold raw bytes.
     let writes_as_text = |v: &Object| {
         let mut out = Vec::new();
-        pdfcraft_cos::serialize(v, &mut out);
+        iridium_pdf_cos::serialize(v, &mut out);
         std::str::from_utf8(&out).is_ok()
     };
     for (k, v) in d.iter().filter(|(k, v)| k.starts_with(b"PC") && portable(v, 0) && writes_as_text(v)) {
@@ -83,15 +83,15 @@ fn own_keys(d: &Dict) -> Option<String> {
         return None;
     }
     let mut out = Vec::new();
-    pdfcraft_cos::serialize(&Object::Dict(keys), &mut out);
+    iridium_pdf_cos::serialize(&Object::Dict(keys), &mut out);
     String::from_utf8(out).ok()
 }
 
-/// The `pdfcraft:keys` of an XFDF comment back as dictionary entries: PdfCraft's keys only, with
+/// The `iridium_pdf:keys` of an XFDF comment back as dictionary entries: PDF's keys only, with
 /// values that mean the same here. Anything malformed is skipped.
 fn read_own_keys(node: roxmltree::Node, d: &mut Dict) {
-    let Some(text) = node.attribute((PDFCRAFT_NS, "keys")).filter(|t| t.len() <= MAX_OWN_KEYS) else { return };
-    let Ok(Object::Dict(keys)) = pdfcraft_cos::Lexer::new(text.as_bytes(), 0).object() else { return };
+    let Some(text) = node.attribute((IRIDIUM_PDF_NS, "keys")).filter(|t| t.len() <= MAX_OWN_KEYS) else { return };
+    let Ok(Object::Dict(keys)) = iridium_pdf_cos::Lexer::new(text.as_bytes(), 0).object() else { return };
     for (k, v) in keys.iter().filter(|(k, v)| k.starts_with(b"PC") && portable(v, 0)) {
         if !d.contains(k) {
             d.set(k.clone(), v.clone());
@@ -324,7 +324,7 @@ fn rich_plain(node: roxmltree::Node) -> String {
 /// (`/IRT`, ISO 32000-2 §12.5.6.2; a Replace Text pair is such a group), a name new to the
 /// document for this export, so the link survives the round trip. Made-up names are never written
 /// into the PDF.
-fn annotation_names(doc: &Document, pages: &[pdfcraft_model::Page], only: Option<&HashSet<(usize, usize)>>) -> HashMap<ObjRef, String> {
+fn annotation_names(doc: &Document, pages: &[iridium_pdf_model::Page], only: Option<&HashSet<(usize, usize)>>) -> HashMap<ObjRef, String> {
     let mut names: HashMap<ObjRef, String> = HashMap::new();
     let mut unnamed: Vec<(usize, usize, ObjRef)> = Vec::new();
     let mut targets: HashSet<ObjRef> = HashSet::new();
@@ -353,7 +353,7 @@ fn annotation_names(doc: &Document, pages: &[pdfcraft_model::Page], only: Option
     }
     unnamed.retain(|(pi, ai, r)| only.is_some_and(|only| only.contains(&(*pi, *ai))) || targets.contains(r));
     for (pi, ai, r) in unnamed {
-        let mut name = format!("pdfcraft-{pi}-{ai}");
+        let mut name = format!("iridium-pdf-{pi}-{ai}");
         while taken.contains(&name) {
             name.push('x');
         }
@@ -432,9 +432,9 @@ fn xfdf_annot_children(doc: &Document, out: &mut String, d: &Dict, pi: usize, ap
     }
 }
 
-/// `own`: write each comment's PdfCraft keys too (see [`own_keys`]), for a copy and paste.
+/// `own`: write each comment's PDF keys too (see [`own_keys`]), for a copy and paste.
 fn xfdf_annots(doc: &Document, out: &mut String, only: Option<&HashSet<(usize, usize)>>, own: bool) {
-    let pages = pdfcraft_model::pages(doc);
+    let pages = iridium_pdf_model::pages(doc);
     // NM of every annotation, for inreplyto. A selected or replied-to annotation without one
     // (other tools leave /NM out) gets a name for this export, so its replies still find it.
     let names = annotation_names(doc, &pages, only);
@@ -522,12 +522,12 @@ fn xfdf_annots(doc: &Document, out: &mut String, only: Option<&HashSet<(usize, u
                 let _ = write!(attrs, " inreplyto=\"{}\"", esc(irt));
             }
             if own && let Some(keys) = own_keys(&d) {
-                let _ = write!(attrs, " pdfcraft:keys=\"{}\"", esc(&keys));
+                let _ = write!(attrs, " iridium_pdf:keys=\"{}\"", esc(&keys));
             }
             let _ = write!(out, "<{tag}{attrs}>");
             // XFDF 3.0 carries a stamp's appearance, and none for a rect with no area; a copy and
             // paste (`own`) carries every comment's, so the copy looks the same, except a
-            // redaction mark's, which import never reads (PdfCraft draws the mark) and which would
+            // redaction mark's, which import never reads (PDF draws the mark) and which would
             // only use up the budget the others share.
             let has_area = rect.len() == 4 && rect[0] != rect[2] && rect[1] != rect[3];
             let carried = has_area && sub != b"Redact" && (own || sub == b"Stamp");
@@ -545,7 +545,7 @@ fn xfdf_fields(doc: &Document, out: &mut String) {
         kids: Vec<(String, Node)>,
     }
     let mut root = Node::default();
-    for f in pdfcraft_forms::fields(doc) {
+    for f in iridium_pdf_forms::fields(doc) {
         if matches!(f.kind, FieldKind::PushButton | FieldKind::Signature) {
             continue;
         }
@@ -591,7 +591,7 @@ fn xfdf_fields(doc: &Document, out: &mut String) {
 pub fn export_xfdf_comments(doc: &Document, which: &[(usize, usize)], file: &str) -> String {
     let only = annots_with_replies(doc, which);
     let mut out = format!(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<xfdf xmlns=\"http://ns.adobe.com/xfdf/\" xmlns:pdfcraft=\"{PDFCRAFT_NS}\" xml:space=\"preserve\">\n"
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<xfdf xmlns=\"http://ns.adobe.com/xfdf/\" xmlns:iridium_pdf=\"{IRIDIUM_PDF_NS}\" xml:space=\"preserve\">\n"
     );
     out.push_str("<annots>\n");
     xfdf_annots(doc, &mut out, Some(&only), true);
@@ -717,9 +717,9 @@ pub fn comment_outlines(text: &str) -> Vec<Outline> {
             // A Fill & Sign mark: its tick, cross, dot or line, as its appearance draws it.
             "stamp"
                 if let Some(rect) = rect
-                    && let Some(mark) = node.attribute("icon").and_then(|i| pdfcraft_annot::FillMark::from_name(i.as_bytes())) =>
+                    && let Some(mark) = node.attribute("icon").and_then(|i| iridium_pdf_annot::FillMark::from_name(i.as_bytes())) =>
             {
-                if mark == pdfcraft_annot::FillMark::Dot {
+                if mark == iridium_pdf_annot::FillMark::Dot {
                     let r = (rect[2] - rect[0]).min(rect[3] - rect[1]) * 0.3;
                     let (cx, cy) = ((rect[0] + rect[2]) / 2.0, (rect[1] + rect[3]) / 2.0);
                     out.push(Outline::Rect { rect: [cx - r, cy - r, cx + r, cy + r], round: true, color });
@@ -749,7 +749,7 @@ pub fn comment_outlines(text: &str) -> Vec<Outline> {
                     if let Some(s) = node.children().find(|c| c.has_tag_name("defaultappearance")).and_then(|c| c.text()) {
                         da.set(b"DA".to_vec(), PdfString::literal(s.as_bytes().to_vec()));
                     }
-                    let (text_color, size) = pdfcraft_annot::appearance::parse_da(&da);
+                    let (text_color, size) = iridium_pdf_annot::appearance::parse_da(&da);
                     let fringe = node.attribute("fringe").map(csv).filter(|f| callout.is_some() && f.len() == 4 && f.iter().all(|v| v.is_finite()));
                     let rect = match fringe.as_deref() {
                         Some([l, b, r, t]) => [rect[0] + l, rect[1] + b, rect[2] - r, rect[3] - t],
@@ -831,7 +831,7 @@ pub fn export_xfdf(doc: &Document, comments: bool, fields: bool, file: &str) -> 
 
 /// Set the values of fields named in `values` (full names), counting what took.
 pub(crate) fn apply_values(doc: &mut Document, values: &[(String, Vec<String>)], report: &mut Report) {
-    let all = pdfcraft_forms::fields(doc);
+    let all = iridium_pdf_forms::fields(doc);
     for (name, vals) in values {
         let Some(f) = all.iter().find(|f| &f.name == name) else { continue };
         let first = vals.first().cloned().unwrap_or_default();
@@ -841,7 +841,7 @@ pub(crate) fn apply_values(doc: &mut Document, values: &[(String, Vec<String>)],
             FieldKind::Radio => FieldValue::Radio((!first.is_empty() && first != "Off").then_some(first)),
             // XML, CSV and text hold a multi-select list's values in one cell, joined by ", "
             // (as export_data writes them); split it unless the whole cell is one option.
-            FieldKind::List if f.has(pdfcraft_forms::flags::MULTI_SELECT) && vals.len() == 1 && !f.options.iter().any(|(e, _)| *e == first) => {
+            FieldKind::List if f.has(iridium_pdf_forms::flags::MULTI_SELECT) && vals.len() == 1 && !f.options.iter().any(|(e, _)| *e == first) => {
                 FieldValue::Choice(first.split(", ").filter(|v| !v.is_empty()).map(str::to_string).collect())
             }
             FieldKind::Combo | FieldKind::List => FieldValue::Choice(vals.iter().filter(|v| !v.is_empty()).cloned().collect()),
@@ -850,9 +850,9 @@ pub(crate) fn apply_values(doc: &mut Document, values: &[(String, Vec<String>)],
         // Read-only fields still take imported data, as in Acrobat.
         let ro = f.read_only();
         if ro {
-            let _ = doc.update_dict(f.obj, |d| d.set(b"Ff".to_vec(), Object::Int((f.flags & !pdfcraft_forms::flags::READ_ONLY) as i64)));
+            let _ = doc.update_dict(f.obj, |d| d.set(b"Ff".to_vec(), Object::Int((f.flags & !iridium_pdf_forms::flags::READ_ONLY) as i64)));
         }
-        match pdfcraft_forms::set_value(doc, name, &v) {
+        match iridium_pdf_forms::set_value(doc, name, &v) {
             Ok(()) => report.fields += 1,
             Err(_) => report.rejected.push(name.clone()),
         }
@@ -980,7 +980,7 @@ fn annot_from_xml(node: roxmltree::Node, subtype: &str, page_ref: ObjRef) -> Opt
 /// `<contents-richtext>` back as `/RC` (XFDF 3.0 "The contents and contents-richtext elements in
 /// annotations"): its markup, as written in the file, after an XML declaration. Plain text in it is the comment's text
 /// (`/Contents`) when the element comes alone; beside `<contents>` it is kept as `/RC` (rich text
-/// PdfCraft exported as text because it was not well-formed XML). Markup without `<contents>`
+/// PDF exported as text because it was not well-formed XML). Markup without `<contents>`
 /// gives `/Contents` its plain text too, so the comment's text shows where rich text is not read.
 fn read_rich_text(rich: roxmltree::Node, has_contents: bool, d: &mut Dict) {
     let elements: Vec<roxmltree::Node> = rich.children().filter(|c| c.is_element()).collect();
@@ -1113,7 +1113,7 @@ pub(crate) fn place(doc: &mut Document, page_ref: ObjRef, mut d: Dict) -> Result
         // without usable /QuadPoints removes its /Rect, which the outline is then drawn from.
         d.remove(b"CA");
         d.remove(b"ca");
-        // The outline is PdfCraft's own (an appearance the file carries could hide the mark), and
+        // The outline is PDF's own (an appearance the file carries could hide the mark), and
         // a redaction has no border effect (ISO 32000-2 Table 195 lists none; §12.5.4 gives
         // /BE to squares, circles, polygons and free text), which the outline could not draw.
         d.remove(b"AP");
@@ -1158,7 +1158,7 @@ pub(crate) fn place(doc: &mut Document, page_ref: ObjRef, mut d: Dict) -> Result
     }
     // An appearance the file carries is how the comment looked where it came from, and is kept
     // (XFDF 3.0 "stamp": it takes precedence over the icon). A redaction mark is always drawn by
-    // PdfCraft, so what it marks for removal is shown.
+    // PDF, so what it marks for removal is shown.
     let redact = d.name(b"Subtype") == Some(b"Redact".as_slice());
     // A redaction mark with an area removes something when applied.
     let marks = redact && d.contains(b"QuadPoints");
@@ -1208,7 +1208,7 @@ pub(crate) fn place(doc: &mut Document, page_ref: ObjRef, mut d: Dict) -> Result
     };
     // Otherwise our own appearance where we can draw one; others keep none (viewers draw a default).
     if !keep_appearance {
-        let drawn = pdfcraft_annot::set_appearance(doc, r);
+        let drawn = iridium_pdf_annot::set_appearance(doc, r);
         // A redaction mark that removes something but shows nothing is refused: applying it
         // would remove content the reviewer never saw marked.
         if let Err(why) = drawn
@@ -1289,7 +1289,7 @@ pub(crate) fn import_xfdf_with(
         return Err(DataError::UnknownFormat);
     }
     let mut report = Report::default();
-    let pages: Vec<ObjRef> = pdfcraft_model::pages(doc).iter().map(|p| p.obj).collect();
+    let pages: Vec<ObjRef> = iridium_pdf_model::pages(doc).iter().map(|p| p.obj).collect();
     if let Some(p) = target_page
         && p >= pages.len()
     {
@@ -1317,7 +1317,7 @@ pub(crate) fn import_xfdf_with(
             let Some(page) = target_page.or(own_page).and_then(|p| pages.get(p).copied()) else { continue };
             let Some(mut d) = annot_from_xml(node, subtype, page) else { continue };
             // The appearance the file carries (XFDF 3.0 "appearance"), when it can be read.
-            // A redaction mark is always drawn by PdfCraft (see `place`): its appearance is not read.
+            // A redaction mark is always drawn by PDF (see `place`): its appearance is not read.
             if let Some(ap) = node.children().find(|c| c.has_tag_name("appearance")).filter(|_| *subtype != "Redact") {
                 let text: String = ap.children().filter(|c| c.is_text()).filter_map(|c| c.text()).collect();
                 match super::appearance::decode(&text, &mut appearance_budget) {
@@ -1385,7 +1385,7 @@ pub(crate) fn import_xfdf_with(
 }
 
 pub(crate) fn find_by_name(doc: &Document, nm: &str) -> Option<ObjRef> {
-    for p in pdfcraft_model::pages(doc) {
+    for p in iridium_pdf_model::pages(doc) {
         for a in p.dict.get(b"Annots").map(|a| doc.resolve(a)).and_then(|a| a.as_array().cloned()).unwrap_or_default() {
             if let Some(r) = a.as_ref()
                 && doc.get(r).as_dict().and_then(|d| text_of(doc, d, b"NM")).as_deref() == Some(nm)

@@ -190,7 +190,7 @@ pub(crate) fn body(ui: &mut egui::Ui, d: &mut FieldDraft, t: &crate::theme::Toke
                     });
                 }
                 FormFieldKind::Text => {
-                    use pdfcraft_engine::field_flags as ff;
+                    use iridium_pdf_engine::field_flags as ff;
                     egui::Grid::new("text-options").num_columns(2).spacing([12.0, 8.0]).show(ui, |ui| {
                         alignment(ui, &mut d.quadding);
                         ui.end_row();
@@ -225,7 +225,7 @@ pub(crate) fn body(ui: &mut egui::Ui, d: &mut FieldDraft, t: &crate::theme::Toke
                     });
                 }
                 FormFieldKind::CheckBox | FormFieldKind::Radio => {
-                    use pdfcraft_engine::field_flags as ff;
+                    use iridium_pdf_engine::field_flags as ff;
                     let on = d.on_state.clone();
                     ui.horizontal(|ui| {
                         let label = ui.label(tl!("Export value"));
@@ -243,7 +243,7 @@ pub(crate) fn body(ui: &mut egui::Ui, d: &mut FieldDraft, t: &crate::theme::Toke
                             craft_ui::ComboBox::from_id_salt("check-style")
                                 .selected_text(tl!(style.label()))
                                 .show_ui(ui, |ui| {
-                                    for s in pdfcraft_engine::CheckStyle::ALL {
+                                    for s in iridium_pdf_engine::CheckStyle::ALL {
                                         ui.selectable_value(style, s, tl!(s.label()));
                                     }
                                 })
@@ -295,7 +295,7 @@ pub(crate) fn body(ui: &mut egui::Ui, d: &mut FieldDraft, t: &crate::theme::Toke
                     if d.options.is_empty() {
                         ui.label(egui::RichText::new(tl!("Add the choices people pick from.")).color(t.text_muted));
                     }
-                    use pdfcraft_engine::field_flags as ff;
+                    use iridium_pdf_engine::field_flags as ff;
                     ui.add_space(6.0);
                     ui.horizontal(|ui| {
                         ui.label(tl!("Default:"));

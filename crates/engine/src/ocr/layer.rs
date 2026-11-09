@@ -4,9 +4,9 @@
 
 use std::collections::BTreeMap;
 
-use pdfcraft_cos::{Dict, Document, Object, Stream};
-use pdfcraft_edit::EditError;
-use pdfcraft_ocr::PlacedWord;
+use iridium_pdf_cos::{Dict, Document, Object, Stream};
+use iridium_pdf_edit::EditError;
+use iridium_pdf_ocr::PlacedWord;
 
 /// Refuse oversized text or invalid geometry before cloning words or allocating fonts.
 /// These limits apply to the complete input, including all editable export pages.
@@ -38,10 +38,10 @@ pub(crate) fn add_text(doc: &mut Document, page: usize, words: &[PlacedWord]) ->
             .chars()
             .all(|c| matches!(c, '\u{20}'..='\u{7e}' | '\u{a0}'..='\u{ff}' | '€' | '‚' | '„' | '…' | '‘' | '’' | '“' | '”' | '•' | '–' | '—' | '™'))
     }) {
-        pdfcraft_edit::stamp(doc, page, "OCR", pdfcraft_ocr::text_layer(words, &pdfcraft_fonts::TextPlan::default()))?;
+        iridium_pdf_edit::stamp(doc, page, "OCR", iridium_pdf_ocr::text_layer(words, &iridium_pdf_fonts::TextPlan::default()))?;
         return Ok(());
     }
-    let p = pdfcraft_model::pages(doc).get(page).cloned().ok_or_else(|| EditError::Invalid("OCR page does not exist".into()))?;
+    let p = iridium_pdf_model::pages(doc).get(page).cloned().ok_or_else(|| EditError::Invalid("OCR page does not exist".into()))?;
     let mut res = p.dict.get(b"Resources").map(|r| doc.resolve(r)).and_then(|r| r.as_dict().cloned()).unwrap_or_default();
     let mut fonts = res.get(b"Font").map(|f| doc.resolve(f)).and_then(|f| f.as_dict().cloned()).unwrap_or_default();
     let chars: Vec<char> = words.iter().flat_map(|w| w.text.chars()).collect::<std::collections::BTreeSet<_>>().into_iter().collect();
@@ -58,7 +58,7 @@ pub(crate) fn add_text(doc: &mut Document, page: usize, words: &[PlacedWord]) ->
         let mut differences = vec![Object::Int(1)];
         let mut procs = Dict::new();
         let mut cmap = String::from(
-            "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo << /Registry (PdfCraft) /Ordering (Unicode) /Supplement 0 >> def\n/CMapName /PdfCraftOCR def\n/CMapType 2 def\n1 begincodespacerange\n<01> <FF>\nendcodespacerange\n",
+            "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo << /Registry (PDF) /Ordering (Unicode) /Supplement 0 >> def\n/CMapName /PdfCraftOCR def\n/CMapType 2 def\n1 begincodespacerange\n<01> <FF>\nendcodespacerange\n",
         );
         for (batch, part) in chunk.chunks(100).enumerate() {
             cmap.push_str(&format!("{} beginbfchar\n", part.len()));
@@ -97,7 +97,7 @@ pub(crate) fn add_text(doc: &mut Document, page: usize, words: &[PlacedWord]) ->
     res.set(b"Font".to_vec(), Object::Dict(fonts));
     doc.update_dict(p.obj, |d| d.set(b"Resources".to_vec(), Object::Dict(res)))?;
     // `3 Tr` and the font are graphics state, which `ET` doesn't reset: like
-    // `pdfcraft_ocr::text_layer` (#3029), the text is drawn inside `q … Q` so the invisible
+    // `iridium_pdf_ocr::text_layer` (#3029), the text is drawn inside `q … Q` so the invisible
     // rendering mode cannot leak into later content streams on the page.
     let mut content = String::from("/OCR BMC\nq\nBT\n3 Tr\n");
     for w in words {
@@ -140,6 +140,6 @@ pub(crate) fn add_text(doc: &mut Document, page: usize, words: &[PlacedWord]) ->
         }
     }
     content.push_str("ET\nQ\nEMC\n");
-    pdfcraft_edit::stamp(doc, page, "OCR", content.into_bytes())?;
+    iridium_pdf_edit::stamp(doc, page, "OCR", content.into_bytes())?;
     Ok(())
 }

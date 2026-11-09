@@ -6,7 +6,7 @@
 //! choice fields, a thin grey border and a white background, and appearance streams generated
 //! immediately so every viewer shows the empty field.
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString, Stream};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, PdfString, Stream};
 
 use crate::{Field, FieldKind, FormError, Widget, appearance, fields, flags, page_refs};
 

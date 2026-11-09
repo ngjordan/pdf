@@ -3,8 +3,8 @@
 //! graphics state carries from one stream to the next, and a page with a stream that cannot
 //! be read is left alone instead of losing that stream.
 
-use pdfcraft_cos::{Document, ObjRef, Object};
-use pdfcraft_edit::{Hairlines, fix_hairlines};
+use iridium_pdf_cos::{Document, ObjRef, Object};
+use iridium_pdf_edit::{Hairlines, fix_hairlines};
 use std::sync::Arc;
 
 /// A one-page document whose `/Contents` lists `streams` (dictionary entries, data).
@@ -40,7 +40,7 @@ fn one_page(streams: &[(&str, &[u8])]) -> Document {
 
 /// The page's `/Contents` references.
 fn contents(doc: &Document) -> Vec<ObjRef> {
-    let page = pdfcraft_model::pages(doc).swap_remove(0);
+    let page = iridium_pdf_model::pages(doc).swap_remove(0);
     match &*doc.resolve(page.dict.get(b"Contents").unwrap()) {
         Object::Array(a) => a.iter().filter_map(Object::as_ref).collect(),
         _ => page.dict.get(b"Contents").and_then(Object::as_ref).into_iter().collect(),

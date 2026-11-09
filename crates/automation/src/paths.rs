@@ -181,6 +181,6 @@ pub(crate) fn write_atomic_synced(
     // (#2166): the staging file is written, flushed (delayed writeback failures surface before
     // the destination is replaced or a document marked clean), closed and renamed; a failure at
     // any step removes it and leaves the destination as it was.
-    pdfcraft_platform::staging::write_atomically_with(path, bytes, StagingName::SuffixThenTag, suffixes, sync)
+    iridium_pdf_platform::staging::write_atomically_with(path, bytes, StagingName::SuffixThenTag, suffixes, sync)
         .map_err(|e| failed(format!("{}: {e}", path.display())))
 }

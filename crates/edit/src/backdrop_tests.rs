@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, SaveOptions, Stream, write_full, write_incremental};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, SaveOptions, Stream, write_full, write_incremental};
 
 use super::*;
 use crate::{Background, MarkKind, add_background, remove_marks};
@@ -61,7 +61,7 @@ fn page(pieces: &[&str]) -> Document {
 
 /// The decoded content of a page, stream by stream.
 fn streams(doc: &Document) -> Vec<String> {
-    let p = &pdfcraft_model::pages(doc)[0];
+    let p = &iridium_pdf_model::pages(doc)[0];
     let list = match p.dict.get(b"Contents").map(|c| doc.resolve(c)).as_deref() {
         Some(Object::Array(a)) => a.clone(),
         _ => vec![],
@@ -205,7 +205,7 @@ fn replacing_can_be_turned_off() {
 /// Rewrite the page's backdrop copy (the stream after the background) as another tool would:
 /// Edit text and redaction keep its dictionary and change its bytes.
 fn rewrite_copy(doc: &mut Document, bytes: &str) -> ObjRef {
-    let p = &pdfcraft_model::pages(doc)[0];
+    let p = &iridium_pdf_model::pages(doc)[0];
     let Some(Object::Array(list)) = p.dict.get(b"Contents").cloned() else { panic!("contents") };
     let Object::Ref(copy) = list[1] else { panic!("a reference") };
     let Object::Stream(s) = (*doc.get(copy)).clone() else { panic!("a stream") };
@@ -251,8 +251,8 @@ fn a_fill_that_would_cover_content_painted_before_it_stays_off() {
     add_background(&mut doc, &[0], &red(), false).unwrap();
     // A tool puts a stream of its own before the copy, untagged: turning the fill back on would
     // now paint white over that text.
-    let over = doc.add(Object::Stream(Stream::flate(pdfcraft_cos::Dict::new(), b"BT /F1 9 Tf 10 10 Td (Over) Tj ET")));
-    let p = pdfcraft_model::pages(&doc)[0].clone();
+    let over = doc.add(Object::Stream(Stream::flate(iridium_pdf_cos::Dict::new(), b"BT /F1 9 Tf 10 10 Td (Over) Tj ET")));
+    let p = iridium_pdf_model::pages(&doc)[0].clone();
     let Some(Object::Array(mut list)) = p.dict.get(b"Contents").cloned() else { panic!("contents") };
     list.insert(1, Object::Ref(over));
     doc.update_dict(p.obj, |d| d.set(b"Contents".to_vec(), Object::Array(list))).unwrap();
@@ -313,7 +313,7 @@ fn a_copy_written_out_again_with_other_spacing_still_comes_back() {
 fn a_tag_that_does_not_add_up_is_left_alone() {
     let content = format!("1 g 0 0 300 200 re f {TEXT}");
     let copied = format!("1 g 0 0 300 200 re n {TEXT}");
-    let good = ops_hash(&pdfcraft_content::parse(b"1 g 0 0 300 200 re").ops);
+    let good = ops_hash(&iridium_pdf_content::parse(b"1 g 0 0 300 200 re").ops);
     let hex = |b: &[u8]| b.iter().map(|x| format!("{x:02x}")).collect::<String>();
     for tag in [
         // Not a fill operator, a wrong hash, an index that isn't the `n` or runs past the end.
@@ -352,7 +352,7 @@ fn a_tag_that_does_not_add_up_is_left_alone() {
 
 #[test]
 fn operators_hash_by_value_not_by_spelling() {
-    let h = |s: &[u8]| ops_hash(&pdfcraft_content::parse(s).ops);
+    let h = |s: &[u8]| ops_hash(&iridium_pdf_content::parse(s).ops);
     assert_eq!(h(b"1 g 0 0 300 200 re"), h(b"1.0 g\n0  0 300.00000 200 re"));
     assert_eq!(h(b"0 g"), h(b"-0.0 g"));
     assert_ne!(h(b"1 g 0 0 300 200 re"), h(b"0.99 g 0 0 300 200 re"));
@@ -441,14 +441,14 @@ fn a_background_over_many_pages_replaces_each_backdrop_and_removing_restores_the
     // are checked against the document as it is after the earlier ones.
     let mut doc = many_pages(4);
     let all = [0, 1, 2, 3];
-    let before: Vec<Object> = pdfcraft_model::pages(&doc).iter().filter_map(|p| p.dict.get(b"Contents").cloned()).collect();
+    let before: Vec<Object> = iridium_pdf_model::pages(&doc).iter().filter_map(|p| p.dict.get(b"Contents").cloned()).collect();
     add_background(&mut doc, &all, &red(), true).unwrap();
     assert_eq!(page_backdrops(&doc, &all), [None; 4]);
     // Update: the backdrops are gone already, so nothing is copied again.
     add_background(&mut doc, &all, &red(), true).unwrap();
     assert_eq!(page_backdrops(&doc, &all), [None; 4]);
     remove_marks(&mut doc, &all, MarkKind::Background).unwrap();
-    let after: Vec<Object> = pdfcraft_model::pages(&doc).iter().filter_map(|p| p.dict.get(b"Contents").cloned()).collect();
+    let after: Vec<Object> = iridium_pdf_model::pages(&doc).iter().filter_map(|p| p.dict.get(b"Contents").cloned()).collect();
     let refs = |list: &[Object]| -> Vec<Vec<Object>> {
         list.iter()
             .map(|c| match &*doc.resolve(c) {
@@ -487,7 +487,7 @@ fn the_backdrop_copy_keeps_the_original_dictionary_less_its_old_encoding() {
     let mut doc = build(&objs);
     add_background(&mut doc, &[0], &red(), false).unwrap();
     let doc = reopen(&doc);
-    let p = &pdfcraft_model::pages(&doc)[0];
+    let p = &iridium_pdf_model::pages(&doc)[0];
     let Some(Object::Array(list)) = p.dict.get(b"Contents").map(|c| (*doc.resolve(c)).clone()) else { panic!("contents") };
     let Object::Stream(copy) = &*doc.resolve(&list[1]) else { panic!("a stream") };
     assert!(copy.dict.get(b"Vendor").is_some(), "unknown entries survive");
@@ -598,7 +598,7 @@ fn compressed_backdrop_content_is_refused_before_expanding_past_the_scan_budget(
     let mut bytes = b"1 g 0 0 300 200 re f\n".to_vec();
     bytes.resize(2 * 1024 * 1024, b' ');
     let source = doc.add(Object::Stream(Stream::flate(Dict::new(), &bytes)));
-    let page = pdfcraft_model::pages(&doc)[0].obj;
+    let page = iridium_pdf_model::pages(&doc)[0].obj;
     doc.update_dict(page, |d| d.set(b"Contents".to_vec(), Object::Ref(source))).unwrap();
     assert_eq!(page_backdrop(&doc, 0).unwrap(), None);
     add_background(&mut doc, &[0], &red(), false).unwrap();

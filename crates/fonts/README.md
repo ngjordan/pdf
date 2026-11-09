@@ -1,6 +1,6 @@
-# pdfcraft-fonts
+# iridium-pdf-fonts
 
-Layer L2. Font helpers for the appearance streams PdfCraft generates (comments, form fields).
+Layer L2. Font helpers for the appearance streams PDF generates (comments, form fields).
 
 Today it holds what generated appearances need without a font program:
 
@@ -19,7 +19,7 @@ Today it holds what generated appearances need without a font program:
   `set_undrawn_mark` (`UNDRAWN_MARK`, read back by `undrawn_mark`) so the edit is reported and
   flattening refuses. `script_missing` names what the typed-signature script font and its Inter fallback both lack.
 
-It also holds the fonts of the optional [craft-fonts](https://github.com/storytold/craft-fonts)
+It also holds the fonts of the optional [craft-fonts](https://github.com/ngjordan/craft-fonts)
 build input. `build.rs` embeds them as `CRAFT_FONTS` when the build sets
 `CRAFT_FONTS_DIR=<checkout>` (and fails if it can't while `CRAFT_FONTS_REQUIRED=1`, as releases
 set). Without that variable `CRAFT_FONTS` is empty and everything below copes:
@@ -66,7 +66,7 @@ set). Without that variable `CRAFT_FONTS` is empty and everything below copes:
 - `SHIPPORI_MINCHO`: Shippori Mincho's bytes, or `None`.
 - `TextPlan::for_words`: how the OCR output writes text beyond WinAnsi — per word the first
   face (document face first) whose glyphs cover it, planned once per page into Type 3 fonts
-  (codes, advances, `?` stand-ins) that `pdfcraft-edit` registers and the `pdfcraft-ocr` layers
+  (codes, advances, `?` stand-ins) that `iridium-pdf-edit` registers and the `iridium-pdf-ocr` layers
   draw with; characters no face has are counted (`missing`) so the output reports them.
 
 Generated Japanese Type 3 fonts record the fallback face's family and style in an indirect

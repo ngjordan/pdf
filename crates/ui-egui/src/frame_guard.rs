@@ -4,13 +4,13 @@
 //! up to a minute of unsaved edits. Now it is reported, the app is put back in a state the next
 //! frame can draw, and unsaved documents are written to the recovery folder at once.
 
-use crate::PdfCraftApp;
+use crate::PdfApp;
 
 /// Frames in a row that may panic before the guard lets the panic end the app, as it did before.
 /// By then every unsaved document has been snapshotted, so the next start offers to recover it.
 const MAX_PANICKING_FRAMES: u32 = 3;
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Before `logic`. While the window is hidden eframe runs `logic` without `ui`, so a
     /// `logic` that ran cleanly with no `ui` after it ends the run of panicking frames here.
     pub(crate) fn begin_logic(&mut self) {
@@ -34,8 +34,8 @@ impl PdfCraftApp {
     }
 
     /// Run one part of the frame (`logic` or `ui`) under the guard.
-    pub(crate) fn guarded_frame(&mut self, part: impl FnOnce(&mut PdfCraftApp)) {
-        if let Err(message) = pdfcraft_engine::guard(|| part(self)) {
+    pub(crate) fn guarded_frame(&mut self, part: impl FnOnce(&mut PdfApp)) {
+        if let Err(message) = iridium_pdf_engine::guard(|| part(self)) {
             self.after_frame_panic(&message);
         }
     }
@@ -49,7 +49,7 @@ impl PdfCraftApp {
             self.panicking_frames = self.panicking_frames.saturating_add(1);
         }
         // Now, not at the next autosave tick. Guarded too: the session may be what panicked.
-        if let Err(e) = pdfcraft_engine::guard(|| self.autosave_now()) {
+        if let Err(e) = iridium_pdf_engine::guard(|| self.autosave_now()) {
             log::error!("snapshotting unsaved documents after a frame panic failed: {e}");
         }
         if self.panicking_frames >= MAX_PANICKING_FRAMES {
@@ -71,7 +71,7 @@ impl PdfCraftApp {
     /// snapshot doesn't hold (a text being typed) is lost. If even that panics, the close is
     /// cancelled; the user can close again.
     pub(crate) fn close_after_panic(&mut self, ctx: &egui::Context) {
-        if ctx.input(|i| i.viewport().close_requested()) && pdfcraft_engine::guard(|| self.hold_close_for_unsaved(ctx)).is_err() {
+        if ctx.input(|i| i.viewport().close_requested()) && iridium_pdf_engine::guard(|| self.hold_close_for_unsaved(ctx)).is_err() {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
     }
@@ -94,7 +94,7 @@ pub(crate) enum FramePart {
 }
 
 #[cfg(test)]
-impl PdfCraftApp {
+impl PdfApp {
     pub(crate) fn injected_panic(&mut self, part: FramePart) {
         if self.panic_next == Some(part) {
             panic!("injected {part:?} panic");
@@ -107,14 +107,14 @@ mod tests {
     use super::*;
     use crate::{Dialog, RecoveryStore};
     use egui_kittest::Harness;
-    use pdfcraft_engine::{Edit, Session};
+    use iridium_pdf_engine::{Edit, Session};
 
     /// A recovery folder of its own, removed on drop.
     struct Store(RecoveryStore);
 
     impl Store {
         fn new(tag: &str) -> Store {
-            let dir = std::env::temp_dir().join(format!("pdfcraft-frame-guard-{tag}-{}", std::process::id()));
+            let dir = std::env::temp_dir().join(format!("iridium-pdf-frame-guard-{tag}-{}", std::process::id()));
             let _ = std::fs::remove_dir_all(&dir);
             Store(RecoveryStore::new(dir))
         }
@@ -136,10 +136,10 @@ mod tests {
     }
 
     /// Two tabs, the second with an unsaved edit, and the About dialog open.
-    fn harness(store: &Store) -> Harness<'static, PdfCraftApp> {
+    fn harness(store: &Store) -> Harness<'static, PdfApp> {
         let recovery = store.0.clone();
         let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.enable_recovery(recovery);
             app.open_bytes("a.pdf", None, pdf("First")).unwrap();
@@ -153,7 +153,7 @@ mod tests {
         h
     }
 
-    fn toast(h: &Harness<'static, PdfCraftApp>) -> String {
+    fn toast(h: &Harness<'static, PdfApp>) -> String {
         h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default()
     }
 
@@ -217,7 +217,7 @@ mod tests {
     fn hidden_frames_that_run_cleanly_reset_the_count() {
         // eframe runs `logic` without `ui` while the window is hidden: panics separated by
         // clean hidden frames are not "in a row" and must not end the app.
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         for _ in 0..MAX_PANICKING_FRAMES * 2 {
             app.begin_logic();
             app.guarded_frame(|_| panic!("hidden logic panic"));
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn hidden_frames_that_keep_panicking_still_end_the_app() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         let ended = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             for _ in 0..MAX_PANICKING_FRAMES {
                 app.begin_logic();
@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn active_stays_on_an_open_tab() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.active = Some(3);
         app.keep_active_valid();
         assert_eq!(app.active, None, "no tabs: nothing is active");

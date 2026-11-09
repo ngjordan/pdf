@@ -4,7 +4,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object};
 
 use crate::OptimizeError;
 

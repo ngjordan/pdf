@@ -6,7 +6,7 @@ use super::{DecodeBudget, Dict, Document, Matrix, ObjRef, Object, SaveOptions, S
 // Model-derived transforms and clipping bounds need their full PDF decimal precision.
 fn geometry_number(value: f64) -> String {
     let mut bytes = Vec::new();
-    pdfcraft_cos::serialize(&Object::Real(value), &mut bytes);
+    iridium_pdf_cos::serialize(&Object::Real(value), &mut bytes);
     String::from_utf8_lossy(&bytes).into_owned()
 }
 
@@ -39,7 +39,7 @@ pub(crate) fn decoded_contents(doc: &Document, page: &Dict, budget: &mut DecodeB
 /// don't print are dropped, and with [`Content::FormFieldsOnly`] the page content too. For
 /// printing pages as pictures, where a renderer draws each page as it stands.
 pub fn keep_printed(doc: &mut Document, content: Content) {
-    for page in pdfcraft_model::pages(doc) {
+    for page in iridium_pdf_model::pages(doc) {
         let annots = page.dict.get(b"Annots").and_then(|a| doc.resolve(a).as_array().cloned()).unwrap_or_default();
         let kept: Vec<Object> = annots.into_iter().filter(|a| doc.resolve(a).as_dict().is_some_and(|d| prints(doc, d, content))).collect();
         // Fails only when the page object isn't a dictionary, and such a page draws nothing.
@@ -151,7 +151,7 @@ pub(crate) fn appearance_matrix(doc: &Document, form: &Dict, rect: [f64; 4]) -> 
 /// printed would make printing quadratic in the page count.
 pub(crate) fn page_form(
     doc: &mut Document,
-    pages: &[pdfcraft_model::Page],
+    pages: &[iridium_pdf_model::Page],
     index: usize,
     content: Content,
     promoted: &mut std::collections::HashMap<ObjRef, ObjRef>,
@@ -248,8 +248,8 @@ thread_local! {
 }
 
 /// The source document's pages, for printing.
-fn source_pages(doc: &Document) -> Vec<pdfcraft_model::Page> {
-    let pages = pdfcraft_model::pages(doc);
+fn source_pages(doc: &Document) -> Vec<iridium_pdf_model::Page> {
+    let pages = iridium_pdf_model::pages(doc);
     #[cfg(test)]
     PAGES_LISTED.with(|c| c.set(c.get() + pages.len()));
     pages

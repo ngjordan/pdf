@@ -24,11 +24,11 @@ pub enum EditError {
     #[error("the document's security settings don't allow {0}; open it with the owner password to make this change")]
     NotPermitted(&'static str),
     #[error("{0}")]
-    Organize(#[from] pdfcraft_organize::OrganizeError),
+    Organize(#[from] iridium_pdf_organize::OrganizeError),
     #[error("{0}")]
-    Bookmark(#[from] pdfcraft_organize::OutlineError),
+    Bookmark(#[from] iridium_pdf_organize::OutlineError),
     #[error("{0}")]
-    Comment(#[from] pdfcraft_annot::AnnotError),
+    Comment(#[from] iridium_pdf_annot::AnnotError),
     #[error(transparent)]
     Measure(#[from] measure::MeasureError),
     #[error("{0}")]
@@ -36,19 +36,19 @@ pub enum EditError {
     #[error("the password is incorrect")]
     WrongPassword,
     #[error("{0}")]
-    Form(#[from] pdfcraft_forms::FormError),
+    Form(#[from] iridium_pdf_forms::FormError),
     #[error(transparent)]
-    Redact(#[from] pdfcraft_redact::RedactError),
+    Redact(#[from] iridium_pdf_redact::RedactError),
     #[error("{0}")]
     Print(String),
     #[error("{0}")]
     Accessibility(String),
     #[error(transparent)]
-    Data(#[from] pdfcraft_xfdf::DataError),
+    Data(#[from] iridium_pdf_xfdf::DataError),
     #[error("{0}")]
-    Edit(#[from] pdfcraft_edit::EditError),
+    Edit(#[from] iridium_pdf_edit::EditError),
     #[error("{0}")]
-    Create(#[from] pdfcraft_create::CreateError),
+    Create(#[from] iridium_pdf_create::CreateError),
     #[error("the edited document could not be written: {0}")]
     Write(String),
     #[error("the edited document could not be reopened: {0}")]
@@ -73,8 +73,8 @@ pub enum EditError {
     Invalid(String),
 }
 
-impl From<pdfcraft_sign::SignError> for EditError {
-    fn from(e: pdfcraft_sign::SignError) -> Self {
+impl From<iridium_pdf_sign::SignError> for EditError {
+    fn from(e: iridium_pdf_sign::SignError) -> Self {
         EditError::Sign(e.to_string())
     }
 }

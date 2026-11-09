@@ -25,7 +25,7 @@ pub struct DigestCache {
 /// a Document, its bytes, or parsed signature dictionaries across edits and saves.
 #[derive(Debug)]
 pub(crate) struct TimestampCandidates {
-    source: pdfcraft_cos::SourceIdentity,
+    source: iridium_pdf_cos::SourceIdentity,
     modified: Vec<u32>,
     pub(crate) candidates: Vec<ObjRef>,
 }
@@ -44,7 +44,7 @@ fn changed_timestamp_candidates(doc: &Document, numbers: &[u32]) -> Option<Vec<O
     for (reference, object) in doc.scan_original_objects_subset(numbers.to_vec()) {
         match object.ok()?.as_ref() {
             Object::Dict(_) => {}
-            Object::Null if matches!(doc.xref_entry(reference.num), None | Some(pdfcraft_cos::XrefEntry::Free { .. })) => {}
+            Object::Null if matches!(doc.xref_entry(reference.num), None | Some(iridium_pdf_cos::XrefEntry::Free { .. })) => {}
             _ => return None,
         }
     }
@@ -394,7 +394,7 @@ fn take(left: &mut usize) -> bool {
 /// Which page holds each annotation.
 fn annot_pages(doc: &Document) -> HashMap<ObjRef, usize> {
     let mut map = HashMap::new();
-    for (i, p) in pdfcraft_annot::page_refs(doc).unwrap_or_default().into_iter().enumerate() {
+    for (i, p) in iridium_pdf_annot::page_refs(doc).unwrap_or_default().into_iter().enumerate() {
         if let Some(a) = doc.get(p).as_dict().and_then(|d| d.get(b"Annots").map(|a| doc.resolve(a))).and_then(|a| a.as_array().cloned()) {
             for r in a.iter().filter_map(Object::as_ref) {
                 map.insert(r, i);
@@ -558,17 +558,17 @@ fn unread_fields() -> SignatureInfo {
         modification: Modification::None,
         verdict_shown: false,
         details: vec![Detail::plain(
-            "This form has too many fields, or a field name too long, for PdfCraft to read them all. Any signature among the rest is not listed, so the document is treated as signed.",
+            "This form has too many fields, or a field name too long, for PDF to read them all. Any signature among the rest is not listed, so the document is treated as signed.",
         )],
     }
 }
 
 fn page_index(doc: &Document, p: ObjRef) -> Option<usize> {
-    pdfcraft_annot::page_refs(doc).ok()?.iter().position(|r| *r == p)
+    iridium_pdf_annot::page_refs(doc).ok()?.iter().position(|r| *r == p)
 }
 
 /// A widget's `/MK /R` as a quarter turn (0, 90, 180 or 270); missing, malformed or not a
-/// multiple of 90 counts as 0, as `pdfcraft-forms` reads it for the fields it draws.
+/// multiple of 90 counts as 0, as `iridium-pdf-forms` reads it for the fields it draws.
 pub(super) fn mk_rotation(doc: &Document, widget: &Dict) -> i64 {
     let r = widget
         .get(b"MK")

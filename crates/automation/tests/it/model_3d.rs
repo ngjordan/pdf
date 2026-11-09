@@ -1,8 +1,8 @@
 //! `model_add` embeds a U3D or PRC model as a 3D annotation (ISO 32000-2 §13.6.2) with a poster,
 //! end to end: the tool, the saved file, undo, and the refusals.
 
-use pdfcraft_automation::{Automation, Content, ToolError};
-use pdfcraft_cos::{Dict, Document, Object, Stream};
+use iridium_pdf_automation::{Automation, Content, ToolError};
+use iridium_pdf_cos::{Dict, Document, Object, Stream};
 use serde_json::{Value, json};
 
 fn tool(a: &mut Automation, name: &str, args: Value) -> Value {
@@ -31,7 +31,7 @@ fn stream(doc: &Document, obj: &Object) -> Stream {
 /// The 3D annotations on the first page of the saved file.
 fn saved_3d(dir: &std::path::Path) -> (Document, Vec<Dict>) {
     let doc = Document::open(std::sync::Arc::new(std::fs::read(dir.join("out.pdf")).unwrap())).unwrap();
-    let page = &pdfcraft_model::pages(&doc)[0];
+    let page = &iridium_pdf_model::pages(&doc)[0];
     let list = page.dict.get(b"Annots").map(|a| doc.resolve(a).as_array().cloned().unwrap()).unwrap_or_default();
     let found = list.iter().map(|o| doc.resolve(o).as_dict().unwrap().clone()).filter(|d| d.name(b"Subtype") == Some(&b"3D"[..])).collect();
     (doc, found)

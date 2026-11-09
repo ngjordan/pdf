@@ -82,7 +82,7 @@ mod tests {
         fn new(name: &str) -> Dir {
             use std::sync::atomic::{AtomicU64, Ordering};
             static NEXT: AtomicU64 = AtomicU64::new(0);
-            let path = std::env::temp_dir().join(format!("pdfcraft-zone-{name}-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
+            let path = std::env::temp_dir().join(format!("iridium-pdf-zone-{name}-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
             let _ = std::fs::remove_dir_all(&path);
             std::fs::create_dir_all(&path).unwrap();
             Dir(path)

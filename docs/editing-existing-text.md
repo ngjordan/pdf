@@ -66,10 +66,10 @@ Original subset bytes are
 preserved. Optional matching faces from `CRAFT_FONTS_DIR` can also complete source subsets;
 this works only when that build input actually contains the full face. This change does not
 add a font binary or change the release font pin. Fonts shared by releases belong in
-`storytold/craft-fonts` under the repository's asset rules.
+`ngjordan/craft-fonts` under the repository's asset rules.
 
 **Keep source fonts** retains the existing Thai family, weight and point size. For legacy
-THSarabunPSK subsets, PdfCraft reconstructs an editor-only Unicode cmap from the PDF's
+THSarabunPSK subsets, PDF reconstructs an editor-only Unicode cmap from the PDF's
 Unicode and CID-to-glyph maps. HarfRust uses the retained Thai positional glyphs, and the
 saved text refers to the original PDF font resources. Several subsets of the same exact
 face can supply Thai and punctuation glyphs, including a Thai run whose clusters are split
@@ -168,7 +168,7 @@ word it would run into, and new words with nothing to replace take a neighbour.
 The whole phrase is redrawn for a change of formatting or a new line, and for a layer whose words
 would move without the ones before them. While the phrase is open, the editor still shows all of
 it in the layer's Helvetica. The cover is one flat colour, and the text uses the layer's Helvetica, not the scanned typeface.
-This applies to any invisible text (rendering mode 3), not just a PdfCraft OCR layer: editing
+This applies to any invisible text (rendering mode 3), not just a PDF OCR layer: editing
 invisible text, such as another OCR tool's layer, makes the rewritten paragraph visible over a
 painted cover in the sampled paper colour. Edit text also groups invisible text differently: its lines never
 merge into multi-line paragraphs, and words split at gaps of 0.6 em or more.

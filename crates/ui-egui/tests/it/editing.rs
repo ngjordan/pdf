@@ -7,8 +7,8 @@ use egui::accesskit::Role;
 use egui::{Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use pdfcraft_render::{PageRenderer, RenderRequest, RequestKind};
-use pdfcraft_ui_egui::{CloseRequest, Dialog, OpenOutcome, PdfCraftApp};
+use iridium_pdf_render::{PageRenderer, RenderRequest, RequestKind};
+use iridium_pdf_ui_egui::{CloseRequest, Dialog, OpenOutcome, PdfApp};
 
 use crate::gpu;
 
@@ -38,13 +38,13 @@ fn fixture(n: usize) -> Vec<u8> {
     out
 }
 
-fn harness(pages: usize, setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, PdfCraftApp> {
+fn harness(pages: usize, setup: impl FnOnce(&mut PdfApp) + 'static) -> Harness<'static, PdfApp> {
     let mut builder = Harness::builder().with_size(egui::vec2(1400.0, 900.0));
-    if std::env::var_os("PDFCRAFT_ORGANIZE_SNAPSHOT").is_some() {
+    if std::env::var_os("IRIDIUM_PDF_ORGANIZE_SNAPSHOT").is_some() {
         builder = builder.wgpu();
     }
     let mut h = builder.build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, fixture(pages)).expect("fixture opens");
         setup(&mut app);
@@ -54,18 +54,18 @@ fn harness(pages: usize, setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harn
     h
 }
 
-fn organize(pages: usize) -> Harness<'static, PdfCraftApp> {
+fn organize(pages: usize) -> Harness<'static, PdfApp> {
     harness(pages, |app| app.set_option("organize", "on").unwrap())
 }
 
 /// Organize pages ▸ Insert ▸ `item`.
-fn insert_menu(h: &mut Harness<'static, PdfCraftApp>, item: &str) {
+fn insert_menu(h: &mut Harness<'static, PdfApp>, item: &str) {
     h.get_by_label("Insert").click();
     h.run_steps(2);
     h.get_by_label(item).click();
 }
 
-fn type_selection(h: &mut Harness<'static, PdfCraftApp>, text: &str) {
+fn type_selection(h: &mut Harness<'static, PdfApp>, text: &str) {
     use egui::accesskit::Role;
     h.get_by_role_and_label(Role::TextInput, "Selected pages").click();
     h.run_steps(1);
@@ -92,7 +92,7 @@ fn organize_page_range_tracks_thumbnails_and_applies_typed_selection() {
     h.run_steps(2);
     assert_eq!(h.state().views[0].target_pages(), [0, 11, 15, 16, 17, 88, 91, 92, 96, 98]);
     assert_eq!(h.get_by_role_and_label(Role::TextInput, "Selected pages").value().as_deref(), Some("1, 12, 16-18, 89, 92-93, 97, 99"));
-    if let Some(path) = std::env::var_os("PDFCRAFT_ORGANIZE_SNAPSHOT") {
+    if let Some(path) = std::env::var_os("IRIDIUM_PDF_ORGANIZE_SNAPSHOT") {
         h.render().unwrap().save(std::path::Path::new(&path)).unwrap();
     }
     h.get_by_label("Rotate clockwise").click();
@@ -165,7 +165,7 @@ fn organize_tool_opens_the_overview_directly_and_can_be_reentered() {
 #[test]
 fn organize_opens_on_the_current_page() {
     let mut h = harness(60, |_| {});
-    let in_view = |h: &Harness<'static, PdfCraftApp>, page: usize| {
+    let in_view = |h: &Harness<'static, PdfApp>, page: usize| {
         let viewport = h.state().views[0].viewport_rect();
         let label = format!("Page {}", page + 1);
         h.query_by_label(&label).is_some_and(|n| viewport.contains_rect(n.rect()))
@@ -208,7 +208,7 @@ fn organize_opens_on_the_current_page() {
 
 #[test]
 fn organize_tool_chosen_before_opening_a_document_shows_its_pages() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("tool", "organize").unwrap();
     app.open_bytes("doc.pdf", None, fixture(3)).unwrap();
     assert!(app.views[0].organize);
@@ -239,7 +239,7 @@ fn organize_page_actions_rotate_only_the_named_page_and_undo() {
     h.run_steps(2);
     h.get_by_label("Rotate page 1 clockwise").click();
     h.run_steps(3);
-    let rotations = |h: &Harness<'static, PdfCraftApp>| {
+    let rotations = |h: &Harness<'static, PdfApp>| {
         h.state().session.get(h.state().views[0].id).unwrap().info.pages.iter().map(|p| p.rotation).collect::<Vec<_>>()
     };
     assert_eq!(rotations(&h), [90, 0, 0]);
@@ -273,9 +273,9 @@ fn organize_hover_actions_delete_only_the_named_page_and_undo() {
 #[test]
 fn organize_local_actions_respect_document_permissions() {
     let mut h = harness(3, |app| {
-        app.apply_edit(pdfcraft_engine::Edit::Protect(pdfcraft_engine::Protection {
+        app.apply_edit(iridium_pdf_engine::Edit::Protect(iridium_pdf_engine::Protection {
             permissions_password: Some("owner".into()),
-            changes: pdfcraft_engine::Changes::None,
+            changes: iridium_pdf_engine::Changes::None,
             ..Default::default()
         }));
         let bytes = app.session.save_bytes(app.views[0].id).unwrap();
@@ -294,7 +294,7 @@ fn organize_local_actions_respect_document_permissions() {
 }
 
 /// Page labels of the active document, read back from its current bytes.
-fn page_texts(app: &PdfCraftApp) -> Vec<String> {
+fn page_texts(app: &PdfApp) -> Vec<String> {
     let doc = app.session.get(app.views[0].id).unwrap();
     let mut r = PageRenderer::new(doc.bytes.clone(), Default::default());
     (0..r.page_count())
@@ -305,13 +305,13 @@ fn page_texts(app: &PdfCraftApp) -> Vec<String> {
         .collect()
 }
 
-fn dirty(h: &Harness<'static, PdfCraftApp>) -> bool {
+fn dirty(h: &Harness<'static, PdfApp>) -> bool {
     let app = h.state();
     app.session.get(app.views[0].id).is_some_and(|d| d.dirty)
 }
 
 fn temp_path(name: &str) -> std::path::PathBuf {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-ui-tests-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-ui-tests-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     dir.join(name)
 }
@@ -433,9 +433,9 @@ fn organize_select_all_applies_operations_to_every_page() {
 #[test]
 fn organize_select_all_works_without_page_editing_permission() {
     let mut h = harness(3, |app| {
-        app.apply_edit(pdfcraft_engine::Edit::Protect(pdfcraft_engine::Protection {
+        app.apply_edit(iridium_pdf_engine::Edit::Protect(iridium_pdf_engine::Protection {
             permissions_password: Some("owner".into()),
-            changes: pdfcraft_engine::Changes::None,
+            changes: iridium_pdf_engine::Changes::None,
             ..Default::default()
         }));
         let bytes = app.session.save_bytes(app.views[0].id).unwrap();
@@ -456,7 +456,7 @@ fn organize_select_all_works_without_page_editing_permission() {
     assert_eq!(h.state().views[0].selected.len(), 1);
 
     // The opener refuses zero-page PDFs, but the view method also handles empty geometry.
-    let mut empty = pdfcraft_ui_egui::canvas::DocView::new(pdfcraft_engine::DocId(0), &Default::default(), Default::default());
+    let mut empty = iridium_pdf_ui_egui::canvas::DocView::new(iridium_pdf_engine::DocId(0), &Default::default(), Default::default());
     empty.organize = true;
     assert!(!empty.select_all());
     assert!(empty.selected.is_empty());
@@ -533,7 +533,7 @@ fn save_writes_an_incremental_update_and_clears_dirty() {
     h.get_by_label("saved.pdf"); // the tab takes the new name, no edited marker
     // What was written is what the app now shows.
     assert_eq!(h.state().session.get(h.state().views[0].id).unwrap().bytes.as_slice(), saved.as_slice());
-    let reopened = pdfcraft_render::inspect(std::sync::Arc::new(saved), None).unwrap();
+    let reopened = iridium_pdf_render::inspect(std::sync::Arc::new(saved), None).unwrap();
     assert_eq!(reopened.pages[2].rotation, 270);
     let _ = std::fs::remove_file(out);
 }
@@ -548,7 +548,7 @@ fn save_as_to_a_new_file_drops_earlier_revisions() {
     h.get_by_label("Delete page 2").click();
     h.run_steps(3);
     h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
-    assert!(h.state_mut().save_active(pdfcraft_ui_egui::SaveTarget::As));
+    assert!(h.state_mut().save_active(iridium_pdf_ui_egui::SaveTarget::As));
     let saved = std::fs::read(&out).expect("file written");
     let count = |needle: &[u8]| saved.windows(needle.len()).filter(|w| *w == needle).count();
     assert_eq!(count(b"%%EOF"), 1, "one revision only");
@@ -592,7 +592,7 @@ fn closing_a_dirty_tab_can_save_first() {
     h.get_by_label("Save").click();
     h.run_steps(3);
     assert!(h.state().views.is_empty());
-    let saved = pdfcraft_render::inspect(std::sync::Arc::new(std::fs::read(&out).unwrap()), None).unwrap();
+    let saved = iridium_pdf_render::inspect(std::sync::Arc::new(std::fs::read(&out).unwrap()), None).unwrap();
     assert_eq!(saved.pages[0].rotation, 90);
     let _ = std::fs::remove_file(out);
 }
@@ -630,13 +630,13 @@ fn the_save_prompt_answers_to_the_keyboard() {
     h.key_press(Key::Enter);
     h.run_steps(3);
     assert!(h.state().views.is_empty(), "Enter saves and closes");
-    let saved = pdfcraft_render::inspect(std::sync::Arc::new(std::fs::read(&out).unwrap()), None).unwrap();
+    let saved = iridium_pdf_render::inspect(std::sync::Arc::new(std::fs::read(&out).unwrap()), None).unwrap();
     assert_eq!(saved.pages[0].rotation, 90);
     let _ = std::fs::remove_file(out);
 }
 
 /// An organize harness with a dirty document and the "Save changes?" prompt open.
-fn dirty_prompt() -> Harness<'static, PdfCraftApp> {
+fn dirty_prompt() -> Harness<'static, PdfApp> {
     let mut h = organize(2);
     h.get_by_label("Rotate clockwise").click();
     h.run_steps(3);
@@ -647,7 +647,7 @@ fn dirty_prompt() -> Harness<'static, PdfCraftApp> {
 }
 
 /// The prompt has Save chosen on arrival; `keys` then move the choice and Enter or Space presses it.
-fn press_after(keys: &[(Modifiers, Key)], activate: Key) -> Harness<'static, PdfCraftApp> {
+fn press_after(keys: &[(Modifiers, Key)], activate: Key) -> Harness<'static, PdfApp> {
     let mut h = dirty_prompt();
     for (m, k) in keys {
         h.key_press_modifiers(*m, *k);
@@ -777,7 +777,7 @@ fn quitting_with_unsaved_changes_asks_for_each_document() {
     for tab in 0..2 {
         h.state_mut().active = Some(tab);
         h.state_mut().views[tab].select_pages(&[0]);
-        h.state_mut().apply_edit(pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
+        h.state_mut().apply_edit(iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
     }
     h.state_mut().close_request = Some(CloseRequest::Quit);
     h.run_steps(3);
@@ -792,7 +792,7 @@ fn quitting_with_unsaved_changes_asks_for_each_document() {
 }
 
 /// Run `frames` frames and collect every attention request they sent to the window.
-fn attention_over(h: &mut Harness<'static, PdfCraftApp>, frames: usize) -> Vec<egui::UserAttentionType> {
+fn attention_over(h: &mut Harness<'static, PdfApp>, frames: usize) -> Vec<egui::UserAttentionType> {
     let mut sent = Vec::new();
     for _ in 0..frames {
         h.step();
@@ -803,7 +803,7 @@ fn attention_over(h: &mut Harness<'static, PdfCraftApp>, frames: usize) -> Vec<e
 }
 
 /// Close the window as the operating system does: Quit in the Dock menu, or logging out.
-fn close_window(h: &mut Harness<'static, PdfCraftApp>) {
+fn close_window(h: &mut Harness<'static, PdfApp>) {
     h.input_mut().viewports.entry(egui::ViewportId::ROOT).or_default().events.push(egui::ViewportEvent::Close);
 }
 
@@ -815,7 +815,7 @@ fn a_save_prompt_opened_in_the_background_asks_for_attention_until_the_user_retu
     use egui::UserAttentionType::{Critical, Reset};
     let mut h = harness(2, |_| {});
     h.state_mut().views[0].select_pages(&[0]);
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
     h.input_mut().focused = false;
     close_window(&mut h);
     assert_eq!(attention_over(&mut h, 4), [Critical], "asked once, when the prompt opened");
@@ -826,7 +826,7 @@ fn a_save_prompt_opened_in_the_background_asks_for_attention_until_the_user_retu
     h.get_by_label("Cancel").click();
     assert!(attention_over(&mut h, 3).is_empty());
     assert_eq!(h.state().views.len(), 1, "cancel keeps the document open");
-    // With PdfCraft in front, the prompt is in plain sight.
+    // With PDF in front, the prompt is in plain sight.
     close_window(&mut h);
     assert!(attention_over(&mut h, 4).is_empty());
     h.get_by_label_contains("Save changes to “doc.pdf”");
@@ -840,7 +840,7 @@ struct TempPdfs(std::path::PathBuf);
 
 impl TempPdfs {
     fn new(test: &str) -> Self {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-session-{test}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-session-{test}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         Self(dir)
@@ -859,10 +859,10 @@ impl Drop for TempPdfs {
     }
 }
 
-/// The app with Preferences ▸ Reopen the files that were open when PdfCraft last closed on.
-fn session_harness(setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, PdfCraftApp> {
+/// The app with Preferences ▸ Reopen the files that were open when PDF last closed on.
+fn session_harness(setup: impl FnOnce(&mut PdfApp) + 'static) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.reopen_last_session = true;
         setup(&mut app);
@@ -872,7 +872,7 @@ fn session_harness(setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'s
     h
 }
 
-fn open_paths(app: &PdfCraftApp) -> Vec<String> {
+fn open_paths(app: &PdfApp) -> Vec<String> {
     app.views.iter().map(|v| app.session.get(v.id).and_then(|d| d.path.clone()).unwrap_or_default()).collect()
 }
 
@@ -915,18 +915,18 @@ fn quitting_with_unsaved_changes_still_remembers_every_file() {
     for tab in 0..2 {
         h.state_mut().active = Some(tab);
         h.state_mut().views[tab].select_pages(&[0]);
-        h.state_mut().apply_edit(pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
+        h.state_mut().apply_edit(iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
     }
     h.state_mut().active = Some(1);
     h.state_mut().close_request = Some(CloseRequest::Quit);
     h.run_steps(3);
-    // Each unsaved tab closes as it is answered, before PdfCraft quits.
+    // Each unsaved tab closes as it is answered, before PDF quits.
     for _ in 0..2 {
         h.get_by_label("Don't save").click();
         h.run_steps(3);
     }
     assert!(h.state().views.is_empty());
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.restore(&h.state().persist());
     app.reopen_last_files(&[]);
     assert_eq!(open_paths(&app), files, "both files come back");
@@ -937,21 +937,21 @@ fn quitting_with_unsaved_changes_still_remembers_every_file() {
 fn the_last_session_is_off_by_default_and_skips_missing_and_duplicate_files() {
     let dir = TempPdfs::new("skip");
     let (a, b) = (dir.file("a.pdf", 1), dir.file("b.pdf", 1));
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.open_path(&a);
     app.open_path(&b);
     let off: serde_json::Value = serde_json::from_str(&app.persist()).unwrap();
     assert!(off["last_session"].is_null(), "nothing is kept while the preference is off");
     app.reopen_last_session = true;
     let settings = app.persist();
-    let mut later = PdfCraftApp::new();
+    let mut later = PdfApp::new();
     later.restore(&settings);
     later.reopen_last_session = false;
     later.reopen_last_files(&[]);
     assert!(later.views.is_empty(), "turned off again: nothing reopens");
     // b.pdf is gone, and a.pdf is about to open from the command line.
     std::fs::remove_file(&b).unwrap();
-    let mut later = PdfCraftApp::new();
+    let mut later = PdfApp::new();
     later.restore(&settings);
     later.reopen_last_files(&[a]);
     assert!(later.views.is_empty(), "neither opens from the session");
@@ -978,9 +978,9 @@ fn opening_the_same_path_again_focuses_its_tab() {
 
 #[test]
 fn opening_a_missing_file_fails_and_tells_the_user() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("language", "en").unwrap();
-    let missing = std::env::temp_dir().join(format!("pdfcraft-no-such-file-{}.pdf", std::process::id()));
+    let missing = std::env::temp_dir().join(format!("iridium-pdf-no-such-file-{}.pdf", std::process::id()));
     assert_eq!(app.open_path(&missing.to_string_lossy()), OpenOutcome::Failed);
     assert!(app.views.is_empty());
     assert!(app.toast.is_some(), "the failure is still reported to the user");
@@ -1053,7 +1053,7 @@ fn save_prompt_stays_inside_the_screen_for_a_long_filename() {
     let name = "Psychology_ The Science of Mind and Behaviour, -- Nigel Holt, Andy Bremner, Michael \
                 Vliek, Ed Sutherland, -- 5, 2024 -- McGraw-Hill Education (UK) Ltd -- isbn13 97815268.pdf";
     let mut h = Harness::builder().with_size(egui::vec2(1365.0, 719.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes(name, None, fixture(1)).expect("fixture opens");
         app.close_request = Some(CloseRequest::Tab(app.views[0].id));
@@ -1083,7 +1083,7 @@ fn save_prompt_fits_the_smallest_window_whatever_the_name() {
         format!("{}.pdf", "年".repeat(251)),
         format!("{}.pdf", "W".repeat(2000)),
     ];
-    // The desktop window's minimum inner size (apps/pdfcraft/src/main.rs).
+    // The desktop window's minimum inner size (apps/iridium_pdf/src/main.rs).
     let size = egui::vec2(820.0, 520.0);
     for name in names {
         let start: String = name.chars().take(10).collect();
@@ -1091,7 +1091,7 @@ fn save_prompt_fits_the_smallest_window_whatever_the_name() {
             continue;
         }
         let mut h = Harness::builder().with_size(size).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_bytes(&name, None, fixture(1)).expect("fixture opens");
             app.close_request = Some(CloseRequest::Tab(app.views[0].id));
@@ -1156,19 +1156,19 @@ fn cancelling_properties_discards_the_draft() {
     assert!(h.state().props_draft.is_none());
 }
 
-fn custom_properties(h: &Harness<'static, PdfCraftApp>) -> Vec<(String, String)> {
+fn custom_properties(h: &Harness<'static, PdfApp>) -> Vec<(String, String)> {
     let app = h.state();
     app.session.get(app.views[0].id).unwrap().custom_info()
 }
 
-fn type_into(h: &mut Harness<'static, PdfCraftApp>, label: &str, text: &str) {
+fn type_into(h: &mut Harness<'static, PdfApp>, label: &str, text: &str) {
     let field = h.get_by_role_and_label(Role::TextInput, label);
     field.focus();
     field.type_text(text);
     h.run_steps(2);
 }
 
-fn clear(h: &mut Harness<'static, PdfCraftApp>, label: &str) {
+fn clear(h: &mut Harness<'static, PdfApp>, label: &str) {
     h.get_by_role_and_label(Role::TextInput, label).focus();
     h.run_steps(1);
     h.key_press_modifiers(Modifiers::COMMAND, Key::A);
@@ -1206,7 +1206,7 @@ fn custom_properties_are_added_in_the_custom_tab_as_one_undoable_step() {
 fn custom_properties_are_changed_and_deleted_in_the_custom_tab() {
     let mut h = harness(1, |app| {
         for (key, value) in [("Project", "Apollo"), ("Revision", "4")] {
-            assert!(app.apply_edit(pdfcraft_engine::Edit::SetInfo { key: key.into(), value: value.into() }));
+            assert!(app.apply_edit(iridium_pdf_engine::Edit::SetInfo { key: key.into(), value: value.into() }));
         }
         app.set_option("dialog", "custom").unwrap();
     });
@@ -1233,11 +1233,11 @@ fn custom_properties_are_changed_and_deleted_in_the_custom_tab() {
 #[test]
 fn the_custom_tab_refuses_names_a_custom_property_cannot_have() {
     let mut h = harness(1, |app| {
-        assert!(app.apply_edit(pdfcraft_engine::Edit::SetInfo { key: "Project".into(), value: "Apollo".into() }));
+        assert!(app.apply_edit(iridium_pdf_engine::Edit::SetInfo { key: "Project".into(), value: "Apollo".into() }));
         app.set_option("dialog", "custom").unwrap();
     });
     type_into(&mut h, "Value:", "x");
-    let add_disabled = |h: &Harness<'static, PdfCraftApp>| h.get_by_role_and_label(Role::Button, "Add").accesskit_node().is_disabled();
+    let add_disabled = |h: &Harness<'static, PdfApp>| h.get_by_role_and_label(Role::Button, "Add").accesskit_node().is_disabled();
     assert!(add_disabled(&h), "no name");
     // A standard name, a name with a space, a delimiter, and a name already listed.
     for name in ["Title", "Client name", "R&D/2", "Project"] {
@@ -1260,7 +1260,7 @@ fn a_custom_property_whose_name_the_tools_refuse_is_listed_and_left_alone() {
         "/Root 1 0 R /Info << /Client#20name (Acme) /Project#20 (Padded) /Dept#E9 (Sales) /Project (Apollo) /Revision 4 >> >>\nstartxref",
     );
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, pdf.into_bytes()).expect("fixture opens");
         app.set_option("dialog", "custom").unwrap();
@@ -1307,7 +1307,7 @@ fn a_custom_property_is_deleted_from_an_info_dictionary_in_the_trailer() {
         .unwrap()
         .replace("/Root 1 0 R >>\nstartxref", "/Root 1 0 R /Info << /Project (Apollo) /Revision (4) >> >>\nstartxref");
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, pdf.into_bytes()).expect("fixture opens");
         app.set_option("dialog", "custom").unwrap();
@@ -1332,7 +1332,7 @@ fn add_stops_at_the_256_custom_properties_the_tab_lists() {
         let pdf =
             String::from_utf8(fixture(1)).unwrap().replace("/Root 1 0 R >>\nstartxref", &format!("/Root 1 0 R /Info << {entries}>> >>\nstartxref"));
         let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_bytes("doc.pdf", None, pdf.into_bytes()).expect("fixture opens");
             app.set_option("dialog", "custom").unwrap();
@@ -1341,7 +1341,7 @@ fn add_stops_at_the_256_custom_properties_the_tab_lists() {
         h.run_steps(4);
         h
     };
-    let add_disabled = |h: &Harness<'static, PdfCraftApp>| h.get_by_role_and_label(Role::Button, "Add").accesskit_node().is_disabled();
+    let add_disabled = |h: &Harness<'static, PdfApp>| h.get_by_role_and_label(Role::Button, "Add").accesskit_node().is_disabled();
 
     // 255 in the file: one more fits, a second does not.
     let mut h = with_props(255);
@@ -1369,7 +1369,7 @@ fn add_stops_at_the_256_custom_properties_the_tab_lists() {
 #[test]
 fn edit_menu_names_the_step_to_undo() {
     let mut h = harness(2, |app| {
-        app.apply_edit(pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
+        app.apply_edit(iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
     });
     support::open_menu(&mut h, "Edit");
     support::menu_row(&h, "Undo Rotate page").click();
@@ -1420,7 +1420,7 @@ fn form_pdf_pages(name: &str, pages: usize) -> Vec<u8> {
 fn combine_list_warns_that_colliding_field_names_will_be_renamed() {
     let mut h = harness(1, |app| {
         app.set_option("combine-view", "list").unwrap();
-        app.use_files(pdfcraft_ui_egui::FilePurpose::Combine, vec![("one.pdf".into(), form_pdf("Text1")), ("two.pdf".into(), form_pdf("Text1"))]);
+        app.use_files(iridium_pdf_ui_egui::FilePurpose::Combine, vec![("one.pdf".into(), form_pdf("Text1")), ("two.pdf".into(), form_pdf("Text1"))]);
     });
     h.run_steps(3);
     h.get_by_label_contains("will be renamed");
@@ -1433,7 +1433,7 @@ fn combine_list_warns_that_colliding_field_names_will_be_renamed() {
 fn combine_list_does_not_warn_that_a_split_file_collides_with_itself() {
     let mut h = harness(1, |app| {
         app.set_option("combine-view", "list").unwrap();
-        app.use_files(pdfcraft_ui_egui::FilePurpose::Combine, vec![("one.pdf".into(), form_pdf_pages("Text1", 2))]);
+        app.use_files(iridium_pdf_ui_egui::FilePurpose::Combine, vec![("one.pdf".into(), form_pdf_pages("Text1", 2))]);
     });
     h.run_steps(3);
     // one.pdf in two parts — pages 1 and 2, sharing a group, as moving its pages apart leaves it.
@@ -1450,7 +1450,7 @@ fn combine_list_does_not_warn_that_a_split_file_collides_with_itself() {
 /// copy keeps the field's name rather than becoming Text1-1.
 #[test]
 fn pasting_pages_into_their_own_document_keeps_field_names() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("language", "en").unwrap();
     app.open_bytes("form.pdf", None, form_pdf("Text1")).unwrap();
     app.views[0].select_pages(&[0]);
@@ -1461,7 +1461,7 @@ fn pasting_pages_into_their_own_document_keeps_field_names() {
     assert!(doc.form.iter().all(|f| f.name == "Text1"), "{:?}", doc.form.iter().map(|f| &f.name).collect::<Vec<_>>());
 }
 
-fn texts_of(app: &PdfCraftApp, tab: usize) -> Vec<String> {
+fn texts_of(app: &PdfApp, tab: usize) -> Vec<String> {
     let doc = app.session.get(app.views[tab].id).unwrap();
     let mut r = PageRenderer::new(doc.bytes.clone(), Default::default());
     (0..r.page_count())
@@ -1475,7 +1475,7 @@ fn texts_of(app: &PdfCraftApp, tab: usize) -> Vec<String> {
 #[test]
 fn combining_files_opens_a_new_unsaved_tab() {
     let mut h = harness(1, |app| {
-        app.use_files(pdfcraft_ui_egui::FilePurpose::Combine, vec![("one.pdf".into(), fixture(2)), ("two.pdf".into(), fixture(1))]);
+        app.use_files(iridium_pdf_ui_egui::FilePurpose::Combine, vec![("one.pdf".into(), fixture(2)), ("two.pdf".into(), fixture(1))]);
     });
     h.run_steps(3);
     h.get_by_label("Combine").click();
@@ -1495,7 +1495,7 @@ fn combining_files_opens_a_new_unsaved_tab() {
 fn combine_files_takes_chosen_pages_in_the_order_listed() {
     let mut h = harness(1, |app| {
         app.set_option("combine-view", "list").unwrap();
-        app.use_files(pdfcraft_ui_egui::FilePurpose::Combine, vec![("one.pdf".into(), fixture(3)), ("two.pdf".into(), fixture(2))]);
+        app.use_files(iridium_pdf_ui_egui::FilePurpose::Combine, vec![("one.pdf".into(), fixture(3)), ("two.pdf".into(), fixture(2))]);
     });
     h.run_steps(3);
     h.get_by_label_contains("Files are combined from top to bottom");
@@ -1547,7 +1547,7 @@ fn combine_files_opens_in_its_own_tab() {
 #[test]
 fn closing_the_combine_tab_forgets_its_list() {
     let mut h = harness(1, |app| {
-        app.use_files(pdfcraft_ui_egui::FilePurpose::Combine, vec![("one.pdf".into(), fixture(1))]);
+        app.use_files(iridium_pdf_ui_egui::FilePurpose::Combine, vec![("one.pdf".into(), fixture(1))]);
     });
     h.run_steps(3);
     assert!(h.state().combine_showing());
@@ -1563,7 +1563,7 @@ fn combine_lists_size_and_warns_before_combining() {
     let mut h = harness(1, |app| {
         app.set_option("combine-view", "list").unwrap();
         app.use_files(
-            pdfcraft_ui_egui::FilePurpose::Combine,
+            iridium_pdf_ui_egui::FilePurpose::Combine,
             vec![
                 ("one.pdf".into(), fixture(3)),
                 ("locked.pdf".into(), protected("", "owner", -1 ^ 1024 ^ 8)),
@@ -1591,7 +1591,7 @@ fn combine_lists_size_and_warns_before_combining() {
 #[test]
 fn a_bad_range_stops_combine_until_fixed() {
     let mut h = harness(1, |app| {
-        app.use_files(pdfcraft_ui_egui::FilePurpose::Combine, vec![("one.pdf".into(), fixture(3)), ("two.pdf".into(), fixture(2))]);
+        app.use_files(iridium_pdf_ui_egui::FilePurpose::Combine, vec![("one.pdf".into(), fixture(3)), ("two.pdf".into(), fixture(2))]);
     });
     h.run_steps(3);
     h.get_by_label_contains("2 files · 5 pages");
@@ -1609,7 +1609,7 @@ fn a_bad_range_stops_combine_until_fixed() {
 fn alt_arrows_move_the_selected_file() {
     let mut h = harness(1, |app| {
         app.use_files(
-            pdfcraft_ui_egui::FilePurpose::Combine,
+            iridium_pdf_ui_egui::FilePurpose::Combine,
             vec![("a.pdf".into(), fixture(1)), ("b.pdf".into(), fixture(1)), ("c.pdf".into(), fixture(1))],
         );
     });
@@ -1623,16 +1623,16 @@ fn alt_arrows_move_the_selected_file() {
     assert_eq!(h.state().combine_selection(), [1]);
 }
 
-fn combine_names(h: &Harness<'static, PdfCraftApp>) -> Vec<String> {
+fn combine_names(h: &Harness<'static, PdfApp>) -> Vec<String> {
     h.state().combine_draft.iter().map(|f| f.name.clone()).collect()
 }
 
 /// Files in the Combine tab's list view (the table: headings, page ranges, row links).
-fn combine_of(names: &[(&str, usize)]) -> Harness<'static, PdfCraftApp> {
+fn combine_of(names: &[(&str, usize)]) -> Harness<'static, PdfApp> {
     let files: Vec<(String, Vec<u8>)> = names.iter().map(|(n, p)| (n.to_string(), fixture(*p))).collect();
     let mut h = harness(1, move |app| {
         app.set_option("combine-view", "list").unwrap();
-        app.use_files(pdfcraft_ui_egui::FilePurpose::Combine, files);
+        app.use_files(iridium_pdf_ui_egui::FilePurpose::Combine, files);
     });
     h.run_steps(3);
     h
@@ -1728,7 +1728,7 @@ fn protected_files_that_can_be_combined_are_flagged() {
     let mut h = harness(1, |app| {
         app.set_option("combine-view", "list").unwrap();
         app.use_files(
-            pdfcraft_ui_egui::FilePurpose::Combine,
+            iridium_pdf_ui_egui::FilePurpose::Combine,
             vec![("one.pdf".into(), fixture(1)), ("no-copy.pdf".into(), protected("", "owner", -1 ^ 16))],
         );
     });
@@ -1756,7 +1756,7 @@ fn the_whole_heading_sorts_and_dragging_it_moves_the_column() {
     let size = h.get_by_label("Size").rect().center();
     let name = h.get_by_label("File name, sorted ascending").rect();
     drag(&mut h, size, egui::pos2(name.left() + 10.0, name.center().y));
-    use pdfcraft_ui_egui::SortKey::*;
+    use iridium_pdf_ui_egui::SortKey::*;
     assert_eq!(h.state().combine_columns.order, [Size, Name, Pages, Modified, Warnings]);
     assert_eq!(combine_names(&h), ["a.pdf", "b.pdf"], "moving a column doesn't sort");
     let (size, name) = (h.get_by_label("Size").rect(), h.get_by_label("File name, sorted ascending").rect());
@@ -1771,10 +1771,10 @@ fn columns_resize_and_the_layout_is_kept_in_the_settings() {
     let edge = egui::pos2(size.right() + 2.0, size.center().y);
     drag(&mut h, edge, edge + egui::vec2(60.0, 0.0));
     let widths = h.state().combine_columns.widths.expect("a resized column keeps its width");
-    let size_index = pdfcraft_ui_egui::SortKey::Size as usize;
+    let size_index = iridium_pdf_ui_egui::SortKey::Size as usize;
     assert!(widths[size_index] > 120.0, "{widths:?}");
     let saved = h.state().persist();
-    let mut fresh = PdfCraftApp::new();
+    let mut fresh = PdfApp::new();
     fresh.set_option("language", "en").unwrap();
     fresh.restore(&saved);
     assert_eq!(fresh.combine_columns, h.state().combine_columns);
@@ -1785,7 +1785,7 @@ fn columns_resize_and_the_layout_is_kept_in_the_settings() {
 
 #[test]
 fn a_folder_adds_its_pdfs_images_and_text_in_order_and_optionally_its_subfolders() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-combine-folder-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-combine-folder-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("sub")).unwrap();
     for (name, pages) in [("page10.pdf", 1), ("page2.PDF", 2), ("sub/inner.pdf", 3)] {
@@ -1820,8 +1820,10 @@ fn images_and_text_files_join_the_combine_list_as_pdfs() {
     let mut png = std::io::Cursor::new(Vec::new());
     image::RgbImage::from_pixel(40, 20, image::Rgb([90, 120, 200])).write_to(&mut png, image::ImageFormat::Png).unwrap();
     let mut h = combine_of(&[("one.pdf", 2)]);
-    h.state_mut()
-        .use_files(pdfcraft_ui_egui::FilePurpose::Combine, vec![("scan.png".into(), png.into_inner()), ("notes.txt".into(), b"Some notes".to_vec())]);
+    h.state_mut().use_files(
+        iridium_pdf_ui_egui::FilePurpose::Combine,
+        vec![("scan.png".into(), png.into_inner()), ("notes.txt".into(), b"Some notes".to_vec())],
+    );
     h.run_steps(3);
     assert_eq!(combine_names(&h), ["one.pdf", "scan.png", "notes.txt"]);
     let draft = &h.state().combine_draft;
@@ -1838,7 +1840,7 @@ fn images_and_text_files_join_the_combine_list_as_pdfs() {
 fn files_that_cannot_be_read_are_listed_and_left_out_once_the_user_agrees() {
     let mut h = combine_of(&[("one.pdf", 2)]);
     let bad = vec![("broken.jpg".to_string(), b"\xff\xd8\xff\xe0 not a JPEG".to_vec()), ("report.docx".to_string(), b"PK\x03\x04".to_vec())];
-    h.state_mut().use_files(pdfcraft_ui_egui::FilePurpose::Combine, bad);
+    h.state_mut().use_files(iridium_pdf_ui_egui::FilePurpose::Combine, bad);
     h.run_steps(3);
     assert_eq!(combine_names(&h), ["one.pdf", "broken.jpg", "report.docx"]);
     for f in &h.state().combine_draft[1..] {
@@ -1849,7 +1851,7 @@ fn files_that_cannot_be_read_are_listed_and_left_out_once_the_user_agrees() {
     h.get_by_label_contains("this file type can't be converted");
     // One readable file is not enough to combine.
     assert!(h.get_by_label("Combine").accesskit_node().is_disabled());
-    h.state_mut().use_files(pdfcraft_ui_egui::FilePurpose::Combine, vec![("two.pdf".into(), fixture(1))]);
+    h.state_mut().use_files(iridium_pdf_ui_egui::FilePurpose::Combine, vec![("two.pdf".into(), fixture(1))]);
     h.run_steps(3);
     assert!(!h.get_by_label("Combine").accesskit_node().is_disabled());
     // Combine asks first, naming the files left out; Cancel leaves everything as it was.
@@ -1871,7 +1873,7 @@ fn files_that_cannot_be_read_are_listed_and_left_out_once_the_user_agrees() {
     assert_eq!(texts_of(h.state(), 1), ["Page 1", "Page 2", "Page 1"]);
 }
 
-fn type_password(h: &mut Harness<'static, PdfCraftApp>, password: &str) {
+fn type_password(h: &mut Harness<'static, PdfApp>, password: &str) {
     let field = h.get_by_role(Role::PasswordInput);
     field.focus();
     field.type_text(password);
@@ -1883,7 +1885,7 @@ fn type_password(h: &mut Harness<'static, PdfCraftApp>, password: &str) {
 #[test]
 fn a_password_protected_file_is_unlocked_with_its_password_and_combined() {
     let mut h = combine_of(&[("one.pdf", 1)]);
-    h.state_mut().use_files(pdfcraft_ui_egui::FilePurpose::Combine, vec![("secret.pdf".into(), protected("pw", "owner", -1))]);
+    h.state_mut().use_files(iridium_pdf_ui_egui::FilePurpose::Combine, vec![("secret.pdf".into(), protected("pw", "owner", -1))]);
     h.run_steps(3);
     h.get_by_label("Password-protected");
     assert!(h.get_by_label("Combine").accesskit_node().is_disabled());
@@ -1915,7 +1917,7 @@ fn a_password_protected_file_is_unlocked_with_its_password_and_combined() {
 fn one_password_unlocks_several_selected_files_and_undo_locks_them_again() {
     let mut h = combine_of(&[("one.pdf", 1)]);
     h.state_mut().use_files(
-        pdfcraft_ui_egui::FilePurpose::Combine,
+        iridium_pdf_ui_egui::FilePurpose::Combine,
         vec![
             ("a.pdf".into(), protected("same", "o1", -1)),
             ("b.pdf".into(), protected("same", "o2", -1)),
@@ -1941,11 +1943,11 @@ fn one_password_unlocks_several_selected_files_and_undo_locks_them_again() {
 fn a_file_that_opens_but_forbids_combining_takes_the_permissions_password() {
     let mut h = combine_of(&[("one.pdf", 1)]);
     // Opens with "pw"; only the owner may assemble pages.
-    h.state_mut().use_files(pdfcraft_ui_egui::FilePurpose::Combine, vec![("both.pdf".into(), protected("pw", "owner", -1 ^ 1024 ^ 8))]);
+    h.state_mut().use_files(iridium_pdf_ui_egui::FilePurpose::Combine, vec![("both.pdf".into(), protected("pw", "owner", -1 ^ 1024 ^ 8))]);
     h.run_steps(3);
     assert!(h.state_mut().combine_unlock_rows(&[1], "pw"));
     h.run_steps(2);
-    assert_eq!(h.state().combine_draft[1].lock, Some(pdfcraft_ui_egui::CombineLock::Permissions));
+    assert_eq!(h.state().combine_draft[1].lock, Some(iridium_pdf_ui_egui::CombineLock::Permissions));
     h.get_by_label_contains("Enter the permissions password");
     h.get_all_by_label("Unlock…").last().unwrap().click();
     h.run_steps(3);
@@ -1961,8 +1963,8 @@ fn an_rc4_file_unlocks_with_its_owner_password_too() {
     // engine's answer is the one that counts.
     let mut h = combine_of(&[("one.pdf", 1)]);
     h.state_mut().use_files(
-        pdfcraft_ui_egui::FilePurpose::Combine,
-        vec![("rc4.pdf".into(), protected_with(pdfcraft_cos::Algorithm::Rc4_128, "user", "boss", -1))],
+        iridium_pdf_ui_egui::FilePurpose::Combine,
+        vec![("rc4.pdf".into(), protected_with(iridium_pdf_cos::Algorithm::Rc4_128, "user", "boss", -1))],
     );
     h.run_steps(3);
     assert!(h.state_mut().combine_unlock_rows(&[1], "boss"));
@@ -2065,7 +2067,7 @@ fn replace_pages_from_pages_panel_context_menu() {
     let other = dir.join("other.pdf");
     std::fs::write(&other, fixture(5)).unwrap();
 
-    let mut h = harness(4, |app| app.right = Some(pdfcraft_ui_egui::RightPanel::Pages));
+    let mut h = harness(4, |app| app.right = Some(iridium_pdf_ui_egui::RightPanel::Pages));
     h.state_mut().pick_override = Some(vec![other.to_string_lossy().into_owned()]);
     let thumb = h.get_all_by_label("Page 2").max_by(|a, b| a.rect().left().total_cmp(&b.rect().left())).unwrap();
     thumb.click_button(egui::PointerButton::Secondary);
@@ -2089,7 +2091,7 @@ fn inserting_a_file_goes_after_the_selection_and_undoes() {
     let mut h = organize(2);
     h.get_by_label("Page 1").click();
     h.run_steps(2);
-    h.state_mut().use_files(pdfcraft_ui_egui::FilePurpose::InsertPages, vec![("extra.pdf".into(), fixture(2))]);
+    h.state_mut().use_files(iridium_pdf_ui_egui::FilePurpose::InsertPages, vec![("extra.pdf".into(), fixture(2))]);
     h.run_steps(3);
     assert_eq!(texts_of(h.state(), 0), ["Page 1", "Page 1", "Page 2", "Page 2"]);
     h.key_press_modifiers(Modifiers::COMMAND, Key::Z);
@@ -2134,7 +2136,7 @@ fn plus_between_pages_inserts_picked_files_there_in_order() {
     assert_eq!(texts_of(h.state(), 0), ["a note", "Page 1", "a note", "Page 2", "Page 3", "a note"]);
     // A file that can't be converted changes nothing.
     let before = texts_of(h.state(), 0);
-    h.state_mut().use_files(pdfcraft_ui_egui::FilePurpose::InsertPages, vec![("report.docx".into(), b"PK\x03\x04".to_vec())]);
+    h.state_mut().use_files(iridium_pdf_ui_egui::FilePurpose::InsertPages, vec![("report.docx".into(), b"PK\x03\x04".to_vec())]);
     h.run_steps(2);
     assert_eq!(texts_of(h.state(), 0), before);
 }
@@ -2152,7 +2154,7 @@ impl egui::DroppedFile for Dropped {
     }
 }
 
-fn drop_files(h: &mut Harness<'static, PdfCraftApp>, files: Vec<Dropped>) {
+fn drop_files(h: &mut Harness<'static, PdfApp>, files: Vec<Dropped>) {
     for f in files {
         h.input_mut().dropped_files.push(std::sync::Arc::new(f));
     }
@@ -2215,13 +2217,13 @@ fn files_dropped_outside_the_page_grid_still_open_as_documents() {
 }
 
 /// The Pages panel's thumbnail of page `label` (the panel is right of the page view).
-fn panel_thumb_rect(h: &Harness<'static, PdfCraftApp>, label: &str) -> egui::Rect {
+fn panel_thumb_rect(h: &Harness<'static, PdfApp>, label: &str) -> egui::Rect {
     h.get_all_by_label(label).map(|n| n.rect()).max_by(|a, b| a.left().total_cmp(&b.left())).unwrap()
 }
 
 #[test]
 fn files_dropped_on_the_pages_panel_are_inserted_there() {
-    let mut h = harness(3, |app| app.right = Some(pdfcraft_ui_egui::RightPanel::Pages));
+    let mut h = harness(3, |app| app.right = Some(iridium_pdf_ui_egui::RightPanel::Pages));
     // The top half of page 2's thumbnail: between pages 1 and 2.
     let thumb = panel_thumb_rect(&h, "Page 2");
     h.hover_at(thumb.center() - egui::vec2(0.0, thumb.height() * 0.25));
@@ -2233,7 +2235,7 @@ fn files_dropped_on_the_pages_panel_are_inserted_there() {
     assert_eq!(texts_of(h.state(), 0), ["Page 1", "Page 1", "Page 2", "a note", "Page 2", "Page 3"]);
     assert_eq!(picked(&h), [1, 2, 3], "the inserted pages are selected");
     // The bottom half of the last thumbnail: the end.
-    let mut h = harness(2, |app| app.right = Some(pdfcraft_ui_egui::RightPanel::Pages));
+    let mut h = harness(2, |app| app.right = Some(iridium_pdf_ui_egui::RightPanel::Pages));
     let last = panel_thumb_rect(&h, "Page 2");
     h.hover_at(last.center() + egui::vec2(0.0, last.height() * 0.25));
     h.run_steps(2);
@@ -2245,7 +2247,7 @@ fn files_dropped_on_the_pages_panel_are_inserted_there() {
 
 #[test]
 fn files_dropped_beside_the_pages_panel_still_open_as_documents() {
-    let mut h = harness(2, |app| app.right = Some(pdfcraft_ui_egui::RightPanel::Pages));
+    let mut h = harness(2, |app| app.right = Some(iridium_pdf_ui_egui::RightPanel::Pages));
     // Over the page view, not the panel.
     let thumb = panel_thumb_rect(&h, "Page 1");
     h.hover_at(egui::pos2(thumb.left() - 300.0, thumb.center().y));
@@ -2259,14 +2261,14 @@ fn files_dropped_beside_the_pages_panel_still_open_as_documents() {
     assert_eq!(texts_of(h.state(), 1), ["Page 1"], "the dropped PDF opens as its own document");
 }
 
-fn grid_zoom(h: &Harness<'static, PdfCraftApp>) -> f32 {
+fn grid_zoom(h: &Harness<'static, PdfApp>) -> f32 {
     h.state().views[0].grid_zoom()
 }
 
 #[test]
 fn page_grid_zooms_with_its_buttons_keys_and_pinch() {
     let mut h = organize(12);
-    let width = |h: &Harness<'static, PdfCraftApp>| h.get_by_label("Page 2").rect().left() - h.get_by_label("Page 1").rect().left();
+    let width = |h: &Harness<'static, PdfApp>| h.get_by_label("Page 2").rect().left() - h.get_by_label("Page 1").rect().left();
     let usual = width(&h);
     h.get_by_label("Larger pages").click();
     h.run_steps(3);
@@ -2342,7 +2344,7 @@ fn page_grid_size_is_remembered_for_every_document_and_restart() {
 
 #[test]
 fn a_damaged_remembered_page_grid_size_is_ignored_or_clamped() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.restore(r#"{"organize_zoom": "huge"}"#);
     assert_eq!(app.organize_zoom, 1.0);
     app.restore(r#"{"organize_zoom": 40.0}"#);
@@ -2361,7 +2363,7 @@ fn zoomed_pages_in_view_are_rendered_at_the_size_drawn() {
     // The 200 × 300 fixture fits by height; keep its aspect ratio instead of stretching
     // it to the full cell width. Request enough pixels for that actual preview width.
     let drawn = 194.0 * 3.0 * (200.0 / 300.0) * h.ctx.pixels_per_point();
-    let sharp = |h: &Harness<'static, PdfCraftApp>, page| h.state().views[0].grid_page_pixels(page);
+    let sharp = |h: &Harness<'static, PdfApp>, page| h.state().views[0].grid_page_pixels(page);
     for _ in 0..200 {
         if sharp(&h, 0).is_some_and(|w| w as f32 >= drawn * 0.9) {
             break;
@@ -2417,7 +2419,7 @@ fn save_pages_writes_what_the_grid_shows() {
     h.get_by_label("Save pages").click();
     h.run_steps(4);
     assert!(!dirty(&h));
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("language", "en").unwrap();
     app.open_bytes("saved.pdf", None, std::fs::read(&path).unwrap()).unwrap();
     assert_eq!(texts_of(&app, 0), ["Page 1", "Page 3"]);
@@ -2440,7 +2442,7 @@ fn split_dialog_writes_one_file_per_part() {
     names.sort();
     assert_eq!(names, ["doc (page 1).pdf", "doc (page 2).pdf", "doc (page 3).pdf"]);
     for name in names {
-        let info = pdfcraft_render::inspect(std::sync::Arc::new(std::fs::read(dir.join(name)).unwrap()), None).unwrap();
+        let info = iridium_pdf_render::inspect(std::sync::Arc::new(std::fs::read(dir.join(name)).unwrap()), None).unwrap();
         assert_eq!(info.pages.len(), 1);
     }
     let _ = std::fs::remove_dir_all(dir);
@@ -2454,7 +2456,7 @@ fn split_at_bookmarks_with_equal_titles_keeps_every_part() {
     let mut h = organize(3);
     h.state_mut().export_dir_override = Some(dir.to_string_lossy().into_owned());
     for (index, title) in [(0, "Same"), (1, "Same"), (2, "same")] {
-        h.state_mut().apply_edit(pdfcraft_engine::Edit::AddBookmark {
+        h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddBookmark {
             parent: vec![],
             index,
             title: title.into(),
@@ -2463,7 +2465,7 @@ fn split_at_bookmarks_with_equal_titles_keeps_every_part() {
             top: None,
         });
     }
-    h.state_mut().split_draft.mode = pdfcraft_ui_egui::SplitMode::Bookmarks;
+    h.state_mut().split_draft.mode = iridium_pdf_ui_egui::SplitMode::Bookmarks;
     h.state_mut().run_command("page.split");
     h.run_steps(3);
     h.get_by_label_contains("Creates 3 files from 3 pages");
@@ -2483,7 +2485,7 @@ fn split_before_selected_pages() {
     let mut h = organize(4);
     h.state_mut().export_dir_override = Some(dir.to_string_lossy().into_owned());
     h.state_mut().views[0].select_pages(&[2]);
-    h.state_mut().split_draft.mode = pdfcraft_ui_egui::SplitMode::Selection;
+    h.state_mut().split_draft.mode = iridium_pdf_ui_egui::SplitMode::Selection;
     h.state_mut().run_command("page.split");
     h.run_steps(3);
     h.get_by_label_contains("Creates 2 files from 4 pages");
@@ -2506,8 +2508,8 @@ fn split_from_organize_grid_context_menu() {
     h.run_steps(2);
     h.get_all_by_label("Split document…").last().unwrap().click();
     h.run_steps(3);
-    assert_eq!(h.state().dialog, Some(pdfcraft_ui_egui::Dialog::Split));
-    assert_eq!(h.state().split_draft.mode, pdfcraft_ui_egui::SplitMode::Selection);
+    assert_eq!(h.state().dialog, Some(iridium_pdf_ui_egui::Dialog::Split));
+    assert_eq!(h.state().split_draft.mode, iridium_pdf_ui_egui::SplitMode::Selection);
     h.get_by_label_contains("Creates 2 files from 4 pages");
     h.get_all_by_label("Split").last().unwrap().click();
     h.run_steps(3);
@@ -2519,20 +2521,20 @@ fn split_from_organize_grid_context_menu() {
 
 #[test]
 fn split_from_pages_panel_context_menu() {
-    let mut h = harness(4, |app| app.right = Some(pdfcraft_ui_egui::RightPanel::Pages));
+    let mut h = harness(4, |app| app.right = Some(iridium_pdf_ui_egui::RightPanel::Pages));
     let thumb = h.get_all_by_label("Page 3").max_by(|a, b| a.rect().left().total_cmp(&b.rect().left())).unwrap();
     thumb.click_button(egui::PointerButton::Secondary);
     h.run_steps(2);
     h.get_all_by_label("Split document…").last().unwrap().click();
     h.run_steps(3);
-    assert_eq!(h.state().dialog, Some(pdfcraft_ui_egui::Dialog::Split));
-    assert_eq!(h.state().split_draft.mode, pdfcraft_ui_egui::SplitMode::Selection);
+    assert_eq!(h.state().dialog, Some(iridium_pdf_ui_egui::Dialog::Split));
+    assert_eq!(h.state().split_draft.mode, iridium_pdf_ui_egui::SplitMode::Selection);
     h.get_by_label_contains("Creates 2 files from 4 pages");
 }
 
 #[test]
 fn split_from_pages_panel_context_menu_on_current_page_without_selection() {
-    let mut h = harness(4, |app| app.right = Some(pdfcraft_ui_egui::RightPanel::Pages));
+    let mut h = harness(4, |app| app.right = Some(iridium_pdf_ui_egui::RightPanel::Pages));
     // Navigate to Page 2 (0-indexed 1) so it is current, but keep selected empty
     h.state_mut().views[0].go_to_page(1);
     h.state_mut().views[0].selected.clear();
@@ -2544,26 +2546,26 @@ fn split_from_pages_panel_context_menu_on_current_page_without_selection() {
     h.run_steps(2);
     h.get_all_by_label("Split document…").last().unwrap().click();
     h.run_steps(3);
-    assert_eq!(h.state().dialog, Some(pdfcraft_ui_egui::Dialog::Split));
-    assert_eq!(h.state().split_draft.mode, pdfcraft_ui_egui::SplitMode::Selection);
+    assert_eq!(h.state().dialog, Some(iridium_pdf_ui_egui::Dialog::Split));
+    assert_eq!(h.state().split_draft.mode, iridium_pdf_ui_egui::SplitMode::Selection);
     h.get_by_label_contains("Creates 2 files from 4 pages");
 }
 
 #[test]
 fn split_from_pages_panel_context_menu_on_page_one_falls_back_to_pages() {
-    let mut h = harness(4, |app| app.right = Some(pdfcraft_ui_egui::RightPanel::Pages));
+    let mut h = harness(4, |app| app.right = Some(iridium_pdf_ui_egui::RightPanel::Pages));
     let thumb = h.get_all_by_label("Page 1").max_by(|a, b| a.rect().left().total_cmp(&b.rect().left())).unwrap();
     thumb.click_button(egui::PointerButton::Secondary);
     h.run_steps(2);
     h.get_all_by_label("Split document…").last().unwrap().click();
     h.run_steps(3);
-    assert_eq!(h.state().dialog, Some(pdfcraft_ui_egui::Dialog::Split));
-    assert_eq!(h.state().split_draft.mode, pdfcraft_ui_egui::SplitMode::Pages);
+    assert_eq!(h.state().dialog, Some(iridium_pdf_ui_egui::Dialog::Split));
+    assert_eq!(h.state().split_draft.mode, iridium_pdf_ui_egui::SplitMode::Pages);
 }
 
 #[test]
 fn split_from_pages_panel_context_menu_with_multi_selection() {
-    let mut h = harness(4, |app| app.right = Some(pdfcraft_ui_egui::RightPanel::Pages));
+    let mut h = harness(4, |app| app.right = Some(iridium_pdf_ui_egui::RightPanel::Pages));
     // Select pages 2 and 4 (indices 1 and 3)
     h.state_mut().views[0].select_pages(&[1, 3]);
     h.run_steps(2);
@@ -2572,25 +2574,25 @@ fn split_from_pages_panel_context_menu_with_multi_selection() {
     h.run_steps(2);
     h.get_all_by_label("Split document…").last().unwrap().click();
     h.run_steps(3);
-    assert_eq!(h.state().dialog, Some(pdfcraft_ui_egui::Dialog::Split));
-    assert_eq!(h.state().split_draft.mode, pdfcraft_ui_egui::SplitMode::Selection);
+    assert_eq!(h.state().dialog, Some(iridium_pdf_ui_egui::Dialog::Split));
+    assert_eq!(h.state().split_draft.mode, iridium_pdf_ui_egui::SplitMode::Selection);
     h.get_by_label_contains("Creates 3 files from 4 pages");
 }
 
 // ── Encrypted documents ───────────────────────────────────────────────────────────────────────
 
 fn protected(user: &str, owner: &str, permissions: i32) -> Vec<u8> {
-    protected_with(pdfcraft_cos::Algorithm::Aes256, user, owner, permissions)
+    protected_with(iridium_pdf_cos::Algorithm::Aes256, user, owner, permissions)
 }
 
-fn protected_with(algorithm: pdfcraft_cos::Algorithm, user: &str, owner: &str, permissions: i32) -> Vec<u8> {
+fn protected_with(algorithm: iridium_pdf_cos::Algorithm, user: &str, owner: &str, permissions: i32) -> Vec<u8> {
     encrypted(fixture(2), algorithm, user, owner, permissions)
 }
 
 /// `bytes` rewritten encrypted.
-pub(crate) fn encrypted(bytes: Vec<u8>, algorithm: pdfcraft_cos::Algorithm, user: &str, owner: &str, permissions: i32) -> Vec<u8> {
-    let mut doc = pdfcraft_cos::Document::open(std::sync::Arc::new(bytes)).unwrap();
-    doc.set_encryption(&pdfcraft_cos::NewEncryption {
+pub(crate) fn encrypted(bytes: Vec<u8>, algorithm: iridium_pdf_cos::Algorithm, user: &str, owner: &str, permissions: i32) -> Vec<u8> {
+    let mut doc = iridium_pdf_cos::Document::open(std::sync::Arc::new(bytes)).unwrap();
+    doc.set_encryption(&iridium_pdf_cos::NewEncryption {
         algorithm,
         user_password: user,
         owner_password: owner,
@@ -2599,19 +2601,19 @@ pub(crate) fn encrypted(bytes: Vec<u8>, algorithm: pdfcraft_cos::Algorithm, user
         seed: [4; 32],
     })
     .unwrap();
-    pdfcraft_cos::write_full(&doc, &Default::default()).unwrap()
+    iridium_pdf_cos::write_full(&doc, &Default::default()).unwrap()
 }
 
 #[test]
 fn launch_display_override_survives_password_retry_without_changing_defaults() {
-    use pdfcraft_ui_egui::canvas::PageLayout;
+    use iridium_pdf_ui_egui::canvas::PageLayout;
     use std::io::Write as _;
     let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
     let path = temp_path(&format!("startup-layout-{nonce}.pdf"));
     let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(&path).unwrap();
     file.write_all(&protected("reader", "owner", -4)).unwrap();
     drop(file);
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("default-layout", "continuous").unwrap();
     app.open_path_with_display(path.to_str().unwrap(), PageLayout::TwoUp, false);
     assert!(app.views.is_empty() && app.password_prompt.is_some());
@@ -2637,8 +2639,8 @@ fn asynchronous_launch_display_explicit_layout_survives_retries_and_cancel() {
 }
 
 fn asynchronous_launch_display(explicit: bool) {
-    use pdfcraft_ui_egui::canvas::PageLayout;
-    fn wait(h: &mut Harness<'static, PdfCraftApp>, stage: &str, ready: impl Fn(&PdfCraftApp) -> bool) {
+    use iridium_pdf_ui_egui::canvas::PageLayout;
+    fn wait(h: &mut Harness<'static, PdfApp>, stage: &str, ready: impl Fn(&PdfApp) -> bool) {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
         while !ready(h.state()) {
             assert!(
@@ -2656,7 +2658,7 @@ fn asynchronous_launch_display(explicit: bool) {
     let path = temp_path(&format!("async-startup-layout-{explicit}.pdf"));
     std::fs::write(&path, protected("reader", "owner", -4)).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.set_option("default-layout", "continuous").unwrap();
         app.open_bytes("other.pdf", None, fixture(2)).unwrap();
@@ -2700,14 +2702,14 @@ fn asynchronous_launch_display(explicit: bool) {
 
 #[test]
 fn canceling_launch_display_override_does_not_affect_later_documents() {
-    use pdfcraft_ui_egui::canvas::PageLayout;
+    use iridium_pdf_ui_egui::canvas::PageLayout;
     use std::io::Write as _;
     let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
     let path = temp_path(&format!("startup-cancel-layout-{nonce}.pdf"));
     let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(&path).unwrap();
     file.write_all(&protected("reader", "owner", -4)).unwrap();
     drop(file);
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("default-layout", "continuous").unwrap();
     app.open_path_with_display(path.to_str().unwrap(), PageLayout::TwoUp, false);
     assert!(app.views.is_empty() && app.password_prompt.is_some());
@@ -2727,7 +2729,7 @@ fn canceling_launch_display_override_does_not_affect_later_documents() {
     std::fs::remove_file(path).unwrap();
 }
 
-/// `pdfcraft locked.pdf other.pdf`: the files open before the first frame, and opening the
+/// `iridium_pdf locked.pdf other.pdf`: the files open before the first frame, and opening the
 /// second one inline used to clear the first one's password prompt, so `locked.pdf` was never
 /// opened or asked for. The later file now waits behind the prompt.
 #[test]
@@ -2741,7 +2743,7 @@ fn a_startup_file_after_a_protected_one_keeps_its_password_prompt() {
         let (locked_path, other_path) = (locked.to_str().unwrap().to_string(), other.to_str().unwrap().to_string());
         let (first, second) = (locked_path.clone(), other_path.clone());
         let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_path(&first);
             app.open_path(&second);
@@ -2768,7 +2770,7 @@ fn a_startup_file_after_a_protected_one_keeps_its_password_prompt() {
     }
 }
 
-/// `pdfcraft locked.pdf locked.pdf other.pdf`: the repeated file joins its open password
+/// `iridium_pdf locked.pdf locked.pdf other.pdf`: the repeated file joins its open password
 /// prompt. It used to be queued again behind the prompt, so the unlocked file asked for its
 /// password a second time.
 #[test]
@@ -2781,7 +2783,7 @@ fn a_protected_file_named_twice_at_startup_asks_for_its_password_once() {
     let (locked_path, other_path) = (locked.to_str().unwrap().to_string(), other.to_str().unwrap().to_string());
     let (first, second) = (locked_path.clone(), other_path.clone());
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_path(&first);
         app.open_path(&first);
@@ -2802,7 +2804,7 @@ fn a_protected_file_named_twice_at_startup_asks_for_its_password_once() {
     std::fs::remove_file(other).unwrap();
 }
 
-/// `pdfcraft locked-a.pdf locked-b.pdf`: B's reply is ready while A's password is asked for.
+/// `iridium_pdf locked-a.pdf locked-b.pdf`: B's reply is ready while A's password is asked for.
 /// Once A's password is given, A's retry comes first: A opens (or asks again) before B's prompt
 /// can take the dialog. B's prompt used to replace A's retry, so A waited for B's answer.
 #[test]
@@ -2815,7 +2817,7 @@ fn a_password_retry_finishes_before_the_next_protected_files_prompt() {
     let (a_path, b_path) = (a.to_str().unwrap().to_string(), b.to_str().unwrap().to_string());
     let (first, second) = (a_path.clone(), b_path.clone());
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_path(&first);
         app.open_path(&second);
@@ -2834,7 +2836,7 @@ fn a_password_retry_finishes_before_the_next_protected_files_prompt() {
     std::fs::remove_file(b).unwrap();
 }
 
-/// `pdfcraft locked.pdf` followed by more files than the open worker queues at once: the files
+/// `iridium_pdf locked.pdf` followed by more files than the open worker queues at once: the files
 /// past its bound wait in order and open as it drains, instead of failing to open.
 #[test]
 fn a_long_startup_list_behind_a_password_prompt_opens_every_file() {
@@ -2850,7 +2852,7 @@ fn a_long_startup_list_behind_a_password_prompt_opens_every_file() {
     let other_paths: Vec<String> = others.iter().map(|p| p.to_str().unwrap().to_string()).collect();
     let (first, rest) = (locked_path.clone(), other_paths.clone());
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_path(&first);
         for path in &rest {
@@ -2877,7 +2879,7 @@ fn a_long_startup_list_behind_a_password_prompt_opens_every_file() {
 #[test]
 fn password_prompt_opens_and_security_tab_reports_the_details() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("secret.pdf", None, protected("pw", "owner", -1)).unwrap();
         app
@@ -2907,7 +2909,7 @@ fn the_security_notice_wraps_beside_its_buttons_and_lines_up_with_them() {
     // Wide: one line. Narrower: wrapped. Narrowest: cut short (the full text is on hover).
     for (width, wraps) in [(1700.0, false), (1250.0, true), (900.0, false)] {
         let mut h = Harness::builder().with_size(egui::vec2(width, 800.0)).build_eframe(|_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_bytes("locked.pdf", None, protected("", "owner", 0b0100)).unwrap();
             app.set_option("panel", "bookmarks").unwrap();
@@ -2933,7 +2935,7 @@ fn the_security_notice_wraps_beside_its_buttons_and_lines_up_with_them() {
 #[test]
 fn the_security_notice_unlocks_with_the_permissions_password() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("locked.pdf", None, protected("", "owner", 0b0100)).unwrap();
         app
@@ -2963,7 +2965,7 @@ fn the_security_notice_unlocks_with_the_permissions_password() {
 fn the_security_notice_can_be_turned_off_for_good() {
     let open = |settings: Option<String>| {
         let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             if let Some(s) = &settings {
                 app.restore(s);
             }
@@ -3016,7 +3018,7 @@ fn the_security_notice_can_be_turned_off_for_good() {
 #[test]
 fn remove_security_asks_for_the_permissions_password_first() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("locked.pdf", None, protected("", "owner", 0b0100)).unwrap();
         app
@@ -3043,9 +3045,9 @@ fn remove_security_asks_for_the_permissions_password_first() {
 #[test]
 fn a_secured_form_shows_its_form_notice_and_its_security() {
     // Changing and assembling withheld, filling allowed (as government forms are often set).
-    let bytes = encrypted(include_bytes!("../data/form.pdf").to_vec(), pdfcraft_cos::Algorithm::Aes256, "", "owner", -1036);
+    let bytes = encrypted(include_bytes!("../data/form.pdf").to_vec(), iridium_pdf_cos::Algorithm::Aes256, "", "owner", -1036);
     let mut h = Harness::builder().with_size(egui::vec2(1600.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("form.pdf", None, bytes).unwrap();
         app
@@ -3060,7 +3062,7 @@ fn a_secured_form_shows_its_form_notice_and_its_security() {
 #[test]
 fn restricted_documents_show_a_notice_and_block_page_changes() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("locked.pdf", None, protected("", "owner", 0b0100)).unwrap(); // opens without a password
         app.set_option("organize", "on").unwrap();
@@ -3089,9 +3091,9 @@ fn restricted_documents_show_a_notice_and_block_page_changes() {
 /// in. ⌘C, snapshots and exports are refused with a notice; the owner password lifts that.
 #[test]
 fn copying_out_of_a_document_honours_its_security() {
-    fn open(password: &'static str) -> Harness<'static, PdfCraftApp> {
+    fn open(password: &'static str) -> Harness<'static, PdfApp> {
         let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.system_clipboard = false;
             app.open_bytes("no-copy.pdf", None, protected("pw", "owner", -1 ^ 0b1_0000)).unwrap();
@@ -3115,7 +3117,7 @@ fn copying_out_of_a_document_honours_its_security() {
         assert_eq!(h.state().views[0].selected_text().as_deref(), Some("Page 1"));
         h
     }
-    fn copy(h: &mut Harness<'static, PdfCraftApp>) -> bool {
+    fn copy(h: &mut Harness<'static, PdfApp>) -> bool {
         h.state_mut().toast = None;
         h.event(egui::Event::Copy);
         let mut copied = false;
@@ -3125,7 +3127,7 @@ fn copying_out_of_a_document_honours_its_security() {
         }
         copied
     }
-    fn snapshot(h: &mut Harness<'static, PdfCraftApp>) {
+    fn snapshot(h: &mut Harness<'static, PdfApp>) {
         // Around "Page 1", at (20, 150) on the 200 × 300 pt page.
         let r = h.state().views[0].page_screen_rect(0).expect("on screen");
         let at = |x: f32, y: f32| egui::pos2(r.left() + x / 200.0 * r.width(), r.top() + (300.0 - y) / 300.0 * r.height());
@@ -3165,7 +3167,7 @@ fn copying_out_of_a_document_honours_its_security() {
 
 #[test]
 fn replace_pages_dialog_swaps_page_content() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("language", "en").unwrap();
     app.open_bytes("doc.pdf", None, fixture(3)).unwrap();
     app.views[0].select_pages(&[1]);
@@ -3211,7 +3213,7 @@ fn replace_split_selection_keeps_the_unchecked_page() {
         out
     }
     let open = |selected: &[usize], edited: bool| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("original.pdf", None, sized(3, 200, 300, "Original")).unwrap();
         app.views[0].select_pages(selected);
@@ -3223,7 +3225,7 @@ fn replace_split_selection_keeps_the_unchecked_page() {
         h.run_steps(2);
         h
     };
-    let sizes = |app: &PdfCraftApp| {
+    let sizes = |app: &PdfApp| {
         let doc = app.session.get(app.views[0].id).unwrap();
         doc.info.pages.iter().map(|p| (p.width.round() as i32, p.height.round() as i32)).collect::<Vec<_>>()
     };
@@ -3262,7 +3264,7 @@ fn extract_options_and_rotate_pages_dialog() {
     h.state_mut().views[0].select_pages(&[1, 2]);
     h.state_mut().run_command("page.extract");
     h.run_steps(2);
-    h.state_mut().extract_draft = pdfcraft_ui_egui::ExtractDraft { separate: true, delete: true, ..Default::default() };
+    h.state_mut().extract_draft = iridium_pdf_ui_egui::ExtractDraft { separate: true, delete: true, ..Default::default() };
     h.get_all_by_label("Extract").last().unwrap().click();
     h.run_steps(3);
     let mut names: Vec<String> = std::fs::read_dir(&dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
@@ -3274,7 +3276,7 @@ fn extract_options_and_rotate_pages_dialog() {
     h.state_mut().run_command("page.rotate_dialog");
     h.run_steps(2);
     h.state_mut().rotate_draft.which = 0;
-    h.state_mut().rotate_draft.parity = pdfcraft_engine::PageParity::Odd;
+    h.state_mut().rotate_draft.parity = iridium_pdf_engine::PageParity::Odd;
     h.get_by_label("OK").click();
     h.run_steps(3);
     let s = h.state();
@@ -3317,7 +3319,7 @@ fn rotate_pages_keeps_a_typed_last_page() {
 fn dragging_thumbnails_reorders_pages() {
     let mut h = organize(4);
     let before = page_texts(h.state());
-    let grab = |h: &Harness<'static, PdfCraftApp>, label: &str| h.get_by_label(label).rect();
+    let grab = |h: &Harness<'static, PdfApp>, label: &str| h.get_by_label(label).rect();
     let (from, to) = (grab(&h, "Page 1").center(), grab(&h, "Page 3").right_center() - egui::vec2(10.0, 0.0));
     h.hover_at(from);
     h.run_steps(1);
@@ -3339,19 +3341,19 @@ fn dragging_thumbnails_reorders_pages() {
 
 /// A page drag with the copy modifier held — Ctrl (Option on macOS) — instead of none.
 /// Modifiers are input state: `ModifiersChanged` once, as the column-select drag does.
-fn copy_drag(h: &mut Harness<'static, PdfCraftApp>, from: egui::Pos2, to: egui::Pos2) {
+fn copy_drag(h: &mut Harness<'static, PdfApp>, from: egui::Pos2, to: egui::Pos2) {
     page_drag(h, from, to, copy_modifiers(h));
 }
 
 /// The copy modifier of the OS the app reports: Option on macOS, Ctrl elsewhere. That is the OS
 /// the gesture itself reads, so a Mac browser — a wasm build, where `cfg!(target_os = "macos")` is
 /// false — is covered by asking the context rather than the target.
-fn copy_modifiers(h: &Harness<'static, PdfCraftApp>) -> Modifiers {
+fn copy_modifiers(h: &Harness<'static, PdfApp>) -> Modifiers {
     if h.ctx.os() == egui::os::OperatingSystem::Mac { Modifiers::ALT } else { Modifiers::CTRL }
 }
 
 /// Drag the page under `from` to `to` with `modifiers` held for the whole gesture.
-fn page_drag(h: &mut Harness<'static, PdfCraftApp>, from: egui::Pos2, to: egui::Pos2, modifiers: Modifiers) {
+fn page_drag(h: &mut Harness<'static, PdfApp>, from: egui::Pos2, to: egui::Pos2, modifiers: Modifiers) {
     h.event(egui::Event::ModifiersChanged(modifiers));
     h.run_steps(1);
     h.hover_at(from);
@@ -3372,7 +3374,7 @@ fn page_drag(h: &mut Harness<'static, PdfCraftApp>, from: egui::Pos2, to: egui::
 fn dragging_with_the_copy_modifier_copies_the_pages_into_the_gap() {
     let mut h = organize(3);
     let before = page_texts(h.state());
-    let grab = |h: &Harness<'static, PdfCraftApp>, label: &str| h.get_by_label(label).rect();
+    let grab = |h: &Harness<'static, PdfApp>, label: &str| h.get_by_label(label).rect();
     let (from, to) = (grab(&h, "Page 1").center(), grab(&h, "Page 3").right_center() - egui::vec2(10.0, 0.0));
     copy_drag(&mut h, from, to);
     // The original stays first; a copy of page 1 lands after page 3 (#2997).
@@ -3388,8 +3390,8 @@ fn dragging_with_the_copy_modifier_copies_the_pages_into_the_gap() {
 /// there moves the pages instead of copying them (#3092 review).
 #[test]
 fn option_copies_and_ctrl_moves_when_the_context_reports_macos() {
-    let grab = |h: &Harness<'static, PdfCraftApp>, label: &str| h.get_by_label(label).rect();
-    let points = |h: &Harness<'static, PdfCraftApp>| (grab(h, "Page 1").center(), grab(h, "Page 3").right_center() - egui::vec2(10.0, 0.0));
+    let grab = |h: &Harness<'static, PdfApp>, label: &str| h.get_by_label(label).rect();
+    let points = |h: &Harness<'static, PdfApp>| (grab(h, "Page 1").center(), grab(h, "Page 3").right_center() - egui::vec2(10.0, 0.0));
 
     // Ctrl is not the copy modifier on macOS, so that drag moves the page.
     let mut h = organize(3);
@@ -3449,7 +3451,7 @@ fn source_font_fixture_with_text(body: &str) -> Vec<u8> {
         "<< /Type /Font /Subtype /Type1 /BaseFont /Times-BoldItalic >>".into(),
         "<< /Type /Page /Parent 2 0 R /Contents 7 0 R /Resources << /Font << /F1 3 0 R /F2 5 0 R >> >> >>".into(),
         "<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Oblique >>".into(),
-        "<< /Producer (PdfCraft) >>".into(),
+        "<< /Producer (PDF) >>".into(),
         format!("<< /Length {} >>\nstream\n{body}\nendstream", body.len()),
     ];
     let mut out = b"%PDF-1.7\n".to_vec();
@@ -3467,9 +3469,9 @@ fn source_font_fixture_with_text(body: &str) -> Vec<u8> {
     out
 }
 
-fn open_source_font_fixture() -> Harness<'static, PdfCraftApp> {
+fn open_source_font_fixture() -> Harness<'static, PdfApp> {
     Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("fonts.pdf", None, source_font_fixture()).expect("font fixture opens");
         app
@@ -3493,7 +3495,7 @@ fn clicking_existing_text_selects_its_source_font_style() {
     h.drop_at(serif);
     h.run_steps(3);
     let ed = h.state().views[0].line_editor.clone().expect("serif editor opens");
-    assert_eq!(ed.look.family, pdfcraft_engine::FontFamily::Times);
+    assert_eq!(ed.look.family, iridium_pdf_engine::FontFamily::Times);
     assert!(ed.look.bold && ed.look.italic, "source style: {:?}", ed.look);
 
     h.key_press(egui::Key::Escape);
@@ -3506,7 +3508,7 @@ fn clicking_existing_text_selects_its_source_font_style() {
     h.drop_at(mono);
     h.run_steps(3);
     let ed = h.state().views[0].line_editor.clone().expect("mono editor opens");
-    assert_eq!(ed.look.family, pdfcraft_engine::FontFamily::Courier);
+    assert_eq!(ed.look.family, iridium_pdf_engine::FontFamily::Courier);
     assert!(!ed.look.bold && ed.look.italic, "source style: {:?}", ed.look);
 }
 
@@ -3527,7 +3529,7 @@ fn deleting_a_draft_does_not_show_the_original_text_underneath() {
     h.state_mut().views[0].line_editor.as_mut().unwrap().text.clear();
     crate::support::settle(&mut h);
     let shot = h.render().unwrap();
-    if let Ok(path) = std::env::var("PDFCRAFT_TEXT_PREVIEW_SHOT") {
+    if let Ok(path) = std::env::var("IRIDIUM_PDF_TEXT_PREVIEW_SHOT") {
         shot.save(path).unwrap();
     }
     // The right half of the original glyphs, away from the caret and editor border.
@@ -3558,7 +3560,7 @@ fn switching_from_a_narrow_editor_keeps_one_frame_and_a_wide_heading_on_one_line
         "BT /F1 18 Tf 20 220 Td (Editable PDF heading) Tj ET BT /F2 18 Tf 20 120 Td (Mono) Tj ET BT /F2 18 Tf 20 98 Td (Text) Tj ET",
     );
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("editor.pdf", None, bytes).unwrap();
         app
@@ -3603,7 +3605,7 @@ fn switching_from_a_narrow_editor_keeps_one_frame_and_a_wide_heading_on_one_line
         })
         .count();
     assert_eq!(frames, 1, "the active block has only the editor frame");
-    if let Ok(path) = std::env::var("PDFCRAFT_TEXT_FRAME_SHOT") {
+    if let Ok(path) = std::env::var("IRIDIUM_PDF_TEXT_FRAME_SHOT") {
         h.render().unwrap().save(path).unwrap();
     }
     assert!(!dirty(&h));
@@ -3617,7 +3619,7 @@ fn opening_a_paragraph_leaves_the_page_as_it_is() {
     let _gpu = gpu();
     let bytes = source_font_fixture_with_text("0 0 0.45 rg 10 180 280 70 re f 1 1 1 rg BT /F2 20 Tf 20 205 Td (White on a banner) Tj ET");
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("banner.pdf", None, bytes).expect("opens");
         app
@@ -3672,7 +3674,7 @@ fn a_quick_click_into_another_paragraph_keeps_both_in_place() {
     let _gpu = gpu();
     let bytes = source_font_fixture_with_text("BT /F1 24 Tf 20 220 Td (Top) Tj ET BT /F2 24 Tf 20 120 Td (Bottom) Tj ET");
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("boxes.pdf", None, bytes).expect("opens");
         app
@@ -3687,7 +3689,7 @@ fn a_quick_click_into_another_paragraph_keeps_both_in_place() {
         s.session.get(s.views[0].id).unwrap().text_blocks(0)
     };
     blocks.sort_by(|a, b| b.rect[1].total_cmp(&a.rect[1]));
-    let screen = |b: &pdfcraft_engine::TextBlock| {
+    let screen = |b: &iridium_pdf_engine::TextBlock| {
         egui::Rect::from_min_max(
             egui::pos2(page.left() + b.rect[0] as f32 * k, page.top() + (300.0 - b.rect[3] as f32) * k),
             egui::pos2(page.left() + b.rect[2] as f32 * k, page.top() + (300.0 - b.rect[1] as f32) * k),
@@ -3732,7 +3734,7 @@ fn a_quick_click_into_another_paragraph_keeps_both_in_place() {
 fn switching_straight_to_another_box_applies_the_open_paragraph() {
     let bytes = source_font_fixture_with_text("BT /F1 24 Tf 20 220 Td (Top) Tj ET BT /F2 24 Tf 20 120 Td (Bottom) Tj ET");
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("boxes.pdf", None, bytes).expect("opens");
         app
@@ -3748,7 +3750,7 @@ fn switching_straight_to_another_box_applies_the_open_paragraph() {
     };
     blocks.sort_by(|a, b| b.rect[1].partial_cmp(&a.rect[1]).unwrap_or(std::cmp::Ordering::Equal));
     assert_eq!(blocks.iter().map(|b| b.text.as_str()).collect::<Vec<_>>(), ["Top", "Bottom"], "two editable boxes");
-    let center = |b: &pdfcraft_engine::TextBlock| {
+    let center = |b: &iridium_pdf_engine::TextBlock| {
         egui::pos2(r.left() + ((b.rect[0] + b.rect[2]) / 2.0) as f32 * k, r.top() + (300.0 - (b.rect[1] + b.rect[3]) / 2.0) as f32 * k)
     };
     // Open the top box and type into it.
@@ -3777,7 +3779,7 @@ fn switching_straight_to_another_box_applies_the_open_paragraph() {
 fn text_typed_into_an_open_paragraph_counts_as_unsaved_work() {
     let bytes = source_font_fixture_with_text("BT /F1 24 Tf 20 220 Td (Top) Tj ET");
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("box.pdf", None, bytes).expect("opens");
         app
@@ -3827,7 +3829,7 @@ fn an_applied_paragraph_keeps_its_edited_look_until_the_page_is_redrawn() {
     let _gpu = gpu();
     let bytes = source_font_fixture_with_text("BT /F1 24 Tf 20 220 Td (Topmost) Tj ET BT /F2 24 Tf 20 120 Td (Bottom) Tj ET");
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("boxes.pdf", None, bytes).expect("opens");
         app
@@ -3881,7 +3883,7 @@ fn a_paragraph_whose_edit_fails_stays_open_with_its_typing() {
     }
     let bytes = source_font_fixture_with_text("BT /F1 24 Tf 20 220 Td (Top) Tj ET BT /F2 24 Tf 20 120 Td (Bottom) Tj ET");
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("boxes.pdf", None, bytes).expect("opens");
         app
@@ -3917,10 +3919,10 @@ fn a_paragraph_whose_edit_fails_stays_open_with_its_typing() {
 
 /// Two boxes, "Top" and "Bottom", in Edit text, with egui's animations on: the window animates
 /// unless the system asks for less motion, and the test harness turns them off.
-fn two_boxes_animated() -> (Harness<'static, PdfCraftApp>, [egui::Rect; 2]) {
+fn two_boxes_animated() -> (Harness<'static, PdfApp>, [egui::Rect; 2]) {
     let bytes = source_font_fixture_with_text("BT /F1 24 Tf 20 220 Td (Top) Tj ET BT /F2 24 Tf 20 120 Td (Bottom) Tj ET");
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).with_step_dt(1.0 / 60.0).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("boxes.pdf", None, bytes).expect("opens");
         app
@@ -3936,7 +3938,7 @@ fn two_boxes_animated() -> (Harness<'static, PdfCraftApp>, [egui::Rect; 2]) {
         s.session.get(s.views[0].id).unwrap().text_blocks(0)
     };
     blocks.sort_by(|a, b| b.rect[1].partial_cmp(&a.rect[1]).unwrap_or(std::cmp::Ordering::Equal));
-    let on_screen = |b: &pdfcraft_engine::TextBlock| {
+    let on_screen = |b: &iridium_pdf_engine::TextBlock| {
         egui::Rect::from_min_max(
             egui::pos2(r.left() + b.rect[0] as f32 * k, r.top() + (300.0 - b.rect[3] as f32) * k),
             egui::pos2(r.left() + b.rect[2] as f32 * k, r.top() + (300.0 - b.rect[1] as f32) * k),
@@ -3946,7 +3948,7 @@ fn two_boxes_animated() -> (Harness<'static, PdfCraftApp>, [egui::Rect; 2]) {
 }
 
 /// The colour of the editor's frame (the accent stroke around `r`) this frame, if it is painted.
-fn editor_frame_color(h: &Harness<'static, PdfCraftApp>, r: egui::Rect) -> Option<egui::Color32> {
+fn editor_frame_color(h: &Harness<'static, PdfApp>, r: egui::Rect) -> Option<egui::Color32> {
     h.output().shapes.iter().find_map(|shape| match &shape.shape {
         egui::Shape::Rect(rect) if rect.stroke.width == 1.5 && rect.rect.contains(r.center()) => Some(rect.stroke.color),
         _ => None,
@@ -3995,9 +3997,9 @@ fn letter_text(body: &str) -> Vec<u8> {
     out
 }
 
-fn open_letter(name: &'static str, bytes: Vec<u8>) -> Harness<'static, PdfCraftApp> {
+fn open_letter(name: &'static str, bytes: Vec<u8>) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1100.0, 1400.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes(name, None, bytes).unwrap();
         app
@@ -4006,7 +4008,7 @@ fn open_letter(name: &'static str, bytes: Vec<u8>) -> Harness<'static, PdfCraftA
     h
 }
 
-fn click_page(h: &mut Harness<'static, PdfCraftApp>, x: f32, y: f32) {
+fn click_page(h: &mut Harness<'static, PdfApp>, x: f32, y: f32) {
     let page = h.state().views[0].page_screen_rect(0).expect("the page is on screen");
     let at = egui::pos2(page.left() + x / 612.0 * page.width(), page.top() + (792.0 - y) / 792.0 * page.height());
     h.hover_at(at);
@@ -4017,14 +4019,14 @@ fn click_page(h: &mut Harness<'static, PdfCraftApp>, x: f32, y: f32) {
     h.run_steps(4);
 }
 
-fn save_live_shot(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
+fn save_live_shot(h: &mut Harness<'static, PdfApp>, name: &str) {
     for _ in 0..40 {
         h.run_steps(2);
         if !h.state().render_pending() {
             break;
         }
     }
-    let dir = std::path::Path::new("/tmp/pdfcraft-visual");
+    let dir = std::path::Path::new("/tmp/iridium-pdf-visual");
     let _ = std::fs::create_dir_all(dir);
     if let Ok(image) = h.render() {
         let _ = image.save(dir.join(name));
@@ -4224,8 +4226,8 @@ fn editing_existing_text_in_place() {
 
 /// Under the Edit tab, opens the line "Page 1" (at (20, 150) on a 200 × 300 page, 24 pt) in the
 /// paragraph editor and retypes it as "Chapter One", leaving the editor open.
-fn edit_tab_with_an_open_paragraph(h: &mut Harness<'static, PdfCraftApp>) {
-    use pdfcraft_ui_egui::{Mode, QuickTool};
+fn edit_tab_with_an_open_paragraph(h: &mut Harness<'static, PdfApp>) {
+    use iridium_pdf_ui_egui::{Mode, QuickTool};
     support::outside_menus(h, "Edit").click();
     h.run_steps(3);
     assert_eq!((h.state().mode, h.state().quick_tool), (Mode::Edit, QuickTool::EditText));
@@ -4234,7 +4236,7 @@ fn edit_tab_with_an_open_paragraph(h: &mut Harness<'static, PdfCraftApp>) {
 
 /// With Edit text & images on, opens the line "Page 1" in the paragraph editor and retypes it as
 /// "Chapter One", leaving the editor open.
-fn open_the_first_line(h: &mut Harness<'static, PdfCraftApp>) {
+fn open_the_first_line(h: &mut Harness<'static, PdfApp>) {
     let r = h.state().views[0].page_screen_rect(0).expect("on screen");
     let at = egui::pos2(r.left() + 40.0 / 200.0 * r.width(), r.top() + (300.0 - 158.0) / 300.0 * r.height());
     h.hover_at(at);
@@ -4250,8 +4252,8 @@ fn open_the_first_line(h: &mut Harness<'static, PdfCraftApp>) {
 
 /// Edit was left with the paragraph [`edit_tab_with_an_open_paragraph`] opened: Edit text & images
 /// is put down, and the paragraph's edit is applied instead of its editor staying open over the page.
-fn assert_edit_text_put_down_and_the_paragraph_applied(s: &PdfCraftApp) {
-    assert_eq!(s.quick_tool, pdfcraft_ui_egui::QuickTool::Select, "Edit text & images is put down");
+fn assert_edit_text_put_down_and_the_paragraph_applied(s: &PdfApp) {
+    assert_eq!(s.quick_tool, iridium_pdf_ui_egui::QuickTool::Select, "Edit text & images is put down");
     assert!(s.views[0].line_editor.is_none(), "no paragraph editor is left open");
     let doc = s.session.get(s.views[0].id).unwrap();
     assert_eq!(doc.can_undo(), Some("Edit text"), "the open paragraph's edit is applied");
@@ -4268,7 +4270,7 @@ fn the_read_mode_command_applies_an_open_paragraph_and_puts_edit_text_down() {
     edit_tab_with_an_open_paragraph(&mut h);
     assert!(h.state_mut().execute("view.read_mode"));
     h.run_steps(3);
-    assert_eq!(h.state().mode, pdfcraft_ui_egui::Mode::Read);
+    assert_eq!(h.state().mode, iridium_pdf_ui_egui::Mode::Read);
     assert_edit_text_put_down_and_the_paragraph_applied(h.state());
 }
 
@@ -4278,7 +4280,7 @@ fn the_read_mode_command_applies_an_open_paragraph_and_puts_edit_text_down() {
 /// staying open, under All tools.
 #[test]
 fn the_edit_panel_back_arrow_applies_an_open_paragraph_and_puts_edit_text_down() {
-    use pdfcraft_ui_egui::{LeftPanel, Mode, QuickTool};
+    use iridium_pdf_ui_egui::{LeftPanel, Mode, QuickTool};
     let mut h = harness(1, |_| {});
     // All tools ▸ Edit a PDF ▸ Edit text & images: the Edit panel, under All tools.
     assert!(h.state_mut().execute("edit.edit_text"));
@@ -4294,7 +4296,7 @@ fn the_edit_panel_back_arrow_applies_an_open_paragraph_and_puts_edit_text_down()
 /// Organize pages, opened under the Edit tab, leaves Edit the same way through its own back arrow.
 #[test]
 fn the_organize_back_arrow_applies_an_open_paragraph_and_puts_edit_text_down() {
-    use pdfcraft_ui_egui::{LeftPanel, Mode};
+    use iridium_pdf_ui_egui::{LeftPanel, Mode};
     let mut h = harness(1, |_| {});
     edit_tab_with_an_open_paragraph(&mut h);
     // What the Edit panel's Organize pages row runs.
@@ -4349,7 +4351,7 @@ fn text_tool_mixed_style_row_grows_in_the_editor_and_saved_pdf() {
     let _gpu = gpu();
     let bytes = source_font_fixture_with_text("BT /F1 12 Tf 20 220 Td (Small ) Tj /F2 12 Tf (row) Tj ET");
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("mixed-row.pdf", None, bytes).unwrap();
         app
@@ -4379,7 +4381,7 @@ fn text_tool_mixed_style_row_grows_in_the_editor_and_saved_pdf() {
         })
         .expect("the draft is painted");
     assert_eq!(galley.rows.len(), 1, "mixed source runs grow as one visual row");
-    if let Ok(path) = std::env::var("PDFCRAFT_MIXED_ROW_SHOT") {
+    if let Ok(path) = std::env::var("IRIDIUM_PDF_MIXED_ROW_SHOT") {
         h.render().unwrap().save(path).unwrap();
     }
     h.key_press_modifiers(Modifiers::COMMAND, Key::Enter);
@@ -4389,7 +4391,7 @@ fn text_tool_mixed_style_row_grows_in_the_editor_and_saved_pdf() {
     assert_eq!(doc.text_blocks(0)[0].editor_text, replacement);
     assert_eq!(doc.text_blocks(0)[0].rows.len(), 1);
     let bytes = state.session.save_bytes(state.views[0].id).unwrap();
-    let mut reopened = pdfcraft_engine::Session::new();
+    let mut reopened = iridium_pdf_engine::Session::new();
     let id = reopened.open("again.pdf", None, bytes, None).unwrap();
     assert_eq!(reopened.get(id).unwrap().text_blocks(0)[0].rows.len(), 1);
 }
@@ -4425,7 +4427,7 @@ fn double_drawn() -> Vec<u8> {
 #[test]
 fn editing_a_double_drawn_line_replaces_every_copy() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("bold.pdf", None, double_drawn()).expect("opens");
         app
@@ -4467,13 +4469,13 @@ fn add_text_places_a_box_on_a_picture_and_beside_a_paragraph() {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(80, 40, image::Rgb([200, 40, 40])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
         app
     });
     h.run_steps(4);
-    h.state_mut().quick_tool = pdfcraft_ui_egui::QuickTool::AddText;
+    h.state_mut().quick_tool = iridium_pdf_ui_egui::QuickTool::AddText;
     h.run_steps(2);
     let c = h.state().views[0].page_screen_rect(0).expect("on screen").center();
     h.hover_at(c);
@@ -4483,7 +4485,7 @@ fn add_text_places_a_box_on_a_picture_and_beside_a_paragraph() {
     assert!(h.state().views[0].content.draft.is_some(), "a click on the picture starts a text box");
 
     let mut h = harness(2, |_| {});
-    h.state_mut().quick_tool = pdfcraft_ui_egui::QuickTool::AddText;
+    h.state_mut().quick_tool = iridium_pdf_ui_egui::QuickTool::AddText;
     h.run_steps(2);
     let id = h.state().views[0].id;
     let block = h.state().session.get(id).unwrap().text_blocks(0)[0].clone();
@@ -4502,7 +4504,7 @@ fn add_text_places_a_box_on_a_picture_and_beside_a_paragraph() {
 #[test]
 fn add_text_opens_a_paragraph_from_just_inside_its_edge() {
     let mut h = harness(2, |_| {});
-    h.state_mut().quick_tool = pdfcraft_ui_egui::QuickTool::AddText;
+    h.state_mut().quick_tool = iridium_pdf_ui_egui::QuickTool::AddText;
     h.run_steps(2);
     let id = h.state().views[0].id;
     let block = h.state().session.get(id).unwrap().text_blocks(0)[0].clone();
@@ -4525,7 +4527,7 @@ fn add_text_opens_a_paragraph_from_just_inside_its_edge() {
 #[test]
 fn add_text_finishes_a_paragraph_drag_that_leaves_its_box() {
     let mut h = harness(2, |_| {});
-    h.state_mut().quick_tool = pdfcraft_ui_egui::QuickTool::AddText;
+    h.state_mut().quick_tool = iridium_pdf_ui_egui::QuickTool::AddText;
     h.run_steps(2);
     let id = h.state().views[0].id;
     let before = h.state().session.get(id).unwrap().text_blocks(0)[0].rect;
@@ -4557,7 +4559,7 @@ fn dragging_the_rotate_knob_turns_a_page_image() {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(80, 40, image::Rgb([200, 40, 40])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
         app
@@ -4568,10 +4570,10 @@ fn dragging_the_rotate_knob_turns_a_page_image() {
     let full = h.state().session.get(id).unwrap().page_images(0)[0].rect;
     let (qw, qh) = ((full[2] - full[0]) / 4.0, (full[3] - full[1]) / 4.0);
     let (mx, my) = ((full[0] + full[2]) / 2.0, (full[1] + full[3]) / 2.0);
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage {
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage {
         page: 0,
         index: 0,
-        change: pdfcraft_engine::ImageEdit::Move([mx - qw, my - qh, mx + qw, my + qh]),
+        change: iridium_pdf_engine::ImageEdit::Move([mx - qw, my - qh, mx + qw, my + qh]),
     });
     h.run_steps(4);
     let before = h.state().session.get(id).unwrap().page_images(0)[0].rect;
@@ -4614,7 +4616,7 @@ fn dragging_rotate_knob_on_already_rotated_image_applies_delta_only() {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(80, 40, image::Rgb([200, 40, 40])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
         app
@@ -4626,15 +4628,15 @@ fn dragging_rotate_knob_on_already_rotated_image_applies_delta_only() {
     let full = h.state().session.get(id).unwrap().page_images(0)[0].rect;
     let (qw, qh) = ((full[2] - full[0]) / 4.0, (full[3] - full[1]) / 4.0);
     let (mx, my) = ((full[0] + full[2]) / 2.0, (full[1] + full[3]) / 2.0);
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage {
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage {
         page: 0,
         index: 0,
-        change: pdfcraft_engine::ImageEdit::Move([mx - qw, my - qh, mx + qw, my + qh]),
+        change: iridium_pdf_engine::ImageEdit::Move([mx - qw, my - qh, mx + qw, my + qh]),
     });
     h.run_steps(4);
 
     // Rotate the image by 45° clockwise initially
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage { page: 0, index: 0, change: pdfcraft_engine::ImageEdit::RotateBy(45.0) });
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage { page: 0, index: 0, change: iridium_pdf_engine::ImageEdit::RotateBy(45.0) });
     h.run_steps(4);
 
     assert!(h.state_mut().execute("edit.edit_text"));
@@ -4655,7 +4657,7 @@ fn dragging_rotate_knob_on_already_rotated_image_applies_delta_only() {
     let initial_matrix = initial_img.matrix;
     let xf = h.state().views[0].page_xform(0).expect("page 0 xform");
     let doc_info = &h.state().session.get(id).unwrap().info;
-    let obb = pdfcraft_ui_egui::canvas::ImageObb::from_matrix(initial_matrix, &xf, doc_info, 0);
+    let obb = iridium_pdf_ui_egui::canvas::ImageObb::from_matrix(initial_matrix, &xf, doc_info, 0);
     let knob = obb.s_rot;
     let center = obb.screen_center;
     let radius = (knob - center).length();
@@ -4688,9 +4690,9 @@ fn dragging_rotate_knob_on_already_rotated_image_applies_delta_only() {
 
 #[test]
 fn editing_existing_form_artwork_on_the_page() {
-    use pdfcraft_cos::{Dict, Document, Object, SaveOptions, Stream, write_incremental};
+    use iridium_pdf_cos::{Dict, Document, Object, SaveOptions, Stream, write_incremental};
     let mut doc = Document::open(std::sync::Arc::new(fixture(1))).unwrap();
-    let page = pdfcraft_model::pages(&doc)[0].clone();
+    let page = iridium_pdf_model::pages(&doc)[0].clone();
     let mut form = Dict::new();
     form.set(b"Subtype".to_vec(), Object::name("Form"));
     form.set(b"BBox".to_vec(), Object::Array([0, 0, 200, 300].map(Object::Int).to_vec()));
@@ -4710,7 +4712,7 @@ fn editing_existing_form_artwork_on_the_page() {
 
 fn check_existing_artwork(name: &'static str, bytes: Vec<u8>) {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes(name, None, bytes.clone()).expect("opens");
         app
@@ -4757,7 +4759,7 @@ fn image_right_click_context_menu_items_and_actions() {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(80, 40, image::Rgb([200, 40, 40])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
         app
@@ -4823,7 +4825,7 @@ fn image_right_click_context_menu_items_and_actions() {
 fn default_page_context_menu_when_not_in_edit_mode() {
     let mut h = harness(1, |_| {});
     h.run_steps(4);
-    assert_eq!(h.state().quick_tool, pdfcraft_ui_egui::QuickTool::Select);
+    assert_eq!(h.state().quick_tool, iridium_pdf_ui_egui::QuickTool::Select);
 
     let r = h.state().views[0].page_screen_rect(0).expect("on screen");
     let c = r.center();
@@ -4855,20 +4857,20 @@ fn default_page_context_menu_when_not_in_edit_mode() {
     // Clicking "Edit this PDF" enters edit mode
     h.get_by_label("Edit this PDF").click();
     h.run_steps(2);
-    assert_eq!(h.state().quick_tool, pdfcraft_ui_egui::QuickTool::EditText);
+    assert_eq!(h.state().quick_tool, iridium_pdf_ui_egui::QuickTool::EditText);
 }
 
 #[test]
 fn page_context_menu_items_disabled_on_protected_pdf() {
     let bytes = protected("", "owner", 0b0100);
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("protected.pdf", None, bytes.clone()).expect("opens");
         app
     });
     h.run_steps(4);
-    assert_eq!(h.state().quick_tool, pdfcraft_ui_egui::QuickTool::Select);
+    assert_eq!(h.state().quick_tool, iridium_pdf_ui_egui::QuickTool::Select);
 
     let doc_id = h.state().views[0].id;
     let doc = h.state().session.get(doc_id).unwrap();
@@ -4886,7 +4888,7 @@ fn page_context_menu_items_disabled_on_protected_pdf() {
     h.run_steps(2);
 
     let is_disabled =
-        |h: &mut Harness<'static, PdfCraftApp>, label: &str| h.query_by(|n| n.label().as_deref() == Some(label) && n.is_disabled()).is_some();
+        |h: &mut Harness<'static, PdfApp>, label: &str| h.query_by(|n| n.label().as_deref() == Some(label) && n.is_disabled()).is_some();
 
     // Context menu is open; check restricted items are greyed out (disabled)
     assert!(is_disabled(&mut h, "Edit this PDF"), "Edit this PDF should be disabled on protected document");
@@ -4909,7 +4911,7 @@ fn image_edge_handle_stretch_and_crop_mode() {
         .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
         .unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("square.png", None, png.clone()).expect("opens");
         app
@@ -4968,7 +4970,7 @@ fn tiny_image_crop_handle_drag_does_not_panic() {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(5, 5, image::Rgb([100, 150, 200])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(800.0, 600.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("tiny.png", None, png.clone()).expect("opens");
         app
@@ -4978,11 +4980,11 @@ fn tiny_image_crop_handle_drag_does_not_panic() {
     h.run_steps(2);
 
     // Enter crop mode on image 0 with small dimensions (5.0 x 5.0)
-    h.state_mut().views[0].image_selection = Some(pdfcraft_ui_egui::ImageSelection {
+    h.state_mut().views[0].image_selection = Some(iridium_pdf_ui_egui::ImageSelection {
         page: 0,
         index: 0,
         drag: None,
-        crop: Some(pdfcraft_ui_egui::CropMode::new([100.0, 100.0, 105.0, 105.0])),
+        crop: Some(iridium_pdf_ui_egui::CropMode::new([100.0, 100.0, 105.0, 105.0])),
         turning: false,
         settled: None,
     });
@@ -5109,8 +5111,8 @@ fn the_format_panel_toggles_superscript_and_subscript_on_selection() {
 
     // Subscript toggle in added text:
     h.state_mut().views[0].line_editor = None;
-    h.state_mut().quick_tool = pdfcraft_ui_egui::QuickTool::AddText;
-    let draft = pdfcraft_ui_egui::TextDraft {
+    h.state_mut().quick_tool = iridium_pdf_ui_egui::QuickTool::AddText;
+    let draft = iridium_pdf_ui_egui::TextDraft {
         page: 0,
         index: None,
         rect: [20.0, 20.0, 120.0, 40.0],
@@ -5139,7 +5141,7 @@ fn the_format_panel_toggles_superscript_and_subscript_on_selection() {
 fn the_format_panel_takes_any_scale_and_character_spacing() {
     let mut h = harness(1, |_| {});
     let id = h.state().views[0].id;
-    let width = |h: &Harness<'static, PdfCraftApp>, view: usize| {
+    let width = |h: &Harness<'static, PdfApp>, view: usize| {
         let s = h.state();
         let r = s.session.get(s.views[view].id).unwrap().text_blocks(0)[0].rect;
         r[2] - r[0]
@@ -5157,7 +5159,7 @@ fn the_format_panel_takes_any_scale_and_character_spacing() {
     h.run_steps(3);
     assert!(h.state().views[0].line_editor.is_some());
     // Typed the way a person does: click the field, type, Enter.
-    let type_in = |h: &mut Harness<'static, PdfCraftApp>, label: &str, value: &str| {
+    let type_in = |h: &mut Harness<'static, PdfApp>, label: &str, value: &str| {
         h.get_by_role_and_label(Role::SpinButton, label).click();
         h.run_steps(2);
         h.event(egui::Event::Text(value.into()));
@@ -5165,7 +5167,7 @@ fn the_format_panel_takes_any_scale_and_character_spacing() {
         h.key_press(Key::Enter);
         h.run_steps(4);
     };
-    let extras = |h: &Harness<'static, PdfCraftApp>| h.state().views[0].line_editor.as_ref().map(|e| (e.extras.scale, e.extras.char_spacing));
+    let extras = |h: &Harness<'static, PdfApp>| h.state().views[0].line_editor.as_ref().map(|e| (e.extras.scale, e.extras.char_spacing));
     // Between the listed values (50…200 %, −1…5 pt) and beyond them, within what was always allowed.
     type_in(&mut h, "Horizontal scale", "80");
     assert_eq!(extras(&h), Some((80.0, 0.0)));
@@ -5179,8 +5181,8 @@ fn the_format_panel_takes_any_scale_and_character_spacing() {
     // Saved and reopened, the paragraph is as wide as the engine draws it with those values.
     let bytes = h.state().session.save_bytes(id).unwrap();
     h.state_mut().open_bytes("reference.pdf", None, fixture(1)).expect("opens");
-    let style = pdfcraft_engine::BlockStyle { scale: Some(250.0), char_spacing: Some(-2.0), ..Default::default() };
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::EditTextBlock { page: 0, block: 0, text: "Page 1".into(), style }));
+    let style = iridium_pdf_engine::BlockStyle { scale: Some(250.0), char_spacing: Some(-2.0), ..Default::default() };
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditTextBlock { page: 0, block: 0, text: "Page 1".into(), style }));
     h.state_mut().open_bytes("saved.pdf", None, bytes.as_ref().clone()).expect("the saved file opens");
     h.run_steps(3);
     let (reference, saved) = (width(&h, 1), width(&h, 2));
@@ -5220,7 +5222,7 @@ fn typed_small_coloured_text_size_survives_save_and_reopen() {
         assert!(line.color[2] > line.color[0], "the small text stays blue: {line:?}");
     }
     let saved = h.state().session.save_bytes(id).unwrap();
-    let mut reopened = pdfcraft_engine::Session::new();
+    let mut reopened = iridium_pdf_engine::Session::new();
     let rid = reopened.open("small-blue.pdf", None, saved, None).unwrap();
     assert_eq!(reopened.get(rid).unwrap().text_lines(0), lines);
 }
@@ -5251,13 +5253,13 @@ fn selected_text_formatting_keeps_the_rest_of_the_paragraph_and_reopens() {
     assert!(lines.iter().any(|l| l.text == "1" && l.base_font == "Helvetica-Bold"), "{lines:?}");
     assert!(lines.iter().any(|l| l.text.trim_end() == "Page" && l.base_font == "Helvetica"));
     let saved = h.state_mut().session.save_bytes(id).unwrap();
-    let mut reopen = pdfcraft_engine::Session::new();
+    let mut reopen = iridium_pdf_engine::Session::new();
     let rid = reopen.open("saved.pdf", None, saved, None).unwrap();
     assert_eq!(reopen.get(rid).unwrap().text_lines(0), lines);
 }
 
 /// Drag with the pointer from `from` to `to` in a few steps.
-fn drag(h: &mut Harness<'static, PdfCraftApp>, from: egui::Pos2, to: egui::Pos2) {
+fn drag(h: &mut Harness<'static, PdfApp>, from: egui::Pos2, to: egui::Pos2) {
     h.hover_at(from);
     h.run_steps(1);
     h.drag_at(from);
@@ -5275,7 +5277,7 @@ fn dragging_a_paragraph_moves_it_and_its_edge_rewraps_it() {
     let mut h = harness(1, |_| {});
     assert!(h.state_mut().execute("edit.edit_text"));
     h.run_steps(2);
-    let block = |h: &Harness<'static, PdfCraftApp>| {
+    let block = |h: &Harness<'static, PdfApp>| {
         let s = h.state();
         s.session.get(s.views[0].id).unwrap().text_blocks(0)[0].clone()
     };
@@ -5307,7 +5309,7 @@ fn dragging_a_paragraph_moves_it_and_its_edge_rewraps_it() {
 }
 
 /// Press and release at `at` without moving.
-fn click_at(h: &mut Harness<'static, PdfCraftApp>, at: egui::Pos2) {
+fn click_at(h: &mut Harness<'static, PdfApp>, at: egui::Pos2) {
     h.hover_at(at);
     h.run_steps(1);
     h.drag_at(at);
@@ -5317,27 +5319,27 @@ fn click_at(h: &mut Harness<'static, PdfCraftApp>, at: egui::Pos2) {
 }
 
 /// Sets the open crop's box on page 0 to the screen rectangle `r`, as dragging its handles would.
-fn set_crop_box(h: &mut Harness<'static, PdfCraftApp>, r: egui::Rect) {
+fn set_crop_box(h: &mut Harness<'static, PdfApp>, r: egui::Rect) {
     let view = &h.state().views[0];
     let page = &h.state().session.get(view.id).unwrap().info.pages[0];
-    let xf = pdfcraft_ui_egui::canvas::PageXform { rect: view.page_screen_rect(0).unwrap(), rot: view.rotation, pw: page.width, ph: page.height };
+    let xf = iridium_pdf_ui_egui::canvas::PageXform { rect: view.page_screen_rect(0).unwrap(), rot: view.rotation, pw: page.width, ph: page.height };
     let (a, b) = (xf.screen_to_view(r.min), xf.screen_to_view(r.max));
     let (u, v) = (page.view_to_user(a.0, a.1), page.view_to_user(b.0, b.1));
     let keep = [u[0].min(v[0]), u[1].min(v[1]), u[0].max(v[0]), u[1].max(v[1])].map(f64::from);
     h.state_mut().views[0].image_selection.as_mut().unwrap().crop.as_mut().unwrap().keep = keep;
 }
 
-fn press(h: &mut Harness<'static, PdfCraftApp>, modifiers: Modifiers, key: Key) {
+fn press(h: &mut Harness<'static, PdfApp>, modifiers: Modifiers, key: Key) {
     h.key_press_modifiers(modifiers, key);
     h.run_steps(4);
 }
 
 /// A two-page document whose first page draws one picture (a Form XObject), open in Edit text
 /// & images with the picture selected.
-fn selected_figure() -> Harness<'static, PdfCraftApp> {
-    use pdfcraft_cos::{Dict, Document, Object, SaveOptions, Stream, write_incremental};
+fn selected_figure() -> Harness<'static, PdfApp> {
+    use iridium_pdf_cos::{Dict, Document, Object, SaveOptions, Stream, write_incremental};
     let mut doc = Document::open(std::sync::Arc::new(fixture(2))).unwrap();
-    let page = pdfcraft_model::pages(&doc)[0].clone();
+    let page = iridium_pdf_model::pages(&doc)[0].clone();
     let mut form = Dict::new();
     form.set(b"Subtype".to_vec(), Object::name("Form"));
     form.set(b"BBox".to_vec(), Object::Array([0, 0, 200, 300].map(Object::Int).to_vec()));
@@ -5354,7 +5356,7 @@ fn selected_figure() -> Harness<'static, PdfCraftApp> {
     .unwrap();
     let bytes = write_incremental(&doc, &SaveOptions::default()).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("figure.pdf", None, bytes.clone()).expect("opens");
         app
@@ -5372,7 +5374,7 @@ fn selected_figure() -> Harness<'static, PdfCraftApp> {
 fn arrow_keys_nudge_a_selected_image_instead_of_turning_the_page() {
     let mut h = selected_figure();
     let id = h.state().views[0].id;
-    let rect = |h: &Harness<'static, PdfCraftApp>| h.state().session.get(id).unwrap().page_images(0)[0].rect;
+    let rect = |h: &Harness<'static, PdfApp>| h.state().session.get(id).unwrap().page_images(0)[0].rect;
     let before = rect(&h);
     // As in Acrobat: an arrow moves it a point, Shift and an arrow ten.
     press(&mut h, Modifiers::NONE, Key::ArrowRight);
@@ -5393,7 +5395,7 @@ fn arrow_keys_nudge_a_selected_image_instead_of_turning_the_page() {
 fn alt_arrows_navigate_instead_of_nudging_a_selected_image() {
     let mut h = selected_figure();
     let id = h.state().views[0].id;
-    let rect = |h: &Harness<'static, PdfCraftApp>| h.state().session.get(id).unwrap().page_images(0)[0].rect;
+    let rect = |h: &Harness<'static, PdfApp>| h.state().session.get(id).unwrap().page_images(0)[0].rect;
     let before = rect(&h);
     // A followed link's jump to page 2 and back, as `go_to_dest` makes it.
     h.state_mut().views[0].go_to_page(1);
@@ -5430,7 +5432,7 @@ fn alt_arrows_navigate_instead_of_nudging_a_selected_image() {
 /// their hairline, and the cursor shows exactly where a press takes hold (#2203).
 #[test]
 fn paragraph_edges_and_frames_are_caught_without_aiming_for_the_hairline() {
-    let start = |h: &mut Harness<'static, PdfCraftApp>| {
+    let start = |h: &mut Harness<'static, PdfApp>| {
         assert!(h.state_mut().execute("edit.edit_text"));
         h.run_steps(2);
         let id = h.state().views[0].id;
@@ -5493,12 +5495,12 @@ fn an_open_paragraph_moves_by_its_frame_and_by_the_arrow_keys() {
     assert!(h.state_mut().execute("edit.edit_text"));
     h.run_steps(2);
     let id = h.state().views[0].id;
-    let block = |h: &Harness<'static, PdfCraftApp>| h.state().session.get(id).unwrap().text_blocks(0)[0].clone();
+    let block = |h: &Harness<'static, PdfApp>| h.state().session.get(id).unwrap().text_blocks(0)[0].clone();
     let r = h.state().views[0].page_screen_rect(0).expect("on screen");
     let k = r.width() / 200.0;
     let screen = |x: f64, y: f64| egui::pos2(r.left() + x as f32 * k, r.top() + (300.0 - y as f32) * k);
     // Just above the paragraph's frame: on the frame, off its text.
-    let frame = |b: &pdfcraft_engine::TextBlock| screen((b.rect[0] + b.rect[2]) / 2.0, b.rect[3]) - egui::vec2(0.0, 4.0);
+    let frame = |b: &iridium_pdf_engine::TextBlock| screen((b.rect[0] + b.rect[2]) / 2.0, b.rect[3]) - egui::vec2(0.0, 4.0);
     let near = |a: f64, b: f64| (a - b).abs() < 0.01;
 
     let before = block(&h);
@@ -5582,9 +5584,9 @@ fn an_open_paragraphs_frame_takes_the_box_beside_its_text() {
 /// Contributor-original text, with an off-origin CropBox. Keep the moving paragraph last in
 /// source order so an ordinary hit picks it again when two independent boxes fully overlap.
 fn paragraph_drag_fixture(content: &str, rotation: i64, unit: i64) -> Vec<u8> {
-    use pdfcraft_cos::{Dict, Document, Object, Stream};
+    use iridium_pdf_cos::{Dict, Document, Object, Stream};
     let mut doc = Document::open(std::sync::Arc::new(fixture(1))).unwrap();
-    let page = pdfcraft_model::pages(&doc)[0].obj;
+    let page = iridium_pdf_model::pages(&doc)[0].obj;
     let contents = doc.add(Object::Stream(Stream::flate(Dict::new(), content.as_bytes())));
     doc.update_dict(page, |d| {
         d.set(b"Contents".to_vec(), Object::Ref(contents));
@@ -5594,13 +5596,13 @@ fn paragraph_drag_fixture(content: &str, rotation: i64, unit: i64) -> Vec<u8> {
         d.set(b"UserUnit".to_vec(), Object::Int(unit));
     })
     .unwrap();
-    pdfcraft_cos::write_incremental(&doc, &Default::default()).unwrap()
+    iridium_pdf_cos::write_incremental(&doc, &Default::default()).unwrap()
 }
 
-fn paragraph_drag_harness(bytes: Vec<u8>, view_rotation: u16) -> Harness<'static, PdfCraftApp> {
+fn paragraph_drag_harness(bytes: Vec<u8>, view_rotation: u16) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1100.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
-        app.session = pdfcraft_engine::Session::new().with_clock(|| 1_700_000_000);
+        let mut app = PdfApp::new();
+        app.session = iridium_pdf_engine::Session::new().with_clock(|| 1_700_000_000);
         app.set_option("language", "en").unwrap();
         app.open_bytes("paragraphs.pdf", None, bytes).unwrap();
         app.set_option("zoom", "75").unwrap();
@@ -5612,19 +5614,19 @@ fn paragraph_drag_harness(bytes: Vec<u8>, view_rotation: u16) -> Harness<'static
     h
 }
 
-fn dragged_paragraphs(h: &Harness<'static, PdfCraftApp>) -> Vec<pdfcraft_engine::TextBlock> {
+fn dragged_paragraphs(h: &Harness<'static, PdfApp>) -> Vec<iridium_pdf_engine::TextBlock> {
     let app = h.state();
     app.session.get(app.views[0].id).unwrap().text_blocks(0)
 }
 
 /// Resolve the current inventory and transform for every gesture, never an old block index
 /// or cached screen position. With identical labels, choose the last (topmost) source box.
-fn paragraph_drag_points(h: &Harness<'static, PdfCraftApp>, text: &str, offset: [f64; 2]) -> (egui::Pos2, egui::Pos2) {
+fn paragraph_drag_points(h: &Harness<'static, PdfApp>, text: &str, offset: [f64; 2]) -> (egui::Pos2, egui::Pos2) {
     let app = h.state();
     let view = &app.views[0];
     let doc = app.session.get(view.id).unwrap();
     let b = doc.text_blocks(0).into_iter().rfind(|b| b.text == text).unwrap();
-    let xf = pdfcraft_ui_egui::canvas::PageXform {
+    let xf = iridium_pdf_ui_egui::canvas::PageXform {
         rect: view.page_screen_rect(0).unwrap(),
         rot: view.rotation,
         pw: doc.info.pages[0].width,
@@ -5634,7 +5636,7 @@ fn paragraph_drag_points(h: &Harness<'static, PdfCraftApp>, text: &str, offset: 
     (xf.user_rect(&doc.info, 0, b.rect.map(|v| v as f32)).center(), xf.user_rect(&doc.info, 0, moved).center())
 }
 
-fn drag_paragraph(h: &mut Harness<'static, PdfCraftApp>, text: &str, offset: [f64; 2]) {
+fn drag_paragraph(h: &mut Harness<'static, PdfApp>, text: &str, offset: [f64; 2]) {
     let (from, to) = paragraph_drag_points(h, text, offset);
     assert!(
         h.query_all_by_label_contains("object selected").next().is_none() && h.query_all_by_label_contains("objects selected").next().is_none(),
@@ -5649,7 +5651,7 @@ fn drag_paragraph(h: &mut Harness<'static, PdfCraftApp>, text: &str, offset: [f6
     );
 }
 
-fn assert_dragged_paragraphs(actual: &[pdfcraft_engine::TextBlock], expected: &[pdfcraft_engine::TextBlock]) {
+fn assert_dragged_paragraphs(actual: &[iridium_pdf_engine::TextBlock], expected: &[iridium_pdf_engine::TextBlock]) {
     assert_eq!(actual.len(), expected.len(), "independent paragraphs must survive");
     // Source order is itself an invariant, including when text and geometry are identical.
     for (a, e) in actual.iter().zip(expected) {
@@ -5661,10 +5663,10 @@ fn assert_dragged_paragraphs(actual: &[pdfcraft_engine::TextBlock], expected: &[
 
 /// Read only the current page contents, not stale revisions or the renderer's deduplicated
 /// text layer. These synthetic fixtures contain each literal exactly once per source draw.
-fn paragraph_drag_content(h: &Harness<'static, PdfCraftApp>) -> String {
+fn paragraph_drag_content(h: &Harness<'static, PdfApp>) -> String {
     let app = h.state();
-    let doc = pdfcraft_cos::Document::open(app.session.get(app.views[0].id).unwrap().bytes.clone()).unwrap();
-    let page = pdfcraft_model::pages(&doc)[0].clone();
+    let doc = iridium_pdf_cos::Document::open(app.session.get(app.views[0].id).unwrap().bytes.clone()).unwrap();
+    let page = iridium_pdf_model::pages(&doc)[0].clone();
     let contents = doc.resolve(page.dict.get(b"Contents").unwrap());
     let pieces = match contents.as_array() {
         Some(a) => a.clone(),
@@ -5673,13 +5675,13 @@ fn paragraph_drag_content(h: &Harness<'static, PdfCraftApp>) -> String {
     let mut bytes = Vec::new();
     for piece in pieces {
         let object = doc.resolve(&piece);
-        let pdfcraft_cos::Object::Stream(stream) = object.as_ref() else { panic!("fixture content must be a stream") };
+        let iridium_pdf_cos::Object::Stream(stream) = object.as_ref() else { panic!("fixture content must be a stream") };
         bytes.extend(stream.decoded().unwrap());
     }
     String::from_utf8(bytes).unwrap()
 }
 
-fn save_paragraph_drag(h: &mut Harness<'static, PdfCraftApp>, name: &str, original: &[u8]) -> Vec<u8> {
+fn save_paragraph_drag(h: &mut Harness<'static, PdfApp>, name: &str, original: &[u8]) -> Vec<u8> {
     let out = temp_path(name);
     let id = h.state().views[0].id;
     h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
@@ -5693,8 +5695,8 @@ fn save_paragraph_drag(h: &mut Harness<'static, PdfCraftApp>, name: &str, origin
     saved
 }
 
-fn paragraph_drag_shot(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
-    if let Ok(directory) = std::env::var("PDFCRAFT_PARAGRAPH_DRAG_SHOTS") {
+fn paragraph_drag_shot(h: &mut Harness<'static, PdfApp>, name: &str) {
+    if let Ok(directory) = std::env::var("IRIDIUM_PDF_PARAGRAPH_DRAG_SHOTS") {
         assert!(
             crate::support::step_until(h, |h| {
                 h.run_steps(1);
@@ -5868,9 +5870,9 @@ fn check_added_text_drag(panel_open: bool) {
         .session
         .apply(
             id,
-            pdfcraft_engine::Edit::AddText {
+            iridium_pdf_engine::Edit::AddText {
                 page: 0,
-                text: pdfcraft_engine::AddedText { text: "Added note".into(), rect: [100.0, 330.0, 230.0, 354.0], ..Default::default() },
+                text: iridium_pdf_engine::AddedText { text: "Added note".into(), rect: [100.0, 330.0, 230.0, 354.0], ..Default::default() },
             },
         )
         .unwrap();
@@ -5878,7 +5880,7 @@ fn check_added_text_drag(panel_open: bool) {
     h = paragraph_drag_harness(original.as_ref().clone(), 0);
     h.state_mut().left_open = panel_open;
     h.run_steps(4);
-    let added = |h: &Harness<'static, PdfCraftApp>| {
+    let added = |h: &Harness<'static, PdfApp>| {
         let app = h.state();
         app.session.get(app.views[0].id).unwrap().added().to_vec()
     };
@@ -5978,7 +5980,7 @@ fn an_ordinary_paragraph_drag_cannot_reuse_an_index_after_an_edit() {
     let id = h.state().views[0].id;
     h.state_mut()
         .session
-        .apply(id, pdfcraft_engine::Edit::EditTextBlock { page: 0, block: 0, text: String::new(), style: Default::default() })
+        .apply(id, iridium_pdf_engine::Edit::EditTextBlock { page: 0, block: 0, text: String::new(), style: Default::default() })
         .unwrap();
     let after_edit = dragged_paragraphs(&h);
     assert_eq!(after_edit.len(), 2, "the surviving paragraphs get different indexes");
@@ -5993,7 +5995,7 @@ fn an_ordinary_paragraph_drag_cannot_reuse_an_index_after_an_edit() {
 }
 
 /// A quick flick: press at `from`, and the next frame already finds the pointer at `to`.
-fn flick(h: &mut Harness<'static, PdfCraftApp>, from: egui::Pos2, to: egui::Pos2) {
+fn flick(h: &mut Harness<'static, PdfApp>, from: egui::Pos2, to: egui::Pos2) {
     h.hover_at(from);
     h.run_steps(1);
     h.drag_at(from);
@@ -6009,11 +6011,11 @@ fn a_quick_flick_on_either_edge_rewraps_the_paragraph() {
     let mut h = harness(1, |_| {});
     assert!(h.state_mut().execute("edit.edit_text"));
     h.run_steps(2);
-    let lines = |h: &Harness<'static, PdfCraftApp>| {
+    let lines = |h: &Harness<'static, PdfApp>| {
         let s = h.state();
         s.session.get(s.views[0].id).unwrap().text_lines(0)
     };
-    let block = |h: &Harness<'static, PdfCraftApp>| {
+    let block = |h: &Harness<'static, PdfApp>| {
         let s = h.state();
         s.session.get(s.views[0].id).unwrap().text_blocks(0)[0].clone()
     };
@@ -6023,7 +6025,7 @@ fn a_quick_flick_on_either_edge_rewraps_the_paragraph() {
     let near = |a: f64, b: f64| (a - b).abs() < 1.5;
     // Grab edges near the box's top: a rewrapped box reaches the window's bottom, where the
     // tool's toast sits over the page and takes the press.
-    let grip_y = |b: &pdfcraft_engine::TextBlock| b.rect[3] - 6.0;
+    let grip_y = |b: &iridium_pdf_engine::TextBlock| b.rect[3] - 6.0;
     // Narrow "Page 1" from its right edge to about 45 pt: it rewraps onto two lines.
     let b = block(&h);
     let edge = screen(b.rect[2], grip_y(&b)) + egui::vec2(2.0, 0.0);
@@ -6058,11 +6060,11 @@ fn a_paragraph_rewraps_from_the_outer_half_of_its_edge_handles() {
     let mut h = harness(1, |_| {});
     assert!(h.state_mut().execute("edit.edit_text"));
     h.run_steps(2);
-    let lines = |h: &Harness<'static, PdfCraftApp>| {
+    let lines = |h: &Harness<'static, PdfApp>| {
         let s = h.state();
         s.session.get(s.views[0].id).unwrap().text_lines(0).iter().map(|l| l.text.clone()).collect::<Vec<_>>()
     };
-    let block = |h: &Harness<'static, PdfCraftApp>| {
+    let block = |h: &Harness<'static, PdfApp>| {
         let s = h.state();
         s.session.get(s.views[0].id).unwrap().text_blocks(0)[0].clone()
     };
@@ -6084,7 +6086,7 @@ fn a_paragraph_rewraps_from_the_outer_half_of_its_edge_handles() {
     assert!(h.state().views[0].line_editor.is_none());
     // Saved and reopened, the paragraph keeps its new width.
     let saved = h.state_mut().session.save_bytes(id).unwrap();
-    let mut reopen = pdfcraft_engine::Session::new();
+    let mut reopen = iridium_pdf_engine::Session::new();
     let rid = reopen.open("saved.pdf", None, saved, None).unwrap();
     assert!(near(reopen.get(rid).unwrap().text_blocks(0)[0].rect, narrowed.rect));
     // Undo gives the old width back, redo the new one.
@@ -6106,9 +6108,9 @@ fn a_paragraph_rewraps_from_the_outer_half_of_its_edge_handles() {
 }
 
 /// The Pages panel, in a window tall enough to show every thumbnail of a short fixture.
-fn pages_panel(pages: usize) -> Harness<'static, PdfCraftApp> {
+fn pages_panel(pages: usize) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, fixture(pages)).expect("fixture opens");
         app.set_option("panel", "pages").unwrap();
@@ -6118,7 +6120,7 @@ fn pages_panel(pages: usize) -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn picked(h: &Harness<'static, PdfCraftApp>) -> Vec<usize> {
+fn picked(h: &Harness<'static, PdfApp>) -> Vec<usize> {
     h.state().views[0].selected.iter().copied().collect()
 }
 
@@ -6199,8 +6201,8 @@ fn print_shortcut_offers_the_pages_picked_in_the_pages_panel() {
     assert_eq!(picked(&h), [1, 3]);
     h.key_press_modifiers(Modifiers::COMMAND, Key::P);
     h.run_steps(3);
-    assert_eq!(h.state().dialog, Some(pdfcraft_ui_egui::Dialog::Print));
-    assert_eq!(h.state().print_draft.which, pdfcraft_ui_egui::PrintWhich::Selected);
+    assert_eq!(h.state().dialog, Some(iridium_pdf_ui_egui::Dialog::Print));
+    assert_eq!(h.state().print_draft.which, iridium_pdf_ui_egui::PrintWhich::Selected);
     assert_eq!(h.state().print_draft.selected, [1, 3]);
     h.get_by_label("Selected pages (2)");
     h.get_by_label("Sheet 1 of 2");
@@ -6208,10 +6210,10 @@ fn print_shortcut_offers_the_pages_picked_in_the_pages_panel() {
 
 #[test]
 fn dragging_pages_panel_thumbnails_reorders_pages() {
-    let mut h = harness(4, |app| app.right = Some(pdfcraft_ui_egui::RightPanel::Pages));
+    let mut h = harness(4, |app| app.right = Some(iridium_pdf_ui_egui::RightPanel::Pages));
     let before = page_texts(h.state());
     // The Pages panel is on the right; the document view may label its pages too.
-    let thumb = |h: &Harness<'static, PdfCraftApp>, label: &str| {
+    let thumb = |h: &Harness<'static, PdfApp>, label: &str| {
         h.get_all_by_label(label).map(|n| n.rect()).max_by(|a, b| a.left().total_cmp(&b.left())).expect("the thumbnail")
     };
     // Grab page 3 (page 4 is below the window) and drop it above page 1.
@@ -6229,7 +6231,7 @@ fn dragging_pages_panel_thumbnails_reorders_pages() {
 #[test]
 fn resized_pages_panel_thumbnails_reorder_multiple_pages_and_undo() {
     let mut h = harness(4, |app| {
-        app.right = Some(pdfcraft_ui_egui::RightPanel::Pages);
+        app.right = Some(iridium_pdf_ui_egui::RightPanel::Pages);
         app.set_option("thumbnail-zoom", "50").unwrap();
     });
     let before = page_texts(h.state());
@@ -6250,7 +6252,7 @@ fn resized_pages_panel_thumbnails_reorder_multiple_pages_and_undo() {
 
 #[test]
 fn a_thumbnail_drag_that_ends_off_the_panel_or_outlives_the_pages_is_dropped() {
-    let mut h = harness(4, |app| app.right = Some(pdfcraft_ui_egui::RightPanel::Pages));
+    let mut h = harness(4, |app| app.right = Some(iridium_pdf_ui_egui::RightPanel::Pages));
     let before = page_texts(h.state());
     // A drag left over (the panel closed mid-drag, the button released elsewhere) moves nothing.
     h.state_mut().views[0].panel_drag = Some(vec![2]);
@@ -6266,11 +6268,11 @@ fn a_thumbnail_drag_that_ends_off_the_panel_or_outlives_the_pages_is_dropped() {
 }
 
 /// A Pages panel thumbnail (the rightmost node with that label).
-fn panel_thumb(h: &Harness<'static, PdfCraftApp>, label: &str) -> egui::Pos2 {
+fn panel_thumb(h: &Harness<'static, PdfApp>, label: &str) -> egui::Pos2 {
     h.get_all_by_label(label).map(|n| n.rect()).max_by(|a, b| a.left().total_cmp(&b.left())).expect("the thumbnail").center()
 }
 
-fn right_click_at(h: &mut Harness<'static, PdfCraftApp>, at: egui::Pos2) {
+fn right_click_at(h: &mut Harness<'static, PdfApp>, at: egui::Pos2) {
     h.hover_at(at);
     h.run_steps(1);
     h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Secondary, pressed: true, modifiers: Default::default() });
@@ -6353,7 +6355,7 @@ fn one_editor_contains_mixed_styles_and_visual_rows() {
          BT /F2 10 Tf 20 195 Td (Last row) Tj ET",
     );
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("mixed.pdf", None, bytes).unwrap();
         app
@@ -6407,7 +6409,7 @@ fn one_editor_contains_mixed_styles_and_visual_rows() {
     assert!(frame.contains_rect(visible), "fallback font rows remain inside the growing frame");
     h.state_mut().views[0].line_editor.as_mut().unwrap().text = original_text;
     h.run_steps(3);
-    if let Ok(path) = std::env::var("PDFCRAFT_RICH_FRAME_SHOT") {
+    if let Ok(path) = std::env::var("IRIDIUM_PDF_RICH_FRAME_SHOT") {
         h.render().unwrap().save(path).unwrap();
     }
     h.state_mut().views[0].line_editor.as_mut().unwrap().text.clear();
@@ -6430,7 +6432,7 @@ fn the_caret_on_a_small_row_is_as_tall_as_that_row() {
          BT /F2 10 Tf 20 195 Td (Last row) Tj ET",
     );
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("mixed.pdf", None, bytes).unwrap();
         app
@@ -6441,7 +6443,7 @@ fn the_caret_on_a_small_row_is_as_tall_as_that_row() {
     let page = h.state().views[0].page_screen_rect(0).unwrap();
     let k = page.width() / 300.0;
     let screen = |x: f32, y: f32| egui::pos2(page.left() + x * k, page.top() + (300.0 - y) * k);
-    let click = |h: &mut Harness<'static, PdfCraftApp>, at: egui::Pos2| {
+    let click = |h: &mut Harness<'static, PdfApp>, at: egui::Pos2| {
         h.hover_at(at);
         h.run_steps(1);
         h.drag_at(at);
@@ -6529,7 +6531,7 @@ fn stand_in_words_fixture() -> (Vec<u8>, Vec<&'static str>) {
 fn dragging_over_a_word_selects_that_word_when_the_editor_uses_a_stand_in_face() {
     let (bytes, words) = stand_in_words_fixture();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("ocr-like.pdf", None, bytes).unwrap();
         app
@@ -6574,15 +6576,15 @@ fn dragging_over_a_word_selects_that_word_when_the_editor_uses_a_stand_in_face()
 }
 
 /// Opt-in private-document regression. This never captures images or saves the source file.
-/// Run with PDFCRAFT_TEXT_REGRESSION_PDF=/path/to/document.pdf and --ignored.
+/// Run with IRIDIUM_PDF_TEXT_REGRESSION_PDF=/path/to/document.pdf and --ignored.
 #[test]
 #[ignore = "requires an explicitly supplied local PDF"]
 fn private_document_regions_open_as_one_editor() {
-    let path = std::env::var("PDFCRAFT_TEXT_REGRESSION_PDF").expect("supply a local PDF path");
+    let path = std::env::var("IRIDIUM_PDF_TEXT_REGRESSION_PDF").expect("supply a local PDF path");
     let bytes = std::fs::read(&path).unwrap();
     let original = bytes.clone();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1100.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("private.pdf", None, bytes).unwrap();
         app
@@ -6590,7 +6592,7 @@ fn private_document_regions_open_as_one_editor() {
     h.run_steps(4);
     assert!(h.state_mut().execute("edit.edit_text"));
     h.run_steps(2);
-    h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::Page;
+    h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Page;
     assert!(h.state_mut().execute("view.layout.single"));
     h.run_steps(3);
     let page_count = h.state().session.get(h.state().views[0].id).unwrap().info.pages.len();
@@ -6675,7 +6677,7 @@ fn private_document_regions_open_as_one_editor() {
 
 #[test]
 fn inline_editor_preserves_source_font_and_previews_live_bounds() {
-    use pdfcraft_cos::{Dict, Document, Object, Stream, write_incremental};
+    use iridium_pdf_cos::{Dict, Document, Object, Stream, write_incremental};
     use skrifa::MetadataProvider as _;
     let _gpu = gpu();
     let mut cos = Document::open(std::sync::Arc::new(source_font_fixture_with_text(
@@ -6711,10 +6713,10 @@ fn inline_editor_preserves_source_font_and_previews_live_bounds() {
         ),
     );
     font.set(b"FontDescriptor".to_vec(), Object::Dict(descriptor));
-    cos.update_dict(pdfcraft_cos::ObjRef::new(3, 0), |d| *d = font).unwrap();
+    cos.update_dict(iridium_pdf_cos::ObjRef::new(3, 0), |d| *d = font).unwrap();
     let bytes = write_incremental(&cos, &Default::default()).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("stable.pdf", None, bytes).unwrap();
         app
@@ -6752,7 +6754,7 @@ fn inline_editor_preserves_source_font_and_previews_live_bounds() {
     for section in &shape.galley.job.sections {
         assert!(matches!(&section.format.font_id.family,egui::FontFamily::Name(name) if name.starts_with("pdf-source-")));
     }
-    let frame = |h: &Harness<'_, PdfCraftApp>| {
+    let frame = |h: &Harness<'_, PdfApp>| {
         h.output()
             .shapes
             .iter()
@@ -6776,7 +6778,7 @@ fn inline_editor_preserves_source_font_and_previews_live_bounds() {
     assert!(reduced.bottom() < original_frame.bottom() - 20.0, "deleting a row visibly shrinks the block");
     h.state_mut().views[0].line_editor.as_mut().unwrap().text.push_str("\nExtra row that does not fit\nAnother row");
     h.run_steps(3);
-    if let Ok(path) = std::env::var("PDFCRAFT_OVERFLOW_FRAME_SHOT") {
+    if let Ok(path) = std::env::var("IRIDIUM_PDF_OVERFLOW_FRAME_SHOT") {
         h.render().unwrap().save(path).unwrap();
     }
     let id = h.state().views[0].id;
@@ -6799,7 +6801,7 @@ fn inline_editor_preserves_source_font_and_previews_live_bounds() {
     assert!(dirty(&h));
     assert_eq!(h.state().session.get(id).unwrap().text_blocks(0)[0].rect, measured);
     let bytes = h.state().session.save_bytes(id).unwrap();
-    let mut reopened = pdfcraft_engine::Session::new();
+    let mut reopened = iridium_pdf_engine::Session::new();
     let reopened_id = reopened.open("again.pdf", None, bytes, None).unwrap();
     assert_eq!(reopened.get(reopened_id).unwrap().text_blocks(0)[0].rect, measured);
     h.key_press_modifiers(Modifiers::COMMAND, Key::Z);
@@ -6822,7 +6824,7 @@ fn clipped_artwork_with_labels_drawn(own_clip: bool) -> Vec<u8> {
 
 /// [`fixture`]'s two pages, each drawn by `content`, with a one-pixel picture as `/Im0`.
 fn artwork_drawn(content: &[u8]) -> Vec<u8> {
-    use pdfcraft_cos::{Dict, Document, Object, Stream, write_incremental};
+    use iridium_pdf_cos::{Dict, Document, Object, Stream, write_incremental};
     let mut doc = Document::open(std::sync::Arc::new(fixture(2))).unwrap();
     let mut image = Dict::new();
     image.set(b"Type".to_vec(), Object::name("XObject"));
@@ -6832,7 +6834,7 @@ fn artwork_drawn(content: &[u8]) -> Vec<u8> {
     image.set(b"BitsPerComponent".to_vec(), Object::Int(8));
     image.set(b"ColorSpace".to_vec(), Object::name("DeviceRGB"));
     let image = doc.add(Object::Stream(Stream::flate(image, &[220, 235, 245])));
-    for page in pdfcraft_model::pages(&doc) {
+    for page in iridium_pdf_model::pages(&doc) {
         let contents = doc.add(Object::Stream(Stream::flate(Dict::new(), content)));
         let mut resources = doc.resolve(page.dict.get(b"Resources").unwrap()).as_dict().unwrap().clone();
         let mut xo = Dict::new();
@@ -6850,14 +6852,14 @@ fn artwork_drawn(content: &[u8]) -> Vec<u8> {
 #[test]
 fn cropped_images_do_not_intercept_text_and_stay_inside_each_page() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1100.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("clipped.pdf", None, clipped_artwork_with_labels()).unwrap();
         app
     });
     h.run_steps(4);
     assert!(h.state_mut().execute("edit.edit_text"));
-    h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::Page;
+    h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Page;
     assert!(h.state_mut().execute("view.layout.single"));
     h.run_steps(3);
     for page in 0..2 {
@@ -6901,14 +6903,14 @@ fn cropped_images_do_not_intercept_text_and_stay_inside_each_page() {
 #[test]
 fn cropped_image_corner_resize_keeps_opposite_corner_and_scales_crop() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1100.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("clipped.pdf", None, clipped_artwork_with_labels_drawn(true)).unwrap();
         app
     });
     h.run_steps(4);
     assert!(h.state_mut().execute("edit.edit_text"));
-    h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::Page;
+    h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Page;
     assert!(h.state_mut().execute("view.layout.single"));
     h.run_steps(3);
     let page = h.state().views[0].page_screen_rect(0).unwrap();
@@ -6922,7 +6924,7 @@ fn cropped_image_corner_resize_keeps_opposite_corner_and_scales_crop() {
     h.run_steps(3);
     let id = h.state().views[0].id;
     assert!(h.state().views[0].image_selection.is_some());
-    let text = |doc: &pdfcraft_engine::Document| {
+    let text = |doc: &iridium_pdf_engine::Document| {
         doc.text_lines(0).into_iter().map(|l| (l.text.clone(), l.rect, l.font.clone(), l.size, l.color, l.baseline())).collect::<Vec<_>>()
     };
     let original_text = text(h.state().session.get(id).unwrap());
@@ -6960,7 +6962,7 @@ fn cropped_image_corner_resize_keeps_opposite_corner_and_scales_crop() {
         assert_eq!(text(h.state().session.get(id).unwrap()), original_text, "image resizing leaves captions in place");
     }
     let saved = h.state().session.save_bytes(id).unwrap();
-    let mut reopened = pdfcraft_engine::Session::new();
+    let mut reopened = iridium_pdf_engine::Session::new();
     let re = reopened.open("again.pdf", None, saved, None).unwrap();
     assert_eq!(reopened.get(re).unwrap().page_images(0), h.state().session.get(id).unwrap().page_images(0));
 }
@@ -6970,7 +6972,7 @@ fn cropped_image_corner_resize_keeps_opposite_corner_and_scales_crop() {
 #[test]
 fn image_pixels_follow_the_frame_while_a_corner_is_dragged() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1100.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("clipped.pdf", None, clipped_artwork_with_labels_drawn(true)).unwrap();
         app
@@ -6998,14 +7000,14 @@ fn image_pixels_follow_the_frame_while_a_corner_is_dragged() {
     h.drop_at(p);
     h.run_steps(3);
     assert!(h.state().views[0].image_selection.is_some());
-    let frame = |h: &Harness<'static, PdfCraftApp>| {
+    let frame = |h: &Harness<'static, PdfApp>| {
         h.output().shapes.iter().find_map(|s| match &s.shape {
             egui::Shape::Rect(r) if r.stroke.color == egui::Color32::from_rgb(0x14, 0x73, 0xE6) && r.rect.width() > 20.0 => Some(r.rect),
             _ => None,
         })
     };
     // Textured meshes smaller than the page: the page raster itself always covers the page.
-    let pictures = |h: &Harness<'static, PdfCraftApp>| -> Vec<egui::Rect> {
+    let pictures = |h: &Harness<'static, PdfApp>| -> Vec<egui::Rect> {
         h.output()
             .shapes
             .iter()
@@ -7018,12 +7020,12 @@ fn image_pixels_follow_the_frame_while_a_corner_is_dragged() {
     };
     // The dragged picture is cut from the page raster, which a render thread delivers after
     // however many frames it takes (more on a slow runner): wait for it on screen, by state.
-    let raster_shown = |h: &Harness<'static, PdfCraftApp>| {
+    let raster_shown = |h: &Harness<'static, PdfApp>| {
         h.output().shapes.iter().any(|s| {
             matches!(&s.shape, egui::Shape::Mesh(m) if m.texture_id != egui::TextureId::default() && m.calc_bounds().width() >= page.width() - 1.0)
         })
     };
-    let wait_for_raster = |h: &mut Harness<'static, PdfCraftApp>| {
+    let wait_for_raster = |h: &mut Harness<'static, PdfApp>| {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
         while h.state().render_pending() || !raster_shown(h) {
             assert!(std::time::Instant::now() < deadline, "timed out waiting for the page raster");
@@ -7072,7 +7074,7 @@ fn red(pixels: &image::RgbaImage, r: egui::Rect) -> usize {
 /// blanked at its old one; the old one used to show again for those frames.
 #[test]
 fn a_resized_image_keeps_its_new_size_until_the_page_is_redrawn() {
-    use pdfcraft_cos::{Dict, Document, Object, Stream, write_incremental};
+    use iridium_pdf_cos::{Dict, Document, Object, Stream, write_incremental};
     let _gpu = gpu();
     let mut doc = Document::open(std::sync::Arc::new(fixture(1))).unwrap();
     let mut image = Dict::new();
@@ -7083,7 +7085,7 @@ fn a_resized_image_keeps_its_new_size_until_the_page_is_redrawn() {
     image.set(b"BitsPerComponent".to_vec(), Object::Int(8));
     image.set(b"ColorSpace".to_vec(), Object::name("DeviceRGB"));
     let image = doc.add(Object::Stream(Stream::flate(image, &[200, 30, 30])));
-    let page = pdfcraft_model::pages(&doc).remove(0);
+    let page = iridium_pdf_model::pages(&doc).remove(0);
     let contents = doc.add(Object::Stream(Stream::flate(Dict::new(), b"q 80 0 0 80 60 40 cm /Im0 Do Q")));
     let mut resources = doc.resolve(page.dict.get(b"Resources").unwrap()).as_dict().unwrap().clone();
     let mut xo = Dict::new();
@@ -7096,7 +7098,7 @@ fn a_resized_image_keeps_its_new_size_until_the_page_is_redrawn() {
     .unwrap();
     let bytes = write_incremental(&doc, &Default::default()).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1100.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.pdf", None, bytes).unwrap();
         app
@@ -7167,18 +7169,18 @@ fn a_resized_image_keeps_its_new_size_until_the_page_is_redrawn() {
 #[test]
 #[ignore = "requires an explicitly supplied local PDF with cropped artwork"]
 fn private_cropped_image_grips_resize_without_moving_the_opposite_corner() {
-    let path = std::env::var("PDFCRAFT_CLIPPED_ARTWORK_PDF").expect("supply a local PDF path");
+    let path = std::env::var("IRIDIUM_PDF_CLIPPED_ARTWORK_PDF").expect("supply a local PDF path");
     let original = std::fs::read(&path).unwrap();
     let bytes = original.clone();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1100.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("private.pdf", None, bytes).unwrap();
         app
     });
     h.run_steps(4);
     assert!(h.state_mut().execute("edit.edit_text"));
-    h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::Page;
+    h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Page;
     assert!(h.state_mut().execute("view.layout.single"));
     let id = h.state().views[0].id;
     let pages = h.state().session.get(id).unwrap().info.pages.len();
@@ -7259,18 +7261,18 @@ fn private_cropped_image_grips_resize_without_moving_the_opposite_corner() {
 #[test]
 #[ignore = "requires an explicitly supplied local PDF with cropped artwork"]
 fn private_document_cropped_artwork_does_not_block_text() {
-    let path = std::env::var("PDFCRAFT_CLIPPED_ARTWORK_PDF").expect("supply a local PDF path");
+    let path = std::env::var("IRIDIUM_PDF_CLIPPED_ARTWORK_PDF").expect("supply a local PDF path");
     let original = std::fs::read(&path).unwrap();
     let bytes = original.clone();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1100.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("private.pdf", None, bytes).unwrap();
         app
     });
     h.run_steps(4);
     assert!(h.state_mut().execute("edit.edit_text"));
-    h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::Page;
+    h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Page;
     assert!(h.state_mut().execute("view.layout.single"));
     h.run_steps(3);
     let pages = h.state().session.get(h.state().views[0].id).unwrap().info.pages.len();
@@ -7320,22 +7322,22 @@ fn private_document_cropped_artwork_does_not_block_text() {
 #[test]
 #[ignore = "requires a private Chinese PDF and an approved full source font file"]
 fn private_new_chinese_keyboard_input_preserves_font_layout_and_saved_pixels() {
-    use pdfcraft_engine::{Edit, Session};
+    use iridium_pdf_engine::{Edit, Session};
     use std::sync::Arc;
-    let path = std::env::var("PDFCRAFT_CHINESE_TEXT_PDF").expect("supply a local PDF path");
-    let font_path = std::env::var("PDFCRAFT_CHINESE_FULL_FONT").expect("supply the full source face");
+    let path = std::env::var("IRIDIUM_PDF_CHINESE_TEXT_PDF").expect("supply a local PDF path");
+    let font_path = std::env::var("IRIDIUM_PDF_CHINESE_FULL_FONT").expect("supply the full source face");
     let original = std::fs::read(&path).unwrap();
     let bytes = original.clone();
     let font = Arc::new(std::fs::read(font_path).unwrap());
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1100.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("private.pdf", None, bytes).unwrap();
         app
     });
     h.run_steps(4);
     assert!(h.state_mut().execute("edit.edit_text"));
-    h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::Page;
+    h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Page;
     assert!(h.state_mut().execute("view.layout.single"));
     let id = h.state().views[0].id;
     let pages = h.state().session.get(id).unwrap().info.pages.len();
@@ -7451,7 +7453,7 @@ fn moving_text_offers_the_four_way_arrow() {
     let k = r.width() / 200.0;
     let screen = |x: f64, y: f64| egui::pos2(r.left() + x as f32 * k, r.top() + (300.0 - y as f32) * k);
     let centre = screen((block.rect[0] + block.rect[2]) / 2.0, (block.rect[1] + block.rect[3]) / 2.0);
-    let cursor_at = |h: &mut Harness<'static, PdfCraftApp>, at: egui::Pos2| {
+    let cursor_at = |h: &mut Harness<'static, PdfApp>, at: egui::Pos2| {
         h.hover_at(at);
         h.run_steps(2);
         h.output().platform_output.cursor_icon
@@ -7488,7 +7490,7 @@ fn cropping_a_picture_with_its_handles() {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(80, 40, image::Rgb([200, 40, 40])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
         app
@@ -7509,7 +7511,7 @@ fn cropping_a_picture_with_its_handles() {
     assert!(h.state().views[0].image_selection.is_some(), "selected");
     // Crop mode (as the context menu's Crop Image starts it): drag the right-bottom handle a
     // quarter of the picture inward, then Enter.
-    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(pdfcraft_ui_egui::CropMode::new(before));
+    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(iridium_pdf_ui_egui::CropMode::new(before));
     h.run_steps(2);
     let corner = r.right_bottom();
     let to = corner - egui::vec2(r.width() / 4.0, r.height() / 4.0);
@@ -7535,7 +7537,7 @@ fn cropping_a_picture_with_its_handles() {
     assert!((v[2] - 60.0).abs() < 1.5 && (v[1] - 10.0).abs() < 1.5, "kept {v:?}");
     assert!(h.state().views[0].image_selection.as_ref().is_some_and(|s| s.crop.is_none()), "crop mode ends");
     // Esc leaves it.
-    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(pdfcraft_ui_egui::CropMode::new([10.0, 10.0, 20.0, 20.0]));
+    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(iridium_pdf_ui_egui::CropMode::new([10.0, 10.0, 20.0, 20.0]));
     h.run_steps(2);
     h.key_press(egui::Key::Escape);
     h.run_steps(3);
@@ -7546,14 +7548,14 @@ fn cropping_a_picture_with_its_handles() {
 
 /// Both pages of [`clipped_artwork_with_labels`] at 100% in Edit text, the picture on page 0
 /// selected (and being cropped, with `crop`).
-fn picture_pages(crop: bool) -> Harness<'static, PdfCraftApp> {
+fn picture_pages(crop: bool) -> Harness<'static, PdfApp> {
     picture_pages_of(clipped_artwork_with_labels(), crop)
 }
 
 /// [`picture_pages`], of `pdf`.
-fn picture_pages_of(pdf: Vec<u8>, crop: bool) -> Harness<'static, PdfCraftApp> {
+fn picture_pages_of(pdf: Vec<u8>, crop: bool) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1100.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("clipped.pdf", None, pdf).unwrap();
         app.set_option("left", "closed").unwrap();
@@ -7565,20 +7567,20 @@ fn picture_pages_of(pdf: Vec<u8>, crop: bool) -> Harness<'static, PdfCraftApp> {
     h.run_steps(3);
     let id = h.state().views[0].id;
     let keep = h.state().session.get(id).unwrap().page_images(0)[0].visible_rect.unwrap();
-    let mut selection = pdfcraft_ui_egui::ImageSelection::at(0, 0);
-    selection.crop = crop.then(|| pdfcraft_ui_egui::CropMode::new(keep));
+    let mut selection = iridium_pdf_ui_egui::ImageSelection::at(0, 0);
+    selection.crop = crop.then(|| iridium_pdf_ui_egui::CropMode::new(keep));
     h.state_mut().views[0].image_selection = Some(selection);
     h.run_steps(3);
     h
 }
 
 /// The screen point at PDF (x, y) of `page` of [`picture_pages`].
-fn page_at(h: &Harness<'static, PdfCraftApp>, page: usize, x: f32, y: f32) -> egui::Pos2 {
+fn page_at(h: &Harness<'static, PdfApp>, page: usize, x: f32, y: f32) -> egui::Pos2 {
     let r = h.state().views[0].page_screen_rect(page).expect("both pages on screen");
     egui::pos2(r.left() + x / 200.0 * r.width(), r.top() + (300.0 - y) / 300.0 * r.height())
 }
 
-fn cursor_over(h: &mut Harness<'static, PdfCraftApp>, p: egui::Pos2) -> egui::CursorIcon {
+fn cursor_over(h: &mut Harness<'static, PdfApp>, p: egui::Pos2) -> egui::CursorIcon {
     h.hover_at(p);
     h.run_steps(2);
     h.output().platform_output.cursor_icon
@@ -7618,7 +7620,7 @@ fn escape_during_a_crop_drag_keeps_crop_mode() {
         h.hover_at(grip - egui::vec2(10.0, 10.0) * k as f32);
         h.run_steps(1);
     }
-    let keep = |h: &Harness<'static, PdfCraftApp>| h.state().views[0].image_selection.as_ref().and_then(|s| s.crop.as_ref()).map(|c| c.keep);
+    let keep = |h: &Harness<'static, PdfApp>| h.state().views[0].image_selection.as_ref().and_then(|s| s.crop.as_ref()).map(|c| c.keep);
     assert!(keep(&h).is_some_and(|k| k[2] < before[2] - 5.0 && k[1] > before[1] + 5.0), "the grip outside the picture is dragged");
     h.key_press(Key::Escape);
     h.run_steps(2);
@@ -7652,9 +7654,9 @@ fn a_right_click_on_text_over_a_picture_selects_the_picture() {
 fn a_right_click_on_added_text_over_a_picture_selects_the_picture() {
     let mut h = picture_pages(false);
     h.state_mut().views[0].image_selection = None;
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::AddText {
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddText {
         page: 0,
-        text: pdfcraft_engine::AddedText { rect: [60.0, 190.0, 150.0, 205.0], text: "Added".into(), ..Default::default() },
+        text: iridium_pdf_engine::AddedText { rect: [60.0, 190.0, 150.0, 205.0], text: "Added".into(), ..Default::default() },
     }));
     h.run_steps(3);
     let on_it = page_at(&h, 0, 100.0, 198.0);
@@ -7692,24 +7694,24 @@ fn a_right_click_on_an_open_paragraphs_frame_over_a_picture_selects_the_picture(
 #[test]
 fn a_drag_from_the_selected_picture_under_another_moves_the_selected_one() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1400.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("two.pdf", None, two_image_fixture()).unwrap();
         app
     });
     h.run_steps(4);
     // The second picture lies over the right half of the first.
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage {
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage {
         page: 0,
         index: 1,
-        change: pdfcraft_engine::ImageEdit::Move([110.0, 100.0, 130.0, 120.0]),
+        change: iridium_pdf_engine::ImageEdit::Move([110.0, 100.0, 130.0, 120.0]),
     });
     assert!(h.state_mut().execute("edit.edit_text"));
     h.run_steps(4);
-    h.state_mut().views[0].image_selection = Some(pdfcraft_ui_egui::ImageSelection::at(0, 0));
+    h.state_mut().views[0].image_selection = Some(iridium_pdf_ui_egui::ImageSelection::at(0, 0));
     h.run_steps(2);
     let id = h.state().views[0].id;
-    let rects = |h: &Harness<'static, PdfCraftApp>| {
+    let rects = |h: &Harness<'static, PdfApp>| {
         let images = h.state().session.get(id).unwrap().page_images(0);
         (images[0].rect, images[1].rect)
     };
@@ -7717,7 +7719,7 @@ fn a_drag_from_the_selected_picture_under_another_moves_the_selected_one() {
     let xf = h.state().views[0].page_xform(0).unwrap();
     let doc = h.state().session.get(id).unwrap();
     let images = doc.page_images(0);
-    let frame = |i: usize| pdfcraft_ui_egui::canvas::image_screen_rect(&images[i], &xf, &doc.info, 0);
+    let frame = |i: usize| iridium_pdf_ui_egui::canvas::image_screen_rect(&images[i], &xf, &doc.info, 0);
     let overlap = frame(0).intersect(frame(1)).center();
     h.hover_at(overlap);
     h.run_steps(1);
@@ -7738,7 +7740,7 @@ fn a_drag_from_the_selected_picture_under_another_moves_the_selected_one() {
     let xf = h.state().views[0].page_xform(0).unwrap();
     let doc = h.state().session.get(id).unwrap();
     let images = doc.page_images(0);
-    let frame = |i: usize| pdfcraft_ui_egui::canvas::image_screen_rect(&images[i], &xf, &doc.info, 0);
+    let frame = |i: usize| iridium_pdf_ui_egui::canvas::image_screen_rect(&images[i], &xf, &doc.info, 0);
     let overlap = frame(0).intersect(frame(1)).center();
     slipping_click(&mut h, overlap, overlap);
     let selected = h.state().views[0].image_selection.as_ref().map(|s| s.index);
@@ -7785,7 +7787,7 @@ fn add_text_moves_no_paragraph_while_it_holds_a_draft_it_cant_draw() {
     if crate::support::skip_without_glyphs("add_text_moves_no_paragraph_while_it_holds_a_draft_it_cant_draw", "en", "Hello 世界") {
         return;
     }
-    let mut h = edit_page(pdfcraft_ui_egui::QuickTool::AddText);
+    let mut h = edit_page(iridium_pdf_ui_egui::QuickTool::AddText);
     assert!(h.state_mut().execute("edit.text"));
     h.run_steps(3);
     let id = h.state().views[0].id;
@@ -7818,10 +7820,10 @@ fn add_text_moves_no_paragraph_while_it_holds_a_draft_it_cant_draw() {
 fn a_right_click_on_a_comment_over_a_picture_opens_its_menu() {
     let mut h = picture_pages(false);
     h.state_mut().views[0].image_selection = None;
-    let shape = pdfcraft_engine::Shape::Rectangle { rect: [60.0, 190.0, 150.0, 230.0] };
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+    let shape = iridium_pdf_engine::Shape::Rectangle { rect: [60.0, 190.0, 150.0, 230.0] };
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
         page: 0,
-        style: pdfcraft_engine::Style::default_for(&shape),
+        style: iridium_pdf_engine::Style::default_for(&shape),
         shape,
         contents: "Reviewed".into(),
         author: "Tester".into(),
@@ -7850,7 +7852,7 @@ fn a_right_click_on_the_next_page_leaves_crop_mode() {
 #[test]
 fn a_crop_grip_takes_a_press_within_its_reach() {
     let mut h = picture_pages(true);
-    let keep = |h: &Harness<'static, PdfCraftApp>| h.state().views[0].image_selection.as_ref().and_then(|s| s.crop.as_ref()).map(|c| c.keep);
+    let keep = |h: &Harness<'static, PdfApp>| h.state().views[0].image_selection.as_ref().and_then(|s| s.crop.as_ref()).map(|c| c.keep);
     let before = keep(&h);
     // The box kept is the picture's frame shown, x 30..160, y 170..250: its upper left corner.
     let press = page_at(&h, 0, 30.0, 250.0) - egui::vec2(9.0, 0.0);
@@ -7901,7 +7903,7 @@ fn add_text_keeps_a_changed_paragraph_and_a_draft_when_it_moves_on() {
         .added()
         .iter()
         .filter_map(|a| match &a.content {
-            pdfcraft_engine::AddedContent::Text(t) => Some(t.text.clone()),
+            iridium_pdf_engine::AddedContent::Text(t) => Some(t.text.clone()),
             _ => None,
         })
         .collect();
@@ -7932,7 +7934,7 @@ fn delete_in_the_page_grid_deletes_the_page_and_not_the_hidden_picture() {
 /// can't see, and Enter applies no crop.
 #[test]
 fn a_selected_pictures_keys_wait_for_its_page_to_be_on_screen() {
-    use pdfcraft_ui_egui::canvas::PageLayout;
+    use iridium_pdf_ui_egui::canvas::PageLayout;
     for (crop, key) in [(false, egui::Key::Delete), (true, egui::Key::Enter)] {
         let mut h = picture_pages(crop);
         let id = h.state().views[0].id;
@@ -7983,7 +7985,7 @@ fn a_selected_pictures_keys_wait_for_its_page_to_be_on_screen() {
 /// click would follow.
 #[test]
 fn delete_waits_for_the_button_to_come_up() {
-    let hold_and_delete = |h: &mut Harness<'static, PdfCraftApp>, on: egui::Pos2| {
+    let hold_and_delete = |h: &mut Harness<'static, PdfApp>, on: egui::Pos2| {
         h.hover_at(on);
         h.run_steps(1);
         h.drag_at(on);
@@ -8000,14 +8002,14 @@ fn delete_waits_for_the_button_to_come_up() {
     hold_and_delete(&mut h, on_picture);
     assert_eq!(h.state().session.get(id).unwrap().page_images(0).len(), pictures, "the picture stays");
 
-    let mut h = edit_page(pdfcraft_ui_egui::QuickTool::Select);
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::AddText {
+    let mut h = edit_page(iridium_pdf_ui_egui::QuickTool::Select);
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddText {
         page: 0,
-        text: pdfcraft_engine::AddedText { rect: [40.0, 250.0, 140.0, 265.0], text: "Added".into(), ..Default::default() },
+        text: iridium_pdf_engine::AddedText { rect: [40.0, 250.0, 140.0, 265.0], text: "Added".into(), ..Default::default() },
     }));
     assert!(h.state_mut().execute("edit.text"));
     h.run_steps(3);
-    h.state_mut().quick_tool = pdfcraft_ui_egui::QuickTool::Select;
+    h.state_mut().quick_tool = iridium_pdf_ui_egui::QuickTool::Select;
     h.run_steps(3);
     let on_added = point_on(&h, 90.0, 258.0);
     slipping_click(&mut h, on_added, on_added);
@@ -8022,7 +8024,7 @@ fn delete_waits_for_the_button_to_come_up() {
 fn a_drag_first_seen_on_the_next_page_lets_the_picked_picture_go() {
     let mut h = picture_pages(false);
     h.state_mut().views[0].image_selection = None;
-    h.state_mut().quick_tool = pdfcraft_ui_egui::QuickTool::Select;
+    h.state_mut().quick_tool = iridium_pdf_ui_egui::QuickTool::Select;
     h.run_steps(3);
     let on_picture = page_at(&h, 0, 100.0, 180.0);
     slipping_click(&mut h, on_picture, on_picture);
@@ -8065,7 +8067,7 @@ fn delete_with_the_pointer_on_the_pages_panel_deletes_a_page() {
 #[test]
 fn in_crop_mode_a_right_click_on_another_picture_selects_it() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1400.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("two.pdf", None, two_image_fixture()).unwrap();
         app
@@ -8075,13 +8077,13 @@ fn in_crop_mode_a_right_click_on_another_picture_selects_it() {
     h.run_steps(4);
     let id = h.state().views[0].id;
     let rect = h.state().session.get(id).unwrap().page_images(0)[0].rect;
-    let mut selection = pdfcraft_ui_egui::ImageSelection::at(0, 0);
-    selection.crop = Some(pdfcraft_ui_egui::CropMode::new(rect));
+    let mut selection = iridium_pdf_ui_egui::ImageSelection::at(0, 0);
+    selection.crop = Some(iridium_pdf_ui_egui::CropMode::new(rect));
     h.state_mut().views[0].image_selection = Some(selection);
     h.run_steps(2);
     let xf = h.state().views[0].page_xform(0).unwrap();
     let doc = h.state().session.get(id).unwrap();
-    let other = pdfcraft_ui_egui::canvas::image_screen_rect(&doc.page_images(0)[1], &xf, &doc.info, 0);
+    let other = iridium_pdf_ui_egui::canvas::image_screen_rect(&doc.page_images(0)[1], &xf, &doc.info, 0);
     crop_secondary_click(&mut h, other.center());
     let selection = h.state().views[0].image_selection.clone();
     assert!(selection.as_ref().is_some_and(|s| s.index == 1 && s.crop.is_none()), "the other picture is selected: {selection:?}");
@@ -8118,7 +8120,7 @@ fn a_right_click_on_a_crop_grip_past_the_page_edge_keeps_crop_mode() {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(80, 40, image::Rgb([200, 40, 40])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
         app
@@ -8128,8 +8130,8 @@ fn a_right_click_on_a_crop_grip_past_the_page_edge_keeps_crop_mode() {
     h.run_steps(2);
     let id = h.state().views[0].id;
     let keep = h.state().session.get(id).unwrap().page_images(0)[0].visible_rect.unwrap();
-    let mut selection = pdfcraft_ui_egui::ImageSelection::at(0, 0);
-    selection.crop = Some(pdfcraft_ui_egui::CropMode::new(keep));
+    let mut selection = iridium_pdf_ui_egui::ImageSelection::at(0, 0);
+    selection.crop = Some(iridium_pdf_ui_egui::CropMode::new(keep));
     h.state_mut().views[0].image_selection = Some(selection);
     h.run_steps(3);
     let r = h.state().views[0].page_screen_rect(0).expect("on screen");
@@ -8147,7 +8149,7 @@ fn a_crop_grip_past_the_page_edge_drags() {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(80, 40, image::Rgb([200, 40, 40])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
         app
@@ -8157,8 +8159,8 @@ fn a_crop_grip_past_the_page_edge_drags() {
     h.run_steps(2);
     let id = h.state().views[0].id;
     let before = h.state().session.get(id).unwrap().page_images(0)[0].visible_rect.unwrap();
-    let mut selection = pdfcraft_ui_egui::ImageSelection::at(0, 0);
-    selection.crop = Some(pdfcraft_ui_egui::CropMode::new(before));
+    let mut selection = iridium_pdf_ui_egui::ImageSelection::at(0, 0);
+    selection.crop = Some(iridium_pdf_ui_egui::CropMode::new(before));
     h.state_mut().views[0].image_selection = Some(selection);
     h.run_steps(3);
     let r = h.state().views[0].page_screen_rect(0).expect("on screen");
@@ -8197,20 +8199,20 @@ fn delete_removes_the_selected_picture_with_the_pointer_on_a_paragraph() {
 /// named.
 #[test]
 fn delete_on_a_selected_added_picture_deletes_it_alone() {
-    let mut h = edit_page(pdfcraft_ui_egui::QuickTool::EditText);
+    let mut h = edit_page(iridium_pdf_ui_egui::QuickTool::EditText);
     let mut png = Vec::new();
     image::RgbImage::from_pixel(30, 20, image::Rgb([20, 90, 200])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     h.state_mut().add_image("logo.png".into(), png);
     h.run_steps(3);
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::AddText {
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddText {
         page: 0,
-        text: pdfcraft_engine::AddedText { rect: [20.0, 20.0, 120.0, 35.0], text: "Caption".into(), ..Default::default() },
+        text: iridium_pdf_engine::AddedText { rect: [20.0, 20.0, 120.0, 35.0], text: "Caption".into(), ..Default::default() },
     }));
     h.run_steps(3);
     let id = h.state().views[0].id;
     let images = h.state().session.get(id).unwrap().page_images(0).len();
     assert_eq!(images, 1, "the added picture is the page's picture");
-    h.state_mut().views[0].image_selection = Some(pdfcraft_ui_egui::ImageSelection::at(0, 0));
+    h.state_mut().views[0].image_selection = Some(iridium_pdf_ui_egui::ImageSelection::at(0, 0));
     h.run_steps(3);
     h.key_press(Key::Delete);
     h.run_steps(4);
@@ -8219,7 +8221,7 @@ fn delete_on_a_selected_added_picture_deletes_it_alone() {
     let texts: Vec<&str> = doc
         .added()
         .iter()
-        .filter_map(|a| if let pdfcraft_engine::AddedContent::Text(t) = &a.content { Some(t.text.as_str()) } else { None })
+        .filter_map(|a| if let iridium_pdf_engine::AddedContent::Text(t) = &a.content { Some(t.text.as_str()) } else { None })
         .collect();
     assert_eq!(texts, ["Caption"], "and the text placed after it stays");
 }
@@ -8244,7 +8246,7 @@ fn a_dialog_keeps_its_delete_while_a_picture_is_selected() {
 }
 
 /// A click that slips a few pixels between its press and its release, within egui's click distance.
-fn slipping_click(h: &mut Harness<'static, PdfCraftApp>, press: egui::Pos2, release: egui::Pos2) {
+fn slipping_click(h: &mut Harness<'static, PdfApp>, press: egui::Pos2, release: egui::Pos2) {
     h.hover_at(press);
     h.run_steps(1);
     h.drag_at(press);
@@ -8254,14 +8256,14 @@ fn slipping_click(h: &mut Harness<'static, PdfCraftApp>, press: egui::Pos2, rele
 }
 
 /// [`harness`]'s page 1 in Edit text (`tool`), and the screen point at PDF (x, y) on it.
-fn edit_page(tool: pdfcraft_ui_egui::QuickTool) -> Harness<'static, PdfCraftApp> {
+fn edit_page(tool: iridium_pdf_ui_egui::QuickTool) -> Harness<'static, PdfApp> {
     let mut h = harness(2, |_| {});
     h.state_mut().quick_tool = tool;
     h.run_steps(3);
     h
 }
 
-fn point_on(h: &Harness<'static, PdfCraftApp>, x: f64, y: f64) -> egui::Pos2 {
+fn point_on(h: &Harness<'static, PdfApp>, x: f64, y: f64) -> egui::Pos2 {
     let r = h.state().views[0].page_screen_rect(0).expect("on screen");
     let k = r.width() / 200.0;
     egui::pos2(r.left() + x as f32 * k, r.top() + (300.0 - y as f32) * k)
@@ -8271,7 +8273,7 @@ fn point_on(h: &Harness<'static, PdfCraftApp>, x: f64, y: f64) -> egui::Pos2 {
 /// box: an owner acts where its press was. It opened nothing.
 #[test]
 fn a_click_on_a_paragraph_released_just_below_it_opens_it() {
-    let mut h = edit_page(pdfcraft_ui_egui::QuickTool::EditText);
+    let mut h = edit_page(iridium_pdf_ui_egui::QuickTool::EditText);
     let id = h.state().views[0].id;
     let block = h.state().session.get(id).unwrap().text_blocks(0)[0].clone();
     // The box reaches 2 px below the text: pressed 1 px inside it, released 3 px below it.
@@ -8284,14 +8286,14 @@ fn a_click_on_a_paragraph_released_just_below_it_opens_it() {
 /// pressed, though the button came up just beside it. It left nothing selected.
 #[test]
 fn a_click_on_added_text_released_just_beside_it_selects_it() {
-    let mut h = edit_page(pdfcraft_ui_egui::QuickTool::Select);
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::AddText {
+    let mut h = edit_page(iridium_pdf_ui_egui::QuickTool::Select);
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddText {
         page: 0,
-        text: pdfcraft_engine::AddedText { rect: [40.0, 250.0, 140.0, 265.0], text: "Added".into(), ..Default::default() },
+        text: iridium_pdf_engine::AddedText { rect: [40.0, 250.0, 140.0, 265.0], text: "Added".into(), ..Default::default() },
     }));
     assert!(h.state_mut().execute("edit.text"));
     h.run_steps(3);
-    h.state_mut().quick_tool = pdfcraft_ui_egui::QuickTool::Select;
+    h.state_mut().quick_tool = iridium_pdf_ui_egui::QuickTool::Select;
     h.run_steps(3);
     // The item takes presses 2 px past its box: pressed 1 px inside that, released 3 px past it.
     let edge = point_on(&h, 140.0, 258.0) + egui::vec2(2.0, 0.0);
@@ -8303,7 +8305,7 @@ fn a_click_on_added_text_released_just_beside_it_selects_it() {
 /// where it was pressed. It finished the text being typed and placed nothing.
 #[test]
 fn an_add_text_click_pressed_beside_a_paragraph_starts_a_box_there() {
-    let mut h = edit_page(pdfcraft_ui_egui::QuickTool::AddText);
+    let mut h = edit_page(iridium_pdf_ui_egui::QuickTool::AddText);
     let id = h.state().views[0].id;
     let block = h.state().session.get(id).unwrap().text_blocks(0)[0].clone();
     // The box reaches 2 px past the text: pressed 2 px left of it, released 2 px inside it.
@@ -8320,7 +8322,7 @@ fn an_add_text_click_pressed_beside_a_paragraph_starts_a_box_there() {
 /// waited, and moved the paragraph to wherever the pointer then was.
 #[test]
 fn a_paragraph_drag_ends_when_the_window_loses_focus() {
-    for tool in [pdfcraft_ui_egui::QuickTool::EditText, pdfcraft_ui_egui::QuickTool::AddText] {
+    for tool in [iridium_pdf_ui_egui::QuickTool::EditText, iridium_pdf_ui_egui::QuickTool::AddText] {
         let mut h = edit_page(tool);
         let id = h.state().views[0].id;
         let before = h.state().session.get(id).unwrap().text_blocks(0)[0].rect;
@@ -8354,7 +8356,7 @@ fn dragging_the_rotate_knob_past_the_page_edge_turns_the_picture() {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(80, 40, image::Rgb([200, 40, 40])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
         app
@@ -8362,7 +8364,7 @@ fn dragging_the_rotate_knob_past_the_page_edge_turns_the_picture() {
     h.run_steps(4);
     assert!(h.state_mut().execute("edit.edit_text"));
     h.run_steps(2);
-    h.state_mut().views[0].image_selection = Some(pdfcraft_ui_egui::ImageSelection::at(0, 0));
+    h.state_mut().views[0].image_selection = Some(iridium_pdf_ui_egui::ImageSelection::at(0, 0));
     h.run_steps(3);
     let r = h.state().views[0].page_screen_rect(0).expect("on screen");
     // Above the top edge, or below the bottom one when the view has no room above.
@@ -8397,7 +8399,7 @@ fn organize_panel_comes_with_the_grid_and_closes_it() {
     h.get_by_label("Close panel").click();
     h.run_steps(3);
     assert!(!h.state().views[0].organize, "Close ends Organize");
-    assert_eq!(h.state().left, pdfcraft_ui_egui::LeftPanel::AllTools);
+    assert_eq!(h.state().left, iridium_pdf_ui_egui::LeftPanel::AllTools);
     assert!(h.query_by_label("Page properties").is_none(), "the panel is gone");
 }
 
@@ -8405,10 +8407,10 @@ fn organize_panel_comes_with_the_grid_and_closes_it() {
 /// as one undo step, and opens on the order the pages have.
 #[test]
 fn page_properties_sets_the_tab_order_of_the_selected_pages() {
-    use pdfcraft_engine::TabOrder::{Annotations, Column, Row};
-    let tabs = |h: &Harness<'static, PdfCraftApp>| h.state().session.get(h.state().views[0].id).unwrap().tab_orders();
+    use iridium_pdf_engine::TabOrder::{Annotations, Column, Row};
+    let tabs = |h: &Harness<'static, PdfApp>| h.state().session.get(h.state().views[0].id).unwrap().tab_orders();
     // The undo and redo labels: a new step replaces the redo step an undo left.
-    let undo = |h: &Harness<'static, PdfCraftApp>| {
+    let undo = |h: &Harness<'static, PdfApp>| {
         let doc = h.state().session.get(h.state().views[0].id).unwrap();
         (doc.can_undo().map(str::to_owned), doc.can_redo().map(str::to_owned))
     };
@@ -8433,7 +8435,7 @@ fn page_properties_sets_the_tab_order_of_the_selected_pages() {
     assert_eq!(tabs(&h), [Annotations; 3], "one undo step");
 
     // Pages with different orders open with no choice made, and OK is off until one is.
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::SetTabOrder { pages: vec![0], order: Row });
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::SetTabOrder { pages: vec![0], order: Row });
     h.run_steps(2);
     h.state_mut().views[0].select_pages(&[0, 1]);
     assert!(h.state_mut().execute("page.properties"));
@@ -8471,7 +8473,7 @@ fn page_properties_sets_the_tab_order_of_the_selected_pages() {
 /// is active by OK, neither document changes.
 #[test]
 fn page_properties_does_not_apply_to_another_active_document() {
-    use pdfcraft_engine::TabOrder::Annotations;
+    use iridium_pdf_engine::TabOrder::Annotations;
     let mut h = organize(3);
     let first = h.state().views[0].id;
     h.state_mut().views[0].select_pages(&[0]);
@@ -8497,7 +8499,7 @@ fn page_properties_does_not_apply_to_another_active_document() {
 /// document while the dialog is open, OK closes it without changing a page.
 #[test]
 fn page_properties_does_not_apply_after_the_document_changes() {
-    use pdfcraft_engine::TabOrder::Annotations;
+    use iridium_pdf_engine::TabOrder::Annotations;
     let mut h = organize(3);
     let id = h.state().views[0].id;
     h.state_mut().views[0].select_pages(&[0]);
@@ -8524,7 +8526,7 @@ fn page_properties_does_not_apply_after_the_document_changes() {
 /// workspace's panel: under the Edit tab, the Edit panel, not All tools.
 #[test]
 fn leaving_organize_goes_back_to_the_workspace_panel() {
-    use pdfcraft_ui_egui::{LeftPanel, Mode};
+    use iridium_pdf_ui_egui::{LeftPanel, Mode};
     let mut h = harness(3, |_| {});
     h.state_mut().mode = Mode::Edit;
     h.state_mut().left = LeftPanel::Tool("edit");
@@ -8552,7 +8554,7 @@ fn image_copy_cut_paste_keyboard_and_context_menu() {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(60, 40, image::Rgb([180, 50, 50])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.system_clipboard = false;
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
@@ -8624,7 +8626,7 @@ fn added_and_pasted_image_uses_refactored_image_edits() {
     h.run_steps(3);
 
     // Verify refactored mode is active
-    assert_eq!(h.state().quick_tool, pdfcraft_ui_egui::QuickTool::EditText);
+    assert_eq!(h.state().quick_tool, iridium_pdf_ui_egui::QuickTool::EditText);
     let id = h.state().views[0].id;
     let images = h.state().session.get(id).unwrap().page_images(0);
     assert_eq!(images.len(), 1, "image is added");
@@ -8658,7 +8660,7 @@ fn added_and_pasted_image_uses_refactored_image_edits() {
     let dx = 20.0;
     let dy = 20.0;
     let new_rect = [orig_rect[0] + dx, orig_rect[1] + dy, orig_rect[2] + dx, orig_rect[3] + dy];
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage { page: 0, index: 0, change: pdfcraft_engine::ImageEdit::Move(new_rect) });
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage { page: 0, index: 0, change: iridium_pdf_engine::ImageEdit::Move(new_rect) });
     h.run_steps(3);
 
     let images_after_move = h.state().session.get(id).unwrap().page_images(0);
@@ -8700,7 +8702,7 @@ fn stale_clipboard_plain_text_does_not_paste_image() {
 fn delivered_image_with_key_releases_pastes_once() {
     let pdf = include_bytes!("../data/form.pdf").to_vec();
     let mut h = Harness::builder().with_step_dt(1.0 / 60.0).with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.system_clipboard = false;
         app.open_bytes("form.pdf", None, pdf.clone()).expect("opens");
@@ -8713,7 +8715,7 @@ fn delivered_image_with_key_releases_pastes_once() {
     let id = h.state().views[0].id;
     let initial_count = h.state().session.get(id).unwrap().page_images(0).len();
 
-    h.state_mut().clipboard_override = Some(pdfcraft_ui_egui::Clip::Image { width: 40, height: 20, rgba: [100u8, 200, 100, 255].repeat(40 * 20) });
+    h.state_mut().clipboard_override = Some(iridium_pdf_ui_egui::Clip::Image { width: 40, height: 20, rgba: [100u8, 200, 100, 255].repeat(40 * 20) });
 
     // The integration supplies the pixels and consumes native shortcut keys. Extra releases carry no paste authority.
     h.event(egui::Event::PasteImage(std::sync::Arc::new(egui::ColorImage::filled([40, 20], egui::Color32::GREEN))));
@@ -8732,7 +8734,7 @@ fn delivered_image_with_key_releases_pastes_once() {
 fn win_v_does_not_paste_on_open() {
     let pdf = include_bytes!("../data/form.pdf").to_vec();
     let mut h = Harness::builder().with_step_dt(1.0 / 60.0).with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.system_clipboard = false;
         app.open_bytes("form.pdf", None, pdf.clone()).expect("opens");
@@ -8745,7 +8747,7 @@ fn win_v_does_not_paste_on_open() {
     let id = h.state().views[0].id;
     let initial_count = h.state().session.get(id).unwrap().page_images(0).len();
 
-    h.state_mut().clipboard_override = Some(pdfcraft_ui_egui::Clip::Image { width: 40, height: 20, rgba: [100u8, 200, 100, 255].repeat(40 * 20) });
+    h.state_mut().clipboard_override = Some(iridium_pdf_ui_egui::Clip::Image { width: 40, height: 20, rgba: [100u8, 200, 100, 255].repeat(40 * 20) });
 
     // Complete an intentional paste immediately before opening clipboard history.
     h.event(egui::Event::PasteImage(std::sync::Arc::new(egui::ColorImage::filled([40, 20], egui::Color32::GREEN))));
@@ -8754,7 +8756,7 @@ fn win_v_does_not_paste_on_open() {
     assert_eq!(h.state().session.get(id).unwrap().page_images(0).len(), initial_count + 1);
 
     // Simulate pressing Win+V (opening clipboard history flyout):
-    // The OS intercepts V press, so PdfCraft only sees V release without COMMAND (Modifiers::NONE).
+    // The OS intercepts V press, so PDF only sees V release without COMMAND (Modifiers::NONE).
     h.event(egui::Event::Key { key: egui::Key::V, physical_key: None, pressed: false, repeat: false, modifiers: egui::Modifiers::NONE });
     h.run_steps(2);
 
@@ -8775,7 +8777,7 @@ fn win_v_does_not_paste_on_open() {
 fn paste_press_and_release_delivers_single_image() {
     let pdf = include_bytes!("../data/form.pdf").to_vec();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.system_clipboard = false;
         app.open_bytes("form.pdf", None, pdf.clone()).expect("opens");
@@ -8788,7 +8790,7 @@ fn paste_press_and_release_delivers_single_image() {
     let id = h.state().views[0].id;
     let initial_count = h.state().session.get(id).unwrap().page_images(0).len();
 
-    h.state_mut().clipboard_override = Some(pdfcraft_ui_egui::Clip::Image { width: 40, height: 20, rgba: [100u8, 200, 100, 255].repeat(40 * 20) });
+    h.state_mut().clipboard_override = Some(iridium_pdf_ui_egui::Clip::Image { width: 40, height: 20, rgba: [100u8, 200, 100, 255].repeat(40 * 20) });
 
     // Press V with COMMAND
     h.event(egui::Event::Key { key: egui::Key::V, physical_key: None, pressed: true, repeat: false, modifiers: egui::Modifiers::COMMAND });
@@ -8807,7 +8809,7 @@ fn paste_press_and_release_delivers_single_image() {
 fn paste_at_context_menu_point_centers_on_cursor() {
     let pdf = include_bytes!("../data/form.pdf").to_vec();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.system_clipboard = false;
         app.open_bytes("form.pdf", None, pdf.clone()).expect("opens");
@@ -8820,7 +8822,7 @@ fn paste_at_context_menu_point_centers_on_cursor() {
     let id = h.state().views[0].id;
     let initial_count = h.state().session.get(id).unwrap().page_images(0).len();
 
-    h.state_mut().clipboard_override = Some(pdfcraft_ui_egui::Clip::Image { width: 60, height: 40, rgba: [50u8, 150, 250, 255].repeat(60 * 40) });
+    h.state_mut().clipboard_override = Some(iridium_pdf_ui_egui::Clip::Image { width: 60, height: 40, rgba: [50u8, 150, 250, 255].repeat(60 * 40) });
 
     let target_at = [120.0, 180.0];
     assert!(h.state_mut().paste_image_at(0, target_at));
@@ -8837,7 +8839,7 @@ fn paste_at_context_menu_point_centers_on_cursor() {
 fn newer_clipboard_override_beats_stale_in_app_copy() {
     let pdf = include_bytes!("../data/form.pdf").to_vec();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.system_clipboard = false;
         app.open_bytes("form.pdf", None, pdf.clone()).expect("opens");
@@ -8852,7 +8854,7 @@ fn newer_clipboard_override_beats_stale_in_app_copy() {
     h.state_mut().last_copied_image = Some((10, 10, [255u8, 0, 0, 255].repeat(100)));
 
     // Newer clipboard override: 50x50 green image
-    h.state_mut().clipboard_override = Some(pdfcraft_ui_egui::Clip::Image { width: 50, height: 50, rgba: [0u8, 255, 0, 255].repeat(2500) });
+    h.state_mut().clipboard_override = Some(iridium_pdf_ui_egui::Clip::Image { width: 50, height: 50, rgba: [0u8, 255, 0, 255].repeat(2500) });
 
     assert!(h.state_mut().paste_image(0, None));
     let images = h.state().session.get(id).unwrap().page_images(0);
@@ -8867,7 +8869,7 @@ fn rotated_image_selection_and_crop() {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(80, 40, image::Rgb([200, 40, 40])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
         app
@@ -8907,7 +8909,7 @@ fn rotated_image_selection_and_crop() {
         full[0] + (full[2] - full[0]) * 0.8,
         full[1] + (full[3] - full[1]) * 0.8,
     ];
-    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(pdfcraft_ui_egui::CropMode::new(crop_keep));
+    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(iridium_pdf_ui_egui::CropMode::new(crop_keep));
     h.run_steps(2);
 
     // Apply crop via Enter key
@@ -8928,7 +8930,7 @@ fn test_image_8_handles_render_and_drag() {
         .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
         .unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("square.png", None, png.clone()).expect("opens");
         app
@@ -8953,25 +8955,29 @@ fn test_image_8_handles_render_and_drag() {
     let sel = view.image_selection.as_ref().unwrap();
     let doc = h.state().session.get(view.id).unwrap();
     let img = &doc.page_images(sel.page)[sel.index];
-    let xf =
-        pdfcraft_ui_egui::canvas::PageXform { rect: r, rot: view.rotation, pw: doc.info.pages[sel.page].width, ph: doc.info.pages[sel.page].height };
-    let obb = pdfcraft_ui_egui::canvas::ImageObb::from_image(img, &xf, &doc.info, sel.page);
+    let xf = iridium_pdf_ui_egui::canvas::PageXform {
+        rect: r,
+        rot: view.rotation,
+        pw: doc.info.pages[sel.page].width,
+        ph: doc.info.pages[sel.page].height,
+    };
+    let obb = iridium_pdf_ui_egui::canvas::ImageObb::from_image(img, &xf, &doc.info, sel.page);
 
     // Assert that exactly 8 unique resize handles (4 corners, 4 midpoints) are generated
     let handles = obb.handles();
     assert_eq!(handles.len(), 8, "exactly 8 resize handles generated");
 
     let corners = [
-        pdfcraft_ui_egui::ImageHandle::TopLeft,
-        pdfcraft_ui_egui::ImageHandle::TopRight,
-        pdfcraft_ui_egui::ImageHandle::BottomRight,
-        pdfcraft_ui_egui::ImageHandle::BottomLeft,
+        iridium_pdf_ui_egui::ImageHandle::TopLeft,
+        iridium_pdf_ui_egui::ImageHandle::TopRight,
+        iridium_pdf_ui_egui::ImageHandle::BottomRight,
+        iridium_pdf_ui_egui::ImageHandle::BottomLeft,
     ];
     let midpoints = [
-        pdfcraft_ui_egui::ImageHandle::TopCenter,
-        pdfcraft_ui_egui::ImageHandle::RightCenter,
-        pdfcraft_ui_egui::ImageHandle::BottomCenter,
-        pdfcraft_ui_egui::ImageHandle::LeftCenter,
+        iridium_pdf_ui_egui::ImageHandle::TopCenter,
+        iridium_pdf_ui_egui::ImageHandle::RightCenter,
+        iridium_pdf_ui_egui::ImageHandle::BottomCenter,
+        iridium_pdf_ui_egui::ImageHandle::LeftCenter,
     ];
     for corner in &corners {
         assert!(handles.iter().any(|(h, _)| h == corner), "missing corner handle: {:?}", corner);
@@ -8987,7 +8993,7 @@ fn test_image_8_handles_render_and_drag() {
     }
 
     // Simulate a pointer drag on a corner that shrinks the image to 5x5 pixels and assert it does not panic
-    let tr_pos = obb.handle_pos(pdfcraft_ui_egui::ImageHandle::TopRight);
+    let tr_pos = obb.handle_pos(iridium_pdf_ui_egui::ImageHandle::TopRight);
     let anchor = obb.s00;
     let shrink_target = anchor + egui::vec2(5.0, 5.0);
     h.hover_at(tr_pos);
@@ -9005,7 +9011,7 @@ fn test_image_context_menu_precedence() {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(80, 40, image::Rgb([200, 40, 40])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
         app
@@ -9045,7 +9051,7 @@ fn test_image_context_menu_in_crop_mode_and_when_moved() {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(100, 100, image::Rgb([200, 40, 40])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
         app
@@ -9056,10 +9062,10 @@ fn test_image_context_menu_in_crop_mode_and_when_moved() {
     let full = h.state().session.get(id).unwrap().page_images(0)[0].rect;
     let (qw, qh) = ((full[2] - full[0]) / 4.0, (full[3] - full[1]) / 4.0);
     let (mx, my) = ((full[0] + full[2]) / 2.0, (full[1] + full[3]) / 2.0);
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage {
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage {
         page: 0,
         index: 0,
-        change: pdfcraft_engine::ImageEdit::Move([mx - qw, my - qh, mx + qw, my + qh]),
+        change: iridium_pdf_engine::ImageEdit::Move([mx - qw, my - qh, mx + qw, my + qh]),
     });
     h.run_steps(4);
 
@@ -9080,7 +9086,7 @@ fn test_image_context_menu_in_crop_mode_and_when_moved() {
     // Enter crop mode:
     let doc_id = h.state().views[0].id;
     let original_rect = h.state().session.get(doc_id).unwrap().page_images(0)[0].rect;
-    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(pdfcraft_ui_egui::CropMode::new(original_rect));
+    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(iridium_pdf_ui_egui::CropMode::new(original_rect));
     h.run_steps(2);
 
     // Set a smaller crop box that is moved towards top-left
@@ -9119,7 +9125,7 @@ fn test_image_context_menu_in_crop_mode_and_when_moved() {
     assert!(h.query_all_by_label("Rotate view clockwise").next().is_some(), "canvas background menu triggers outside image");
 }
 
-fn crop_secondary_click(h: &mut Harness<'static, PdfCraftApp>, p: egui::Pos2) {
+fn crop_secondary_click(h: &mut Harness<'static, PdfApp>, p: egui::Pos2) {
     assert!(h.state().views[0].viewport_rect().contains(p), "test point must be visible: {p:?}");
     h.hover_at(p);
     h.run_steps(1);
@@ -9129,7 +9135,7 @@ fn crop_secondary_click(h: &mut Harness<'static, PdfCraftApp>, p: egui::Pos2) {
     h.run_steps(2);
 }
 
-fn assert_crop_context_preserved(h: &Harness<'static, PdfCraftApp>) {
+fn assert_crop_context_preserved(h: &Harness<'static, PdfApp>) {
     let selection = h.state().views[0].image_selection.as_ref().expect("crop remains selected");
     assert_eq!(selection.index, 0, "an overlapping image must not steal the crop");
     assert!(selection.crop.is_some(), "crop mode remains active");
@@ -9144,7 +9150,7 @@ fn assert_crop_context_preserved(h: &Harness<'static, PdfCraftApp>) {
 fn test_image_context_menu_crop_overlapping_image_and_handle() {
     for rotation in [0, 90, 180, 270] {
         let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1400.0)).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_bytes("overlap.pdf", None, two_image_fixture()).unwrap();
             app.views[0].rotation = rotation;
@@ -9153,19 +9159,19 @@ fn test_image_context_menu_crop_overlapping_image_and_handle() {
         h.run_steps(4);
         let id = h.state().views[0].id;
         let rect = h.state().session.get(id).unwrap().page_images(0)[0].rect;
-        h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage { page: 0, index: 1, change: pdfcraft_engine::ImageEdit::Move(rect) });
+        h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage { page: 0, index: 1, change: iridium_pdf_engine::ImageEdit::Move(rect) });
         let images = h.state().session.get(id).unwrap().page_images(0);
         assert_eq!(images.len(), 2);
         assert_eq!(images[0].rect, images[1].rect, "fixture images must overlap");
         assert!(h.state_mut().execute("edit.edit_text"));
         h.run_steps(4);
-        let mut selection = pdfcraft_ui_egui::ImageSelection::at(0, 0);
-        selection.crop = Some(pdfcraft_ui_egui::CropMode::new(rect));
+        let mut selection = iridium_pdf_ui_egui::ImageSelection::at(0, 0);
+        selection.crop = Some(iridium_pdf_ui_egui::CropMode::new(rect));
         h.state_mut().views[0].image_selection = Some(selection);
         h.run_steps(2);
         let xf = h.state().views[0].page_xform(0).unwrap();
         let doc = h.state().session.get(id).unwrap();
-        let image_rect = pdfcraft_ui_egui::canvas::image_screen_rect(&doc.page_images(0)[0], &xf, &doc.info, 0);
+        let image_rect = iridium_pdf_ui_egui::canvas::image_screen_rect(&doc.page_images(0)[0], &xf, &doc.info, 0);
         crop_secondary_click(&mut h, image_rect.center());
         assert_crop_context_preserved(&h);
         // This point is outside both images, but inside the left handle's grip.
@@ -9182,7 +9188,7 @@ fn test_image_context_menu_crop_overlapping_image_and_handle() {
 #[test]
 fn a_right_click_on_the_part_a_crop_cuts_away_keeps_crop_mode() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1400.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("cut.pdf", None, two_image_fixture()).unwrap();
         app
@@ -9193,13 +9199,13 @@ fn a_right_click_on_the_part_a_crop_cuts_away_keeps_crop_mode() {
     assert!(h.state_mut().execute("edit.edit_text"));
     h.run_steps(4);
     // Keep the picture's left half.
-    let mut selection = pdfcraft_ui_egui::ImageSelection::at(0, 0);
-    selection.crop = Some(pdfcraft_ui_egui::CropMode::new([rect[0], rect[1], (rect[0] + rect[2]) / 2.0, rect[3]]));
+    let mut selection = iridium_pdf_ui_egui::ImageSelection::at(0, 0);
+    selection.crop = Some(iridium_pdf_ui_egui::CropMode::new([rect[0], rect[1], (rect[0] + rect[2]) / 2.0, rect[3]]));
     h.state_mut().views[0].image_selection = Some(selection);
     h.run_steps(2);
     let xf = h.state().views[0].page_xform(0).unwrap();
     let doc = h.state().session.get(id).unwrap();
-    let b = pdfcraft_ui_egui::canvas::image_screen_rect(&doc.page_images(0)[0], &xf, &doc.info, 0);
+    let b = iridium_pdf_ui_egui::canvas::image_screen_rect(&doc.page_images(0)[0], &xf, &doc.info, 0);
     assert!(b.width() > 60.0, "the picture is wide enough for a point clear of the grips: {b:?}");
     crop_secondary_click(&mut h, b.lerp_inside(egui::vec2(0.8, 0.5)));
     assert_crop_context_preserved(&h);
@@ -9209,26 +9215,26 @@ fn a_right_click_on_the_part_a_crop_cuts_away_keeps_crop_mode() {
 fn test_image_context_menu_crop_page_edge_pills() {
     for rotation in [0, 90, 180, 270] {
         let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1400.0)).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_bytes("edge.pdf", None, two_image_fixture()).unwrap();
             app.views[0].rotation = rotation;
-            app.views[0].fit = pdfcraft_ui_egui::canvas::Fit::Page;
+            app.views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Page;
             app
         });
         h.run_steps(4);
         // A small image at a page corner exercises horizontal clamping and above placement.
         let rect = [1.0, 1.0, 21.0, 21.0];
-        h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage { page: 0, index: 0, change: pdfcraft_engine::ImageEdit::Move(rect) });
-        h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage {
+        h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage { page: 0, index: 0, change: iridium_pdf_engine::ImageEdit::Move(rect) });
+        h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage {
             page: 0,
             index: 1,
-            change: pdfcraft_engine::ImageEdit::Move([100.0, 150.0, 120.0, 170.0]),
+            change: iridium_pdf_engine::ImageEdit::Move([100.0, 150.0, 120.0, 170.0]),
         });
         assert!(h.state_mut().execute("edit.edit_text"));
         h.run_steps(4);
-        let mut selection = pdfcraft_ui_egui::ImageSelection::at(0, 0);
-        selection.crop = Some(pdfcraft_ui_egui::CropMode::new([2.0, 2.0, 20.0, 20.0]));
+        let mut selection = iridium_pdf_ui_egui::ImageSelection::at(0, 0);
+        selection.crop = Some(iridium_pdf_ui_egui::CropMode::new([2.0, 2.0, 20.0, 20.0]));
         h.state_mut().views[0].image_selection = Some(selection);
         h.run_steps(2);
         for label in ["Done", "Cancel", "Remove Crop"] {
@@ -9242,7 +9248,7 @@ fn test_image_context_menu_crop_page_edge_pills() {
         let doc = h.state().session.get(view.id).unwrap();
         let xf = view.page_xform(0).unwrap();
         assert!(
-            doc.page_images(0).iter().all(|img| !pdfcraft_ui_egui::canvas::image_screen_rect(img, &xf, &doc.info, 0).contains(beside)),
+            doc.page_images(0).iter().all(|img| !iridium_pdf_ui_egui::canvas::image_screen_rect(img, &xf, &doc.info, 0).contains(beside)),
             "background test point must miss both images"
         );
         crop_secondary_click(&mut h, beside);
@@ -9261,7 +9267,7 @@ fn test_rotated_image_crop_secondary_click_in_outer_bounding_box_clears_selectio
     let mut png = Vec::new();
     image::RgbImage::from_pixel(80, 80, image::Rgb([200, 40, 40])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1400.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
         app
@@ -9271,14 +9277,14 @@ fn test_rotated_image_crop_secondary_click_in_outer_bounding_box_clears_selectio
     let full = h.state().session.get(id).unwrap().page_images(0)[0].rect;
     let (qw, qh) = ((full[2] - full[0]) / 4.0, (full[3] - full[1]) / 4.0);
     let (mx, my) = ((full[0] + full[2]) / 2.0, (full[1] + full[3]) / 2.0);
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage {
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage {
         page: 0,
         index: 0,
-        change: pdfcraft_engine::ImageEdit::Move([mx - qw, my - qh, mx + qw, my + qh]),
+        change: iridium_pdf_engine::ImageEdit::Move([mx - qw, my - qh, mx + qw, my + qh]),
     });
     h.run_steps(4);
     // Rotate the image by 45°
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage { page: 0, index: 0, change: pdfcraft_engine::ImageEdit::RotateBy(45.0) });
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage { page: 0, index: 0, change: iridium_pdf_engine::ImageEdit::RotateBy(45.0) });
     h.run_steps(4);
 
     assert!(h.state_mut().execute("edit.edit_text"));
@@ -9299,12 +9305,12 @@ fn test_rotated_image_crop_secondary_click_in_outer_bounding_box_clears_selectio
     let img = &h.state().session.get(doc_id).unwrap().page_images(0)[0];
     let (cx, cy) = ((full[0] + full[2]) / 2.0, (full[1] + full[3]) / 2.0);
     let shrunk_crop = [cx - 5.0, cy - 5.0, cx + 5.0, cy + 5.0];
-    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(pdfcraft_ui_egui::CropMode::new(shrunk_crop));
+    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(iridium_pdf_ui_egui::CropMode::new(shrunk_crop));
     h.run_steps(2);
 
     let xf = h.state().views[0].page_xform(0).unwrap();
     let doc_info = &h.state().session.get(doc_id).unwrap().info;
-    let b = pdfcraft_ui_egui::canvas::image_screen_rect(img, &xf, doc_info, 0);
+    let b = iridium_pdf_ui_egui::canvas::image_screen_rect(img, &xf, doc_info, 0);
 
     // The top-left corner of the axis-aligned bounding box `b` is outside the 45°-rotated diamond quad
     let corner = b.left_top() + egui::vec2(2.0, 2.0);
@@ -9323,7 +9329,7 @@ fn a_click_beside_a_turned_picture_in_its_bounds_applies_its_crop() {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(80, 80, image::Rgb([200, 40, 40])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1400.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
         app
@@ -9333,22 +9339,23 @@ fn a_click_beside_a_turned_picture_in_its_bounds_applies_its_crop() {
     let full = h.state().session.get(id).unwrap().page_images(0)[0].rect;
     let (qw, qh) = ((full[2] - full[0]) / 4.0, (full[3] - full[1]) / 4.0);
     let (mx, my) = ((full[0] + full[2]) / 2.0, (full[1] + full[3]) / 2.0);
-    let edit = |change| pdfcraft_engine::Edit::EditPageImage { page: 0, index: 0, change };
-    h.state_mut().apply_edit(edit(pdfcraft_engine::ImageEdit::Move([mx - qw, my - qh, mx + qw, my + qh])));
+    let edit = |change| iridium_pdf_engine::Edit::EditPageImage { page: 0, index: 0, change };
+    h.state_mut().apply_edit(edit(iridium_pdf_engine::ImageEdit::Move([mx - qw, my - qh, mx + qw, my + qh])));
     h.run_steps(4);
-    h.state_mut().apply_edit(edit(pdfcraft_engine::ImageEdit::RotateBy(45.0)));
+    h.state_mut().apply_edit(edit(iridium_pdf_engine::ImageEdit::RotateBy(45.0)));
     h.run_steps(4);
     assert!(h.state_mut().execute("edit.edit_text"));
     h.run_steps(2);
     let c = h.state().views[0].page_screen_rect(0).expect("on screen").center();
     click_at(&mut h, c);
     assert!(h.state().views[0].image_selection.is_some(), "selected");
-    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(pdfcraft_ui_egui::CropMode::new([mx - 5.0, my - 5.0, mx + 5.0, my + 5.0]));
+    h.state_mut().views[0].image_selection.as_mut().unwrap().crop =
+        Some(iridium_pdf_ui_egui::CropMode::new([mx - 5.0, my - 5.0, mx + 5.0, my + 5.0]));
     h.run_steps(2);
 
     let img = h.state().session.get(id).unwrap().page_images(0)[0].clone();
     let xf = h.state().views[0].page_xform(0).unwrap();
-    let b = pdfcraft_ui_egui::canvas::image_screen_rect(&img, &xf, &h.state().session.get(id).unwrap().info, 0);
+    let b = iridium_pdf_ui_egui::canvas::image_screen_rect(&img, &xf, &h.state().session.get(id).unwrap().info, 0);
     // The bounds' top-left corner lies outside the 45° diamond.
     click_at(&mut h, b.left_top() + egui::vec2(2.0, 2.0));
     assert!(h.state().views[0].image_selection.is_none(), "a click off the turned picture lets it go");
@@ -9357,7 +9364,7 @@ fn a_click_beside_a_turned_picture_in_its_bounds_applies_its_crop() {
 
 /// A picture alone in the middle of a page, empty page around it (#6422).
 fn picture_with_room_around() -> Vec<u8> {
-    use pdfcraft_cos::{Dict, Document, Object, Stream, write_incremental};
+    use iridium_pdf_cos::{Dict, Document, Object, Stream, write_incremental};
     let mut doc = Document::open(std::sync::Arc::new(fixture(1))).unwrap();
     let mut image = Dict::new();
     image.set(b"Type".to_vec(), Object::name("XObject"));
@@ -9367,7 +9374,7 @@ fn picture_with_room_around() -> Vec<u8> {
     image.set(b"BitsPerComponent".to_vec(), Object::Int(8));
     image.set(b"ColorSpace".to_vec(), Object::name("DeviceRGB"));
     let image = doc.add(Object::Stream(Stream::flate(image, &[60, 110, 200])));
-    let page = pdfcraft_model::pages(&doc).swap_remove(0);
+    let page = iridium_pdf_model::pages(&doc).swap_remove(0);
     let contents = doc.add(Object::Stream(Stream::flate(Dict::new(), b"q 100 0 0 80 50 150 cm /Im0 Do Q")));
     let mut resources = doc.resolve(page.dict.get(b"Resources").unwrap()).as_dict().unwrap().clone();
     let mut xo = Dict::new();
@@ -9386,14 +9393,14 @@ fn picture_with_room_around() -> Vec<u8> {
 #[test]
 fn a_click_away_from_the_picture_applies_its_crop() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1100.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("room.pdf", None, picture_with_room_around()).unwrap();
         app
     });
     h.run_steps(4);
     assert!(h.state_mut().execute("edit.edit_text"));
-    h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::Page;
+    h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Page;
     h.run_steps(3);
     let r = h.state().views[0].page_screen_rect(0).unwrap();
     let at = |x: f32, y: f32| egui::pos2(r.left() + x / 200.0 * r.width(), r.top() + (300.0 - y) / 300.0 * r.height());
@@ -9402,7 +9409,7 @@ fn a_click_away_from_the_picture_applies_its_crop() {
 
     click_at(&mut h, at(100.0, 190.0));
     assert!(h.state().views[0].image_selection.as_ref().is_some_and(|s| s.index == 0), "the picture is selected");
-    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(pdfcraft_ui_egui::CropMode::new(full));
+    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(iridium_pdf_ui_egui::CropMode::new(full));
     h.run_steps(2);
     let keep = [full[0], full[1], full[0] + 60.0, full[3]];
     h.state_mut().views[0].image_selection.as_mut().unwrap().crop.as_mut().unwrap().keep = keep;
@@ -9446,7 +9453,7 @@ fn crop_action_pills_interactive_and_apply_cancel_reset() {
         .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
         .unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("square.png", None, png.clone()).expect("opens");
         app
@@ -9469,7 +9476,7 @@ fn crop_action_pills_interactive_and_apply_cancel_reset() {
     // Enter crop mode
     let doc_id = h.state().views[0].id;
     let original_rect = h.state().session.get(doc_id).unwrap().page_images(0)[0].rect;
-    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(pdfcraft_ui_egui::CropMode::new(original_rect));
+    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(iridium_pdf_ui_egui::CropMode::new(original_rect));
     h.run_steps(2);
 
     // Set smaller crop rect (50x50 in center)
@@ -9495,7 +9502,7 @@ fn crop_action_pills_interactive_and_apply_cancel_reset() {
     assert_eq!(h.state().session.get(doc_id).unwrap().page_images(0)[0].visible_rect, Some(original_rect), "image is uncropped");
 
     // Re-enter crop mode and set crop rect
-    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(pdfcraft_ui_egui::CropMode::new(original_rect));
+    h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(iridium_pdf_ui_egui::CropMode::new(original_rect));
     set_crop_box(&mut h, smaller);
     h.run_steps(2);
 
@@ -9528,7 +9535,7 @@ fn test_cropped_image_selection_and_bounding_box() {
         .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
         .unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("square.png", None, png.clone()).expect("opens");
         app
@@ -9547,7 +9554,7 @@ fn test_cropped_image_selection_and_bounding_box() {
         full_rect[0] + (full_rect[2] - full_rect[0]) * 0.75,
         full_rect[1] + (full_rect[3] - full_rect[1]) * 0.75,
     ];
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage { page: 0, index: 0, change: pdfcraft_engine::ImageEdit::Crop(crop_keep) });
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage { page: 0, index: 0, change: iridium_pdf_engine::ImageEdit::Crop(crop_keep) });
     h.run_steps(4);
 
     let img = &h.state().session.get(doc_id).unwrap().page_images(0)[0];
@@ -9559,10 +9566,10 @@ fn test_cropped_image_selection_and_bounding_box() {
     assert!((vis[3] - crop_keep[3]).abs() < 1e-3);
 
     // Verify selectable bounds helper gives the cropped intersection
-    assert_eq!(pdfcraft_ui_egui::canvas::image_selectable_bounds(img), vis);
+    assert_eq!(iridium_pdf_ui_egui::canvas::image_selectable_bounds(img), vis);
 
     // Select tool (mouse tool)
-    h.state_mut().quick_tool = pdfcraft_ui_egui::QuickTool::Select;
+    h.state_mut().quick_tool = iridium_pdf_ui_egui::QuickTool::Select;
     h.run_steps(2);
 
     let page_rect = h.state().views[0].page_screen_rect(0).expect("on screen");
@@ -9594,14 +9601,16 @@ fn test_cropped_image_selection_and_bounding_box() {
 #[test]
 fn fix_hairlines_from_the_dialog() {
     // A page with a zero-width line and a 2 pt line.
-    let mut doc = pdfcraft_cos::Document::open(std::sync::Arc::new(fixture(1))).unwrap();
-    let page = pdfcraft_model::pages(&doc).remove(0);
-    let cs = doc
-        .add(pdfcraft_cos::Object::Stream(pdfcraft_cos::Stream::flate(pdfcraft_cos::Dict::new(), b"0 w 10 10 m 100 10 l S 2 w 10 20 m 100 20 l S")));
-    doc.update_dict(page.obj, |d| d.set(b"Contents".to_vec(), pdfcraft_cos::Object::Ref(cs))).unwrap();
-    let bytes = pdfcraft_cos::write_full(&doc, &Default::default()).unwrap();
+    let mut doc = iridium_pdf_cos::Document::open(std::sync::Arc::new(fixture(1))).unwrap();
+    let page = iridium_pdf_model::pages(&doc).remove(0);
+    let cs = doc.add(iridium_pdf_cos::Object::Stream(iridium_pdf_cos::Stream::flate(
+        iridium_pdf_cos::Dict::new(),
+        b"0 w 10 10 m 100 10 l S 2 w 10 20 m 100 20 l S",
+    )));
+    doc.update_dict(page.obj, |d| d.set(b"Contents".to_vec(), iridium_pdf_cos::Object::Ref(cs))).unwrap();
+    let bytes = iridium_pdf_cos::write_full(&doc, &Default::default()).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("lines.pdf", None, bytes.clone()).expect("opens");
         app
@@ -9628,15 +9637,15 @@ fn fix_hairlines_from_the_dialog() {
 /// Several strokes on one page: the notice says "hairlines" and "1 page".
 #[test]
 fn fix_hairlines_notice_uses_singular_and_plural() {
-    let mut doc = pdfcraft_cos::Document::open(std::sync::Arc::new(fixture(2))).unwrap();
-    for (n, page) in pdfcraft_model::pages(&doc).into_iter().enumerate() {
+    let mut doc = iridium_pdf_cos::Document::open(std::sync::Arc::new(fixture(2))).unwrap();
+    for (n, page) in iridium_pdf_model::pages(&doc).into_iter().enumerate() {
         let lines = if n == 0 { "0 w 10 10 m 100 10 l S 0 w 10 20 m 100 20 l S" } else { "2 w 10 10 m 100 10 l S" };
-        let cs = doc.add(pdfcraft_cos::Object::Stream(pdfcraft_cos::Stream::flate(pdfcraft_cos::Dict::new(), lines.as_bytes())));
-        doc.update_dict(page.obj, |d| d.set(b"Contents".to_vec(), pdfcraft_cos::Object::Ref(cs))).unwrap();
+        let cs = doc.add(iridium_pdf_cos::Object::Stream(iridium_pdf_cos::Stream::flate(iridium_pdf_cos::Dict::new(), lines.as_bytes())));
+        doc.update_dict(page.obj, |d| d.set(b"Contents".to_vec(), iridium_pdf_cos::Object::Ref(cs))).unwrap();
     }
-    let bytes = pdfcraft_cos::write_full(&doc, &Default::default()).unwrap();
+    let bytes = iridium_pdf_cos::write_full(&doc, &Default::default()).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("lines.pdf", None, bytes.clone()).expect("opens");
         app
@@ -9653,7 +9662,7 @@ fn fix_hairlines_notice_uses_singular_and_plural() {
 /// The `dialog` option goes through the command: with no document it does not open the dialog.
 #[test]
 fn fix_hairlines_option_needs_a_document() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("dialog", "fix-hairlines").unwrap();
     assert_eq!(app.dialog, None);
 }
@@ -9662,7 +9671,7 @@ fn fix_hairlines_option_needs_a_document() {
 /// putting the Edit text tool down does; left open, it would stay drawn in Read mode with no tool.
 #[test]
 fn read_mode_shortcut_applies_the_open_paragraph() {
-    use pdfcraft_ui_egui::{Mode, QuickTool};
+    use iridium_pdf_ui_egui::{Mode, QuickTool};
     let mut h = harness(1, |_| {});
     assert!(h.state_mut().execute("edit.edit_text"));
     h.run_steps(2);
@@ -9689,9 +9698,9 @@ fn read_mode_shortcut_applies_the_open_paragraph() {
 
 #[test]
 fn arrange_duplicate_image_clears_selection_when_ambiguous() {
-    use pdfcraft_cos::{Dict, Document, Object, SaveOptions, Stream, write_incremental};
+    use iridium_pdf_cos::{Dict, Document, Object, SaveOptions, Stream, write_incremental};
     let mut doc = Document::open(std::sync::Arc::new(fixture(1))).unwrap();
-    let page = pdfcraft_model::pages(&doc)[0].clone();
+    let page = iridium_pdf_model::pages(&doc)[0].clone();
     let mut form = Dict::new();
     form.set(b"Subtype".to_vec(), Object::name("Form"));
     form.set(b"BBox".to_vec(), Object::Array([0, 0, 200, 300].map(Object::Int).to_vec()));
@@ -9710,7 +9719,7 @@ fn arrange_duplicate_image_clears_selection_when_ambiguous() {
     let bytes = write_incremental(&doc, &SaveOptions::default()).unwrap();
 
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("dup.pdf", None, bytes.clone()).expect("opens");
         app
@@ -9727,14 +9736,14 @@ fn arrange_duplicate_image_clears_selection_when_ambiguous() {
 
     // Select the second occurrence (index 1)
     h.state_mut().views[0].image_selection =
-        Some(pdfcraft_ui_egui::ImageSelection { page: 0, index: 1, drag: None, crop: None, turning: false, settled: None });
+        Some(iridium_pdf_ui_egui::ImageSelection { page: 0, index: 1, drag: None, crop: None, turning: false, settled: None });
     h.run_steps(2);
 
     // Arrange send to back
-    let applied = h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage {
+    let applied = h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage {
         page: 0,
         index: 1,
-        change: pdfcraft_engine::ImageEdit::Arrange(pdfcraft_engine::ArrangeOrder::SendToBack),
+        change: iridium_pdf_engine::ImageEdit::Arrange(iridium_pdf_engine::ArrangeOrder::SendToBack),
     });
     assert!(applied);
     h.run_steps(2);
@@ -9746,9 +9755,9 @@ fn arrange_duplicate_image_clears_selection_when_ambiguous() {
 
 #[test]
 fn arrange_unique_image_preserves_selection() {
-    use pdfcraft_cos::{Dict, Document, Object, SaveOptions, Stream, write_incremental};
+    use iridium_pdf_cos::{Dict, Document, Object, SaveOptions, Stream, write_incremental};
     let mut doc = Document::open(std::sync::Arc::new(fixture(1))).unwrap();
-    let page = pdfcraft_model::pages(&doc)[0].clone();
+    let page = iridium_pdf_model::pages(&doc)[0].clone();
     let mut form = Dict::new();
     form.set(b"Subtype".to_vec(), Object::name("Form"));
     form.set(b"BBox".to_vec(), Object::Array([0, 0, 200, 300].map(Object::Int).to_vec()));
@@ -9768,7 +9777,7 @@ fn arrange_unique_image_preserves_selection() {
     let bytes = write_incremental(&doc, &SaveOptions::default()).unwrap();
 
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("unique.pdf", None, bytes.clone()).expect("opens");
         app
@@ -9785,13 +9794,13 @@ fn arrange_unique_image_preserves_selection() {
 
     // Select FigA at index 0 and bring it to front (should move after FigB, becoming index 1)
     h.state_mut().views[0].image_selection =
-        Some(pdfcraft_ui_egui::ImageSelection { page: 0, index: 0, drag: None, crop: None, turning: false, settled: None });
+        Some(iridium_pdf_ui_egui::ImageSelection { page: 0, index: 0, drag: None, crop: None, turning: false, settled: None });
     h.run_steps(2);
 
-    let applied = h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage {
+    let applied = h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage {
         page: 0,
         index: 0,
-        change: pdfcraft_engine::ImageEdit::Arrange(pdfcraft_engine::ArrangeOrder::BringToFront),
+        change: iridium_pdf_engine::ImageEdit::Arrange(iridium_pdf_engine::ArrangeOrder::BringToFront),
     });
     assert!(applied);
     h.run_steps(2);
@@ -9802,9 +9811,9 @@ fn arrange_unique_image_preserves_selection() {
 
 #[test]
 fn undo_arrange_re_resolves_image_selection_or_clears() {
-    use pdfcraft_cos::{Dict, Document, Object, SaveOptions, Stream, write_incremental};
+    use iridium_pdf_cos::{Dict, Document, Object, SaveOptions, Stream, write_incremental};
     let mut doc = Document::open(std::sync::Arc::new(fixture(1))).unwrap();
-    let page = pdfcraft_model::pages(&doc)[0].clone();
+    let page = iridium_pdf_model::pages(&doc)[0].clone();
     let mut form = Dict::new();
     form.set(b"Subtype".to_vec(), Object::name("Form"));
     form.set(b"BBox".to_vec(), Object::Array([0, 0, 200, 300].map(Object::Int).to_vec()));
@@ -9824,7 +9833,7 @@ fn undo_arrange_re_resolves_image_selection_or_clears() {
     let bytes = write_incremental(&doc, &SaveOptions::default()).unwrap();
 
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("undo_arrange.pdf", None, bytes.clone()).expect("opens");
         app
@@ -9841,14 +9850,14 @@ fn undo_arrange_re_resolves_image_selection_or_clears() {
 
     // Select FigA (back image, index 0)
     h.state_mut().views[0].image_selection =
-        Some(pdfcraft_ui_egui::ImageSelection { page: 0, index: 0, drag: None, crop: None, turning: false, settled: None });
+        Some(iridium_pdf_ui_egui::ImageSelection { page: 0, index: 0, drag: None, crop: None, turning: false, settled: None });
     h.run_steps(2);
 
     // Bring to front
-    let applied = h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage {
+    let applied = h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage {
         page: 0,
         index: 0,
-        change: pdfcraft_engine::ImageEdit::Arrange(pdfcraft_engine::ArrangeOrder::BringToFront),
+        change: iridium_pdf_engine::ImageEdit::Arrange(iridium_pdf_engine::ArrangeOrder::BringToFront),
     });
     assert!(applied);
     h.run_steps(2);
@@ -9885,10 +9894,10 @@ fn undo_arrange_re_resolves_image_selection_or_clears() {
     assert_eq!(images_redo[sel_redo.index].name, "FigA");
 
     // Bringing to front when already at front is refused, but selection must be preserved
-    let applied_again = h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage {
+    let applied_again = h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage {
         page: 0,
         index: 1,
-        change: pdfcraft_engine::ImageEdit::Arrange(pdfcraft_engine::ArrangeOrder::BringToFront),
+        change: iridium_pdf_engine::ImageEdit::Arrange(iridium_pdf_engine::ArrangeOrder::BringToFront),
     });
     assert!(!applied_again);
     h.run_steps(2);
@@ -9940,16 +9949,15 @@ fn a_paragraph_running_off_its_page_edits_without_covering_the_next_page() {
     }
     bytes.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 1400.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("off-page.pdf", None, bytes).unwrap();
         app
     });
     h.run_steps(4);
-    h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::Page;
+    h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Page;
     h.run_steps(4);
-    let rects =
-        |h: &Harness<'static, PdfCraftApp>| (h.state().views[0].page_screen_rect(0).unwrap(), h.state().views[0].page_screen_rect(1).unwrap());
+    let rects = |h: &Harness<'static, PdfApp>| (h.state().views[0].page_screen_rect(0).unwrap(), h.state().views[0].page_screen_rect(1).unwrap());
     // The same pages without Edit text, so without the paragraph's outline: what the gap looks
     // like there, pixel by pixel (review on #3070: it isn't one colour on every platform).
     let (first, second) = rects(&h);
@@ -9998,7 +10006,7 @@ fn a_paragraph_running_off_its_page_edits_without_covering_the_next_page() {
 /// Between pages `first` and `second`, and on `second` above its own text, across where page
 /// 1's paragraph is: what is there without it (the gap as `plain` shows it without Edit text,
 /// white paper).
-fn shown_on_its_page_only(h: &mut Harness<'static, PdfCraftApp>, plain: &image::RgbaImage, first: egui::Rect, second: egui::Rect, what: &str) {
+fn shown_on_its_page_only(h: &mut Harness<'static, PdfApp>, plain: &image::RgbaImage, first: egui::Rect, second: egui::Rect, what: &str) {
     let shot = h.render().unwrap();
     let pixel = |x: f32, y: f32| shot.get_pixel(x as u32, y as u32).0;
     let gap_y = (first.bottom() + second.top()) / 2.0;
@@ -10013,14 +10021,14 @@ fn shown_on_its_page_only(h: &mut Harness<'static, PdfCraftApp>, plain: &image::
 }
 
 /// Where a mode bar tab is, by its label.
-fn mode_tab(h: &Harness<'static, PdfCraftApp>, label: &str) -> egui::Rect {
+fn mode_tab(h: &Harness<'static, PdfApp>, label: &str) -> egui::Rect {
     h.get_all_by_role_and_label(Role::Button, label).map(|n| n.rect()).find(|r| r.bottom() < 120.0).expect("a mode tab")
 }
 
 /// The cursor over each mode bar tab that page 1's text lies under, once that text is scrolled
 /// up under the bar. With the All tools panel closed it lies under Edit, Convert and E-Sign; it
 /// starts right of All tools.
-fn mode_tab_cursors(h: &mut Harness<'static, PdfCraftApp>, text: egui::Rect) -> [(&'static str, egui::CursorIcon); 3] {
+fn mode_tab_cursors(h: &mut Harness<'static, PdfApp>, text: egui::Rect) -> [(&'static str, egui::CursorIcon); 3] {
     h.state_mut().views[0].goto = Some((0, 0.5));
     h.run_steps(4);
     let offset = h.state().views[0].page_screen_rect(0).expect("on screen").top();
@@ -10037,7 +10045,7 @@ const HAND_ON_EVERY_TAB: [(&str, egui::CursorIcon); 3] =
     [("Edit", egui::CursorIcon::PointingHand), ("Convert", egui::CursorIcon::PointingHand), ("E-Sign", egui::CursorIcon::PointingHand)];
 
 /// Page 1's text block on screen, relative to the page's top edge, in the window as it is now.
-fn page_text(h: &Harness<'static, PdfCraftApp>) -> egui::Rect {
+fn page_text(h: &Harness<'static, PdfApp>) -> egui::Rect {
     let id = h.state().views[0].id;
     let block = h.state().session.get(id).unwrap().text_blocks(0)[0].clone();
     let r = h.state().views[0].page_screen_rect(0).expect("on screen");
@@ -10101,7 +10109,7 @@ fn mode_tabs_keep_the_hand_over_a_paragraph_scrolled_under_them() {
     h.state_mut().views[0].goto = Some((0, 0.5));
     h.run_steps(4);
     click_at(&mut h, convert);
-    assert_eq!(h.state().mode, pdfcraft_ui_egui::Mode::Convert, "the tab takes the click, not the paragraph's editor");
+    assert_eq!(h.state().mode, iridium_pdf_ui_egui::Mode::Convert, "the tab takes the click, not the paragraph's editor");
 }
 
 #[test]
@@ -10139,7 +10147,7 @@ fn copy_pasted_image_discards_coordinates_and_moves_without_offset() {
 
     // 4. Move the pasted image by an explicit Move change
     let target = [50.0, 50.0, 110.0, 110.0];
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage { page: 0, index: 1, change: pdfcraft_engine::ImageEdit::Move(target) });
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage { page: 0, index: 1, change: iridium_pdf_engine::ImageEdit::Move(target) });
     h.run_steps(3);
 
     let images_after_move = h.state().session.get(id).unwrap().page_images(0);
@@ -10151,7 +10159,7 @@ fn clicking_after_image_context_menu_action_resets_menu_state_and_updates_select
     let mut png = Vec::new();
     image::RgbImage::from_pixel(80, 40, image::Rgb([200, 40, 40])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("picture.png", None, png.clone()).expect("opens");
         app
@@ -10159,15 +10167,15 @@ fn clicking_after_image_context_menu_action_resets_menu_state_and_updates_select
     h.run_steps(4);
     let id = h.state().views[0].id;
     // Move the first image to left side: [10.0, 10.0, 30.0, 30.0]
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage {
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage {
         page: 0,
         index: 0,
-        change: pdfcraft_engine::ImageEdit::Move([10.0, 10.0, 30.0, 30.0]),
+        change: iridium_pdf_engine::ImageEdit::Move([10.0, 10.0, 30.0, 30.0]),
     });
     // Add second image to right side: [50.0, 10.0, 70.0, 30.0]
     let mut png2 = Vec::new();
     image::RgbImage::from_pixel(20, 20, image::Rgb([40, 200, 40])).write_to(&mut std::io::Cursor::new(&mut png2), image::ImageFormat::Png).unwrap();
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::AddImage {
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddImage {
         page: 0,
         rect: Some([50.0, 10.0, 70.0, 30.0]),
         name: "img2.png".into(),
@@ -10286,7 +10294,7 @@ fn format_panel_shows_selection_size_and_updates_after_font_applied() {
     pdf.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_pos}\n%%EOF\n", objs.len() + 1).as_bytes());
 
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("test.pdf", None, pdf).expect("fixture opens");
         app
@@ -10345,7 +10353,7 @@ fn format_panel_shows_selection_size_and_updates_after_font_applied() {
 }
 
 /// The paragraph opened for typing, as a person opens it: a click on its text.
-fn open_paragraph(h: &mut Harness<'static, PdfCraftApp>) {
+fn open_paragraph(h: &mut Harness<'static, PdfApp>) {
     let r = h.state().views[0].page_screen_rect(0).expect("on screen");
     let at = egui::pos2(r.left() + 40.0 / 200.0 * r.width(), r.top() + (300.0 - 158.0) / 300.0 * r.height());
     click_at(h, at);
@@ -10400,7 +10408,7 @@ fn undo_while_typing_takes_back_the_typing_first() {
 }
 
 /// A paragraph of a short, a wide and a short row, opened in the paragraph editor.
-fn three_row_paragraph() -> Harness<'static, PdfCraftApp> {
+fn three_row_paragraph() -> Harness<'static, PdfApp> {
     let bytes = paragraph_drag_fixture("BT /F1 10 Tf 12 TL 60 400 Td (One two) Tj T* (three four five six seven eight) Tj T* (nine ten) Tj ET", 0, 1);
     let mut h = paragraph_drag_harness(bytes, 0);
     let (at, _) = paragraph_drag_points(&h, "One two three four five six seven eight nine ten", [0.0, 0.0]);
@@ -10410,14 +10418,14 @@ fn three_row_paragraph() -> Harness<'static, PdfCraftApp> {
 }
 
 /// Format text's alignment flyout, by pointer.
-fn align_by_pointer(h: &mut Harness<'static, PdfCraftApp>, choice: &str) {
+fn align_by_pointer(h: &mut Harness<'static, PdfApp>, choice: &str) {
     let button = h.get_by_label("Alignment").rect().center();
     click_at(h, button);
     let item = h.get_by_label(choice).rect().center();
     click_at(h, item);
 }
 
-fn row_rect(h: &Harness<'static, PdfCraftApp>, starts: &str) -> [f64; 4] {
+fn row_rect(h: &Harness<'static, PdfApp>, starts: &str) -> [f64; 4] {
     let s = h.state();
     s.session.get(s.views[0].id).unwrap().text_lines(0).into_iter().find(|l| l.text.starts_with(starts)).expect("the row").rect
 }
@@ -10607,7 +10615,7 @@ fn undo_after_a_round_trip_through_another_tab_takes_back_the_typing() {
     let mut h = harness(1, |app| {
         app.open_bytes("copy.pdf", None, fixture(1)).expect("the copy opens");
     });
-    let open_in = |h: &mut Harness<'static, PdfCraftApp>, tab: usize| {
+    let open_in = |h: &mut Harness<'static, PdfApp>, tab: usize| {
         h.state_mut().active = Some(tab);
         h.run_steps(2);
         if h.state().views[tab].line_editor.is_none() {
@@ -10682,7 +10690,7 @@ fn undo_in_the_frame_of_the_switch_back_takes_back_the_typing() {
     let mut h = harness(1, |app| {
         app.open_bytes("copy.pdf", None, fixture(1)).expect("the copy opens");
     });
-    let open_in = |h: &mut Harness<'static, PdfCraftApp>, tab: usize| {
+    let open_in = |h: &mut Harness<'static, PdfApp>, tab: usize| {
         h.state_mut().active = Some(tab);
         h.run_steps(2);
         if h.state().views[tab].line_editor.is_none() {
@@ -10723,7 +10731,7 @@ fn redo_in_the_frame_of_a_tab_switch_never_brings_another_tabs_typing() {
     let mut h = harness(1, |app| {
         app.open_bytes("copy.pdf", None, fixture(1)).expect("the copy opens");
     });
-    let open_in = |h: &mut Harness<'static, PdfCraftApp>, tab: usize| {
+    let open_in = |h: &mut Harness<'static, PdfApp>, tab: usize| {
         h.state_mut().active = Some(tab);
         h.run_steps(2);
         assert!(h.state_mut().execute("edit.edit_text"));
@@ -10760,7 +10768,7 @@ fn typing_in_one_tab_never_reaches_another_tabs_paragraph() {
     let mut h = harness(1, |app| {
         app.open_bytes("copy.pdf", None, fixture(1)).expect("the copy opens");
     });
-    let open_in = |h: &mut Harness<'static, PdfCraftApp>, tab: usize| {
+    let open_in = |h: &mut Harness<'static, PdfApp>, tab: usize| {
         h.state_mut().active = Some(tab);
         h.run_steps(2);
         assert!(h.state_mut().execute("edit.edit_text"));
@@ -10807,7 +10815,7 @@ fn a_paragraph_selected_by_its_frame_deletes_with_one_key() {
         assert!(h.state_mut().execute("edit.edit_text"));
         h.run_steps(2);
         let id = h.state().views[0].id;
-        let blocks = |h: &Harness<'static, PdfCraftApp>| h.state().session.get(id).unwrap().text_blocks(0);
+        let blocks = |h: &Harness<'static, PdfApp>| h.state().session.get(id).unwrap().text_blocks(0);
         let r = h.state().views[0].page_screen_rect(0).expect("on screen");
         let k = r.width() / 200.0;
         let screen = |x: f64, y: f64| egui::pos2(r.left() + x as f32 * k, r.top() + (300.0 - y as f32) * k);
@@ -10856,7 +10864,7 @@ fn two_image_fixture() -> Vec<u8> {
 #[test]
 fn duplicate_xobject_at_different_rects_arrange_and_delete_keeps_other_instance_through_menu() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1400.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("dup.pdf", None, two_image_fixture()).expect("opens fixture");
         app
@@ -10869,7 +10877,7 @@ fn duplicate_xobject_at_different_rects_arrange_and_delete_keeps_other_instance_
     let xf = h.state().views[0].page_xform(0).expect("page 0 xform");
     let imgs = h.state().session.get(id).unwrap().page_images(0);
     // B is at index 0 [100, 100, 120, 120], in the back
-    let b0 = pdfcraft_ui_egui::canvas::image_screen_rect(&imgs[0], &xf, &h.state().session.get(id).unwrap().info, 0);
+    let b0 = iridium_pdf_ui_egui::canvas::image_screen_rect(&imgs[0], &xf, &h.state().session.get(id).unwrap().info, 0);
     let p_b = b0.center();
 
     // 1. Select B (image 0)
@@ -10902,7 +10910,7 @@ fn duplicate_xobject_at_different_rects_arrange_and_delete_keeps_other_instance_
     let sel_idx = sel.unwrap();
     let xf_again = h.state().views[0].page_xform(0).expect("page 0 xform");
     let cur_imgs = h.state().session.get(id).unwrap().page_images(0);
-    let b_rect = pdfcraft_ui_egui::canvas::image_screen_rect(&cur_imgs[sel_idx], &xf_again, &h.state().session.get(id).unwrap().info, 0);
+    let b_rect = iridium_pdf_ui_egui::canvas::image_screen_rect(&cur_imgs[sel_idx], &xf_again, &h.state().session.get(id).unwrap().info, 0);
     let p_b2 = b_rect.center();
     h.hover_at(p_b2);
     h.run_steps(1);
@@ -10916,7 +10924,7 @@ fn duplicate_xobject_at_different_rects_arrange_and_delete_keeps_other_instance_
 
     // 7. Save, reopen and verify: A remains at [20, 20, 40, 40], B is deleted
     let saved = h.state().session.save_bytes(id).unwrap();
-    let mut reopened = pdfcraft_engine::Session::new();
+    let mut reopened = iridium_pdf_engine::Session::new();
     let rid = reopened.open("again.pdf", None, saved, None).unwrap();
     let imgs = reopened.get(rid).unwrap().page_images(0);
     assert_eq!(imgs.len(), 1, "exactly one image must remain after deleting B");
@@ -10932,7 +10940,7 @@ fn escape_in_an_open_paragraph_selects_its_box_for_delete() {
         assert!(h.state_mut().execute("edit.edit_text"));
         h.run_steps(2);
         let id = h.state().views[0].id;
-        let blocks = |h: &Harness<'static, PdfCraftApp>| h.state().session.get(id).unwrap().text_blocks(0);
+        let blocks = |h: &Harness<'static, PdfApp>| h.state().session.get(id).unwrap().text_blocks(0);
         let r = h.state().views[0].page_screen_rect(0).expect("on screen");
         let k = r.width() / 200.0;
         let b = blocks(&h)[0].clone();
@@ -10978,14 +10986,14 @@ fn ungroup_in_the_artwork_menu_makes_a_forms_text_editable() {
     let pdf = pdf_of_objects(&objs);
 
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("table.pdf", None, pdf.clone()).expect("opens");
         app
     });
     h.run_steps(4);
     let id = h.state().views[0].id;
-    let blocks = |h: &Harness<'static, PdfCraftApp>| h.state().session.get(id).unwrap().text_blocks(0).len();
+    let blocks = |h: &Harness<'static, PdfApp>| h.state().session.get(id).unwrap().text_blocks(0).len();
     assert_eq!(blocks(&h), 0, "the table's text is inside the form");
     assert!(h.state_mut().execute("edit.edit_text"));
     h.run_steps(2);
@@ -11000,7 +11008,7 @@ fn ungroup_in_the_artwork_menu_makes_a_forms_text_editable() {
     // The page's own menu opens over the artwork menu (#2637, fixed by #2155), so the item is
     // applied the way it queues its edit rather than clicked through the overlap.
     h.state_mut().views[0].pending_edit =
-        Some(pdfcraft_engine::Edit::EditPageImage { page: 0, index: 0, change: pdfcraft_engine::ImageEdit::Ungroup });
+        Some(iridium_pdf_engine::Edit::EditPageImage { page: 0, index: 0, change: iridium_pdf_engine::ImageEdit::Ungroup });
     h.run_steps(4);
     assert!(blocks(&h) >= 1, "the table's rows are page text now");
     let images = h.state().session.get(id).unwrap().page_images(0);
@@ -11054,14 +11062,14 @@ fn one_click_on_grouped_text_opens_it_for_editing() {
     ];
     let pdf = pdf_of_objects(&objs);
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("grouped.pdf", None, pdf.clone()).expect("opens");
         app
     });
     h.run_steps(4);
     let id = h.state().views[0].id;
-    let doc = |h: &Harness<'static, PdfCraftApp>| {
+    let doc = |h: &Harness<'static, PdfApp>| {
         let d = h.state().session.get(id).unwrap();
         (d.text_blocks(0).len(), d.page_images(0).len(), d.can_undo().map(str::to_string))
     };
@@ -11103,33 +11111,33 @@ fn outward_image_grip_drags_grow_on_rotated_pages() {
                     .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
                     .unwrap();
                 let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-                    let mut app = PdfCraftApp::new();
+                    let mut app = PdfApp::new();
                     app.set_option("language", "en").unwrap();
                     app.open_bytes("grips.png", None, png.clone()).unwrap();
                     app
                 });
                 h.run_steps(4);
-                h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage {
+                h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage {
                     page: 0,
                     index: 0,
-                    change: pdfcraft_engine::ImageEdit::Move([20.0, 20.0, 80.0, 60.0]),
+                    change: iridium_pdf_engine::ImageEdit::Move([20.0, 20.0, 80.0, 60.0]),
                 });
-                h.state_mut().apply_edit(pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: rotation });
+                h.state_mut().apply_edit(iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: rotation });
                 if image_turn != 0.0 {
-                    h.state_mut().apply_edit(pdfcraft_engine::Edit::EditPageImage {
+                    h.state_mut().apply_edit(iridium_pdf_engine::Edit::EditPageImage {
                         page: 0,
                         index: 0,
-                        change: pdfcraft_engine::ImageEdit::RotateBy(image_turn),
+                        change: iridium_pdf_engine::ImageEdit::RotateBy(image_turn),
                     });
                 }
-                h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::Page;
+                h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Page;
                 assert!(h.state_mut().execute("edit.edit_text"));
-                h.state_mut().views[0].image_selection = Some(pdfcraft_ui_egui::ImageSelection::at(0, 0));
+                h.state_mut().views[0].image_selection = Some(iridium_pdf_ui_egui::ImageSelection::at(0, 0));
                 h.run_steps(3);
                 let view = &h.state().views[0];
                 let doc = h.state().session.get(view.id).unwrap();
                 let before = doc.page_images(0)[0].clone();
-                let obb = pdfcraft_ui_egui::canvas::ImageObb::from_image(&before, &view.page_xform(0).unwrap(), &doc.info, 0);
+                let obb = iridium_pdf_ui_egui::canvas::ImageObb::from_image(&before, &view.page_xform(0).unwrap(), &doc.info, 0);
                 let (handle, start) = obb.handles()[grip];
                 let opposite = obb.handles()[(grip + 4) % 8].0;
                 let finish = start + (start - obb.screen_center) * 0.15;
@@ -11148,7 +11156,7 @@ fn outward_image_grip_drags_grow_on_rotated_pages() {
                 let doc = h.state().session.get(view.id).unwrap();
                 let images = doc.page_images(0);
                 let after = &images[0];
-                let after_obb = pdfcraft_ui_egui::canvas::ImageObb::from_image(after, &view.page_xform(0).unwrap(), &doc.info, 0);
+                let after_obb = iridium_pdf_ui_egui::canvas::ImageObb::from_image(after, &view.page_xform(0).unwrap(), &doc.info, 0);
                 assert!(
                     after_obb.handle_pos(opposite).distance(obb.handle_pos(opposite)) < 1.0,
                     "fixed grip moved: rotation={rotation} image_turn={image_turn} grip={grip}"
@@ -11172,21 +11180,21 @@ fn outward_image_grip_drags_grow_on_rotated_pages() {
 #[test]
 fn author_image_clip_is_not_offered_as_a_removable_editor_crop() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1100.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("author-clip.pdf", None, clipped_artwork_with_labels()).unwrap();
         app
     });
     h.run_steps(4);
     assert!(h.state_mut().execute("edit.edit_text"));
-    h.state_mut().views[0].image_selection = Some(pdfcraft_ui_egui::ImageSelection::at(0, 0));
+    h.state_mut().views[0].image_selection = Some(iridium_pdf_ui_egui::ImageSelection::at(0, 0));
     h.run_steps(3);
     let view = &h.state().views[0];
     let doc = h.state().session.get(view.id).unwrap();
     let image = doc.page_images(0)[0].clone();
     let visible = image.visible_rect.unwrap();
     let xf = view.page_xform(0).unwrap();
-    let bounds = pdfcraft_ui_egui::canvas::image_screen_rect(&image, &xf, &doc.info, 0);
+    let bounds = iridium_pdf_ui_egui::canvas::image_screen_rect(&image, &xf, &doc.info, 0);
     let p = bounds.center();
     h.hover_at(p);
     h.event(egui::Event::PointerButton { pos: p, button: egui::PointerButton::Secondary, pressed: true, modifiers: Default::default() });
@@ -11209,9 +11217,9 @@ fn author_image_clip_is_not_offered_as_a_removable_editor_crop() {
 }
 
 fn affine_review_image_fixture(matrix: [f64; 6], clip: Option<[f64; 4]>, rotation: i64) -> Vec<u8> {
-    use pdfcraft_cos::{Dict, Document, Object, Stream};
+    use iridium_pdf_cos::{Dict, Document, Object, Stream};
     let mut doc = Document::open(std::sync::Arc::new(fixture(1))).unwrap();
-    let page = pdfcraft_model::pages(&doc).remove(0);
+    let page = iridium_pdf_model::pages(&doc).remove(0);
     let mut image = Dict::new();
     image.set(b"Type".to_vec(), Object::name("XObject"));
     image.set(b"Subtype".to_vec(), Object::name("Image"));
@@ -11238,20 +11246,20 @@ fn affine_review_image_fixture(matrix: [f64; 6], clip: Option<[f64; 4]>, rotatio
         dict.set(b"Rotate".to_vec(), Object::Int(rotation));
     })
     .unwrap();
-    pdfcraft_cos::write_incremental(&doc, &Default::default()).unwrap()
+    iridium_pdf_cos::write_incremental(&doc, &Default::default()).unwrap()
 }
 
-fn affine_review_harness(bytes: Vec<u8>) -> Harness<'static, PdfCraftApp> {
+fn affine_review_harness(bytes: Vec<u8>) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 1000.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("affine-review.pdf", None, bytes.clone()).unwrap();
         app
     });
     h.run_steps(4);
-    h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::Page;
+    h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Page;
     assert!(h.state_mut().execute("edit.edit_text"));
-    h.state_mut().views[0].image_selection = Some(pdfcraft_ui_egui::ImageSelection::at(0, 0));
+    h.state_mut().views[0].image_selection = Some(iridium_pdf_ui_egui::ImageSelection::at(0, 0));
     h.run_steps(3);
     h
 }
@@ -11271,8 +11279,8 @@ fn affine_review_resize_out_and_back_preserves_saved_placement() {
             let doc = h.state().session.get(id).unwrap();
             let original = doc.page_images(0)[0].matrix;
             let before = h.state().session.save_bytes(id).unwrap();
-            let obb = pdfcraft_ui_egui::canvas::ImageObb::from_image(&doc.page_images(0)[0], &view.page_xform(0).unwrap(), &doc.info, 0);
-            let start = obb.handle_pos(pdfcraft_ui_egui::ImageHandle::TopRight) + offset;
+            let obb = iridium_pdf_ui_egui::canvas::ImageObb::from_image(&doc.page_images(0)[0], &view.page_xform(0).unwrap(), &doc.info, 0);
+            let start = obb.handle_pos(iridium_pdf_ui_egui::ImageHandle::TopRight) + offset;
             h.hover_at(start);
             h.run_steps(1);
             h.drag_at(start);
@@ -11286,7 +11294,7 @@ fn affine_review_resize_out_and_back_preserves_saved_placement() {
             let saved = h.state().session.save_bytes(id).unwrap();
             assert!(saved == before, "out-and-back must not create an edit: matrix={matrix:?} clip={clip:?} rotation={rotation} offset={offset:?}");
             assert_eq!(h.state().session.get(id).unwrap().can_undo(), None);
-            let mut reopened = pdfcraft_engine::Session::new();
+            let mut reopened = iridium_pdf_engine::Session::new();
             let reopened_id = reopened.open("saved.pdf", None, saved, None).unwrap();
             assert_eq!(reopened.get(reopened_id).unwrap().page_images(0)[0].matrix, original);
         }
@@ -11308,8 +11316,8 @@ fn affine_review_resize_uses_press_delta_and_affine_frame() {
             let id = view.id;
             let doc = h.state().session.get(id).unwrap();
             let xf = view.page_xform(0).unwrap();
-            let obb = pdfcraft_ui_egui::canvas::ImageObb::from_image(&doc.page_images(0)[0], &xf, &doc.info, 0);
-            let grip = obb.handle_pos(pdfcraft_ui_egui::ImageHandle::TopRight);
+            let obb = iridium_pdf_ui_egui::canvas::ImageObb::from_image(&doc.page_images(0)[0], &xf, &doc.info, 0);
+            let grip = obb.handle_pos(iridium_pdf_ui_egui::ImageHandle::TopRight);
             let start = grip + offset;
             let finish = start + (grip - obb.screen_center) * 0.2;
             h.hover_at(start);
@@ -11321,17 +11329,19 @@ fn affine_review_resize_uses_press_delta_and_affine_frame() {
             h.drop_at(finish);
             h.run_steps(3);
             let saved = h.state().session.save_bytes(id).unwrap();
-            let mut reopened = pdfcraft_engine::Session::new();
+            let mut reopened = iridium_pdf_engine::Session::new();
             let reopened_id = reopened.open("saved.pdf", None, saved, None).unwrap();
             let after = reopened.get(reopened_id).unwrap().page_images(0)[0].clone();
-            let after_obb = pdfcraft_ui_egui::canvas::ImageObb::from_image(&after, &xf, &reopened.get(reopened_id).unwrap().info, 0);
+            let after_obb = iridium_pdf_ui_egui::canvas::ImageObb::from_image(&after, &xf, &reopened.get(reopened_id).unwrap().info, 0);
             assert!(
-                after_obb.handle_pos(pdfcraft_ui_egui::ImageHandle::BottomLeft).distance(obb.handle_pos(pdfcraft_ui_egui::ImageHandle::BottomLeft))
+                after_obb
+                    .handle_pos(iridium_pdf_ui_egui::ImageHandle::BottomLeft)
+                    .distance(obb.handle_pos(iridium_pdf_ui_egui::ImageHandle::BottomLeft))
                     < 0.1,
                 "opposite affine grip moved: {matrix:?} clip={clip:?} rotation={rotation}"
             );
             assert!(
-                after_obb.handle_pos(pdfcraft_ui_egui::ImageHandle::TopRight).distance(grip + (grip - obb.screen_center) * 0.2) < 0.2,
+                after_obb.handle_pos(iridium_pdf_ui_egui::ImageHandle::TopRight).distance(grip + (grip - obb.screen_center) * 0.2) < 0.2,
                 "resized affine frame missed the press-relative target: {matrix:?} clip={clip:?} rotation={rotation} offset={offset:?}"
             );
             placements.push(after.matrix);
@@ -11350,7 +11360,7 @@ fn affine_review_cropped_rotation_preview_matches_saved_corners() {
         let doc = h.state().session.get(id).unwrap();
         let image = doc.page_images(0)[0].clone();
         let xf = view.page_xform(0).unwrap();
-        let obb = pdfcraft_ui_egui::canvas::ImageObb::from_image(&image, &xf, &doc.info, 0);
+        let obb = iridium_pdf_ui_egui::canvas::ImageObb::from_image(&image, &xf, &doc.info, 0);
         let visible = image.visible_rect.unwrap_or(image.rect);
         let p = doc.info.pages[0].user_to_view(((visible[0] + visible[2]) * 0.5) as f32, ((visible[1] + visible[3]) * 0.5) as f32);
         let centre = xf.norm_to_screen(p[0] / xf.pw, p[1] / xf.ph);
@@ -11375,7 +11385,7 @@ fn affine_review_cropped_rotation_preview_matches_saved_corners() {
             .expect("rotation preview outline");
         if clip.is_some()
             && rotation == 0
-            && let Ok(directory) = std::env::var("PDFCRAFT_AFFINE_SHOTS")
+            && let Ok(directory) = std::env::var("IRIDIUM_PDF_AFFINE_SHOTS")
         {
             h.render().unwrap().save(std::path::Path::new(&directory).join("affine-rotation-preview.png")).unwrap();
         }
@@ -11383,18 +11393,18 @@ fn affine_review_cropped_rotation_preview_matches_saved_corners() {
         h.run_steps(3);
         if clip.is_some()
             && rotation == 0
-            && let Ok(directory) = std::env::var("PDFCRAFT_AFFINE_SHOTS")
+            && let Ok(directory) = std::env::var("IRIDIUM_PDF_AFFINE_SHOTS")
         {
             h.render().unwrap().save(std::path::Path::new(&directory).join("affine-rotation-committed.png")).unwrap();
         }
         let saved = h.state().session.save_bytes(id).unwrap();
-        let mut reopened = pdfcraft_engine::Session::new();
+        let mut reopened = iridium_pdf_engine::Session::new();
         let reopened_id = reopened.open("saved.pdf", None, saved, None).unwrap();
         let doc = reopened.get(reopened_id).unwrap();
         let after = doc.page_images(0)[0].clone();
-        let committed = pdfcraft_ui_egui::canvas::ImageObb::from_matrix(after.matrix, &xf, &doc.info, 0).corners();
+        let committed = iridium_pdf_ui_egui::canvas::ImageObb::from_matrix(after.matrix, &xf, &doc.info, 0).corners();
         let (cx, cy) = ((visible[0] + visible[2]) * 0.5, (visible[1] + visible[3]) * 0.5);
-        let expected = pdfcraft_content::Matrix(image.matrix).then(&pdfcraft_content::Matrix([0.0, -1.0, 1.0, 0.0, cx - cy, cy + cx])).0;
+        let expected = iridium_pdf_content::Matrix(image.matrix).then(&iridium_pdf_content::Matrix([0.0, -1.0, 1.0, 0.0, cx - cy, cy + cx])).0;
         assert!(
             after.matrix.into_iter().zip(expected).all(|(a, b)| (a - b).abs() < 1e-3),
             "knob must commit the requested 90-degree turn around visible bounds"
@@ -11413,21 +11423,21 @@ fn a_modified_click_away_from_a_cropped_picture_applies_its_crop() {
     // review).
     for mods in [egui::Modifiers::SHIFT, egui::Modifiers::COMMAND] {
         let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1100.0)).build_eframe(|_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_bytes("room.pdf", None, picture_with_room_around()).unwrap();
             app
         });
         h.run_steps(4);
         assert!(h.state_mut().execute("edit.edit_text"));
-        h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::Page;
+        h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Page;
         h.run_steps(3);
         let r = h.state().views[0].page_screen_rect(0).unwrap();
         let at = |x: f32, y: f32| egui::pos2(r.left() + x / 200.0 * r.width(), r.top() + (300.0 - y) / 300.0 * r.height());
         let doc_id = h.state().views[0].id;
         let full = h.state().session.get(doc_id).unwrap().page_images(0)[0].rect;
         click_at(&mut h, at(100.0, 190.0));
-        h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(pdfcraft_ui_egui::CropMode::new(full));
+        h.state_mut().views[0].image_selection.as_mut().unwrap().crop = Some(iridium_pdf_ui_egui::CropMode::new(full));
         h.run_steps(2);
         let keep = [full[0], full[1], full[0] + 60.0, full[3]];
         h.state_mut().views[0].image_selection.as_mut().unwrap().crop.as_mut().unwrap().keep = keep;

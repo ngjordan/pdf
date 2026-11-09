@@ -2,7 +2,7 @@
 //! space (ISO 32000-2 §8.6.6.4): `/All` paints every colourant of the output device at once, so
 //! on screen a tint t is the gray 1 − t whatever the alternate space and tint transform say;
 //! `/None` paints nothing; any other name goes through its alternate space.
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RenderedPage};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest, RenderedPage};
 use std::sync::Arc;
 
 /// A tint transform into DeviceCMYK that gives cyan: tint t → (t, 0, 0, 0). Through it a tint

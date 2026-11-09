@@ -14,7 +14,7 @@
 
 use std::collections::HashSet;
 
-use pdfcraft_cos::{DecodeBudget, Dict, Document, ObjRef, Object};
+use iridium_pdf_cos::{DecodeBudget, Dict, Document, ObjRef, Object};
 
 /// Table C.1: the smallest and largest integer values.
 const MIN_INT: i64 = i32::MIN as i64;
@@ -85,7 +85,7 @@ impl Exceeded {
 
     /// The operands of one content stream, inline images' dictionaries included.
     fn content(&mut self, data: &[u8]) {
-        for op in pdfcraft_content::ops(data) {
+        for op in iridium_pdf_content::ops(data) {
             if self.all() {
                 return;
             }
@@ -120,7 +120,7 @@ pub(crate) fn exceeded(doc: &Document, objs: &[(ObjRef, std::sync::Arc<Object>)]
     }
     let mut budget = DecodeBudget::new(MAX_CONTENT_BYTES, 0);
     let mut read: HashSet<ObjRef> = HashSet::new();
-    for page in pdfcraft_model::pages(doc) {
+    for page in iridium_pdf_model::pages(doc) {
         if found.all() || budget.remaining() == 0 {
             return found;
         }
@@ -216,7 +216,7 @@ fn maps_past_limit(data: &[u8]) -> bool {
             _ => None,
         }
     };
-    pdfcraft_content::ops(data).any(|op| match op.op.as_slice() {
+    iridium_pdf_content::ops(data).any(|op| match op.op.as_slice() {
         b"endcidrange" => op.operands.as_chunks::<3>().0.iter().any(|[low, high, cid]| match (value(low), value(high), value(cid)) {
             (Some(low), Some(high), Some(cid)) => cid.saturating_add(high.saturating_sub(low)) > MAX_CID,
             _ => false,

@@ -9,7 +9,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use pdfcraft_cos::{Dict, Document, MAX_DECODED, Object, XrefEntry};
+use iridium_pdf_cos::{Dict, Document, MAX_DECODED, Object, XrefEntry};
 
 /// The categories, in Acrobat's order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -193,7 +193,7 @@ fn annotation_category(doc: &Document, annot: &Object) -> SpaceCategory {
 fn serialized_len(doc: &Document, num: u32) -> Option<u64> {
     let obj = doc.try_get(num).ok()?;
     let mut out = Vec::new();
-    pdfcraft_cos::serialize(&obj, &mut out);
+    iridium_pdf_cos::serialize(&obj, &mut out);
     Some(out.len() as u64)
 }
 
@@ -218,9 +218,9 @@ fn object_stream(doc: &Document, num: u32) -> Option<u32> {
 pub fn audit_space(doc: &Document, file_len: u64) -> Vec<SpaceUse> {
     let mut a = Audit { doc, owner: HashMap::new() };
     let cat = doc.root().and_then(|r| doc.get(r).as_dict().cloned()).unwrap_or_default();
-    let pages = pdfcraft_model::pages(doc);
+    let pages = iridium_pdf_model::pages(doc);
     // Order matters: the most specific owners first. Resources by kind before anything that
-    // uses them: a content stream's dictionary may point at what it draws (PdfCraft's /PCAdded
+    // uses them: a content stream's dictionary may point at what it draws (PDF's /PCAdded
     // records an added image), and form fields and comments draw with fonts and images too.
     for p in &pages {
         let res = a.resolve_dict(p.dict.get(b"Resources"));
@@ -338,7 +338,7 @@ pub fn audit_space(doc: &Document, file_len: u64) -> Vec<SpaceUse> {
 mod tests {
     use std::sync::Arc;
 
-    use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString, SaveOptions, Stream, write_full};
+    use iridium_pdf_cos::{Dict, Document, ObjRef, Object, PdfString, SaveOptions, Stream, write_full};
 
     use super::*;
 

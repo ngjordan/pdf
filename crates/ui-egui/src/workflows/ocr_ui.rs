@@ -5,11 +5,11 @@
 use std::sync::{Arc, Mutex};
 
 use egui::{Align, Layout};
-use pdfcraft_engine::DocId;
-use pdfcraft_engine::ocr::{EngineChoice, LANGUAGES, MergeStrategy, OcrPage, OcrSettings, OutputMode};
+use iridium_pdf_engine::DocId;
+use iridium_pdf_engine::ocr::{EngineChoice, LANGUAGES, MergeStrategy, OcrPage, OcrSettings, OutputMode};
 
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, widgets};
+use crate::{PdfApp, widgets};
 
 /// Which pages to read.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -184,7 +184,7 @@ pub struct BatchProgress {
     pub cancel: bool,
 }
 
-/// A page Edit should read now (see [`PdfCraftApp::scan_to_read`]).
+/// A page Edit should read now (see [`PdfApp::scan_to_read`]).
 struct ScanToRead {
     view: usize,
     doc: DocId,
@@ -202,7 +202,7 @@ pub struct OcrRun {
     pub progress: Arc<Mutex<OcrProgress>>,
     /// What the document looked like when the job started: a result is applied only while it
     /// still does (the dialog closes on Go, so the user can edit, or redact, while this runs).
-    pub guard: pdfcraft_engine::ocr::OcrGuard,
+    pub guard: iridium_pdf_engine::ocr::OcrGuard,
     /// Set for a run Edit started on a scanned page, not asked for: it shows no progress, says nothing
     /// when it found no words (a page with text of its own is skipped, and Edit must not make noise),
     /// and its result waits for Read mode and dialogs and is dropped if the document changed.
@@ -210,7 +210,7 @@ pub struct OcrRun {
     /// The dialog promised an editable document: the result goes to the OCR Verify screen
     /// (whose Accept produces the editable document), not to an invisible layer.
     pub editable: bool,
-    /// The web build reads the pages in Web Workers, pumped by [`PdfCraftApp::poll_ocr`].
+    /// The web build reads the pages in Web Workers, pumped by [`PdfApp::poll_ocr`].
     #[cfg(target_arch = "wasm32")]
     pub web: Option<crate::ocr_web::Pages>,
 }
@@ -228,12 +228,12 @@ pub struct AutoOcr {
 /// The Tesseract probe runs in the background (the interface never waits on a process): while
 /// it runs, an engine choice reads as "still checking", so look again soon.
 pub(crate) fn keep_asking_while_probing(ctx: &egui::Context) {
-    if pdfcraft_engine::ocr::engine_probe_running() {
+    if iridium_pdf_engine::ocr::engine_probe_running() {
         ctx.request_repaint_after(std::time::Duration::from_millis(200));
     }
 }
 
-pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (bool, bool) {
+pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfApp, t: &Tokens) -> (bool, bool) {
     let pages = app.active_ids().and_then(|(_, id)| app.session.get(id)).map_or(1, |d| d.info.pages.len().max(1));
     let d = &mut app.ocr_draft;
     d.to = d.to.clamp(1, pages);
@@ -360,7 +360,7 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (boo
     keep_asking_while_probing(ui.ctx());
     // The web build has no model files: it downloads the models the first time they're needed.
     #[cfg(target_arch = "wasm32")]
-    let downloading = d.engine != EngineChoice::Tesseract && pdfcraft_engine::ocr::engine_unavailable_reason(EngineChoice::Ocrs).is_some();
+    let downloading = d.engine != EngineChoice::Tesseract && iridium_pdf_engine::ocr::engine_unavailable_reason(EngineChoice::Ocrs).is_some();
     #[cfg(not(target_arch = "wasm32"))]
     let downloading = false;
     #[cfg(target_arch = "wasm32")]
@@ -387,12 +387,12 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (boo
         }
         ui.add_space(6.0);
     }
-    if let Some(why) = pdfcraft_engine::ocr::engine_unavailable_reason(d.engine).filter(|_| !downloading) {
+    if let Some(why) = iridium_pdf_engine::ocr::engine_unavailable_reason(d.engine).filter(|_| !downloading) {
         // Said in the interface's language: the built-in engine's missing models get the
         // notice users know; Tesseract's reasons are catalog keys of their own.
         let text = match d.engine {
-            pdfcraft_engine::ocr::EngineChoice::Tesseract => crate::i18n::t(&why).to_string(),
-            _ => tl!("Text recognition isn't installed: its model files are missing. Reinstall PdfCraft, or set PDFCRAFT_MODELS to the folder that holds them.")
+            iridium_pdf_engine::ocr::EngineChoice::Tesseract => crate::i18n::t(&why).to_string(),
+            _ => tl!("Text recognition isn't installed: its model files are missing. Reinstall PDF, or set IRIDIUM_PDF_MODELS to the folder that holds them.")
                 .to_string(),
         };
         ui.label(egui::RichText::new(text).small().color(t.text_muted));
@@ -400,7 +400,7 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (boo
     }
     ui.add_space(6.0);
     let (mut go, mut cancel) = (false, false);
-    let can_run = pdfcraft_engine::ocr::engine_unavailable_reason(d.engine).is_none();
+    let can_run = iridium_pdf_engine::ocr::engine_unavailable_reason(d.engine).is_none();
     ui.horizontal(|ui| {
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if ui.add_enabled_ui(can_run, |ui| widgets::pill_button(ui, tl!("Recognize text"), true)).inner.clicked() {
@@ -414,7 +414,7 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (boo
     (go, cancel)
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Recognize text on the pages chosen in the dialog, in the background.
     pub fn start_ocr(&mut self) {
         let Some((vi, id)) = self.active_ids() else { return };
@@ -453,7 +453,7 @@ impl PdfCraftApp {
         let Some(scan) = self.scan_to_read() else { return };
         // the engine this run will use, not always the built-in one
         let mut settings = self.ocr_draft.settings();
-        if pdfcraft_engine::ocr::engine_unavailable_reason(settings.engine).is_some() {
+        if iridium_pdf_engine::ocr::engine_unavailable_reason(settings.engine).is_some() {
             self.await_ocr_models(&scan);
             return;
         }
@@ -564,10 +564,10 @@ impl PdfCraftApp {
     fn run_ocr_job(
         &mut self,
         id: DocId,
-        job: pdfcraft_engine::ocr::OcrJob,
+        job: iridium_pdf_engine::ocr::OcrJob,
         settings: OcrSettings,
         progress: Arc<Mutex<OcrProgress>>,
-        guard: pdfcraft_engine::ocr::OcrGuard,
+        guard: iridium_pdf_engine::ocr::OcrGuard,
         auto: Option<AutoOcr>,
         editable: bool,
     ) {
@@ -577,7 +577,7 @@ impl PdfCraftApp {
         let work = move || {
             crate::i18n::set_current(lang);
             let result = recognize_guarded(|| {
-                pdfcraft_engine::ocr::recognizers(&settings).map(|r| {
+                iridium_pdf_engine::ocr::recognizers(&settings).map(|r| {
                     job.run(&r, |done, total| {
                         let Ok(mut s) = p.lock() else { return false };
                         s.done = done;
@@ -593,7 +593,7 @@ impl PdfCraftApp {
         if self.run_inline {
             work();
         } else {
-            std::thread::Builder::new().name("pdfcraft-ocr".into()).spawn(work).ok();
+            std::thread::Builder::new().name("iridium-pdf-ocr".into()).spawn(work).ok();
         }
         self.ocr_run = Some(OcrRun { doc: id, progress, guard, automatic: auto, editable });
         self.poll_ocr();
@@ -635,7 +635,7 @@ impl PdfCraftApp {
         }
         // Two inputs of one file name (from different folders) would write the same output
         // (or download under the same name): refused before anything is read.
-        let twice = pdfcraft_engine::ocr::duplicate_output_names(files.iter().map(|(name, _)| name.as_str()));
+        let twice = iridium_pdf_engine::ocr::duplicate_output_names(files.iter().map(|(name, _)| name.as_str()));
         if !twice.is_empty() {
             self.notify_error(crate::i18n::fmt(
                 tl!("Several files have the same name, so their results would overwrite each other; nothing was written: {list}"),
@@ -700,7 +700,7 @@ impl PdfCraftApp {
     #[cfg(target_arch = "wasm32")]
     fn start_waiting_web_batch(&mut self) {
         let Some((_, settings)) = &self.ocr_web_waiting else { return };
-        if pdfcraft_engine::ocr::engine_unavailable_reason(settings.engine).is_none() {
+        if iridium_pdf_engine::ocr::engine_unavailable_reason(settings.engine).is_none() {
             if let Some((files, settings)) = self.ocr_web_waiting.take() {
                 self.start_web_batch(files, settings);
             }
@@ -725,7 +725,7 @@ impl PdfCraftApp {
     #[cfg(not(target_arch = "wasm32"))]
     fn run_ocr_files(&mut self, files: Vec<(String, Vec<u8>)>, settings: OcrSettings, dir: std::path::PathBuf) {
         // The engines are built (and named if they cannot be) before anything starts.
-        let recognizers = match pdfcraft_engine::ocr::recognizers(&settings) {
+        let recognizers = match iridium_pdf_engine::ocr::recognizers(&settings) {
             Ok(r) => r,
             Err(why) => {
                 self.notify_error(why);
@@ -738,11 +738,11 @@ impl PdfCraftApp {
         let lang = crate::i18n::current();
         let work = move || {
             crate::i18n::set_current(lang);
-            let write = move |name: &str, r: &pdfcraft_engine::ocr::FileResult| {
+            let write = move |name: &str, r: &iridium_pdf_engine::ocr::FileResult| {
                 crate::editing::write_atomically(&dir.join(name).to_string_lossy(), &r.bytes).map_err(|e| e.to_string())
             };
             // A panic in the recognizer still ends the batch with a summary (#3919).
-            let msg = pdfcraft_engine::guard(|| run_batch_files(files, settings, &recognizers, &p, write)).unwrap_or_else(|panic| failed(&panic));
+            let msg = iridium_pdf_engine::guard(|| run_batch_files(files, settings, &recognizers, &p, write)).unwrap_or_else(|panic| failed(&panic));
             if let Ok(mut s) = p.lock() {
                 s.done = s.total;
                 s.message = Some(msg);
@@ -751,7 +751,7 @@ impl PdfCraftApp {
         if self.run_inline {
             work();
         } else {
-            std::thread::Builder::new().name("pdfcraft-ocr-files".into()).spawn(work).ok();
+            std::thread::Builder::new().name("iridium-pdf-ocr-files".into()).spawn(work).ok();
         }
         self.ocr_batch = Some(progress);
         self.poll_ocr();
@@ -780,7 +780,7 @@ impl PdfCraftApp {
     /// run for want of them, start (or retry) the download, say so and return `true`.
     #[cfg(target_arch = "wasm32")]
     pub(crate) fn web_models_missing(&mut self, engine: EngineChoice) -> bool {
-        if pdfcraft_engine::ocr::engine_unavailable_reason(engine).is_none() {
+        if iridium_pdf_engine::ocr::engine_unavailable_reason(engine).is_none() {
             return false;
         }
         if crate::ocr_web::state() != crate::ocr_web::State::Loading
@@ -797,7 +797,7 @@ impl PdfCraftApp {
     fn pump_web_ocr(&mut self) {
         self.start_waiting_web_batch();
         if self.views.iter().any(|v| !v.auto_ocr_awaiting_models.is_empty())
-            && pdfcraft_engine::ocr::engine_unavailable_reason(EngineChoice::Ocrs).is_none()
+            && iridium_pdf_engine::ocr::engine_unavailable_reason(EngineChoice::Ocrs).is_none()
         {
             self.ocr_models_loaded();
         }
@@ -986,9 +986,9 @@ impl PdfCraftApp {
 pub(crate) fn run_batch_files(
     files: Vec<(String, Vec<u8>)>,
     settings: OcrSettings,
-    recognizers: &pdfcraft_engine::ocr::Recognizers,
+    recognizers: &iridium_pdf_engine::ocr::Recognizers,
     progress: &Mutex<BatchProgress>,
-    mut write: impl FnMut(&str, &pdfcraft_engine::ocr::FileResult) -> Result<(), String>,
+    mut write: impl FnMut(&str, &iridium_pdf_engine::ocr::FileResult) -> Result<(), String>,
 ) -> String {
     let total = files.len();
     let (mut ok, mut skipped, mut words, mut failed, mut notes) = (0usize, 0usize, 0usize, Vec::new(), Vec::new());
@@ -1001,7 +1001,7 @@ pub(crate) fn run_batch_files(
         if let Ok(mut s) = progress.lock() {
             s.done = i;
         }
-        let r = pdfcraft_engine::ocr::recognize_file(&name, Arc::new(bytes), None, settings.clone(), recognizers, |_, _| true);
+        let r = iridium_pdf_engine::ocr::recognize_file(&name, Arc::new(bytes), None, settings.clone(), recognizers, |_, _| true);
         match r {
             Ok(res) if res.skipped() => skipped += 1,
             Ok(res) => match write(&name, &res) {
@@ -1022,8 +1022,8 @@ pub(crate) fn run_batch_files(
 
 /// The batch's low-confidence note for one file: its words at or under `threshold` (60 by
 /// default), on 1-based sorted pages; `None` when it has none.
-pub(crate) fn low_confidence_note(name: &str, res: &pdfcraft_engine::ocr::FileResult, threshold: f32) -> Option<String> {
-    let (count, pages) = pdfcraft_engine::ocr::low_confidence_pages(&res.pages, threshold)?;
+pub(crate) fn low_confidence_note(name: &str, res: &iridium_pdf_engine::ocr::FileResult, threshold: f32) -> Option<String> {
+    let (count, pages) = iridium_pdf_engine::ocr::low_confidence_pages(&res.pages, threshold)?;
     let list = pages.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(", ");
     Some(crate::i18n::fmt(tl!("{name}: {n} low-confidence word(s) on pages {pages}"), &[("name", name), ("n", &count.to_string()), ("pages", &list)]))
 }
@@ -1061,15 +1061,15 @@ fn failed(e: &str) -> String {
 /// the run's error: the run has to end either way, or it refuses every later one (#3919).
 #[cfg(not(target_arch = "wasm32"))]
 fn recognize_guarded<T>(recognize: impl FnOnce() -> Result<T, String>) -> Result<T, String> {
-    pdfcraft_engine::guard(recognize).unwrap_or_else(|panic| Err(failed(&panic)))
+    iridium_pdf_engine::guard(recognize).unwrap_or_else(|panic| Err(failed(&panic)))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{Dialog, LeftPanel, Mode, QuickTool};
-    use pdfcraft_engine::ocr::{Recognizer, Recognizers};
-    use pdfcraft_engine::{Edit, Session};
+    use iridium_pdf_engine::ocr::{Recognizer, Recognizers};
+    use iridium_pdf_engine::{Edit, Session};
 
     /// A one-page PDF that is one picture covering the page.
     fn scan() -> Vec<u8> {
@@ -1080,14 +1080,14 @@ mod tests {
         Session::new().create_from_images(&[("scan.png".into(), png.into_inner())]).unwrap().to_vec()
     }
 
-    fn app_with(pdf: Vec<u8>) -> PdfCraftApp {
-        let mut app = PdfCraftApp::new();
+    fn app_with(pdf: Vec<u8>) -> PdfApp {
+        let mut app = PdfApp::new();
         app.open_bytes("doc.pdf", None, pdf).unwrap();
         app.quick_tool = QuickTool::EditText;
         app
     }
 
-    fn found(app: &mut PdfCraftApp) -> Option<usize> {
+    fn found(app: &mut PdfApp) -> Option<usize> {
         app.scan_to_read().map(|s| s.page)
     }
 
@@ -1163,7 +1163,7 @@ mod tests {
     /// asked for is applied at once. The result is made up, so no OCR models are needed.
     #[test]
     fn the_result_of_an_automatic_run_waits_for_read_mode_and_dialogs() {
-        let word = || pdfcraft_engine::ocr::PlacedWord {
+        let word = || iridium_pdf_engine::ocr::PlacedWord {
             text: "scanned".into(),
             origin: [72.0, 700.0],
             across: [60.0, 0.0],
@@ -1171,9 +1171,9 @@ mod tests {
             confidence: None,
             source: "ocrs".into(),
         };
-        let finished = |app: &PdfCraftApp, automatic: bool| {
+        let finished = |app: &PdfApp, automatic: bool| {
             let generation = app.session.get(app.active_ids().unwrap().1).unwrap().edit_generation();
-            let page = pdfcraft_engine::ocr::OcrPage { page: 0, words: vec![word()], already_on_page: 0, skipped: None, notes: Vec::new() };
+            let page = iridium_pdf_engine::ocr::OcrPage { page: 0, words: vec![word()], already_on_page: 0, skipped: None, notes: Vec::new() };
             let progress = Arc::new(Mutex::new(OcrProgress { done: 1, total: 1, result: Some(Ok(vec![page])), cancel: false }));
             let guard = app.session.ocr_guard(app.active_ids().unwrap().1).unwrap();
             OcrRun {
@@ -1184,7 +1184,7 @@ mod tests {
                 editable: false,
             }
         };
-        let label = |app: &PdfCraftApp| app.session.get(app.active_ids().unwrap().1).unwrap().can_undo().map(String::from);
+        let label = |app: &PdfApp| app.session.get(app.active_ids().unwrap().1).unwrap().can_undo().map(String::from);
 
         let mut app = app_with(scan());
         app.ocr_run = Some(finished(&app, true));
@@ -1215,9 +1215,9 @@ mod tests {
         let mut app = app_with(scan());
         let id = app.active_ids().unwrap().1;
         let generation = app.session.get(id).unwrap().edit_generation();
-        let page = pdfcraft_engine::ocr::OcrPage {
+        let page = iridium_pdf_engine::ocr::OcrPage {
             page: 0,
-            words: vec![pdfcraft_engine::ocr::PlacedWord {
+            words: vec![iridium_pdf_engine::ocr::PlacedWord {
                 text: "scanned".into(),
                 origin: [72.0, 700.0],
                 across: [60.0, 0.0],
@@ -1267,9 +1267,9 @@ mod tests {
 
     #[test]
     fn a_run_whose_worker_died_ends_instead_of_waiting_forever() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
-        let pdf = pdfcraft_engine::Session::new().create_from_text("t", "guard fixture").unwrap();
+        let pdf = iridium_pdf_engine::Session::new().create_from_text("t", "guard fixture").unwrap();
         app.open_bytes("a.pdf", None, pdf.to_vec()).unwrap();
         let id = app.active_ids().unwrap().1;
         let guard = app.session.ocr_guard(id).unwrap();
@@ -1307,11 +1307,11 @@ mod tests {
         }
         fn recognize(
             &self,
-            _image: &pdfcraft_ocr::OcrImage,
-            _options: &pdfcraft_ocr::RecognizeOptions,
-        ) -> Result<Vec<pdfcraft_ocr::Line>, pdfcraft_engine::ocr::OcrError> {
-            Ok(vec![pdfcraft_ocr::Line {
-                words: vec![pdfcraft_ocr::Word::new("word", [1.0, 1.0, 9.0, 9.0], "fake").with_confidence(self.confidence)],
+            _image: &iridium_pdf_ocr::OcrImage,
+            _options: &iridium_pdf_ocr::RecognizeOptions,
+        ) -> Result<Vec<iridium_pdf_ocr::Line>, iridium_pdf_engine::ocr::OcrError> {
+            Ok(vec![iridium_pdf_ocr::Line {
+                words: vec![iridium_pdf_ocr::Word::new("word", [1.0, 1.0, 9.0, 9.0], "fake").with_confidence(self.confidence)],
             }])
         }
     }
@@ -1321,7 +1321,7 @@ mod tests {
     /// the first file leaves the rest not run.
     #[test]
     fn batch_counts_skipped_files_and_honours_a_cancel() {
-        let s = pdfcraft_engine::Session::new();
+        let s = iridium_pdf_engine::Session::new();
         let pdf = s.create_from_text("t", "Already typed here").expect("fixture");
         let files = vec![("a.pdf".into(), pdf.to_vec()), ("b.pdf".into(), pdf.to_vec())];
         let progress = Mutex::new(BatchProgress { total: files.len(), cancel: true, ..Default::default() });
@@ -1351,7 +1351,7 @@ mod tests {
     /// in the summary as a note with its 1-based sorted pages.
     #[test]
     fn batch_notes_low_confidence_pages() {
-        let s = pdfcraft_engine::Session::new();
+        let s = iridium_pdf_engine::Session::new();
         let pdf = s.create_from_text("t", "fake scan").expect("fixture");
         let files = vec![("scan.pdf".into(), pdf.to_vec()), ("clean.pdf".into(), pdf.to_vec())];
         let progress = Mutex::new(BatchProgress { total: files.len(), ..Default::default() });
@@ -1373,7 +1373,7 @@ mod tests {
     /// number of its own: a 40% word is flagged under 60 and under 40, and not under 30.
     #[test]
     fn the_batch_note_uses_the_settings_threshold() {
-        let s = pdfcraft_engine::Session::new();
+        let s = iridium_pdf_engine::Session::new();
         let pdf = s.create_from_text("t", "fake scan").expect("fixture");
         let recognizers = Recognizers { primary: Arc::new(Fake { confidence: 40.0 }), secondary: None };
         let run = |threshold: f32| {
@@ -1424,12 +1424,12 @@ mod tests {
     /// write the same output: the batch stops before anything is read or written.
     #[test]
     fn inputs_that_share_a_file_name_are_refused_before_anything_is_read() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.run_inline = true;
-        let dir = std::env::temp_dir().join(format!("pdfcraft-ocr-same-name-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-ocr-same-name-{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("fixture");
         app.ocr_draft.output_folder = Some(dir.to_string_lossy().into_owned());
-        let s = pdfcraft_engine::Session::new();
+        let s = iridium_pdf_engine::Session::new();
         let pdf = s.create_from_text("t", "scanned words here").expect("fixture");
         app.ocr_files(vec![("scan.pdf".into(), pdf.to_vec()), ("other.pdf".into(), pdf.to_vec()), ("Scan.PDF".into(), pdf.to_vec())]);
         assert!(app.ocr_batch.is_none(), "the batch never starts");
@@ -1443,13 +1443,13 @@ mod tests {
     /// and its collision pre-flight still stops the batch before the first page is read.
     #[test]
     fn a_remembered_output_folder_is_used_and_still_preflights_collisions() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.run_inline = true;
-        let dir = std::env::temp_dir().join(format!("pdfcraft-ocr-folder-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-ocr-folder-{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("fixture");
         std::fs::write(dir.join("a.pdf"), b"would be overwritten").expect("fixture");
         app.ocr_draft.output_folder = Some(dir.to_string_lossy().into_owned());
-        let s = pdfcraft_engine::Session::new();
+        let s = iridium_pdf_engine::Session::new();
         let pdf = s.create_from_text("t", "scanned words here").expect("fixture");
         app.ocr_files(vec![("a.pdf".into(), pdf.to_vec()), ("b.pdf".into(), pdf.to_vec())]);
         assert!(app.ocr_batch.is_none(), "the collision stops the batch before anything is read");
@@ -1465,14 +1465,14 @@ mod tests {
     /// writes nothing, so words read before a redaction cannot come back as invisible text.
     #[test]
     fn a_result_that_arrives_after_the_document_changed_is_refused() {
-        let mut app = PdfCraftApp::new();
-        let pdf = pdfcraft_engine::Session::new().create_from_text("t", "Typed text").expect("fixture");
+        let mut app = PdfApp::new();
+        let pdf = iridium_pdf_engine::Session::new().create_from_text("t", "Typed text").expect("fixture");
         app.open_bytes("a.pdf", None, pdf.to_vec()).expect("opens");
         let id = app.active_ids().expect("a document").1;
         let guard = app.session.ocr_guard(id).expect("a guard");
-        app.session.apply(id, pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }).expect("an edit while the worker runs");
+        app.session.apply(id, iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }).expect("an edit while the worker runs");
         let after_edit = app.session.get(id).and_then(|d| d.can_undo().map(str::to_owned));
-        let word = pdfcraft_engine::ocr::PlacedWord {
+        let word = iridium_pdf_engine::ocr::PlacedWord {
             text: "123-45-6789".into(),
             origin: [40.0, 40.0],
             across: [50.0, 0.0],
@@ -1501,7 +1501,7 @@ mod tests {
     fn the_result_summary_names_the_substituted_characters() {
         let mut app = app_with(scan());
         let id = app.active_ids().unwrap().1;
-        let word = pdfcraft_engine::ocr::PlacedWord {
+        let word = iridium_pdf_engine::ocr::PlacedWord {
             text: "scanned".into(),
             origin: [72.0, 700.0],
             across: [60.0, 0.0],
@@ -1509,7 +1509,7 @@ mod tests {
             confidence: Some(95.0),
             source: "ocrs".into(),
         };
-        let page = pdfcraft_engine::ocr::OcrPage {
+        let page = iridium_pdf_engine::ocr::OcrPage {
             page: 0,
             words: vec![word],
             already_on_page: 0,
@@ -1533,7 +1533,7 @@ mod tests {
         let mut app = app_with(scan());
         app.run_inline = true;
         let id = app.active_ids().unwrap().1;
-        let word = pdfcraft_engine::ocr::PlacedWord {
+        let word = iridium_pdf_engine::ocr::PlacedWord {
             text: "scanned".into(),
             origin: [72.0, 700.0],
             across: [60.0, 0.0],
@@ -1544,7 +1544,7 @@ mod tests {
         let page = OcrPage { page: 0, words: vec![word], already_on_page: 0, skipped: None, notes: Vec::new() };
         let guard = app.session.ocr_guard(id).unwrap();
         let progress = Arc::new(Mutex::new(OcrProgress { total: 1, done: 1, result: Some(Ok(vec![page])), cancel: false }));
-        app.ocr_draft.output_mode = pdfcraft_engine::ocr::OutputMode::EditableText;
+        app.ocr_draft.output_mode = iridium_pdf_engine::ocr::OutputMode::EditableText;
         app.ocr_run = Some(OcrRun { doc: id, progress, guard, automatic: None, editable: true });
         app.poll_ocr();
         assert!(app.ocr_run.is_none(), "the run is over");

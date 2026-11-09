@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use pdfcraft_annot::{Markup, Meta, NewAnnotation, Shape, Style, TextReplacement, add_annotation, add_reply, add_text_replacement, summaries};
-use pdfcraft_cos::{SaveOptions, write_full, write_incremental};
-use pdfcraft_forms::{NewField, add_field, fields, set_value};
+use iridium_pdf_annot::{Markup, Meta, NewAnnotation, Shape, Style, TextReplacement, add_annotation, add_reply, add_text_replacement, summaries};
+use iridium_pdf_cos::{SaveOptions, write_full, write_incremental};
+use iridium_pdf_forms::{NewField, add_field, fields, set_value};
 
-use super::xfdf::PDFCRAFT_NS;
+use super::xfdf::IRIDIUM_PDF_NS;
 use super::*;
 
 /// Two blank pages with three fields (text, check box, list).
@@ -87,7 +87,7 @@ fn self_closing_elements_do_not_accumulate_in_the_depth() {
 fn filled() -> Document {
     let mut doc = blank();
     let meta = |id: &str| Meta { date: Some("D:20261002120000Z".into()), id: id.into() };
-    let note = Shape::Note { at: [100.0, 500.0], icon: pdfcraft_annot::NoteIcon::Comment };
+    let note = Shape::Note { at: [100.0, 500.0], icon: iridium_pdf_annot::NoteIcon::Comment };
     add_annotation(
         &mut doc,
         &NewAnnotation {
@@ -184,7 +184,7 @@ fn a_replace_text_pair_survives_an_xfdf_round_trip() {
     // Replace Text, and deleting its strikeout takes the caret and its replacement with it.
     assert!(xfdf.contains("intent=\"Replace\"") && xfdf.contains("intent=\"StrikeOutTextEdit\""), "{xfdf}");
     let strike = summaries(&dst).into_iter().find(|s| s.subtype == "StrikeOut").expect("the strikeout");
-    pdfcraft_annot::delete_annotation(&mut dst, 0, strike.index).unwrap();
+    iridium_pdf_annot::delete_annotation(&mut dst, 0, strike.index).unwrap();
     assert!(summaries(&dst).iter().all(|s| s.subtype != "Caret"), "the caret goes with the strikeout");
 }
 
@@ -212,7 +212,7 @@ fn an_unnamed_group_primary_gets_an_export_only_name() {
             },
         )
         .unwrap();
-        let page = pdfcraft_model::pages(&src)[0].obj;
+        let page = iridium_pdf_model::pages(&src)[0].obj;
         let annots = src.get(page).as_dict().unwrap().get(b"Annots").and_then(|a| src.resolve(a).as_array().cloned()).unwrap();
         let refs: Vec<ObjRef> = annots.iter().filter_map(Object::as_ref).collect();
         let is = |doc: &Document, r: ObjRef, s: &[u8]| doc.get(r).as_dict().and_then(|d| d.name(b"Subtype")) == Some(s);
@@ -232,7 +232,7 @@ fn an_unnamed_group_primary_gets_an_export_only_name() {
             .unwrap();
         }
         // A comment already named what the made-up name would be: the two must not collide.
-        let clash = format!("pdfcraft-export-{}-{}", primary.num, primary.generation);
+        let clash = format!("iridium-pdf-export-{}-{}", primary.num, primary.generation);
         let note = NewAnnotation {
             page: 0,
             shape: Shape::Note { at: [300.0, 300.0], icon: Default::default() },
@@ -256,7 +256,7 @@ fn an_unnamed_group_primary_gets_an_export_only_name() {
         let mut dst = blank();
         import(&mut dst, xfdf.as_bytes()).unwrap();
         // The imported subordinate is grouped under the imported primary again.
-        let dpage = pdfcraft_model::pages(&dst)[0].obj;
+        let dpage = iridium_pdf_model::pages(&dst)[0].obj;
         let dannots = dst.get(dpage).as_dict().unwrap().get(b"Annots").and_then(|a| dst.resolve(a).as_array().cloned()).unwrap();
         let drefs: Vec<ObjRef> = dannots.iter().filter_map(Object::as_ref).collect();
         let (p_sub, s_sub): (&[u8], &[u8]) = if caret_primary { (b"Caret", b"StrikeOut") } else { (b"StrikeOut", b"Caret") };
@@ -289,12 +289,12 @@ fn an_export_only_name_never_repeats_an_inline_annotations_nm() {
         },
     )
     .unwrap();
-    let page = pdfcraft_model::pages(&src)[0].obj;
+    let page = iridium_pdf_model::pages(&src)[0].obj;
     let mut annots = src.get(page).as_dict().unwrap().get(b"Annots").and_then(|a| src.resolve(a).as_array().cloned()).unwrap();
     let primary =
         annots.iter().filter_map(Object::as_ref).find(|r| src.get(*r).as_dict().and_then(|d| d.name(b"Subtype")) == Some(&b"Caret"[..])).unwrap();
     // An inline note already named what the made-up name would be.
-    let clash = format!("pdfcraft-export-{}-{}", primary.num, primary.generation);
+    let clash = format!("iridium-pdf-export-{}-{}", primary.num, primary.generation);
     let mut note = Dict::new();
     note.set(b"Type".to_vec(), Object::name("Annot"));
     note.set(b"Subtype".to_vec(), Object::name("Text"));
@@ -332,7 +332,7 @@ fn xml_exports_preserve_whitespace_in_field_names() {
     let names = ["Line\nName", "Line\tName", "Line\rName", "Line\r\nName", "\t Leading\nTrailing \t", "Line Name"];
     let value = "value\twith\nlines\r\nand <XML> & \"quotes\"";
     let mut src = one_field();
-    pdfcraft_forms::delete_field(&mut src, "Name").unwrap();
+    iridium_pdf_forms::delete_field(&mut src, "Name").unwrap();
     for (index, name) in names.iter().enumerate() {
         let placeholder = format!("field{index}");
         add_field(&mut src, 0, [50.0, 700.0, 250.0, 720.0], &NewField::Text { multiline: true }, Some(&placeholder)).unwrap();
@@ -373,7 +373,7 @@ fn xml_exports_preserve_whitespace_in_field_names() {
 #[test]
 fn xfdf_exports_preserve_whitespace_in_comment_attributes() {
     let mut src = one_field();
-    let shape = Shape::Note { at: [100.0, 500.0], icon: pdfcraft_annot::NoteIcon::Comment };
+    let shape = Shape::Note { at: [100.0, 500.0], icon: iridium_pdf_annot::NoteIcon::Comment };
     let names = ["note\tline\nidentity", "note line identity"];
     let author = "Ada\tLovelace\nReview";
     let subject = "Subject\twith\nlines\r\nand & quotes\"";
@@ -386,7 +386,7 @@ fn xfdf_exports_preserve_whitespace_in_comment_attributes() {
         .unwrap();
     }
     let annotation_refs = |doc: &Document| {
-        let page = pdfcraft_model::pages(doc)[0].obj;
+        let page = iridium_pdf_model::pages(doc)[0].obj;
         doc.get(page)
             .as_dict()
             .unwrap()
@@ -454,7 +454,7 @@ fn xfdf_round_trips_comments_and_values() {
 #[test]
 fn xfdf_round_trip_keeps_zero_flags() {
     let square = |doc: &Document| {
-        let page = pdfcraft_model::pages(doc)[0].obj;
+        let page = iridium_pdf_model::pages(doc)[0].obj;
         let annots = doc.get(page).as_dict().unwrap().get(b"Annots").map(|a| doc.resolve(a)).unwrap();
         annots
             .as_array()
@@ -549,7 +549,7 @@ fn threads(doc: &Document) -> Vec<(Option<String>, Option<String>, Option<String
 fn fdf_keeps_replies_and_review_status_on_their_note() {
     let mut src = blank();
     let meta = |id: &str| Meta { date: Some("D:20261002120000Z".into()), id: id.into() };
-    let note = Shape::Note { at: [100.0, 100.0], icon: pdfcraft_annot::NoteIcon::Comment };
+    let note = Shape::Note { at: [100.0, 100.0], icon: iridium_pdf_annot::NoteIcon::Comment };
     add_annotation(
         &mut src,
         &NewAnnotation { page: 1, style: Style::default_for(&note), shape: note, contents: "Literal Note".into(), author: "Alpha".into() },
@@ -559,7 +559,7 @@ fn fdf_keeps_replies_and_review_status_on_their_note() {
     let index = summaries(&src).iter().find(|s| s.subtype == "Text").map(|s| s.index).unwrap();
     add_reply(&mut src, 1, index, "Reply One", "Beta", &meta("one")).unwrap();
     add_reply(&mut src, 1, index, "Reply Two", "Gamma", &meta("two")).unwrap();
-    pdfcraft_annot::set_review_state(&mut src, 1, index, pdfcraft_annot::ReviewState::Accepted, "Review", &meta("status")).unwrap();
+    iridium_pdf_annot::set_review_state(&mut src, 1, index, iridium_pdf_annot::ReviewState::Accepted, "Review", &meta("status")).unwrap();
     let want = threads(&src);
     assert_eq!(want.iter().filter(|t| t.1.as_deref() == Some("note")).count(), 3, "{want:?}");
 
@@ -634,7 +634,7 @@ fn xml_field_names_remain_valid_and_round_trip_without_collisions() {
         ("-Value", "_-Value"),
     ];
     let mut src = one_field();
-    pdfcraft_forms::delete_field(&mut src, "Name").unwrap();
+    iridium_pdf_forms::delete_field(&mut src, "Name").unwrap();
     for (index, (name, _)) in names.iter().enumerate() {
         add_field(&mut src, 0, [50.0, 700.0, 250.0, 720.0], &NewField::Text { multiline: false }, Some(name)).unwrap();
         set_value(&mut src, name, &FieldValue::Text(format!("value-{index}"))).unwrap();
@@ -866,7 +866,7 @@ fn data_files_merge_into_a_spreadsheet() {
     let fdf = export_fdf(&src, false, true, "form.pdf").unwrap();
     let mut other = blank();
     set_value(&mut other, "Name", &FieldValue::Text("Grace \"Amazing\" Hopper, RADM".into())).unwrap();
-    let pdf = pdfcraft_cos::write_full(&other, &Default::default()).unwrap();
+    let pdf = iridium_pdf_cos::write_full(&other, &Default::default()).unwrap();
     let rows: Vec<_> = [xfdf.as_bytes(), &fdf[..], &pdf[..]].iter().map(|b| data_values(b).unwrap()).collect();
     assert_eq!(rows[0], rows[1], "XFDF and FDF carry the same values");
     let csv = merge_csv(&rows);
@@ -900,7 +900,7 @@ fn reimporting_a_note_replaces_its_popup() {
     for _ in 0..3 {
         import(&mut doc, xfdf.as_bytes()).unwrap();
     }
-    let page = pdfcraft_model::pages(&doc)[0].obj;
+    let page = iridium_pdf_model::pages(&doc)[0].obj;
     let annots = doc.get(page).as_dict().and_then(|p| p.get(b"Annots").cloned()).and_then(|a| doc.resolve(&a).as_array().cloned()).unwrap();
     let refs: Vec<ObjRef> = annots.iter().filter_map(|a| a.as_ref()).collect();
     let is_popup = |r: &ObjRef| doc.get(*r).as_dict().and_then(|d| d.name(b"Subtype")) == Some(b"Popup".as_slice());
@@ -923,11 +923,11 @@ fn replacing_a_note_keeps_existing_replies_and_review_status() {
     import(&mut incoming, xfdf.as_bytes()).unwrap();
     let mut original = filled();
     let index = summaries(&original).iter().find(|s| s.name.as_deref() == Some("n1")).unwrap().index;
-    pdfcraft_annot::set_review_state(
+    iridium_pdf_annot::set_review_state(
         &mut original,
         0,
         index,
-        pdfcraft_annot::ReviewState::Accepted,
+        iridium_pdf_annot::ReviewState::Accepted,
         "Reviewer",
         &Meta { date: None, id: "status".into() },
     )
@@ -977,11 +977,11 @@ fn replacing_an_indirectly_named_note_preserves_its_identity_and_thread() {
     let update = br#"<xfdf><annots><text page="0" name="n1" rect="10,10,30,30"><contents>Updated</contents></text></annots></xfdf>"#;
     let mut original = blank();
     for name in ["Name", "Agree", "Pick"] {
-        pdfcraft_forms::delete_field(&mut original, name).unwrap();
+        iridium_pdf_forms::delete_field(&mut original, name).unwrap();
     }
     import(&mut original, initial.as_bytes()).unwrap();
     let annotation_refs = |doc: &Document| {
-        let page = pdfcraft_model::pages(doc)[0].obj;
+        let page = iridium_pdf_model::pages(doc)[0].obj;
         doc.get(page)
             .as_dict()
             .unwrap()
@@ -1050,7 +1050,7 @@ fn replacement_matches_named_comments_only_on_their_page() {
 #[test]
 fn the_last_same_named_record_controls_its_reply_parent() {
     let mut incoming = blank();
-    let page = pdfcraft_model::pages(&incoming)[0].obj;
+    let page = iridium_pdf_model::pages(&incoming)[0].obj;
     let mut refs = Vec::new();
     for name in ["parent", "duplicate", "duplicate"] {
         let mut d = Dict::new();
@@ -1078,7 +1078,7 @@ fn indirectly_named_protected_comments_and_popups_are_not_replaced() {
     let xfdf = br#"<xfdf><annots><redact page="0" name="n1" rect="0,0,1,1" flags="invisible,hidden,noview,print"><contents>Updated</contents></redact></annots></xfdf>"#;
     let fdf = b"%FDF-1.2\n1 0 obj\n<< /FDF << /Annots [<< /Subtype /Redact /NM (n1) /Page 0 /Rect [0 0 1 1] /F 39 /Contents (Updated) >>] >> >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n";
     let annotation_refs = |doc: &Document| {
-        pdfcraft_model::pages(doc)[0]
+        iridium_pdf_model::pages(doc)[0]
             .dict
             .get(b"Annots")
             .map(|a| doc.resolve(a))
@@ -1091,7 +1091,7 @@ fn indirectly_named_protected_comments_and_popups_are_not_replaced() {
     };
     for (subtype, flags) in [("Text", LOCKED), ("Redact", 0)] {
         let mut original = blank();
-        let page = pdfcraft_model::pages(&original)[0].obj;
+        let page = iridium_pdf_model::pages(&original)[0].obj;
         let name = original.add(PdfString::text("n1"));
         let mut protected = Dict::new();
         protected.set(b"Type".to_vec(), Object::name("Annot"));
@@ -1141,7 +1141,7 @@ fn indirectly_named_protected_comments_and_popups_are_not_replaced() {
 #[test]
 fn imported_redact_marks_cannot_replace_a_locked_mark_or_hide_themselves() {
     let mut doc = blank();
-    let page = pdfcraft_model::pages(&doc)[0].obj;
+    let page = iridium_pdf_model::pages(&doc)[0].obj;
     // A locked redaction mark the user placed, with a known /NM.
     let mut mark = Dict::new();
     mark.set(b"Type".to_vec(), Object::name("Annot"));
@@ -1193,7 +1193,7 @@ fn imported_redact_marks_cannot_replace_a_locked_mark_or_hide_themselves() {
 /// The `/Vertices` of every annotation on the document's pages, by subtype.
 fn vertices(doc: &Document) -> Vec<(String, Vec<f64>)> {
     let mut out = Vec::new();
-    for p in pdfcraft_model::pages(doc) {
+    for p in iridium_pdf_model::pages(doc) {
         for a in p.dict.get(b"Annots").map(|a| doc.resolve(a)).and_then(|a| a.as_array().cloned()).unwrap_or_default() {
             let Some(d) = doc.resolve(&a).as_dict().cloned() else { continue };
             let sub = String::from_utf8_lossy(d.name(b"Subtype").unwrap_or_default()).into_owned();
@@ -1206,7 +1206,7 @@ fn vertices(doc: &Document) -> Vec<(String, Vec<f64>)> {
     out
 }
 
-/// storytold/pdfcraft#809: XFDF exchange dropped polygon and polyline vertices, so the
+/// ngjordan/iridium_pdf#809: XFDF exchange dropped polygon and polyline vertices, so the
 /// imported comments had no shape (and no appearance).
 #[test]
 fn xfdf_keeps_polygon_and_polyline_vertices() {
@@ -1215,8 +1215,8 @@ fn xfdf_keeps_polygon_and_polyline_vertices() {
     let polygon = Shape::Polygon { vertices: vec![[100.0, 100.0], [200.0, 120.0], [150.0, 220.5]], cloud: false };
     let polyline = Shape::PolyLine {
         vertices: vec![[50.0, 300.0], [120.0, 380.0], [200.0, 310.0]],
-        start: pdfcraft_annot::LineEnding::None,
-        end: pdfcraft_annot::LineEnding::ClosedArrow,
+        start: iridium_pdf_annot::LineEnding::None,
+        end: iridium_pdf_annot::LineEnding::ClosedArrow,
     };
     for (page, shape, id) in [(0, polygon, "pg"), (1, polyline, "pl")] {
         let new = NewAnnotation { page, style: Style::default_for(&shape), shape, contents: id.into(), author: "Ada".into() };
@@ -1230,7 +1230,7 @@ fn xfdf_keeps_polygon_and_polyline_vertices() {
     assert_eq!(r.comments, 2, "{r:?}");
     assert_eq!(vertices(&dst), vertices(&src));
     // The imported shapes are drawn again.
-    for p in pdfcraft_model::pages(&dst) {
+    for p in iridium_pdf_model::pages(&dst) {
         for a in p.dict.get(b"Annots").map(|a| dst.resolve(a)).and_then(|a| a.as_array().cloned()).unwrap_or_default() {
             let d = dst.resolve(&a).as_dict().cloned().unwrap();
             assert!(d.get(b"AP").is_some(), "{d:?}");
@@ -1254,7 +1254,7 @@ fn xfdf_keeps_callout_leader_inset_and_ending() {
         knee: [260.0, 330.0],
         point: [320.0, 200.0],
         font_size: 12.0,
-        ending: pdfcraft_annot::LineEnding::ClosedArrow,
+        ending: iridium_pdf_annot::LineEnding::ClosedArrow,
     };
     let meta = Meta { date: Some("D:20261002120000Z".into()), id: "c1".into() };
     add_annotation(
@@ -1267,7 +1267,7 @@ fn xfdf_keeps_callout_leader_inset_and_ending() {
     let mut dst = blank();
     import(&mut dst, xfdf.as_bytes()).unwrap();
     let callout_keys = |doc: &Document| {
-        let page = pdfcraft_model::pages(doc).remove(0);
+        let page = iridium_pdf_model::pages(doc).remove(0);
         let annots = page.dict.get(b"Annots").map(|a| doc.resolve(a)).and_then(|a| a.as_array().cloned()).unwrap_or_default();
         let d = annots.iter().filter_map(|a| doc.resolve(a).as_dict().cloned()).find(|d| d.name(b"Subtype") == Some(b"FreeText")).unwrap();
         (
@@ -1368,7 +1368,7 @@ fn duplicate_xfdf_annotation_flags_do_not_turn_on_unrelated_bits() {
         );
         let mut doc = blank();
         assert_eq!(import(&mut doc, xfdf.as_bytes()).unwrap().comments, 1);
-        let page = pdfcraft_model::pages(&doc)[0].obj;
+        let page = iridium_pdf_model::pages(&doc)[0].obj;
         let annotations = doc.get(page).as_dict().and_then(|p| p.get(b"Annots")).map(|a| doc.resolve(a)).and_then(|a| a.as_array().cloned()).unwrap();
         let square = annotations.iter().filter_map(|a| doc.resolve(a).as_dict().cloned()).find(|d| d.name(b"Subtype") == Some(b"Square")).unwrap();
         assert_eq!(square.get(b"F").and_then(Object::as_int), Some(expected), "flags={flags}");
@@ -1377,7 +1377,7 @@ fn duplicate_xfdf_annotation_flags_do_not_turn_on_unrelated_bits() {
 
 #[test]
 fn edited_button_export_values_round_trip_in_all_data_formats() {
-    use pdfcraft_forms::{FieldProps, set_props};
+    use iridium_pdf_forms::{FieldProps, set_props};
     let mut doc = blank();
     add_field(&mut doc, 0, [80.0, 650.0, 94.0, 664.0], &NewField::Radio { group: Some("Size".into()), export: "S".into() }, None).unwrap();
     add_field(&mut doc, 0, [100.0, 650.0, 114.0, 664.0], &NewField::Radio { group: Some("Size".into()), export: "L".into() }, None).unwrap();
@@ -1446,7 +1446,7 @@ fn xfdf_import_keeps_text_around_xml_comments_and_instructions() {
 #[test]
 fn fdf_export_keeps_indirect_values_nested_in_annotation_properties() {
     let mut src = blank();
-    let page = pdfcraft_model::pages(&src)[0].obj;
+    let page = iridium_pdf_model::pages(&src)[0].obj;
     let mut annotation = Dict::new();
     annotation.set(b"Type".to_vec(), Object::name("Annot"));
     annotation.set(b"Subtype".to_vec(), Object::name("Square"));
@@ -1492,7 +1492,7 @@ fn fdf_export_keeps_indirect_values_nested_in_annotation_properties() {
 
 /// Put extension data on a real exported comment without changing its normal properties.
 fn fdf_note_with_data(doc: &mut Document, data: Object) {
-    let page = pdfcraft_model::pages(doc)[0].obj;
+    let page = iridium_pdf_model::pages(doc)[0].obj;
     let mut note = Dict::new();
     note.set(b"Type".to_vec(), Object::name("Annot"));
     note.set(b"Subtype".to_vec(), Object::name("Square"));
@@ -1521,7 +1521,7 @@ fn fdf_export_preserves_shared_cycles_and_nested_streams_without_expansion() {
     src.set(cycle, Object::Array(vec![Object::Ref(cycle)]));
     let mut stream_dict = Dict::new();
     stream_dict.set(b"PCMeta".to_vec(), Object::Ref(leaf));
-    let stream = src.add(pdfcraft_cos::Stream::from_raw(stream_dict, b"original bytes".to_vec()));
+    let stream = src.add(iridium_pdf_cos::Stream::from_raw(stream_dict, b"original bytes".to_vec()));
     let data = Object::Array(vec![Object::Ref(shared), Object::Ref(shared), Object::Ref(cycle), Object::Ref(stream)]);
     fdf_note_with_data(&mut src, data);
     let src = Document::open(Arc::new(write_full(&src, &SaveOptions::default()).unwrap())).unwrap();
@@ -1585,7 +1585,7 @@ fn fdf_export_refuses_excessive_direct_depth_values_and_payload() {
     assert_eq!(export_fdf(&src, true, false, "source.pdf"), Err(DataError::ExportLimit("100,000 values")));
 
     let mut src = blank();
-    let stream = src.add(pdfcraft_cos::Stream::from_raw(Dict::new(), vec![0; MAX_FDF_BYTES + 1]));
+    let stream = src.add(iridium_pdf_cos::Stream::from_raw(Dict::new(), vec![0; MAX_FDF_BYTES + 1]));
     fdf_note_with_data(&mut src, Object::Ref(stream));
     assert_eq!(export_fdf(&src, true, false, "source.pdf"), Err(DataError::ExportLimit("64 MiB data")));
 
@@ -1600,7 +1600,7 @@ fn fdf_export_refuses_excessive_direct_depth_values_and_payload() {
 fn fdf_export_refuses_aliases_before_cloning_large_annotation_values() {
     let mut src = blank();
     fdf_note_with_data(&mut src, Object::Array(vec![Object::Null; 1_024]));
-    let page = pdfcraft_model::pages(&src)[0].obj;
+    let page = iridium_pdf_model::pages(&src)[0].obj;
     let annots = src.get(page).as_dict().unwrap().get(b"Annots").unwrap().clone();
     let note = annots.as_array().unwrap()[0].as_ref().unwrap();
     // The source holds one 1,024-value dictionary. The aliases must not clone its
@@ -1613,7 +1613,7 @@ fn fdf_export_refuses_aliases_before_cloning_large_annotation_values() {
 fn fdf_export_refuses_repeated_saved_annotations_after_cache_eviction() {
     let bytes = {
         let mut src = blank();
-        let page = pdfcraft_model::pages(&src)[0].obj;
+        let page = iridium_pdf_model::pages(&src)[0].obj;
         let mut notes = Vec::new();
         // More than the editor cache's 1,024 objects. Four passes force reparsing;
         // retaining each resolved body during discovery would pin all four copies.
@@ -1714,7 +1714,7 @@ fn fdf_export_nulls_a_nested_link_to_a_page_without_a_type() {
         let mut doc = Document::new_empty();
         let root = doc.root().unwrap();
         let tree = doc.get(root).as_dict().unwrap().reference(b"Pages").unwrap();
-        let contents = doc.add(pdfcraft_cos::Stream::from_raw(Dict::new(), b"% private-page-content\n".repeat(4_096)));
+        let contents = doc.add(iridium_pdf_cos::Stream::from_raw(Dict::new(), b"% private-page-content\n".repeat(4_096)));
         let mut page = Dict::new();
         page.set(b"Parent".to_vec(), Object::Ref(tree));
         page.set(b"MediaBox".to_vec(), Object::Array(vec![0.into(), 0.into(), 600.into(), 800.into()]));
@@ -1733,7 +1733,7 @@ fn fdf_export_nulls_a_nested_link_to_a_page_without_a_type() {
         write_full(&doc, &SaveOptions::default()).unwrap()
     };
     let source = Document::open(Arc::new(source)).unwrap();
-    assert_eq!(pdfcraft_model::pages(&source).len(), 1);
+    assert_eq!(iridium_pdf_model::pages(&source).len(), 1);
     let bytes = export_fdf(&source, true, false, "source.pdf").unwrap();
     assert!(bytes.len() < 4_096, "the untyped page's content must stay in the PDF ({} bytes)", bytes.len());
     let fdf = Document::open(Arc::new(bytes)).unwrap();
@@ -1752,7 +1752,7 @@ fn fdf_export_nulls_nested_page_links_without_copying_the_source_page_tree() {
             let tree = doc.get(root).as_dict().unwrap().reference(b"Pages").unwrap();
             let mut pages = Vec::new();
             for _ in 0..3 {
-                let contents = doc.add(pdfcraft_cos::Stream::from_raw(
+                let contents = doc.add(iridium_pdf_cos::Stream::from_raw(
                     Dict::new(),
                     b"% source-page-content-must-stay-in-the-PDF\nq 0 g 0 0 10 10 re f Q\n".repeat(1_024),
                 ));
@@ -1792,7 +1792,7 @@ fn fdf_export_nulls_nested_page_links_without_copying_the_source_page_tree() {
         };
         let source = Document::open(Arc::new(source)).unwrap();
         assert!(source.repair_log().is_empty());
-        assert_eq!(pdfcraft_model::pages(&source).len(), 3);
+        assert_eq!(iridium_pdf_model::pages(&source).len(), 3);
         let bytes = export_fdf(&source, true, false, "source.pdf").unwrap();
         assert!(bytes.len() < 4_096, "a comment export must not carry source pages or their content ({} bytes)", bytes.len());
         let fdf = Document::open(Arc::new(bytes)).unwrap();
@@ -1918,7 +1918,7 @@ fn tabular_import_keeps_tsv_quotes_literal_and_csv_value_tabs() {
 #[test]
 fn a_same_named_comment_import_never_replaces_a_form_widget() {
     let mut doc = blank();
-    let page = pdfcraft_model::pages(&doc)[0].clone();
+    let page = iridium_pdf_model::pages(&doc)[0].clone();
     let widget = doc
         .resolve(page.dict.get(b"Annots").unwrap())
         .as_array()
@@ -1941,7 +1941,7 @@ fn an_imported_rect_only_or_transparent_redaction_mark_is_drawn_for_review() {
     for data in [xfdf.as_slice(), fdf.as_slice()] {
         let mut doc = blank();
         assert_eq!(import(&mut doc, data).unwrap().comments, 1);
-        let page = pdfcraft_model::pages(&doc)[0].clone();
+        let page = iridium_pdf_model::pages(&doc)[0].clone();
         let mark = doc
             .resolve(page.dict.get(b"Annots").unwrap())
             .as_array()
@@ -1975,7 +1975,7 @@ fn merged_spreadsheet_cells_never_start_a_formula() {
 fn imported_redact_mark(data: &[u8]) -> Dict {
     let mut doc = blank();
     assert_eq!(import(&mut doc, data).unwrap().comments, 1);
-    let page = pdfcraft_model::pages(&doc)[0].clone();
+    let page = iridium_pdf_model::pages(&doc)[0].clone();
     doc.resolve(page.dict.get(b"Annots").unwrap())
         .as_array()
         .unwrap()
@@ -2088,7 +2088,7 @@ fn fdf_comment_graphs_that_repeat_references_are_bounded() {
 #[test]
 fn xfdf_line_ending_names_are_escaped() {
     let mut doc = blank();
-    let page = pdfcraft_model::pages(&doc)[0].obj;
+    let page = iridium_pdf_model::pages(&doc)[0].obj;
     let hostile = b"a\" tail=\"x\"><field name=\"Name\"><value>pwned</value></field><b".to_vec();
     let mut line = Dict::new();
     line.set(b"Type".to_vec(), Object::name("Annot"));
@@ -2111,7 +2111,7 @@ fn xfdf_line_ending_names_are_escaped() {
 #[test]
 fn a_comment_locked_by_an_indirect_flag_is_not_replaced_by_an_import() {
     let mut doc = blank();
-    let page = pdfcraft_model::pages(&doc)[0].obj;
+    let page = iridium_pdf_model::pages(&doc)[0].obj;
     let flag = doc.add(Object::Int(128)); // Locked
     let mut note = Dict::new();
     note.set(b"Type".to_vec(), Object::name("Annot"));
@@ -2176,7 +2176,7 @@ fn import_drops_non_finite_numbers_from_every_coordinate_list() {
 }
 
 fn annots_of(doc: &Document) -> Vec<Dict> {
-    let page = &pdfcraft_model::pages(doc)[0];
+    let page = &iridium_pdf_model::pages(doc)[0];
     page.dict
         .get(b"Annots")
         .map(|a| doc.resolve(a))
@@ -2238,7 +2238,7 @@ fn an_fdf_comment_popup_is_not_copied_in_as_a_direct_dictionary() {
     assert_eq!(import(&mut dst, &fdf).unwrap().comments, 1);
     let note = find_by_name(&dst, "n").unwrap();
     let popup = dst.get(note).as_dict().unwrap().get(b"Popup").cloned();
-    let page = pdfcraft_model::pages(&dst)[0].dict.get(b"Annots").map(|a| dst.resolve(a)).and_then(|a| a.as_array().cloned()).unwrap();
+    let page = iridium_pdf_model::pages(&dst)[0].dict.get(b"Annots").map(|a| dst.resolve(a)).and_then(|a| a.as_array().cloned()).unwrap();
     let pr = popup.as_ref().and_then(Object::as_ref).filter(|r| page.contains(&Object::Ref(*r)));
     let pr = pr.unwrap_or_else(|| panic!("/Popup must be a reference to an annotation on the page: {popup:?}"));
     let pd = dst.get(pr).as_dict().cloned().unwrap();
@@ -2264,7 +2264,7 @@ fn an_fdf_comment_popup_without_a_rect_is_dropped() {
     assert_eq!(import(&mut dst, &fdf).unwrap().comments, 1);
     let note = find_by_name(&dst, "n").unwrap();
     assert!(dst.get(note).as_dict().unwrap().get(b"Popup").is_none());
-    let page = pdfcraft_model::pages(&dst)[0].dict.get(b"Annots").map(|a| dst.resolve(a)).and_then(|a| a.as_array().cloned()).unwrap();
+    let page = iridium_pdf_model::pages(&dst)[0].dict.get(b"Annots").map(|a| dst.resolve(a)).and_then(|a| a.as_array().cloned()).unwrap();
     let popups = page.iter().filter(|a| dst.resolve(a).as_dict().is_some_and(|d| d.name(b"Subtype") == Some(b"Popup".as_slice()))).count();
     assert_eq!(popups, 0);
 }
@@ -2301,7 +2301,7 @@ fn check_box_kids() -> Document {
 #[test]
 fn imported_values_tick_the_check_box_kid_they_name() {
     let mut src = check_box_kids();
-    set_value(&mut src, "pair", &pdfcraft_forms::FieldValue::Text("B".into())).unwrap();
+    set_value(&mut src, "pair", &iridium_pdf_forms::FieldValue::Text("B".into())).unwrap();
     let xfdf = export_xfdf(&src, false, true, "form.pdf");
     let mut dst = check_box_kids();
     import(&mut dst, xfdf.as_bytes()).unwrap();
@@ -2383,7 +2383,7 @@ fn comment_import_leaves_field_values_alone() {
 #[test]
 fn comments_written_directly_into_the_page_array_copy_and_shared_names_give_two_copies() {
     let mut doc = blank();
-    let page = pdfcraft_model::pages(&doc)[0].obj;
+    let page = iridium_pdf_model::pages(&doc)[0].obj;
     let mut direct = Dict::new();
     direct.set(b"Type".to_vec(), Object::name("Annot"));
     direct.set(b"Subtype".to_vec(), Object::name("Square"));
@@ -2425,7 +2425,7 @@ fn replies_to_a_selected_comment_without_a_name_follow_it_into_the_copy() {
     let index = summaries(&doc)[0].index;
     add_reply(&mut doc, 0, index, "Agreed", "Bob", &meta("r1")).unwrap();
     // The parent loses its /NM, as another tool may have left it.
-    let annots = pdfcraft_model::pages(&doc)[0].dict.get(b"Annots").map(|a| doc.resolve(a)).and_then(|a| a.as_array().cloned()).unwrap();
+    let annots = iridium_pdf_model::pages(&doc)[0].dict.get(b"Annots").map(|a| doc.resolve(a)).and_then(|a| a.as_array().cloned()).unwrap();
     let parent = annots[index].as_ref().unwrap();
     doc.update_dict(parent, |d| {
         d.remove(b"NM");
@@ -2438,8 +2438,8 @@ fn replies_to_a_selected_comment_without_a_name_follow_it_into_the_copy() {
     direct.set(b"Type".to_vec(), Object::name("Annot"));
     direct.set(b"Subtype".to_vec(), Object::name("Square"));
     direct.set(b"Rect".to_vec(), arr(&[100.0, 100.0, 150.0, 140.0]));
-    direct.set(b"NM".to_vec(), PdfString::text(&format!("pdfcraft-0-{index}")));
-    let page = pdfcraft_model::pages(&doc)[0].obj;
+    direct.set(b"NM".to_vec(), PdfString::text(&format!("iridium-pdf-0-{index}")));
+    let page = iridium_pdf_model::pages(&doc)[0].obj;
     doc.update_dict(page, |p| {
         if let Some(Object::Array(annots)) = p.get_mut(b"Annots") {
             annots.push(Object::Dict(direct));
@@ -2447,7 +2447,7 @@ fn replies_to_a_selected_comment_without_a_name_follow_it_into_the_copy() {
     })
     .unwrap();
     let xfdf = export_xfdf_comments(&doc, &[(0, index)], "x.pdf");
-    let given = format!("pdfcraft-0-{index}x");
+    let given = format!("iridium-pdf-0-{index}x");
     assert!(xfdf.contains(&format!("name=\"{given}\"")) && xfdf.contains(&format!("inreplyto=\"{given}\"")), "{xfdf}");
     let mut dst = blank();
     import_comments(&mut dst, &xfdf, Some(0), Some("p"), None).unwrap();
@@ -2520,7 +2520,7 @@ fn copies_placed_with_an_offset_move_whole_and_the_text_reports_its_bounds() {
 /// with their mark.
 #[test]
 fn copied_marks_and_text_boxes_show_what_they_are_while_placed_and_once_pasted() {
-    use pdfcraft_annot::FillMark;
+    use iridium_pdf_annot::FillMark;
     let mut src = blank();
     let meta = Meta { date: Some("D:20261020120000Z".into()), id: "m".into() };
     let marks = [FillMark::Check, FillMark::Cross, FillMark::Dot, FillMark::Line];
@@ -2556,7 +2556,7 @@ fn copied_marks_and_text_boxes_show_what_they_are_while_placed_and_once_pasted()
     // Pasted into another document, each mark is drawn with its own strokes.
     let mut dst = blank();
     import_comments(&mut dst, &xfdf, Some(1), Some("p"), Some([10.0, -20.0])).unwrap();
-    let page = pdfcraft_model::pages(&dst)[1].obj;
+    let page = iridium_pdf_model::pages(&dst)[1].obj;
     let annots =
         dst.get(page).as_dict().and_then(|p| p.get(b"Annots").cloned()).map(|a| dst.resolve(&a).as_array().cloned().unwrap_or_default()).unwrap();
     let stamps: Vec<Dict> =
@@ -2574,11 +2574,11 @@ fn copied_marks_and_text_boxes_show_what_they_are_while_placed_and_once_pasted()
 }
 
 /// A pasted copy is what the original was: typewriter text stays typewriter text (`/IT`) and a
-/// Fill & Sign item, a cloud keeps its cloudy border, and PdfCraft's own keys (a turned comment's
+/// Fill & Sign item, a cloud keeps its cloudy border, and PDF's own keys (a turned comment's
 /// `/PCBox` and `/PCAngle`) come along. A reference into the source document stays behind, and
-/// keys that aren't PdfCraft's, or a malformed attribute, are not taken from the attribute.
+/// keys that aren't PDF's, or a malformed attribute, are not taken from the attribute.
 #[test]
-fn copies_keep_their_intent_cloud_and_pdfcraft_keys() {
+fn copies_keep_their_intent_cloud_and_iridium_pdf_keys() {
     let mut src = blank();
     let meta = |id: &str| Meta { date: Some("D:20261023120000Z".into()), id: id.into() };
     let typed = Shape::Typewriter { rect: [50.0, 500.0, 150.0, 520.0], font_size: 12.0 };
@@ -2589,12 +2589,12 @@ fn copies_keep_their_intent_cloud_and_pdfcraft_keys() {
         add_annotation(&mut src, &new, &meta(id)).unwrap();
     }
     let annots = |doc: &Document, page: usize| -> Vec<Dict> {
-        let pages = pdfcraft_model::pages(doc);
+        let pages = iridium_pdf_model::pages(doc);
         let list = pages[page].dict.get(b"Annots").map(|a| doc.resolve(a)).and_then(|a| a.as_array().cloned()).unwrap_or_default();
         list.iter().filter_map(|a| doc.resolve(a).as_dict().cloned()).filter(|d| !matches!(d.name(b"Subtype"), Some(b"Popup" | b"Widget"))).collect()
     };
     let refs: Vec<ObjRef> = {
-        let pages = pdfcraft_model::pages(&src);
+        let pages = iridium_pdf_model::pages(&src);
         let list = pages[0].dict.get(b"Annots").and_then(|a| src.resolve(a).as_array().cloned()).unwrap();
         list.iter().filter_map(Object::as_ref).collect()
     };
@@ -2615,7 +2615,7 @@ fn copies_keep_their_intent_cloud_and_pdfcraft_keys() {
     assert_eq!(copies.len(), 3, "{copies:?}");
     let typed = copies.iter().find(|d| d.name(b"Subtype") == Some(b"FreeText".as_slice())).unwrap();
     assert_eq!(typed.name(b"IT"), Some(b"FreeTextTypeWriter".as_slice()), "{typed:?}");
-    assert!(pdfcraft_annot::is_fill_sign(&dst, typed), "still a Fill & Sign item: {typed:?}");
+    assert!(iridium_pdf_annot::is_fill_sign(&dst, typed), "still a Fill & Sign item: {typed:?}");
     assert!(matches!(typed.get(b"PCFillSign"), Some(Object::Bool(true))), "{typed:?}");
     let cloud = copies.iter().find(|d| d.name(b"Subtype") == Some(b"Polygon".as_slice())).unwrap();
     assert_eq!(cloud.name(b"IT"), Some(b"PolygonCloud".as_slice()));
@@ -2628,12 +2628,12 @@ fn copies_keep_their_intent_cloud_and_pdfcraft_keys() {
     assert!(square.get(b"PCElsewhere").is_none(), "a reference into the source stays behind: {square:?}");
     // File ▸ Export comments writes the standard attributes only.
     let exported = export_xfdf(&src, true, false, "src.pdf");
-    assert!(exported.contains("intent=\"FreeTextTypeWriter\"") && !exported.contains("pdfcraft:keys"), "{exported}");
-    // A hand-made attribute: only PdfCraft keys with values of their own are taken.
+    assert!(exported.contains("intent=\"FreeTextTypeWriter\"") && !exported.contains("iridium_pdf:keys"), "{exported}");
+    // A hand-made attribute: only PDF keys with values of their own are taken.
     let crafted = format!(
-        "<xfdf xmlns=\"http://ns.adobe.com/xfdf/\" xmlns:pdfcraft=\"{PDFCRAFT_NS}\"><annots>\
-         <square page=\"0\" rect=\"10,10,50,50\" pdfcraft:keys=\"&lt;&lt; /PCAngle 45 /Subtype /Ink /PCRef 3 0 R &gt;&gt;\"/>\
-         <square page=\"0\" rect=\"60,10,90,50\" pdfcraft:keys=\"&lt;&lt; /PCAngle\"/></annots></xfdf>"
+        "<xfdf xmlns=\"http://ns.adobe.com/xfdf/\" xmlns:iridium_pdf=\"{IRIDIUM_PDF_NS}\"><annots>\
+         <square page=\"0\" rect=\"10,10,50,50\" iridium_pdf:keys=\"&lt;&lt; /PCAngle 45 /Subtype /Ink /PCRef 3 0 R &gt;&gt;\"/>\
+         <square page=\"0\" rect=\"60,10,90,50\" iridium_pdf:keys=\"&lt;&lt; /PCAngle\"/></annots></xfdf>"
     );
     let mut third = blank();
     import_comments(&mut third, &crafted, Some(0), Some("q"), None).unwrap();

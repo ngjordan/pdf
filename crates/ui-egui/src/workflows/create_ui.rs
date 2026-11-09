@@ -5,7 +5,7 @@
 use crate::file_filter::AddFilterAnyCase as _;
 use std::sync::Arc;
 
-use crate::PdfCraftApp;
+use crate::PdfApp;
 use crate::widgets;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -22,7 +22,7 @@ pub struct ImageImport {
     pub dpi: f64,
 }
 
-pub(crate) fn image_import_body(ui: &mut egui::Ui, app: &mut PdfCraftApp) -> (bool, bool) {
+pub(crate) fn image_import_body(ui: &mut egui::Ui, app: &mut PdfApp) -> (bool, bool) {
     ui.heading(tl!("Create PDF from images"));
     let Some(draft) = app.image_import.as_mut() else { return (false, true) };
     ui.label(crate::i18n::fmt(tl!("Selected image files: {count}"), &[("count", &draft.images.len().to_string())]));
@@ -44,7 +44,7 @@ pub(crate) fn image_import_body(ui: &mut egui::Ui, app: &mut PdfCraftApp) -> (bo
 }
 
 /// File types Open accepts besides PDF (converted on open).
-pub use pdfcraft_engine::CONVERTIBLE;
+pub use iridium_pdf_engine::CONVERTIBLE;
 
 /// What Create ▸ Clipboard found on the clipboard.
 #[derive(Clone, Debug, PartialEq)]
@@ -104,12 +104,12 @@ fn stem(name: &str) -> &str {
     name.rsplit_once('.').map_or(name, |(s, _)| s)
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Convert a non-PDF file (image, text) into a new tab. Returns `None` when `bytes` is not
     /// something Create understands (the caller then tries to open it as a PDF).
     pub(crate) fn open_converted(&mut self, name: &str, bytes: &[u8]) -> Option<Result<(), String>> {
-        use pdfcraft_engine::SourceKind;
-        if !matches!(pdfcraft_engine::source_kind(name, bytes), Some(SourceKind::Image | SourceKind::Text)) {
+        use iridium_pdf_engine::SourceKind;
+        if !matches!(iridium_pdf_engine::source_kind(name, bytes), Some(SourceKind::Image | SourceKind::Text)) {
             return None;
         }
         let created = self.session.convert_to_pdf(name, &Arc::new(bytes.to_vec())).map(|(_, pdf)| pdf);
@@ -196,7 +196,7 @@ impl PdfCraftApp {
 
     /// One new document from images (tests and automation call this directly).
     pub fn create_from_images(&mut self, images: Vec<(String, Vec<u8>)>) {
-        self.create_from_images_with_resolution(images, pdfcraft_engine::ImageResolution::Embedded);
+        self.create_from_images_with_resolution(images, iridium_pdf_engine::ImageResolution::Embedded);
     }
 
     /// Stage selected images for the DPI chooser; no document is created until confirmed.
@@ -227,15 +227,15 @@ impl PdfCraftApp {
     pub(crate) fn finish_image_import(&mut self) {
         let Some(draft) = self.image_import.take() else { return };
         let resolution = match draft.choice {
-            ResolutionChoice::Image => pdfcraft_engine::ImageResolution::Embedded,
-            ResolutionChoice::Default72 => pdfcraft_engine::ImageResolution::Dpi(72.0),
-            ResolutionChoice::Custom => pdfcraft_engine::ImageResolution::Dpi(draft.dpi),
+            ResolutionChoice::Image => iridium_pdf_engine::ImageResolution::Embedded,
+            ResolutionChoice::Default72 => iridium_pdf_engine::ImageResolution::Dpi(72.0),
+            ResolutionChoice::Custom => iridium_pdf_engine::ImageResolution::Dpi(draft.dpi),
         };
         self.create_from_images_with_resolution(draft.images, resolution);
     }
 
     /// Create directly at the requested resolution (also used by UI tests).
-    pub fn create_from_images_with_resolution(&mut self, images: Vec<(String, Vec<u8>)>, resolution: pdfcraft_engine::ImageResolution) {
+    pub fn create_from_images_with_resolution(&mut self, images: Vec<(String, Vec<u8>)>, resolution: iridium_pdf_engine::ImageResolution) {
         if images.is_empty() {
             return;
         }
@@ -252,7 +252,7 @@ impl PdfCraftApp {
     /// the background with a progress bar, like the PDF Optimizer.
     pub(crate) fn reduce_file_size(&mut self) {
         use crate::optimize_ui::OptimizeKind::Reduce;
-        let settings = pdfcraft_engine::optimize::Settings::default();
+        let settings = iridium_pdf_engine::optimize::Settings::default();
         #[cfg(target_arch = "wasm32")]
         self.start_optimize(Reduce, &settings, &[]);
         #[cfg(not(target_arch = "wasm32"))]
@@ -287,9 +287,9 @@ impl PdfCraftApp {
     /// (#490).
     pub(crate) fn save_optimized(
         &mut self,
-        id: pdfcraft_engine::DocId,
+        id: iridium_pdf_engine::DocId,
         kind: crate::optimize_ui::OptimizeKind,
-        result: Result<(Arc<Vec<u8>>, String), pdfcraft_engine::EditError>,
+        result: Result<(Arc<Vec<u8>>, String), iridium_pdf_engine::EditError>,
         destination: Option<String>,
     ) {
         let Some(doc) = self.session.get(id) else { return };
@@ -311,7 +311,7 @@ impl PdfCraftApp {
             );
             return;
         }
-        let saved = move |app: &mut PdfCraftApp, place: String| {
+        let saved = move |app: &mut PdfApp, place: String| {
             let (b, a) = (crate::panels::human_size(before), crate::panels::human_size(after));
             if after < before {
                 let pct = 100.0 * (1.0 - after as f64 / before.max(1) as f64);

@@ -2,8 +2,8 @@
 
 use std::sync::{Arc, OnceLock};
 
-use pdfcraft_cos::{SaveOptions, write_incremental};
-use pdfcraft_render::{DocInfo, OpenError, RenderConfig, RenderPool, inspect};
+use iridium_pdf_cos::{SaveOptions, write_incremental};
+use iridium_pdf_render::{DocInfo, OpenError, RenderConfig, RenderPool, inspect};
 
 use crate::history::{Editor, Keys, TextBlocksCache};
 use crate::{
@@ -32,7 +32,7 @@ struct DocumentOpenData<'a> {
     path: Option<String>,
     bytes: Arc<Vec<u8>>,
     info: DocInfo,
-    structure: Result<Result<pdfcraft_cos::Document, pdfcraft_cos::CosError>, Box<dyn std::any::Any + Send>>,
+    structure: Result<Result<iridium_pdf_cos::Document, iridium_pdf_cos::CosError>, Box<dyn std::any::Any + Send>>,
     render_password: Option<String>,
     password: Option<&'a str>,
     xfa: Option<XfaLayout>,
@@ -107,7 +107,7 @@ impl Session {
         bytes: Arc<Vec<u8>>,
         password: Option<&str>,
     ) -> Result<PreparedDocument, OpenError> {
-        let cos = std::panic::catch_unwind(|| pdfcraft_cos::Document::open_with_password(bytes.clone(), password));
+        let cos = std::panic::catch_unwind(|| iridium_pdf_cos::Document::open_with_password(bytes.clone(), password));
         // The renderer authenticates on its own. It cannot use the owner password of R2–R4
         // files, so give it the user password that owner authentication recovers.
         let (info, render_password) = match inspect(bytes.clone(), password) {
@@ -125,13 +125,13 @@ impl Session {
         // A dynamic XFA form is a shell around an XML template; lay the template out into real
         // pages and fields so the rest of the engine works on it. The original bytes stay: the
         // laid-out form is one appended revision.
-        let opts = SaveOptions { mod_date: context.now.map(pdfcraft_cos::pdf_date), ..SaveOptions::default() };
+        let opts = SaveOptions { mod_date: context.now.map(iridium_pdf_cos::pdf_date), ..SaveOptions::default() };
         // Write `work` as one more revision and reopen it: what the document then is. The notes
         // about damage repaired while reading the file stay with it (Document Properties), once.
-        let rebase = |work: &pdfcraft_cos::Document| -> Result<(Arc<Vec<u8>>, DocInfo, pdfcraft_cos::Document), String> {
+        let rebase = |work: &iridium_pdf_cos::Document| -> Result<(Arc<Vec<u8>>, DocInfo, iridium_pdf_cos::Document), String> {
             let new_bytes = write_incremental(work, &opts).map(Arc::new).map_err(|e| e.to_string())?;
             let new_info = inspect(new_bytes.clone(), render_password.as_deref()).map_err(|e| e.to_string())?;
-            let mut new_cos = pdfcraft_cos::Document::open_with_password(new_bytes.clone(), password).map_err(|e| e.to_string())?;
+            let mut new_cos = iridium_pdf_cos::Document::open_with_password(new_bytes.clone(), password).map_err(|e| e.to_string())?;
             for line in work.repair_log() {
                 if !new_cos.repair_log().contains(line) {
                     new_cos.note_repair(line.clone());
@@ -140,7 +140,7 @@ impl Session {
             Ok((new_bytes, new_info, new_cos))
         };
         let (bytes, info, cos, xfa) = match (info.xfa, cos) {
-            (Some(pdfcraft_render::Xfa::Dynamic), Ok(Ok(cos))) if pdfcraft_xfa::existing_layout(&cos).is_none() => {
+            (Some(iridium_pdf_render::Xfa::Dynamic), Ok(Ok(cos))) if iridium_pdf_xfa::existing_layout(&cos).is_none() => {
                 let mut work = cos.clone();
                 let laid_out = guard(|| xfa_layout(&mut work))
                     .unwrap_or_else(|m| Err(format!("laying it out failed unexpectedly ({m})")))
@@ -157,7 +157,7 @@ impl Session {
             // A static XFA form, or a dynamic one laid out earlier: its datasets may hold values
             // filled in by another viewer since; give the fields those values.
             (Some(_), Ok(Ok(cos))) => {
-                let report = pdfcraft_xfa::existing_layout(&cos);
+                let report = iridium_pdf_xfa::existing_layout(&cos);
                 let mut work = cos.clone();
                 let synced =
                     guard(|| xfa_values_from_datasets(&mut work)).unwrap_or_else(|m| Err(format!("reading its data failed unexpectedly ({m})")));
@@ -252,10 +252,10 @@ impl Session {
         // (#1656). Kept only when the reader then shows the same pages, and never on a signed
         // document, where writing the repair could rewrite the file under its signatures.
         let (bytes, info, cos) = match cos {
-            Ok(Ok(cos)) if !info.pages.is_empty() && pdfcraft_organize::page_count(&cos).unwrap_or(0) == 0 => {
+            Ok(Ok(cos)) if !info.pages.is_empty() && iridium_pdf_organize::page_count(&cos).unwrap_or(0) == 0 => {
                 let mut work = cos.clone();
-                let signed = || pdfcraft_sign::pdf::list(&cos, &bytes, &context.trust).iter().any(|s| s.signed);
-                let rebuilt = match pdfcraft_organize::recover_page_tree(&mut work) {
+                let signed = || iridium_pdf_sign::pdf::list(&cos, &bytes, &context.trust).iter().any(|s| s.signed);
+                let rebuilt = match iridium_pdf_organize::recover_page_tree(&mut work) {
                     Ok(n) if n > 0 && !signed() => rebase(&work).ok().filter(|(_, i, _)| same_pages(&i.pages, &info.pages)),
                     _ => None,
                 };
@@ -302,7 +302,7 @@ impl Session {
                         redo: Vec::new(),
                         keys,
                         appearances: AppearanceCache::default(),
-                        field_appearances: pdfcraft_forms::FieldAppearanceCache::default(),
+                        field_appearances: iridium_pdf_forms::FieldAppearanceCache::default(),
                         text_blocks: TextBlocksCache::default(),
                     }),
                     None,
@@ -311,7 +311,7 @@ impl Session {
             Ok(Err(e)) => (None, Some(e.to_string())),
             Err(_) => (None, Some("the document structure could not be read for editing".into())),
         };
-        let sig_cache = Arc::new(pdfcraft_sign::DigestCache::default());
+        let sig_cache = Arc::new(iridium_pdf_sign::DigestCache::default());
         let mut signatures = editor.as_ref().map(|e| signatures_of(&e.cos, &bytes, &context.trust, &sig_cache)).unwrap_or_default();
         // The inspection reads only `/Info`; a file stating its title or author only in XMP still
         // shows them (#2373).
@@ -329,7 +329,7 @@ impl Session {
         let (form, adopted) = editor
             .as_ref()
             .map(|e| {
-                let mut fields = pdfcraft_forms::fields_with_adopted(&e.cos);
+                let mut fields = iridium_pdf_forms::fields_with_adopted(&e.cos);
                 xfa::mark_script_buttons(&e.cos, &mut fields.items);
                 (fields.items, fields.adopted_page_fields)
             })

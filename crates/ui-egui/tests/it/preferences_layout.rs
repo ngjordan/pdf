@@ -4,11 +4,11 @@
 use egui::Rect;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_ui_egui::PdfApp;
 
-fn harness(height: f32) -> Harness<'static, PdfCraftApp> {
+fn harness(height: f32) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1000.0, height)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.set_option("dialog", "preferences").unwrap();
         app
@@ -78,12 +78,12 @@ fn the_dialog_opens_at_its_full_size_and_does_not_grow_afterwards() {
     // And it is in place within a few frames of opening, for the first click: a frame or two of
     // settling is fine, ten frames of stretching is not.
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app
     });
     h.run_steps(4);
-    h.state_mut().dialog = Some(pdfcraft_ui_egui::Dialog::Preferences);
+    h.state_mut().dialog = Some(iridium_pdf_ui_egui::Dialog::Preferences);
     h.run_steps(3);
     let early = h.get_by_label("Right").rect();
     h.run_steps(8);
@@ -111,7 +111,7 @@ fn segmented_pill_controls_switch_modes_and_layouts() {
     h.run_steps(3);
     h.get_by_role_and_label(egui::accesskit::Role::RadioButton, "Convert").click();
     h.run_steps(2);
-    assert_eq!(h.state().default_mode, pdfcraft_ui_egui::Mode::Convert);
+    assert_eq!(h.state().default_mode, iridium_pdf_ui_egui::Mode::Convert);
 
     let continuous_before = h.state().view_defaults.continuous;
 
@@ -120,19 +120,19 @@ fn segmented_pill_controls_switch_modes_and_layouts() {
     h.run_steps(3);
     h.get_by_label("Two-page view").click();
     h.run_steps(2);
-    assert_eq!(h.state().view_defaults.layout, pdfcraft_ui_egui::canvas::PageLayout::TwoUp);
+    assert_eq!(h.state().view_defaults.layout, iridium_pdf_ui_egui::canvas::PageLayout::TwoUp);
     assert_eq!(h.state().view_defaults.continuous, continuous_before, "Two-page view retains continuous scrolling");
 
     // Switch continuous scrolling pill (can be combined with Two-page view)
     h.get_by_label("Continuous scrolling").click();
     h.run_steps(2);
     assert_eq!(h.state().view_defaults.continuous, !continuous_before);
-    assert_eq!(h.state().view_defaults.layout, pdfcraft_ui_egui::canvas::PageLayout::TwoUp, "two-page continuous scrolling is supported");
+    assert_eq!(h.state().view_defaults.layout, iridium_pdf_ui_egui::canvas::PageLayout::TwoUp, "two-page continuous scrolling is supported");
 
     // Switch to single page mode (continuous setting remains independent)
     h.get_by_label("Single page").click();
     h.run_steps(2);
-    assert_eq!(h.state().view_defaults.layout, pdfcraft_ui_egui::canvas::PageLayout::Single);
+    assert_eq!(h.state().view_defaults.layout, iridium_pdf_ui_egui::canvas::PageLayout::Single);
     assert_eq!(h.state().view_defaults.continuous, !continuous_before);
 
     // Switch tools panel side via segmented pill
@@ -140,14 +140,14 @@ fn segmented_pill_controls_switch_modes_and_layouts() {
     h.run_steps(3);
     h.get_by_label("Left").click();
     h.run_steps(2);
-    assert_eq!(h.state().side_panels.tools_side, pdfcraft_ui_egui::side_panels::ToolsSide::Left);
+    assert_eq!(h.state().side_panels.tools_side, iridium_pdf_ui_egui::side_panels::ToolsSide::Left);
 
     // Switch measurement units via segmented pill
     h.get_by_label("pt").scroll_to_me();
     h.run_steps(3);
     h.get_by_label("pt").click();
     h.run_steps(2);
-    assert_eq!(h.state().units, pdfcraft_ui_egui::units::Unit::Points);
+    assert_eq!(h.state().units, iridium_pdf_ui_egui::units::Unit::Points);
 }
 
 #[test]

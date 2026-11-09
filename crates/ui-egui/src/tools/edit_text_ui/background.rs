@@ -5,11 +5,11 @@ use super::{Arc, Color32, Edit, LineEditor, PageXform, Pos2, TextTarget};
 #[derive(Default)]
 pub(crate) struct TextBackground {
     key: Option<(u64, usize, TextTarget)>,
-    pub(super) renderer: Option<pdfcraft_render::RenderPool>,
+    pub(super) renderer: Option<iridium_pdf_render::RenderPool>,
     pub(super) texture: Option<egui::TextureHandle>,
     pub(super) tag: Option<u64>,
     received: Option<u64>,
-    draft_key: Option<(String, pdfcraft_engine::BlockStyle)>,
+    draft_key: Option<(String, iridium_pdf_engine::BlockStyle)>,
     draft_rect: Option<[f64; 4]>,
     /// This frame's place for the textless page under the open paragraph's editor. It stays
     /// empty, so the page shows its own text, until the paragraph is changed ([`Self::reveal`]).
@@ -69,7 +69,7 @@ impl TextBackground {
     pub fn prepare(
         &mut self,
         ctx: &egui::Context,
-        doc: &pdfcraft_engine::Document,
+        doc: &iridium_pdf_engine::Document,
         editor: Option<&LineEditor>,
         draft: Option<&crate::content_ui::TextDraft>,
         scale: f32,
@@ -109,7 +109,7 @@ impl TextBackground {
         let scale = scale.min(crate::canvas::TILE_THRESHOLD.min(max_side) / p.width.max(p.height).max(1.0));
         let tag = (scale * 1000.0) as u64;
         if self.tag != Some(tag) {
-            renderer.set_queue(vec![pdfcraft_render::RenderRequest { page, scale, tag, ..Default::default() }]);
+            renderer.set_queue(vec![iridium_pdf_render::RenderRequest { page, scale, tag, ..Default::default() }]);
             self.tag = Some(tag);
         }
         if let Some(out) = renderer.try_recv() {

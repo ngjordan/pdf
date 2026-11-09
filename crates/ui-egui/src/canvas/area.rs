@@ -1,16 +1,16 @@
-use super::{Color32, HashSet, LayerOp, PdfCraftApp, Pos2, Rect, Tokens, Vec2, icons, pos2, theme, vec2};
+use super::{Color32, HashSet, LayerOp, PdfApp, Pos2, Rect, Tokens, Vec2, icons, pos2, theme, vec2};
 
 /// A validation badge drawn over a signature widget: the widget rectangle (user space), the verdict it shows, and its hover text.
 pub(crate) struct SignatureBadge {
     pub rect: [f64; 4],
-    pub status: pdfcraft_engine::SignatureStatus,
+    pub status: iridium_pdf_engine::SignatureStatus,
     pub summary: &'static str,
 }
 
 /// The validation badges drawn over one page's signature widgets: signed, visible widgets
 /// on this page with coordinates that survive the cast to screen space. Hostile files can
 /// carry NaN, infinite or gigantic rectangles, which must never reach the painter.
-pub(crate) fn signature_badges(signatures: &[pdfcraft_engine::SignatureInfo], page: usize) -> Vec<SignatureBadge> {
+pub(crate) fn signature_badges(signatures: &[iridium_pdf_engine::SignatureInfo], page: usize) -> Vec<SignatureBadge> {
     signatures
         .iter()
         // A signature whose appearance draws its state keeps the badge too: the document controls
@@ -34,8 +34,8 @@ pub(crate) fn signature_badges(signatures: &[pdfcraft_engine::SignatureInfo], pa
 /// of that name is a signature field that isn't read-only, with a shown widget at that place
 /// that isn't read-only on its own.
 pub(crate) fn sign_tabs<'a>(
-    signatures: &'a [pdfcraft_engine::SignatureInfo],
-    form: &[pdfcraft_engine::FormField],
+    signatures: &'a [iridium_pdf_engine::SignatureInfo],
+    form: &[iridium_pdf_engine::FormField],
     page: usize,
     can_fill: bool,
 ) -> Vec<(&'a str, [f64; 4])> {
@@ -51,7 +51,7 @@ pub(crate) fn sign_tabs<'a>(
     // a file with thousands of fields costs no more per frame than the field hit test does.
     let signable: HashSet<(&str, [u64; 4])> = form
         .iter()
-        .filter(|f| f.kind == pdfcraft_engine::FormFieldKind::Signature && !f.read_only())
+        .filter(|f| f.kind == iridium_pdf_engine::FormFieldKind::Signature && !f.read_only())
         .flat_map(|f| {
             f.widgets.iter().filter(|w| w.page == Some(page) && !w.hidden && !w.read_only).map(move |w| (f.name.as_str(), w.rect.map(f64::to_bits)))
         })
@@ -161,8 +161,8 @@ pub(super) fn page_scroll<R>(
 }
 
 /// Run a push button's action (the ones that need no JavaScript engine).
-pub(super) fn run_button(app: &mut PdfCraftApp, index: usize, name: &str, action: pdfcraft_engine::form_scripts::ButtonAction) {
-    use pdfcraft_engine::form_scripts::ButtonAction as B;
+pub(super) fn run_button(app: &mut PdfApp, index: usize, name: &str, action: iridium_pdf_engine::form_scripts::ButtonAction) {
+    use iridium_pdf_engine::form_scripts::ButtonAction as B;
     let pages = app.session.get(app.views[index].id).map_or(0, |d| d.info.pages.len());
     match action {
         B::Reset { fields, exclude } => {
@@ -174,11 +174,11 @@ pub(super) fn run_button(app: &mut PdfCraftApp, index: usize, name: &str, action
                 (false, true) => Some(all.iter().filter(|n| !listed(n)).cloned().collect()),
             };
             app.views[index].forms.focus = None;
-            app.views[index].pending_edit = Some(pdfcraft_engine::Edit::ResetForm { names });
+            app.views[index].pending_edit = Some(iridium_pdf_engine::Edit::ResetForm { names });
         }
         B::Named(n) => match n.as_str() {
             "Print" => app.open_print(),
-            // What PdfCraft's XFA buttons use, and what a script's `execMenuItem("Save")`
+            // What PDF's XFA buttons use, and what a script's `execMenuItem("Save")`
             // does too: the Save As dialog, so a click never overwrites the file unasked.
             "SaveAs" => app.run_command("file.save_as"),
             "NextPage" => app.views[index].step_page(true),
@@ -192,13 +192,13 @@ pub(super) fn run_button(app: &mut PdfCraftApp, index: usize, name: &str, action
         B::ShowHide { fields, hide } => {
             let listed = |n: &String| fields.iter().any(|f| n == f || n.starts_with(&format!("{f}.")));
             // `display.hidden` 1, `display.visible` 0, as a script setting `field.display` would.
-            let changes: Vec<pdfcraft_engine::FieldChange> = app
+            let changes: Vec<iridium_pdf_engine::FieldChange> = app
                 .session
                 .get(app.views[index].id)
                 .map(|d| d.form.iter().filter(|f| listed(&f.name)).map(|f| f.name.clone()).collect::<Vec<_>>())
                 .unwrap_or_default()
                 .into_iter()
-                .map(|name| pdfcraft_engine::FieldChange {
+                .map(|name| iridium_pdf_engine::FieldChange {
                     name,
                     value: None,
                     read_only: None,
@@ -209,12 +209,14 @@ pub(super) fn run_button(app: &mut PdfCraftApp, index: usize, name: &str, action
                 .collect();
             if !changes.is_empty() {
                 let label = if hide { "Hide a field" } else { "Show a field" };
-                app.views[index].pending_edit =
-                    Some(pdfcraft_engine::Edit::Batch { label: label.into(), edits: vec![pdfcraft_engine::Edit::ApplyScriptChanges { changes }] });
+                app.views[index].pending_edit = Some(iridium_pdf_engine::Edit::Batch {
+                    label: label.into(),
+                    edits: vec![iridium_pdf_engine::Edit::ApplyScriptChanges { changes }],
+                });
             }
         }
         B::SetLayers { changes, preserve_rb } => {
-            use pdfcraft_engine::form_scripts::LayerOp as Op;
+            use iridium_pdf_engine::form_scripts::LayerOp as Op;
             let changes: Vec<(LayerOp, (u32, u16))> = changes
                 .into_iter()
                 .map(|(op, ocg)| {
@@ -230,7 +232,7 @@ pub(super) fn run_button(app: &mut PdfCraftApp, index: usize, name: &str, action
         }
         B::Alert(m) => app.notify(m),
         B::Submit(url) => app.notify_fmt(
-            "{name} submits the form to {url}; PdfCraft doesn't send form data. Save the document to keep your entries.",
+            "{name} submits the form to {url}; PDF doesn't send form data. Save the document to keep your entries.",
             &[("name", name), ("url", &url)],
         ),
         B::ImportIcon => app.choose_field_image(name),
@@ -243,7 +245,7 @@ pub(super) fn run_button(app: &mut PdfCraftApp, index: usize, name: &str, action
 
 /// Run a set-layer-visibility action from a button or link. It changes what is shown, as the
 /// Layers panel does (which follows), not the document.
-pub(super) fn set_layers(app: &mut PdfCraftApp, index: usize, changes: &[(LayerOp, (u32, u16))], preserve_rb: bool) {
+pub(super) fn set_layers(app: &mut PdfApp, index: usize, changes: &[(LayerOp, (u32, u16))], preserve_rb: bool) {
     let id = app.views[index].id;
     if app.session.set_layer_state(id, changes, preserve_rb) {
         app.views[index].invalidate_content();

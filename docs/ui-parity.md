@@ -2,7 +2,7 @@
 
 > **Last reviewed:** 2026-10-21 · **Last updated:** 2026-10-24 · **Change:** minor (→ / ← scroll a page wider than the window before turning it; a comment's text, border or line, and fill each at an opacity of its own) · **Target:** Adobe Acrobat Pro (Acrobat DC, continuous track 26.002.21931, macOS)
 
-How PdfCraft's tools, panels, shortcuts and feel compare with Acrobat Pro's current interface (the
+How PDF's tools, panels, shortcuts and feel compare with Acrobat Pro's current interface (the
 2023+ "new Acrobat": All tools pane on the left, quick-action toolbar, Home view). Behaviour is
 observed clean-room (`plan/acrobat/02-ui-ux.md`, local-only; `AGENTS.md` §2); nothing from Adobe's
 interface is copied. Gaps ranked in [gaps.md](gaps.md).
@@ -24,7 +24,7 @@ No dump of Acrobat's menu tree has been diffed against the registry yet (gap 24)
 
 ## Shell and navigation
 
-| Element | Acrobat | PdfCraft | Status |
+| Element | Acrobat | PDF | Status |
 |---|---|---|---|
 | Home view (recent files, recommended tools) | yes | yes | shipped |
 | All tools pane, tool sets | yes | yes, with milestone badges | shipped |
@@ -41,7 +41,7 @@ No dump of Acrobat's menu tree has been diffed against the registry yet (gap 24)
 
 ## Tools, handles and precision
 
-| Behaviour | Acrobat | PdfCraft | Status / evidence |
+| Behaviour | Acrobat | PDF | Status / evidence |
 |---|---|---|---|
 | Zoom: wheel, pinch, keys, marquee, fit page/width/height/visible | yes | yes | shipped |
 | Fixed zoom percentages match Acrobat's physical size | yes | differ (#739, documented in #736) | gap |
@@ -64,7 +64,7 @@ No dump of Acrobat's menu tree has been diffed against the registry yet (gap 24)
 
 ## Shortcuts and modifiers
 
-| Item | Acrobat | PdfCraft | Status |
+| Item | Acrobat | PDF | Status |
 |---|---|---|---|
 | Platform shortcuts for registered commands | yes | yes; ⌘ on macOS, Ctrl elsewhere (#695) | shipped; find bar still shows ⌘ on Windows (#746) |
 | Keyboard shortcuts reference | yes | yes | shipped |
@@ -73,13 +73,13 @@ No dump of Acrobat's menu tree has been diffed against the registry yet (gap 24)
 
 ## Dialogs and preferences
 
-| Item | Acrobat | PdfCraft | Status |
+| Item | Acrobat | PDF | Status |
 |---|---|---|---|
 | Print dialog with preview | yes | yes | shipped |
 | Document Properties (description, security, fonts, initial view, custom, advanced) | yes | all but Custom and XMP | partial |
 | Field Properties (General, Appearance, Position, Options, Actions, Format, Validate, Calculate, Signed) | yes | all but Signed | partial |
 | Comment properties and properties bar | yes | yes; a text box's text, border and fill and a shape's line and fill each take an opacity of their own (Acrobat: one per comment); text boxes and typed text take an oval or a circle for their border (Acrobat: a rectangle) | shipped |
-| Select several comments; copy and paste comments between documents | yes | yes: ⌘/Ctrl-click adds, Delete, a drag, Properties and Colour act on all, ⌘C/⌘V as XFDF (also across PdfCraft processes) | shipped |
+| Select several comments; copy and paste comments between documents | yes | yes: ⌘/Ctrl-click adds, Delete, a drag, Properties and Colour act on all, ⌘C/⌘V as XFDF (also across PDF processes) | shipped |
 | Preferences | ≈ 20 pages | Interface language, Documents and view, Identity, Fill & Sign, JavaScript | partial (gap 19) |
 
 ## Revision history

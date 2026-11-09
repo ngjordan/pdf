@@ -1,6 +1,6 @@
 [package]
-name = "pdfcraft-automation"
-description = "Agent control for PdfCraft: a headless tool set over the engine and an MCP server"
+name = "iridium-pdf-automation"
+description = "Agent control for PDF: a headless tool set over the engine and an MCP server"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,13 +9,13 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-pdfcraft-engine = { workspace = true }
-pdfcraft-cos = { workspace = true }
-pdfcraft-render = { workspace = true }
-pdfcraft-organize = { workspace = true }
-pdfcraft-platform = { workspace = true }
-pdfcraft-prc = { workspace = true }
-pdfcraft-prc-render = { workspace = true }
+iridium-pdf-engine = { workspace = true }
+iridium-pdf-cos = { workspace = true }
+iridium-pdf-render = { workspace = true }
+iridium-pdf-organize = { workspace = true }
+iridium-pdf-platform = { workspace = true }
+iridium-pdf-prc = { workspace = true }
+iridium-pdf-prc-render = { workspace = true }
 serde_json = { workspace = true }
 sha2 = "0.11"
 tempfile = "3.27"
@@ -28,11 +28,11 @@ default = ["mcp"]
 mcp = ["dep:base64"]
 
 [dev-dependencies]
-pdfcraft-fonts = { workspace = true }
+iridium-pdf-fonts = { workspace = true }
 png = "0.18"
 flate2.workspace = true
-pdfcraft-model = { workspace = true }
-pdfcraft-xfa = { workspace = true }
+iridium-pdf-model = { workspace = true }
+iridium-pdf-xfa = { workspace = true }
 image = { version = "0.25", default-features = false, features = ["jpeg"] }
 
 [target.'cfg(target_os = "macos")'.dev-dependencies]

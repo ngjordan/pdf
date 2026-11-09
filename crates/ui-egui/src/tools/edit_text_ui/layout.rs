@@ -1,8 +1,8 @@
 use super::{Arc, BTreeMap, Color32, FontFamily, FontId, LineEditor, Rect};
 
 /// The look shown for a paragraph: the family and weight guessed from its PDF font name.
-pub(super) fn source_look(base_font: &str, size: f64, color: [f64; 3], detected_bold: bool, detected_italic: bool) -> pdfcraft_engine::AddedText {
-    use pdfcraft_engine::FontFamily as F;
+pub(super) fn source_look(base_font: &str, size: f64, color: [f64; 3], detected_bold: bool, detected_italic: bool) -> iridium_pdf_engine::AddedText {
+    use iridium_pdf_engine::FontFamily as F;
     let name = base_font.to_ascii_lowercase();
     let family = if ["courier", "mono", "consolas", "menlo", "monaco", "lucida console"].iter().any(|s| name.contains(s)) {
         F::Courier
@@ -11,7 +11,7 @@ pub(super) fn source_look(base_font: &str, size: f64, color: [f64; 3], detected_
     } else {
         F::Helvetica
     };
-    pdfcraft_engine::AddedText {
+    iridium_pdf_engine::AddedText {
         family,
         bold: detected_bold || ["bold", "black", "heavy", "semibold", "demi"].iter().any(|s| name.contains(s)),
         italic: detected_italic || ["italic", "oblique", "slanted"].iter().any(|s| name.contains(s)),
@@ -21,13 +21,13 @@ pub(super) fn source_look(base_font: &str, size: f64, color: [f64; 3], detected_
     }
 }
 
-pub(super) fn look_of(b: &pdfcraft_engine::TextBlock) -> pdfcraft_engine::AddedText {
+pub(super) fn look_of(b: &iridium_pdf_engine::TextBlock) -> iridium_pdf_engine::AddedText {
     source_look(&b.base_font, b.size, b.color, b.bold, b.italic)
 }
 
-pub(crate) fn editor_font(look: &pdfcraft_engine::AddedText, size: f32) -> FontId {
+pub(crate) fn editor_font(look: &iridium_pdf_engine::AddedText, size: f32) -> FontId {
     let family = match (look.family, look.bold) {
-        (pdfcraft_engine::FontFamily::Courier, _) => FontFamily::Monospace,
+        (iridium_pdf_engine::FontFamily::Courier, _) => FontFamily::Monospace,
         (_, true) => FontFamily::Name("semibold".into()),
         (_, false) => FontFamily::Proportional,
     };
@@ -67,7 +67,7 @@ pub(crate) fn editor_fill(text: Color32) -> Color32 {
 }
 
 /// One TextEdit lays out all source runs; its caret and selection span the whole region.
-pub(crate) fn install_source_fonts(ctx: &egui::Context, doc: &pdfcraft_engine::Document, page: usize) -> BTreeMap<String, String> {
+pub(crate) fn install_source_fonts(ctx: &egui::Context, doc: &iridium_pdf_engine::Document, page: usize) -> BTreeMap<String, String> {
     // Bundled replacement selectors are menu choices, never source resource names. Installing
     // an unused choice would make even a standard-font editor wait a frame for its font atlas.
     let programs: Vec<_> = doc.text_editor_fonts(page).into_iter().filter(|font| !font.choice_only).collect();
@@ -91,7 +91,7 @@ pub(crate) fn install_source_fonts(ctx: &egui::Context, doc: &pdfcraft_engine::D
             programs
                 .iter()
                 .filter(|p| {
-                    pdfcraft_fonts::embedding::face_key(&p.face) == pdfcraft_fonts::embedding::face_key(&program.face)
+                    iridium_pdf_fonts::embedding::face_key(&p.face) == iridium_pdf_fonts::embedding::face_key(&program.face)
                         && p.resource != program.resource
                 })
                 .filter_map(|p| families.get(&p.resource).cloned()),
@@ -253,9 +253,9 @@ pub(super) fn editor_galley(ui: &egui::Ui, ed: &LineEditor, text: &str, scale: f
         placed.pos.y = base_y - ascent;
         let free = (width - row.size.x).max(0.0);
         placed.pos.x = match own {
-            Some(pdfcraft_engine::TextAlign::Center) => free / 2.0,
-            Some(pdfcraft_engine::TextAlign::Right) => free,
-            Some(pdfcraft_engine::TextAlign::Left | pdfcraft_engine::TextAlign::Justify) => 0.0,
+            Some(iridium_pdf_engine::TextAlign::Center) => free / 2.0,
+            Some(iridium_pdf_engine::TextAlign::Right) => free,
+            Some(iridium_pdf_engine::TextAlign::Left | iridium_pdf_engine::TextAlign::Justify) => 0.0,
             None if centered => (width - row.size.x) / 2.0,
             None => (source_rect[0] - block.rect[0]) as f32 * scale,
         };
@@ -300,7 +300,13 @@ pub(super) fn editor_galley(ui: &egui::Ui, ed: &LineEditor, text: &str, scale: f
 /// its words. Within a word the stand-in's proportions are kept; spaces fill the gaps between
 /// words. A row with a character this can't place, or with boxes out of reading order, is left as
 /// laid out.
-fn place_on_source_words(g: &mut egui::Galley, block: &pdfcraft_engine::TextBlock, lines: &[pdfcraft_engine::TextLine], text: &str, scale: f32) {
+fn place_on_source_words(
+    g: &mut egui::Galley,
+    block: &iridium_pdf_engine::TextBlock,
+    lines: &[iridium_pdf_engine::TextLine],
+    text: &str,
+    scale: f32,
+) {
     let starts: Vec<usize> = text.char_indices().map(|(at, _)| at).collect();
     let chars: Vec<char> = text.chars().collect();
     let x = |user: f64| ((user - block.rect[0]) * f64::from(scale)) as f32;

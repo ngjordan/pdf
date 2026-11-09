@@ -10,8 +10,8 @@ pub struct BookmarkRow {
     pub open: bool,
     /// The 0-based page it goes to.
     pub page: Option<usize>,
-    /// Where on that page it goes ([`pdfcraft_render::DestView::Top`] when it doesn't say).
-    pub view: pdfcraft_render::DestView,
+    /// Where on that page it goes ([`iridium_pdf_render::DestView::Top`] when it doesn't say).
+    pub view: iridium_pdf_render::DestView,
     /// The title's colour (`/C`), `None` for the default black, and its style (`/F`).
     pub color: Option<[f32; 3]>,
     pub italic: bool,
@@ -30,10 +30,10 @@ pub struct BookmarkPage {
 }
 
 /// The rows of a viewer outline, in outline order, with their paths.
-pub(crate) fn outline_rows(items: &[pdfcraft_render::OutlineItem]) -> Vec<BookmarkRow> {
+pub(crate) fn outline_rows(items: &[iridium_pdf_render::OutlineItem]) -> Vec<BookmarkRow> {
     let mut rows = Vec::new();
     // One entry per open level: its items, and how many of them have been listed.
-    let mut levels: Vec<(&[pdfcraft_render::OutlineItem], usize)> = vec![(items, 0)];
+    let mut levels: Vec<(&[iridium_pdf_render::OutlineItem], usize)> = vec![(items, 0)];
     while let Some(&(list, next)) = levels.last() {
         let Some(item) = list.get(next) else {
             levels.pop();

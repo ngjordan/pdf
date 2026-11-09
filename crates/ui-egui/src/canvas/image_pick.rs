@@ -5,9 +5,9 @@
 
 use egui::{Color32, CornerRadius, Stroke};
 
-use crate::PdfCraftApp;
+use crate::PdfApp;
 use crate::canvas::{DocView, PageXform};
-use pdfcraft_render::DocInfo;
+use iridium_pdf_render::DocInfo;
 
 /// The selected picture: page, index in `page_images` and its box in user space, and the
 /// document's edit generation when it was picked (any later edit may have removed or renumbered it).
@@ -31,7 +31,7 @@ pub(crate) fn page_input(
     xf: &PageXform,
     page: usize,
     info: &DocInfo,
-    doc: &pdfcraft_engine::Document,
+    doc: &iridium_pdf_engine::Document,
     ptr: &crate::page_pointer::PagePointer,
     pick: bool,
     view: &mut DocView,
@@ -62,7 +62,7 @@ pub(crate) fn page_input(
     } else if let Some(pictures) = view.pictures.get(&resp.ctx, doc, page) {
         // Where the click was on the page now: the view may have moved while the page was read.
         let point = xf.user_rect_f64(info, page, [at[0], at[1], at[0], at[1]]).center();
-        view.picked_image = pdfcraft_engine::picture_at(pictures, at).and_then(|(index, i)| {
+        view.picked_image = iridium_pdf_engine::picture_at(pictures, at).and_then(|(index, i)| {
             let screen_rect = crate::canvas::image_screen_rect(i, xf, info, page);
             (screen_rect.is_positive() && screen_rect.contains(point)).then(|| PickedImage {
                 page,
@@ -88,9 +88,9 @@ type PictureKey = (usize, u64);
 #[derive(Default)]
 pub(crate) struct PagePictures {
     /// The pictures of the key's page.
-    ready: Option<(PictureKey, Vec<pdfcraft_engine::PagePicture>)>,
+    ready: Option<(PictureKey, Vec<iridium_pdf_engine::PagePicture>)>,
     /// The search under way. One at a time: each is a full read of a page.
-    job: Option<(PictureKey, std::sync::mpsc::Receiver<Vec<pdfcraft_engine::PagePicture>>)>,
+    job: Option<(PictureKey, std::sync::mpsc::Receiver<Vec<iridium_pdf_engine::PagePicture>>)>,
 }
 
 impl PagePictures {
@@ -98,7 +98,7 @@ impl PagePictures {
     const SMALL_FILE: usize = 8 * 1024 * 1024;
 
     /// The pictures on `page`, or `None` while they are being found (a repaint follows the answer).
-    pub(crate) fn get(&mut self, ctx: &egui::Context, doc: &pdfcraft_engine::Document, page: usize) -> Option<&[pdfcraft_engine::PagePicture]> {
+    pub(crate) fn get(&mut self, ctx: &egui::Context, doc: &iridium_pdf_engine::Document, page: usize) -> Option<&[iridium_pdf_engine::PagePicture]> {
         let key = (page, doc.edit_generation());
         self.poll();
         if self.job.is_none() && !self.ready.as_ref().is_some_and(|(k, _)| *k == key) {
@@ -112,7 +112,7 @@ impl PagePictures {
         self.ready.as_ref().filter(|(k, _)| *k == key).map(|(_, pictures)| pictures.as_slice())
     }
 
-    fn start(&mut self, ctx: &egui::Context, key: PictureKey, work: impl FnOnce() -> Vec<pdfcraft_engine::PagePicture> + Send + 'static) {
+    fn start(&mut self, ctx: &egui::Context, key: PictureKey, work: impl FnOnce() -> Vec<iridium_pdf_engine::PagePicture> + Send + 'static) {
         let (send, answer) = std::sync::mpsc::channel();
         let ctx = ctx.clone();
         let run = move || {
@@ -193,7 +193,7 @@ mod picture_tests {
     /// Escape takes back a click whose picture isn't known yet: it isn't selected when it is.
     #[test]
     fn escape_cancels_a_click_on_a_page_still_being_read() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.open_bytes("notes.txt", None, b"hello".to_vec()).unwrap();
         let (i, _) = app.active_ids().unwrap();
         app.views[i].pending_pick = Some((0, [1.0, 1.0], 0));
@@ -230,9 +230,9 @@ mod picture_tests {
     }
 
     /// The page open with the Select tool, once it is on screen, and where a point on it is.
-    fn open_page() -> (egui_kittest::Harness<'static, PdfCraftApp>, impl Fn(f32, f32) -> egui::Pos2) {
+    fn open_page() -> (egui_kittest::Harness<'static, PdfApp>, impl Fn(f32, f32) -> egui::Pos2) {
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.open_bytes("marks.pdf", None, page_with_a_comment_and_a_link()).unwrap();
             app
         });
@@ -253,8 +253,8 @@ mod picture_tests {
     /// An earlier click on the page whose pictures are still being found, as on a dense drawing:
     /// they don't come while the returned sender lives.
     fn click_still_being_looked_into(
-        h: &mut egui_kittest::Harness<'static, PdfCraftApp>,
-    ) -> std::sync::mpsc::Sender<Vec<pdfcraft_engine::PagePicture>> {
+        h: &mut egui_kittest::Harness<'static, PdfApp>,
+    ) -> std::sync::mpsc::Sender<Vec<iridium_pdf_engine::PagePicture>> {
         let id = h.state().views[0].id;
         let generation = h.state().session.get(id).expect("the document").edit_generation();
         let (send, answer) = std::sync::mpsc::channel();
@@ -264,7 +264,7 @@ mod picture_tests {
         send
     }
 
-    fn click(h: &mut egui_kittest::Harness<'static, PdfCraftApp>, p: egui::Pos2) {
+    fn click(h: &mut egui_kittest::Harness<'static, PdfApp>, p: egui::Pos2) {
         h.hover_at(p);
         h.run_steps(1);
         h.drag_at(p);
@@ -313,7 +313,7 @@ mod picture_tests {
 /// Forget the selected picture once the document has been edited since it was picked: Edit text &
 /// images (or Undo) may have deleted or moved it, and its highlight would stay behind on an empty
 /// spot of the page.
-pub(crate) fn drop_stale(doc: &pdfcraft_engine::Document, view: &mut DocView) {
+pub(crate) fn drop_stale(doc: &iridium_pdf_engine::Document, view: &mut DocView) {
     if view.picked_image.is_some_and(|p| p.generation != doc.edit_generation()) {
         view.picked_image = None;
     }
@@ -334,14 +334,14 @@ pub(crate) fn paint(painter: &egui::Painter, xf: &PageXform, page: usize, info: 
 pub(crate) fn safe_name(s: &str) -> String {
     let cleaned: String = s.chars().map(|c| if c.is_control() || r#"/\:*?"<>|"#.contains(c) { '_' } else { c }).take(80).collect();
     let cleaned = cleaned.trim().trim_matches('.').to_string();
-    if cleaned.is_empty() { "PdfCraft".into() } else { cleaned }
+    if cleaned.is_empty() { "PDF".into() } else { cleaned }
 }
 
 /// The per-user folder that holds the file of the last Copy Image in Original Format: `Clipboard`
 /// in the portable data folder in portable mode ([`crate::portable`]), otherwise the platform's
-/// per-user cache folder: `~/Library/Caches/PdfCraft/Clipboard` (macOS),
-/// `%LOCALAPPDATA%\PdfCraft\Clipboard` (Windows), or `$XDG_CACHE_HOME/pdfcraft/clipboard` /
-/// `~/.cache/pdfcraft/clipboard` (others). Never the shared temporary folder, where another user
+/// per-user cache folder: `~/Library/Caches/PDF/Clipboard` (macOS),
+/// `%LOCALAPPDATA%\PDF\Clipboard` (Windows), or `$XDG_CACHE_HOME/iridium_pdf/clipboard` /
+/// `~/.cache/iridium_pdf/clipboard` (others). Never the shared temporary folder, where another user
 /// could plant a link or a folder of their own.
 #[cfg(not(target_arch = "wasm32"))]
 fn clipboard_dir() -> Option<std::path::PathBuf> {
@@ -351,11 +351,11 @@ fn clipboard_dir() -> Option<std::path::PathBuf> {
     }
     let env = |k: &str| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from).filter(|p| p.is_absolute());
     if cfg!(target_os = "macos") {
-        env("HOME").map(|h| h.join("Library/Caches/PdfCraft/Clipboard"))
+        env("HOME").map(|h| h.join("Library/Caches/PDF/Clipboard"))
     } else if cfg!(windows) {
-        env("LOCALAPPDATA").map(|d| d.join("PdfCraft").join("Clipboard"))
+        env("LOCALAPPDATA").map(|d| d.join("PDF").join("Clipboard"))
     } else {
-        env("XDG_CACHE_HOME").or_else(|| env("HOME").map(|h| h.join(".cache"))).map(|d| d.join("pdfcraft/clipboard"))
+        env("XDG_CACHE_HOME").or_else(|| env("HOME").map(|h| h.join(".cache"))).map(|d| d.join("iridium_pdf/clipboard"))
     }
 }
 
@@ -374,7 +374,7 @@ fn is_copied_image_name(name: &str) -> bool {
 }
 
 /// Makes `dir` (a real folder, not a link, owned by us and private to us on Unix), removes the
-/// earlier copies PdfCraft wrote there, and writes `bytes` as a new file `name`. Links are never
+/// earlier copies PDF wrote there, and writes `bytes` as a new file `name`. Links are never
 /// followed and nothing else in the folder is touched.
 #[cfg(not(target_arch = "wasm32"))]
 fn write_clipboard_file(dir: &std::path::Path, name: &str, bytes: &[u8]) -> Result<std::path::PathBuf, String> {
@@ -415,7 +415,7 @@ fn write_clipboard_file(dir: &std::path::Path, name: &str, bytes: &[u8]) -> Resu
     Ok(path)
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// ⌘C / Ctrl+C copies the selected picture in its original format; Escape deselects it, or
     /// takes back a click whose picture isn't known yet.
     pub(crate) fn image_pick_keys(&mut self, i: usize, ctx: &egui::Context) {
@@ -470,7 +470,7 @@ impl PdfCraftApp {
         }
     }
 
-    /// Writes `bytes` to PdfCraft's private clipboard folder ([`clipboard_dir`]), replacing the
+    /// Writes `bytes` to PDF's private clipboard folder ([`clipboard_dir`]), replacing the
     /// previous copy, and puts that file on the system clipboard.
     #[cfg(not(target_arch = "wasm32"))]
     fn put_file_on_clipboard(&self, name: &str, bytes: &[u8]) -> Result<(), String> {
@@ -500,7 +500,7 @@ mod tests {
     #[test]
     fn file_names_are_safe() {
         assert_eq!(safe_name("a/b:c"), "a_b_c");
-        assert_eq!(safe_name("  ..  "), "PdfCraft");
+        assert_eq!(safe_name("  ..  "), "PDF");
         assert_eq!(safe_name("Relazione 2026"), "Relazione 2026");
     }
 
@@ -518,14 +518,14 @@ mod tests {
     #[test]
     #[cfg(not(target_arch = "wasm32"))]
     fn clipboard_folder_only_replaces_our_own_copies() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-clipboard-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-clipboard-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("keep.txt"), b"other").unwrap();
         std::fs::write(dir.join("Old p1 img1.png"), b"old").unwrap();
         let path = write_clipboard_file(&dir, "New p2 img1.jpg", b"new").unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), b"new");
-        assert!(dir.join("keep.txt").exists(), "files PdfCraft didn't write are kept");
+        assert!(dir.join("keep.txt").exists(), "files PDF didn't write are kept");
         assert!(!dir.join("Old p1 img1.png").exists(), "the previous copy is removed");
         assert!(write_clipboard_file(&dir, "../escape p1 img1.png", b"x").is_err());
         #[cfg(unix)]
@@ -542,7 +542,7 @@ mod tests {
             assert!(write_clipboard_file(&dir, "Link p1 img1.png", b"x").is_err(), "writing never follows a link");
             assert_eq!(std::fs::read(&target).unwrap(), b"other");
             // A link in place of the folder is refused.
-            let linked = std::env::temp_dir().join(format!("pdfcraft-clipboard-test-link-{}", std::process::id()));
+            let linked = std::env::temp_dir().join(format!("iridium-pdf-clipboard-test-link-{}", std::process::id()));
             let _ = std::fs::remove_file(&linked);
             std::os::unix::fs::symlink(&dir, &linked).unwrap();
             assert!(write_clipboard_file(&linked, "X p1 img1.png", b"x").is_err());

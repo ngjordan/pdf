@@ -9,7 +9,7 @@
 
 use std::collections::HashMap;
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString, Stream};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, PdfString, Stream};
 
 use crate::XfaError;
 use crate::model::{Field, Node, SomIndices, Template, Ui};

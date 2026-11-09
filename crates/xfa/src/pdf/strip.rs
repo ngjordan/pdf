@@ -55,12 +55,12 @@ pub struct XfaShape {
     pub needs_rendering: bool,
     /// The AcroForm has fields of its own.
     pub has_fields: bool,
-    /// PdfCraft laid the form out (the layout mark is there).
+    /// PDF laid the form out (the layout mark is there).
     pub laid_out: bool,
 }
 
 impl XfaShape {
-    /// Whether taking the XFA out leaves a form every viewer shows: the pages PdfCraft laid out
+    /// Whether taking the XFA out leaves a form every viewer shows: the pages PDF laid out
     /// (with their fields), or a static form's own pages and fields. A dynamic form that was
     /// never laid out has only placeholder pages: stripping it would leave nothing.
     pub fn strippable(self) -> bool {
@@ -88,7 +88,7 @@ const MAX_STRIP_FIELDS: usize = 1_000_000;
 /// Take the XFA out of a document, leaving what every viewer shows: the pages as laid out
 /// and, when the fields were kept, an ordinary AcroForm. The packets (template, data and
 /// all), `/NeedsRendering`, the layout mark, the overrides and Reader usage rights go, and
-/// the fields lose the private keys PdfCraft gave them. A flattened form (no fields left)
+/// the fields lose the private keys PDF gave them. A flattened form (no fields left)
 /// becomes a plain PDF; one with its fields becomes a static form that Adobe's viewers no
 /// longer lay out again. What the packets held beyond the fields is counted in the report,
 /// so the user can be told; the caller decides whether the form is one to strip

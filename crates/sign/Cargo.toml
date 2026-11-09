@@ -1,5 +1,5 @@
 [package]
-name = "pdfcraft-sign"
+name = "iridium-pdf-sign"
 description = "Digital signatures (ISO 32000-2 §12.8, PAdES): X.509, CMS, PKCS #12, signing and validation"
 version.workspace = true
 edition.workspace = true
@@ -11,11 +11,11 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
-pdfcraft-cos = { workspace = true }
-pdfcraft-annot = { workspace = true }
-pdfcraft-content = { workspace = true }
-pdfcraft-fonts = { workspace = true }
-pdfcraft-model = { workspace = true }
+iridium-pdf-cos = { workspace = true }
+iridium-pdf-annot = { workspace = true }
+iridium-pdf-content = { workspace = true }
+iridium-pdf-fonts = { workspace = true }
+iridium-pdf-model = { workspace = true }
 thiserror.workspace = true
 # ASN.1 UTCTime/GeneralizedTime conversion goes through chrono (no hand-rolled calendar code).
 chrono = { workspace = true }
@@ -43,7 +43,7 @@ ripemd = "0.2.0"
 ed25519-dalek = "3.0.0"
 
 [dev-dependencies]
-pdfcraft-testkit = { workspace = true }
+iridium-pdf-testkit = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 aws-lc-rs = { version = "1.18", default-features = false, features = ["aws-lc-sys", "prebuilt-nasm"] }

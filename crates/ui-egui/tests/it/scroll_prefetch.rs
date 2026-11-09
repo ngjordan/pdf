@@ -1,7 +1,7 @@
 //! Continuous view renders the pages ahead of the scroll before they come into view.
 
 use egui_kittest::Harness;
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_ui_egui::PdfApp;
 
 const PAGES: usize = 20;
 
@@ -19,9 +19,9 @@ fn pages_pdf() -> Vec<u8> {
     pdf.into_bytes()
 }
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("pages.pdf", None, pages_pdf()).expect("opens");
         for (k, v) in [("left", "closed"), ("panel", "none"), ("layout", "continuous"), ("zoom", "100")] {
@@ -34,7 +34,7 @@ fn harness() -> Harness<'static, PdfCraftApp> {
 }
 
 /// Runs frames until no render is queued.
-fn settle(h: &mut Harness<'static, PdfCraftApp>) {
+fn settle(h: &mut Harness<'static, PdfApp>) {
     h.run_steps(4);
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
     while h.state().render_pending() {
@@ -46,12 +46,12 @@ fn settle(h: &mut Harness<'static, PdfCraftApp>) {
 }
 
 /// Goes to a page (1-based, as the page box takes it) and waits for its renders.
-fn go_to(h: &mut Harness<'static, PdfCraftApp>, page: usize) {
+fn go_to(h: &mut Harness<'static, PdfApp>, page: usize) {
     h.state_mut().set_option("page", &page.to_string()).unwrap();
     settle(h);
 }
 
-fn shown(h: &Harness<'static, PdfCraftApp>) -> Vec<usize> {
+fn shown(h: &Harness<'static, PdfApp>) -> Vec<usize> {
     (0..PAGES).filter(|&p| h.state().views[0].page_screen_rect(p).is_some()).collect()
 }
 

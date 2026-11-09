@@ -1,11 +1,11 @@
 //! Prepare a form ▸ Text field table: one undoable edit adding a [`FieldTable`]'s cells as text
-//! fields. The table is laid out and named in `pdfcraft_forms::table`; this maps its cells from
+//! fields. The table is laid out and named in `iridium_pdf_forms::table`; this maps its cells from
 //! view space onto the page and refuses, before anything is added, what `add_field` would refuse.
 
-pub use pdfcraft_forms::table::*;
+pub use iridium_pdf_forms::table::*;
 
-use pdfcraft_forms::MIN_FIELD_SIDE;
-use pdfcraft_render::PageInfo;
+use iridium_pdf_forms::MIN_FIELD_SIDE;
+use iridium_pdf_render::PageInfo;
 
 use crate::{Edit, FormField, NewField};
 

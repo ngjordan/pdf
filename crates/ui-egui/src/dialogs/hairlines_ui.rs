@@ -2,12 +2,12 @@
 //! width; Type 3 glyphs and pattern strokes on request; the pages. Fix says how many strokes
 //! changed, and refuses nothing: a document with no hairlines is told so.
 
-use pdfcraft_engine::{Edit, Hairlines};
+use iridium_pdf_engine::{Edit, Hairlines};
 
 use crate::pageboxes::Range;
 use crate::theme::{self, Tokens};
 use crate::units::Unit;
-use crate::{PdfCraftApp, widgets};
+use crate::{PdfApp, widgets};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HairlinesDraft {
@@ -48,7 +48,7 @@ fn width_field(ui: &mut egui::Ui, pts: &mut f64, unit: Unit, label: egui::Id) {
 }
 
 /// The dialog: (fix, cancel).
-pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (bool, bool) {
+pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfApp, t: &Tokens) -> (bool, bool) {
     let Some((i, id)) = app.active_ids() else { return (false, true) };
     let count = app.session.get(id).map(|d| d.info.pages.len()).unwrap_or(0);
     let current = app.views[i].current;
@@ -104,7 +104,7 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (boo
     (go, cancel)
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Fix: count first (the edit refuses when there is nothing to fix), then apply and say.
     pub(crate) fn fix_hairlines(&mut self) {
         let Some((i, id)) = self.active_ids() else { return };

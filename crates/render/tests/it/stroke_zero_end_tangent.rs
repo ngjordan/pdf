@@ -2,7 +2,7 @@
 //! control point on the end point, ISO 32000-2 §8.5.2.1 Table 58) was not drawn at all at some widths,
 //! because the stroker put NaN into its outline and the rasterizer dropped the whole path. A file
 //! in the PDFBox issue tracker lost the 32 pt outline of its "XX" this way.
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest};
 use std::sync::Arc;
 
 /// A one-page 200 × 200 pt PDF drawing `content`, with a cross-reference table.

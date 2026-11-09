@@ -1,4 +1,4 @@
-//! pdfcraft-js — Acrobat JavaScript for forms (L3).
+//! iridium-pdf-js — Acrobat JavaScript for forms (L3).
 //!
 //! Field scripts (format, keystroke, validate, calculate), button actions and document-level
 //! scripts run in [boa](https://boajs.dev), a JavaScript engine written in Rust, with the subset

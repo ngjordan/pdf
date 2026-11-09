@@ -1,8 +1,8 @@
 //! A batch run that fails a file publishes only the completed outputs, and a
 //! publish the file system refuses publishes nothing.
 
-use pdfcraft_automation::{Automation, Content};
-use pdfcraft_engine::Session;
+use iridium_pdf_automation::{Automation, Content};
+use iridium_pdf_engine::Session;
 use serde_json::{Value, json};
 
 fn result(auto: &mut Automation, args: Value) -> Value {

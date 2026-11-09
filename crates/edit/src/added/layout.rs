@@ -175,7 +175,7 @@ fn thai_words(atoms: Vec<(String, f64)>) -> Vec<Vec<(String, f64)>> {
     words
 }
 
-pub(super) use pdfcraft_fonts::shaped_text::{Piece, is_thai};
+pub(super) use iridium_pdf_fonts::shaped_text::{Piece, is_thai};
 
 /// Arabic letters, marks, digits and punctuation: an item with any of them is shaped with the
 /// craft-fonts Arabic face.
@@ -195,7 +195,7 @@ pub(super) fn is_hebrew(c: char) -> bool {
 /// keeps it open.
 pub fn first_undrawable(t: &AddedText) -> Option<char> {
     if t.text.chars().any(is_thai) {
-        if let Some(c) = t.text.chars().find(|c| is_thai(*c) && !pdfcraft_fonts::thai_has(*c)) {
+        if let Some(c) = t.text.chars().find(|c| is_thai(*c) && !iridium_pdf_fonts::thai_has(*c)) {
             return Some(c);
         }
         let rest = AddedText { text: t.text.chars().filter(|c| !is_thai(*c)).collect(), ..t.clone() };
@@ -203,20 +203,20 @@ pub fn first_undrawable(t: &AddedText) -> Option<char> {
     }
     // Arabic or Hebrew that nothing can draw: there's no face, or the face lacks it.
     if let Some(c) =
-        t.text.chars().find(|c| (shaped_arabic(*c) && !pdfcraft_fonts::arabic_has(*c)) || (is_hebrew(*c) && !pdfcraft_fonts::hebrew_has(*c)))
+        t.text.chars().find(|c| (shaped_arabic(*c) && !iridium_pdf_fonts::arabic_has(*c)) || (is_hebrew(*c) && !iridium_pdf_fonts::hebrew_has(*c)))
     {
         return Some(c);
     }
     if !shaped_by_a_face(t) {
         // Drawn line by line in the item's standard font (`\n` splits lines). Without the face
         // that is also how `draw` redraws an existing item, so it's checked that way.
-        return t.text.split('\n').find_map(pdfcraft_fonts::first_non_win_ansi);
+        return t.text.split('\n').find_map(iridium_pdf_fonts::first_non_win_ansi);
     }
     // What `shaped_layout` leaves to the standard font, exactly as `draw_shaped` splits it.
     wrapped(t).into_iter().find_map(|(line, rtl, _)| {
         let (pieces, _) = shaped_layout(t, &line, rtl).ok()?;
         pieces.iter().find_map(|p| match p {
-            Piece::Latin(s) => pdfcraft_fonts::first_non_win_ansi(s),
+            Piece::Latin(s) => iridium_pdf_fonts::first_non_win_ansi(s),
             Piece::Shaped(_) => None,
         })
     })
@@ -225,8 +225,8 @@ pub fn first_undrawable(t: &AddedText) -> Option<char> {
 /// Whether `t` has Arabic or Hebrew that its craft-fonts face draws (so `draw` lays it out with
 /// [`draw_shaped`]).
 fn shaped_by_a_face(t: &AddedText) -> bool {
-    (pdfcraft_fonts::document_arabic_font().is_some() && t.text.chars().any(is_arabic))
-        || (pdfcraft_fonts::document_hebrew_font(false).is_some() && t.text.chars().any(is_hebrew))
+    (iridium_pdf_fonts::document_arabic_font().is_some() && t.text.chars().any(is_arabic))
+        || (iridium_pdf_fonts::document_hebrew_font(false).is_some() && t.text.chars().any(is_hebrew))
 }
 
 /// An Arabic character the face shapes and draws (U+061C, a direction mark, is dropped).
@@ -278,9 +278,9 @@ pub(super) fn shaped_layout(t: &AddedText, line: &str, rtl: bool) -> Result<(Vec
             let after_hebrew = segments.last().is_some_and(|(kind, _)| *kind == Some(ShapedScript::Hebrew));
             let script = if is_thai(c) {
                 Some(ShapedScript::Thai)
-            } else if is_hebrew(c) || (run_rtl && after_hebrew && !c.is_alphanumeric() && pdfcraft_fonts::hebrew_has(c)) {
+            } else if is_hebrew(c) || (run_rtl && after_hebrew && !c.is_alphanumeric() && iridium_pdf_fonts::hebrew_has(c)) {
                 Some(ShapedScript::Hebrew)
-            } else if is_arabic(c) || (run_rtl && !c.is_alphanumeric() && pdfcraft_fonts::arabic_has(c)) {
+            } else if is_arabic(c) || (run_rtl && !c.is_alphanumeric() && iridium_pdf_fonts::arabic_has(c)) {
                 Some(ShapedScript::Arabic)
             } else {
                 None
@@ -308,7 +308,7 @@ pub(super) fn shaped_layout(t: &AddedText, line: &str, rtl: bool) -> Result<(Vec
             });
         }
     }
-    let width = pdfcraft_fonts::shaped_text::pieces_width(&pieces, t.size, t.char_spacing, |s, _| latin_width(t, s));
+    let width = iridium_pdf_fonts::shaped_text::pieces_width(&pieces, t.size, t.char_spacing, |s, _| latin_width(t, s));
     Ok((pieces, width))
 }
 
@@ -320,7 +320,7 @@ pub(crate) fn shaped_width(t: &AddedText, s: &str, rtl: bool) -> f64 {
 
 pub(super) fn arabic_error(e: GlyphError, text: &str) -> EditError {
     EditError::Invalid(match e {
-        GlyphError::NoFont => "Arabic text needs PdfCraft's Arabic font, which this build doesn't include \
+        GlyphError::NoFont => "Arabic text needs PDF's Arabic font, which this build doesn't include \
                                (to build it in, set CRAFT_FONTS_DIR to a craft-fonts checkout that has an Arab face)"
             .into(),
         GlyphError::Missing => format!("the Arabic font can't show \"{text}\""),
@@ -330,7 +330,7 @@ pub(super) fn arabic_error(e: GlyphError, text: &str) -> EditError {
 
 pub(super) fn hebrew_error(e: GlyphError, text: &str) -> EditError {
     EditError::Invalid(match e {
-        GlyphError::NoFont => "Hebrew text needs PdfCraft's Hebrew font, which this build doesn't include \
+        GlyphError::NoFont => "Hebrew text needs PDF's Hebrew font, which this build doesn't include \
                                (to build it in, set CRAFT_FONTS_DIR to a craft-fonts checkout that has a Hebr face)"
             .into(),
         GlyphError::Missing => format!("the Hebrew font can't show \"{text}\""),
@@ -339,7 +339,7 @@ pub(super) fn hebrew_error(e: GlyphError, text: &str) -> EditError {
 }
 
 pub(super) fn thai_error(e: GlyphError, text: &str) -> EditError {
-    EditError::Invalid(pdfcraft_fonts::shaped_text::thai_message(e, text))
+    EditError::Invalid(iridium_pdf_fonts::shaped_text::thai_message(e, text))
 }
 
 /// The box a text item occupies (height from its lines).

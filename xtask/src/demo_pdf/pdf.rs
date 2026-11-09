@@ -77,9 +77,9 @@ impl Stamp {
     pub fn from_unix(secs: i64) -> Self {
         let (days, rem) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
         let (h, mi, s) = (rem / 3600, rem % 3600 / 60, rem % 60);
-        let (y, m, d) = pdfcraft_cos::civil_from_days(days);
+        let (y, m, d) = iridium_pdf_cos::civil_from_days(days);
         // `{y:04}` rather than `%Y`, which writes a `+` before years past 9999.
-        Stamp { unix: secs, pdf: pdfcraft_cos::pdf_date(secs), iso: format!("{y:04}-{m:02}-{d:02}T{h:02}:{mi:02}:{s:02}Z") }
+        Stamp { unix: secs, pdf: iridium_pdf_cos::pdf_date(secs), iso: format!("{y:04}-{m:02}-{d:02}T{h:02}:{mi:02}:{s:02}Z") }
     }
 
     /// The same moment shifted by `minutes` (used to order threaded replies).
@@ -343,7 +343,7 @@ pub fn pdf_string(s: &str) -> String {
 
 /// Map text to WinAnsiEncoding bytes (unmappable characters become `?`).
 ///
-/// Mirrors `pdfcraft_fonts::win_ansi` (ISO 32000-2 Annex D), which xtask doesn't depend on;
+/// Mirrors `iridium_pdf_fonts::win_ansi` (ISO 32000-2 Annex D), which xtask doesn't depend on;
 /// keep the 0x80–0x9F rows in step with `crates/fonts/src/encodings.rs`.
 pub fn winansi(s: &str) -> Vec<u8> {
     s.chars()

@@ -1,9 +1,9 @@
 //! Preferences › Appearance: the appearance mode (follow the system, light or dark) above a light
-//! and a dark theme card, each with a small picture of PdfCraft in that theme.
+//! and a dark theme card, each with a small picture of PDF in that theme.
 
 use egui::{CornerRadius, Rect, RichText, Stroke, pos2, vec2};
 
-use crate::PdfCraftApp;
+use crate::PdfApp;
 use crate::theme::{self, ThemeKind, ThemePreference, Tokens};
 
 /// The themes each card offers. One of each today; a new theme is one more row here.
@@ -26,7 +26,7 @@ fn mode_command(preference: ThemePreference) -> &'static str {
     }
 }
 
-/// A miniature PdfCraft window in `kind`'s colours: title bar and tabs, the tool bar, the page
+/// A miniature PDF window in `kind`'s colours: title bar and tabs, the tool bar, the page
 /// thumbnails, a page on the pasteboard and the right-hand panel.
 fn preview(ui: &mut egui::Ui, kind: ThemeKind, width: f32) {
     let p = Tokens::for_kind(kind);
@@ -130,7 +130,7 @@ fn card(ui: &mut egui::Ui, t: &Tokens, title: &str, active: bool, themes: &[(The
 
 /// The Appearance section of Preferences.
 #[cfg_attr(not(test), expect(dead_code, reason = "called by unit tests"))]
-pub fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) {
+pub fn preferences_section(ui: &mut egui::Ui, app: &mut PdfApp, t: &Tokens) {
     let mut ctx = crate::dialogs::preferences::PrefSearchContext::new("", false);
     preferences_section_with_context(ui, app, t, &mut ctx);
 }
@@ -138,7 +138,7 @@ pub fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens)
 /// The Appearance section of Preferences with live search highlighting and scrolling context.
 pub(crate) fn preferences_section_with_context(
     ui: &mut egui::Ui,
-    app: &mut PdfCraftApp,
+    app: &mut PdfApp,
     t: &Tokens,
     ctx: &mut crate::dialogs::preferences::PrefSearchContext,
 ) {
@@ -194,11 +194,11 @@ mod tests {
     /// Active.
     #[test]
     fn preferences_choose_the_appearance_mode_and_show_both_themes() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         let mut fonts = false;
         let mut h = Harness::builder().with_size(egui::vec2(640.0, 400.0)).build_ui_state(
-            move |ui, app: &mut PdfCraftApp| {
+            move |ui, app: &mut PdfApp| {
                 // The app's fonts (the semibold headings) take effect from the next frame.
                 if !fonts {
                     ui.ctx().set_fonts(theme::font_definitions());
@@ -213,7 +213,7 @@ mod tests {
         h.run();
         assert!(h.query_by_label("Light theme").is_some() && h.query_by_label("Dark theme").is_some());
         assert_eq!(h.query_all_by_label("Active").count(), 1);
-        if let Ok(path) = std::env::var("PDFCRAFT_APPEARANCE_SHOT") {
+        if let Ok(path) = std::env::var("IRIDIUM_PDF_APPEARANCE_SHOT") {
             h.render().unwrap().save(path).unwrap();
         }
 
@@ -239,11 +239,11 @@ mod tests {
     /// Clicking a theme card picks that theme, not only the mode combo box.
     #[test]
     fn clicking_a_theme_card_picks_that_theme() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         let mut fonts = false;
         let mut h = Harness::builder().with_size(egui::vec2(640.0, 400.0)).build_ui_state(
-            move |ui, app: &mut PdfCraftApp| {
+            move |ui, app: &mut PdfApp| {
                 if !fonts {
                     ui.ctx().set_fonts(theme::font_definitions());
                     fonts = true;

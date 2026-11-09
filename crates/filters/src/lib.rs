@@ -1,6 +1,6 @@
 //! PDF stream filters (ISO 32000-2 §7.4).
 //!
-//! Layer L0, standalone: this crate depends on no other PdfCraft crate.
+//! Layer L0, standalone: this crate depends on no other PDF crate.
 //!
 //! Decoding covers the general-purpose filters (`FlateDecode`, `LZWDecode` with
 //! TIFF/PNG predictors, `ASCIIHexDecode`, `ASCII85Decode`, `RunLengthDecode`).
@@ -8,22 +8,22 @@
 //! `Crypt` and unknown filters are reported as [`FilterError::Unsupported`] so
 //! callers keep such data encoded. CCITT fax and JBIG2 images decode on their own
 //! ([`decode_ccitt_within`], [`decode_jbig2_within`]), each spending from an allowance its caller
-//! shares across a run of images, as `pdfcraft_cos::ImageBudget::decode` does after the filters
+//! shares across a run of images, as `iridium_pdf_cos::ImageBudget::decode` does after the filters
 //! before them. Neither decodes without one:
 //!
 //! ```compile_fail
-//! let _ = pdfcraft_filters::decode_jbig2(&[], None, 1, 1, 1 << 20);
+//! let _ = iridium_pdf_filters::decode_jbig2(&[], None, 1, 1, 1 << 20);
 //! ```
 //!
 //! ```compile_fail
-//! let _ = pdfcraft_filters::decode_ccitt(&[], &pdfcraft_filters::CcittParams::default(), 1);
+//! let _ = iridium_pdf_filters::decode_ccitt(&[], &iridium_pdf_filters::CcittParams::default(), 1);
 //! ```
 //!
 //! ```
 //! let mut work = 1 << 20;
-//! assert!(pdfcraft_filters::decode_jbig2_within(&[], None, 1, 1, 1 << 20, &mut work).is_err());
-//! let p = pdfcraft_filters::CcittParams { columns: 8, ..Default::default() };
-//! assert!(pdfcraft_filters::decode_ccitt_within(&[], &p, 1, &mut work).is_ok());
+//! assert!(iridium_pdf_filters::decode_jbig2_within(&[], None, 1, 1, 1 << 20, &mut work).is_err());
+//! let p = iridium_pdf_filters::CcittParams { columns: 8, ..Default::default() };
+//! assert!(iridium_pdf_filters::decode_ccitt_within(&[], &p, 1, &mut work).is_ok());
 //! ```
 //!
 //! 1-bit samples can be encoded as CCITT Group 4 ([`encode_g4`]) or lossless JBIG2

@@ -12,7 +12,7 @@ pub const MAX_JBIG2_PIXELS: u64 = 1 << 28;
 /// filter gives it: `rows` rows of `columns` 1-bit samples, most significant bit first, each
 /// starting on a new byte, with black as 0 (JBIG2 codes black as 1).
 ///
-/// The JBIG2 page has to be the image's size, `columns` × `rows`: PdfCraft's renderer draws the
+/// The JBIG2 page has to be the image's size, `columns` × `rows`: PDF's renderer draws the
 /// whole page into the image, so the rows of a page of another height wouldn't be the image's. The
 /// decoder decodes the page whole, so it is checked before it is decoded, and has to fit in `max`
 /// bytes as such rows and have at most [`MAX_JBIG2_PIXELS`]. Regions inside it are bounded by the

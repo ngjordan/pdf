@@ -1,9 +1,9 @@
 use super::files::{Preview, RowAction};
 use super::parts::{moved_pages, removed_pages, step_to};
 use super::view::expandable;
-use super::{BTreeSet, PdfCraftApp};
+use super::{BTreeSet, PdfApp};
 
-impl PdfCraftApp {
+impl PdfApp {
     pub(crate) fn combine_apply(&mut self, action: RowAction) {
         let page_edit = matches!(action, RowAction::ClickPage(..) | RowAction::MovePages { .. } | RowAction::RemovePages(_));
         self.combine_apply_once(action);

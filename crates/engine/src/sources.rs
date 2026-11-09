@@ -16,39 +16,39 @@ pub struct Combined {
 }
 
 /// Parse another PDF to copy pages from.
-pub(crate) fn open_source(name: &str, bytes: &Arc<Vec<u8>>) -> Result<pdfcraft_cos::Document, EditError> {
+pub(crate) fn open_source(name: &str, bytes: &Arc<Vec<u8>>) -> Result<iridium_pdf_cos::Document, EditError> {
     open_source_with(name, bytes, None)
 }
 
 /// [`open_source`], authenticating with `password` (user or owner) for an encrypted file.
-pub(crate) fn open_source_with(name: &str, bytes: &Arc<Vec<u8>>, password: Option<&str>) -> Result<pdfcraft_cos::Document, EditError> {
+pub(crate) fn open_source_with(name: &str, bytes: &Arc<Vec<u8>>, password: Option<&str>) -> Result<iridium_pdf_cos::Document, EditError> {
     source_document(bytes, password).map_err(|p| EditError::Source(format!("{name}: {p}")))
 }
 
 /// Import the comments of `src` onto the pages of `doc` with the same numbers.
-pub(crate) fn import_pdf_comments(doc: &mut pdfcraft_cos::Document, src: &pdfcraft_cos::Document) -> Result<(), EditError> {
-    if pdfcraft_organize::import_comments(doc, src)? == 0 {
-        return Err(pdfcraft_xfdf::DataError::NothingImported.into());
+pub(crate) fn import_pdf_comments(doc: &mut iridium_pdf_cos::Document, src: &iridium_pdf_cos::Document) -> Result<(), EditError> {
+    if iridium_pdf_organize::import_comments(doc, src)? == 0 {
+        return Err(iridium_pdf_xfdf::DataError::NothingImported.into());
     }
     Ok(())
 }
 
 /// Parse another PDF to import comments from, whatever its permissions allow.
-pub(crate) fn comment_source(bytes: &Arc<Vec<u8>>) -> Result<pdfcraft_cos::Document, SourceProblem> {
-    match std::panic::catch_unwind(|| pdfcraft_cos::Document::open(bytes.clone())) {
+pub(crate) fn comment_source(bytes: &Arc<Vec<u8>>) -> Result<iridium_pdf_cos::Document, SourceProblem> {
+    match std::panic::catch_unwind(|| iridium_pdf_cos::Document::open(bytes.clone())) {
         Ok(Ok(d)) => Ok(d),
-        Ok(Err(pdfcraft_cos::CosError::NeedsPassword)) => Err(SourceProblem::Password),
+        Ok(Err(iridium_pdf_cos::CosError::NeedsPassword)) => Err(SourceProblem::Password),
         Ok(Err(e)) => Err(SourceProblem::Unreadable(e.to_string())),
         Err(_) => Err(SourceProblem::Unreadable("the file could not be read".into())),
     }
 }
 
-fn source_document(bytes: &Arc<Vec<u8>>, password: Option<&str>) -> Result<pdfcraft_cos::Document, SourceProblem> {
-    match std::panic::catch_unwind(|| pdfcraft_cos::Document::open_with_password(bytes.clone(), password)) {
+fn source_document(bytes: &Arc<Vec<u8>>, password: Option<&str>) -> Result<iridium_pdf_cos::Document, SourceProblem> {
+    match std::panic::catch_unwind(|| iridium_pdf_cos::Document::open_with_password(bytes.clone(), password)) {
         Ok(Ok(d)) if d.permissions().is_some_and(|p| !p.assemble()) => Err(SourceProblem::NotPermitted),
         Ok(Ok(d)) => Ok(d),
-        Ok(Err(pdfcraft_cos::CosError::NeedsPassword)) => Err(SourceProblem::Password),
-        Ok(Err(pdfcraft_cos::CosError::WrongPassword)) => Err(SourceProblem::WrongPassword),
+        Ok(Err(iridium_pdf_cos::CosError::NeedsPassword)) => Err(SourceProblem::Password),
+        Ok(Err(iridium_pdf_cos::CosError::WrongPassword)) => Err(SourceProblem::WrongPassword),
         Ok(Err(e)) => Err(SourceProblem::Unreadable(e.to_string())),
         Err(_) => Err(SourceProblem::Unreadable("the file could not be read".into())),
     }
@@ -64,6 +64,6 @@ pub fn combine_source_check(bytes: &Arc<Vec<u8>>, password: Option<&str>) -> Res
 /// The number of pages of `bytes`, opened with `password` (user or owner) if given, whatever
 /// its permissions allow; `None` when it can't be read.
 pub fn source_page_count(bytes: &Arc<Vec<u8>>, password: Option<&str>) -> Option<usize> {
-    let doc = std::panic::catch_unwind(|| pdfcraft_cos::Document::open_with_password(bytes.clone(), password)).ok()?.ok()?;
-    pdfcraft_organize::page_count(&doc).ok()
+    let doc = std::panic::catch_unwind(|| iridium_pdf_cos::Document::open_with_password(bytes.clone(), password)).ok()?.ok()?;
+    iridium_pdf_organize::page_count(&doc).ok()
 }

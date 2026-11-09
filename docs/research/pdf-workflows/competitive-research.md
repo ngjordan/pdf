@@ -14,17 +14,17 @@ The product sheets combined documented capabilities, approximate edition/version
 | Archived release notes | A reported change in a named release | Not proof of availability in every platform or edition |
 | Archived source inspection | Behavior recorded at the inspected revision | Not verification of another revision, release or backend |
 | Community reports and search snippets | Reported pain points and terminology | Not market share, incidence, representative satisfaction or security conclusions |
-| Historical design investigation | Documented problem, constraints and evaluation dimensions | Not PdfCraft implementation status, an accepted architecture or dependency approval |
+| Historical design investigation | Documented problem, constraints and evaluation dimensions | Not PDF implementation status, an accepted architecture or dependency approval |
 
 Unless explicitly updated in the register, links are **archived-not-revalidated**. An archive date is the date written in the collected study, not a web-archive capture, freshness guarantee or current product test. **Locator-reconstructed-not-revalidated** identifies a URL reconstructed from a named source rather than recovered as a complete citation. Vendor-hosted community discussions remain community evidence; their hosting does not make them vendor capability statements.
 
 The register is a source-finding aid, not a claim that every linked page supports every observation in this document. Its scope notes distinguish general entry pages from more specific references. No competitor was installed or benchmarked for this handoff. Screenshots, downloaded proprietary documents, user documents, implementation prompts and copied source code are not included.
 
-No competitor absence counts, rankings, prices, subscription assertions, security certifications, processing-retention promises or legal deadlines are reproduced as current facts. Corrections within the archive are recorded below. PdfCraft implementation status and planning remain in its existing roadmap, parity records and source evidence.
+No competitor absence counts, rankings, prices, subscription assertions, security certifications, processing-retention promises or legal deadlines are reproduced as current facts. Corrections within the archive are recorded below. PDF implementation status and planning remain in its existing roadmap, parity records and source evidence.
 
 ## Product coverage
 
-This table is an index to the subjects examined by each archived study. It does not assert that a product uniquely provides a capability or that PdfCraft lacks it. Product editions and platforms differed within the original studies.
+This table is an index to the subjects examined by each archived study. It does not assert that a product uniquely provides a capability or that PDF lacks it. Product editions and platforms differed within the original studies.
 
 | Product study | Workflow subjects recorded | Comparison dimensions used in the research |
 |---|---|---|
@@ -68,7 +68,7 @@ Ownership expectations, interruptions, keyboard review and readable themes also 
 
 ## Workflow families examined
 
-The archive grouped PDF work into the following eighteen families. The dimensions below describe what the studies compared or distinguished. They do not introduce new acceptance contracts or implementation assignments for PdfCraft.
+The archive grouped PDF work into the following eighteen families. The dimensions below describe what the studies compared or distinguished. They do not introduce new acceptance contracts or implementation assignments for PDF.
 
 ### 1. Reading, navigation and search
 
@@ -86,7 +86,7 @@ The archive evaluated fidelity in terms of both appearance and extractable text.
 
 Page studies covered selection, insertion, extraction, reordering, reversal, splitting, interleaving and assembly from multiple documents. They distinguished thumbnail position from page identity and distinguished a displayed page label from its physical index.
 
-Recorded evaluation dimensions included output-name previews, split boundaries, unequal source lengths, page-size differences, retained links/bookmarks/forms and the relationship between undo and selection. The archived cross-document staging layouts were design explorations; they are not adopted interface requirements or evidence of a current PdfCraft gap.
+Recorded evaluation dimensions included output-name previews, split boundaries, unequal source lengths, page-size differences, retained links/bookmarks/forms and the relationship between undo and selection. The archived cross-document staging layouts were design explorations; they are not adopted interface requirements or evidence of a current PDF gap.
 
 ### 4. OCR and human verification
 
@@ -98,7 +98,7 @@ Engine confidence and human review were separate concepts. The archive also dist
 
 Forms research separated authoring, filling, formatting, validation, calculation, flattening and data interchange. Field lists, tab order, calculation order and event dispatch appeared in the archived comparisons. A populated field and a functioning calculation/event model were not treated as interchangeable evidence.
 
-The historical script investigations recorded runtime compatibility and security constraints: allowed events and APIs, resource bounds, event recursion, external access and non-executing inspection. Those investigations evaluated another implementation's options. They do not select a runtime, authorize a dependency or establish PdfCraft script behavior. Unsupported fields and unsupported events were distinct from a document that had been verified to execute correctly.
+The historical script investigations recorded runtime compatibility and security constraints: allowed events and APIs, resource bounds, event recursion, external access and non-executing inspection. Those investigations evaluated another implementation's options. They do not select a runtime, authorize a dependency or establish PDF script behavior. Unsupported fields and unsupported events were distinct from a document that had been verified to execute correctly.
 
 ### 6. Comments, markups and review data
 
@@ -122,7 +122,7 @@ The archive's evaluation dimensions included credential handling, failure/refusa
 
 Signing research distinguished a drawn appearance, certificate-based signing, document certification, permitted changes and validation. Integrity of signed bytes, signer trust, timestamps, revocation evidence and later document changes were separate observations. A displayed validation result was tied to the document revision inspected.
 
-The archived local-request investigation examined prepared documents, manifests, handoff and inspection of returned files. That historical design was not a hosted signing service or identity-verification system. The archive also distinguished the local embedding of validation evidence from retrieval that may require network access. Its PAdES, dependency and legal terminology does not establish PdfCraft's attained signature profiles or the legal status of an output.
+The archived local-request investigation examined prepared documents, manifests, handoff and inspection of returned files. That historical design was not a hosted signing service or identity-verification system. The archive also distinguished the local embedding of validation evidence from retrieval that may require network access. Its PAdES, dependency and legal terminology does not establish PDF's attained signature profiles or the legal status of an output.
 
 ### 10. Document comparison
 
@@ -134,7 +134,7 @@ An overlay and a textual diff supplied different observations; neither alone est
 
 The detailed batch investigations recorded ordered steps, versioned preset data, option validation, output naming, conflicts, stop/continue policy, numbering continuity and per-file reports. They distinguished inert configuration data from executable scripts or shell commands.
 
-Atomicity was an explicit research dimension: a per-file chain could be all-or-nothing while a whole run had mixed outcomes; a whole-run transaction was a different guarantee. Cancellation could leave previously committed work, depending on the documented boundary. The archive also examined watch-folder repetition, result retention and deterministic numbering when files completed in a different order. These historical designs are not a replacement action format or another batch runner for PdfCraft.
+Atomicity was an explicit research dimension: a per-file chain could be all-or-nothing while a whole run had mixed outcomes; a whole-run transaction was a different guarantee. Cancellation could leave previously committed work, depending on the documented boundary. The archive also examined watch-folder repetition, result retention and deterministic numbering when files completed in a different order. These historical designs are not a replacement action format or another batch runner for PDF.
 
 ### 12. Conversion, extraction and document fidelity
 
@@ -146,7 +146,7 @@ The archived fidelity questions concerned retained bookmarks, annotations, attac
 
 Optimization studies separated lossless cleanup, image recompression, resolution reduction, font subsetting and color conversion. Estimated savings and measured before/after bytes were different quantities. An output larger than its input was still a possible result of processing.
 
-The October font investigation documented that a control's name alone did not establish actual subsetting for every font class in the implementation studied. The color investigation examined decoder behavior, embedded profiles, image representations and rendering intent. Their findings are historical case studies, not PdfCraft defect reports or dependency choices. Rendering, selectable text, font handling and retention of associated files were independent evaluation dimensions.
+The October font investigation documented that a control's name alone did not establish actual subsetting for every font class in the implementation studied. The color investigation examined decoder behavior, embedded profiles, image representations and rendering intent. Their findings are historical case studies, not PDF defect reports or dependency choices. Rendering, selectable text, font handling and retention of associated files were independent evaluation dimensions.
 
 ### 14. Printing, measurements and preflight
 
@@ -170,7 +170,7 @@ The archive treated attachments and embedded XML as potentially essential docume
 
 Integration research examined menus, keyboard access, contextual commands, command search, CLI operations, structured automation and watched folders. They were access paths to operations, not equivalent guarantees about authorization, cancellation or execution policy.
 
-The archive recorded coordinate naming, document identity, input/output paths, confinement, authorization, limits and headless reporting as evaluation dimensions. Silent installation, managed policies, portable builds, platform signing and architecture support were additional deployment subjects. Descriptions of other applications' registries or toolkits do not establish a new architecture for PdfCraft.
+The archive recorded coordinate naming, document identity, input/output paths, confinement, authorization, limits and headless reporting as evaluation dimensions. Silent installation, managed policies, portable builds, platform signing and architecture support were additional deployment subjects. Descriptions of other applications' registries or toolkits do not establish a new architecture for PDF.
 
 ### 18. Assisted recognition and grounded document answers
 
@@ -206,6 +206,6 @@ Several later reports qualified earlier claims. The following distinctions preve
 4. **Absence claims:** some negative findings came from documentation searches or snippets rather than exhaustive product tests. They are not reproduced as current facts.
 5. **Accuracy and security:** architecture and feature lists were sometimes used to infer recognition accuracy or removal reliability. This handoff records no such superiority or safety conclusion.
 6. **Regulatory references:** accessibility and invoicing deadlines were corrected within the archive. No legal deadline or compliance conclusion is asserted here.
-7. **Implementation transfer:** toolkit-specific source paths, proposed dependencies and defects from another codebase did not establish PdfCraft behavior. This document retains workflow distinctions and historical observations, not those implementation directions.
+7. **Implementation transfer:** toolkit-specific source paths, proposed dependencies and defects from another codebase did not establish PDF behavior. This document retains workflow distinctions and historical observations, not those implementation directions.
 
-Current PdfCraft planning and feature status remain in the existing roadmap and parity records. The source register and this reference document only describe the collected research and its limits.
+Current PDF planning and feature status remain in the existing roadmap and parity records. The source register and this reference document only describe the collected research and its limits.

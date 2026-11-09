@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use pdfcraft_cos::{Document, SaveOptions};
-use pdfcraft_sign::{SignOptions, Status, TrustStore, pkcs12, signatures};
+use iridium_pdf_cos::{Document, SaveOptions};
+use iridium_pdf_sign::{SignOptions, Status, TrustStore, pkcs12, signatures};
 
 fn data(name: &str) -> Vec<u8> {
     std::fs::read(format!("{}/tests/data/{name}", env!("CARGO_MANIFEST_DIR"))).unwrap()
@@ -64,14 +64,14 @@ fn opts() -> SignOptions {
 
 /// `fixture()` protected with an empty user password (opens without asking, like most
 /// "secured" forms) and an owner password, then saved.
-fn protected(alg: pdfcraft_cos::Algorithm, permissions: i32) -> Vec<u8> {
+fn protected(alg: iridium_pdf_cos::Algorithm, permissions: i32) -> Vec<u8> {
     protected_with(alg, "", permissions)
 }
 
 /// `fixture()` protected with the user password `user` and an owner password, then saved.
-fn protected_with(alg: pdfcraft_cos::Algorithm, user: &str, permissions: i32) -> Vec<u8> {
+fn protected_with(alg: iridium_pdf_cos::Algorithm, user: &str, permissions: i32) -> Vec<u8> {
     let mut doc = open(&fixture());
-    doc.set_encryption(&pdfcraft_cos::NewEncryption {
+    doc.set_encryption(&iridium_pdf_cos::NewEncryption {
         algorithm: alg,
         user_password: user,
         owner_password: "owner",
@@ -80,18 +80,18 @@ fn protected_with(alg: pdfcraft_cos::Algorithm, user: &str, permissions: i32) ->
         seed: [17; 32],
     })
     .unwrap();
-    pdfcraft_cos::write_full(&doc, &SaveOptions::default()).unwrap()
+    iridium_pdf_cos::write_full(&doc, &SaveOptions::default()).unwrap()
 }
 
 fn open_pw(b: &[u8], pw: Option<&str>) -> Document {
     Document::open_with_password(Arc::new(b.to_vec()), pw).unwrap()
 }
 
-const ALL_ALGORITHMS: [pdfcraft_cos::Algorithm; 4] =
-    [pdfcraft_cos::Algorithm::Rc4_40, pdfcraft_cos::Algorithm::Rc4_128, pdfcraft_cos::Algorithm::Aes128, pdfcraft_cos::Algorithm::Aes256];
+const ALL_ALGORITHMS: [iridium_pdf_cos::Algorithm; 4] =
+    [iridium_pdf_cos::Algorithm::Rc4_40, iridium_pdf_cos::Algorithm::Rc4_128, iridium_pdf_cos::Algorithm::Aes128, iridium_pdf_cos::Algorithm::Aes256];
 
 /// Where `needle` first appears in `haystack`.
-fn find(haystack: &[u8], needle: &[u8], alg: pdfcraft_cos::Algorithm) -> usize {
+fn find(haystack: &[u8], needle: &[u8], alg: iridium_pdf_cos::Algorithm) -> usize {
     haystack
         .windows(needle.len())
         .position(|w| w == needle)
@@ -99,7 +99,7 @@ fn find(haystack: &[u8], needle: &[u8], alg: pdfcraft_cos::Algorithm) -> usize {
 }
 
 /// The four numbers of the signature dictionary's `/ByteRange` in the added revision.
-fn byte_range(added: &[u8], alg: pdfcraft_cos::Algorithm) -> [usize; 4] {
+fn byte_range(added: &[u8], alg: iridium_pdf_cos::Algorithm) -> [usize; 4] {
     let prefix = b"/ByteRange [";
     let at = find(added, prefix, alg) + prefix.len();
     let end = at + added[at..].iter().position(|b| *b == b']').unwrap_or_else(|| panic!("{alg:?}: the /ByteRange array is not closed"));
@@ -120,7 +120,7 @@ fn signed_encrypted_documents_cover_their_earlier_revision() {
     for alg in ALL_ALGORITHMS {
         let base = protected(alg, -1);
         let doc = open_pw(&base, None);
-        let signed = pdfcraft_sign::sign(&doc, &id, &opts()).unwrap();
+        let signed = iridium_pdf_sign::sign(&doc, &id, &opts()).unwrap();
         assert!(signed.starts_with(&base), "{alg:?}: an incremental update");
         let added = &signed[base.len()..];
         // The hole: the `<...>` hex string of `/Contents`.

@@ -5,15 +5,15 @@
 //! separate and read it back. Every session is repeated on several desks (window size and
 //! zoom), because that is what changes where a click lands.
 //!
-//! A miss writes a screenshot and the paragraph list to `/tmp/pdfcraft-play/` and fails this
+//! A miss writes a screenshot and the paragraph list to `/tmp/iridium-pdf-play/` and fails this
 //! test with that report. `cargo test --workspace` runs it on the Linux and Windows CI
-//! machines. The paragraph rules themselves live in `pdfcraft-edit` and run on every OS that
+//! machines. The paragraph rules themselves live in `iridium-pdf-edit` and run on every OS that
 //! job tests. A pass covers these sessions and these desks, not every PDF a person might open.
 //!
 //! Page coordinates are PDF points. The default page is US Letter (612 by 792).
 //!
 //! ```text
-//! cargo test -p pdfcraft-ui-egui --test play -- --nocapture
+//! cargo test -p iridium-pdf-ui-egui --test play -- --nocapture
 //! ```
 
 use std::fs;
@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 
 use egui::{Key, Modifiers};
 use egui_kittest::Harness;
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_ui_egui::PdfApp;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -160,7 +160,7 @@ fn play_desk(session: &Session, desk: &Desk) -> Result<(), String> {
 }
 
 impl Step {
-    fn run(&self, h: &mut Harness<'static, PdfCraftApp>, session: &Session) -> Result<(), String> {
+    fn run(&self, h: &mut Harness<'static, PdfApp>, session: &Session) -> Result<(), String> {
         match self {
             Step::Command { id } => {
                 if !h.state_mut().execute(id) {
@@ -235,7 +235,7 @@ impl Step {
     }
 }
 
-fn type_into_paragraph(h: &mut Harness<'static, PdfCraftApp>, text: &str) -> Result<(), String> {
+fn type_into_paragraph(h: &mut Harness<'static, PdfApp>, text: &str) -> Result<(), String> {
     if h.state().views.first().and_then(|v| v.line_editor.as_ref()).is_none() {
         return Err("no paragraph is open for typing".into());
     }
@@ -247,7 +247,7 @@ fn type_into_paragraph(h: &mut Harness<'static, PdfCraftApp>, text: &str) -> Res
     Ok(())
 }
 
-fn drag_edge(h: &mut Harness<'static, PdfCraftApp>, session: &Session, contains: &str, dx: f32, dy: f32) -> Result<(), String> {
+fn drag_edge(h: &mut Harness<'static, PdfApp>, session: &Session, contains: &str, dx: f32, dy: f32) -> Result<(), String> {
     let edge = {
         let s = h.state();
         let Some(view) = s.views.first() else { return Err("no document is open".into()) };
@@ -275,7 +275,7 @@ fn drag_edge(h: &mut Harness<'static, PdfCraftApp>, session: &Session, contains:
     Ok(())
 }
 
-fn click_page(h: &mut Harness<'static, PdfCraftApp>, session: &Session, x: f32, y: f32) -> Result<(), String> {
+fn click_page(h: &mut Harness<'static, PdfApp>, session: &Session, x: f32, y: f32) -> Result<(), String> {
     let page = h.state().views.first().and_then(|v| v.page_screen_rect(0)).ok_or("the page is not on screen")?;
     let [pw, ph] = session.page;
     let at = egui::pos2(page.left() + x / pw * page.width(), page.top() + (ph - y) / ph * page.height());
@@ -306,29 +306,29 @@ fn modifiers_of(names: &[String]) -> Result<Modifiers, String> {
     Ok(m)
 }
 
-fn paragraphs(h: &Harness<'static, PdfCraftApp>) -> Vec<String> {
+fn paragraphs(h: &Harness<'static, PdfApp>) -> Vec<String> {
     paragraphs_full(h).into_iter().map(|b| b.text).collect()
 }
 
-fn paragraphs_full(h: &Harness<'static, PdfCraftApp>) -> Vec<pdfcraft_engine::TextBlock> {
+fn paragraphs_full(h: &Harness<'static, PdfApp>) -> Vec<iridium_pdf_engine::TextBlock> {
     let s = h.state();
     let Some(view) = s.views.first() else { return Vec::new() };
     s.session.get(view.id).map(|d| d.text_blocks(0)).unwrap_or_default()
 }
 
-fn save_shot(h: &mut Harness<'static, PdfCraftApp>, name: &str) -> String {
+fn save_shot(h: &mut Harness<'static, PdfApp>, name: &str) -> String {
     let safe: String = name.chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '-' }).collect();
     save_named(h, &safe)
 }
 
-fn save_named(h: &mut Harness<'static, PdfCraftApp>, name: &str) -> String {
+fn save_named(h: &mut Harness<'static, PdfApp>, name: &str) -> String {
     for _ in 0..20 {
         h.run_steps(2);
         if !h.state().render_pending() {
             break;
         }
     }
-    let dir = PathBuf::from("/tmp/pdfcraft-play");
+    let dir = PathBuf::from("/tmp/iridium-pdf-play");
     let _ = fs::create_dir_all(&dir);
     let path = dir.join(format!("{name}.png"));
     if let Ok(image) = h.render() {
@@ -337,11 +337,11 @@ fn save_named(h: &mut Harness<'static, PdfCraftApp>, name: &str) -> String {
     path.display().to_string()
 }
 
-fn open_letter(name: &str, content: &str, desk: &Desk) -> Harness<'static, PdfCraftApp> {
+fn open_letter(name: &str, content: &str, desk: &Desk) -> Harness<'static, PdfApp> {
     let bytes = letter_pdf(content);
     let title = name.to_string();
     let mut h = Harness::builder().with_size(egui::vec2(desk.width, desk.height)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         let _ = app.set_option("language", "en");
         let _ = app.open_bytes(&title, None, bytes);
         app

@@ -522,7 +522,7 @@ fn set_states(doc: &mut Document, f: &Field, on: Option<&str>, pick: Option<usiz
             (Some(c), Some(s)) if c == s && chosen.is_none_or(|k| k == i) => s,
             _ => "Off",
         };
-        // A widget without appearances for its states gets PdfCraft's own.
+        // A widget without appearances for its states gets PDF's own.
         let has_ap = doc.get(w.obj).as_dict().and_then(|d| d.get(b"AP").cloned()).is_some();
         if !has_ap {
             let on_name = w.on_state.clone().unwrap_or_else(|| on.unwrap_or("Yes").to_string());
@@ -607,7 +607,7 @@ fn redraw(doc: &mut Document, f: &Field, values: &[String], scripts: &mut dyn Sc
         };
         undrawn |= missing.is_some();
         // Thai glyphs are streams of their own.
-        pdfcraft_fonts::shaped_text::store_streams(doc, &mut stream.dict);
+        iridium_pdf_fonts::shaped_text::store_streams(doc, &mut stream.dict);
         let existing_ap = in_place
             .then(|| {
                 doc.get(w.obj)
@@ -631,7 +631,7 @@ fn redraw(doc: &mut Document, f: &Field, values: &[String], scripts: &mut dyn Sc
         doc.update_dict(w.obj, |d| {
             d.set(b"AP".to_vec(), Object::Dict(apd));
             d.remove(b"AS");
-            pdfcraft_fonts::set_undrawn_mark(d, missing);
+            iridium_pdf_fonts::set_undrawn_mark(d, missing);
         })?;
     }
     if undrawn {
@@ -644,7 +644,7 @@ fn redraw(doc: &mut Document, f: &Field, values: &[String], scripts: &mut dyn Sc
 /// such a value): `/NeedAppearances` then asks other viewers to draw the fields from their values
 /// with fonts that have those characters (the interactive form dictionary, §12.7.3). Not in a
 /// document that declares PDF/A, which forbids it: there the widget's mark
-/// (`pdfcraft_fonts::UNDRAWN_MARK`) is all, and the edit's report says the `?` shows everywhere.
+/// (`iridium_pdf_fonts::UNDRAWN_MARK`) is all, and the edit's report says the `?` shows everywhere.
 pub(crate) fn ask_viewers_to_redraw(doc: &mut Document) -> Result<(), FormError> {
     // The form's own flag first: once it is set, the metadata needn't be decoded again for each
     // field drawn after.

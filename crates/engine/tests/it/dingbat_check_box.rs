@@ -5,9 +5,9 @@
 
 use std::sync::Arc;
 
-use pdfcraft_cos::{Document, SaveOptions, write_incremental};
-use pdfcraft_fonts::Std14;
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest};
+use iridium_pdf_cos::{Document, SaveOptions, write_incremental};
+use iridium_pdf_fonts::Std14;
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest};
 
 /// The `/DA` size of the check, in points (and pixels, at scale 1).
 const SIZE: f64 = 60.0;
@@ -39,7 +39,7 @@ fn a_check_box_caption_check_is_drawn_at_its_standard_advance() {
         "<< /Type /Annot /Subtype /Widget /FT /Btn /T (c) /V /Yes /AS /Yes /DA (/ZaDb 60 Tf 0 g) /MK << /CA (4) >> /Rect [50 50 150 150] /F 4 /P 3 0 R >>",
     ]);
     let doc = Document::open(Arc::new(bytes)).expect("the fixture opens");
-    let shown = pdfcraft_forms::with_field_appearances(&doc).expect("the check box gets an appearance");
+    let shown = iridium_pdf_forms::with_field_appearances(&doc).expect("the check box gets an appearance");
     let bytes = write_incremental(&shown, &SaveOptions::default()).expect("the display copy saves");
     let mut renderer = PageRenderer::new(Arc::new(bytes), RenderConfig::default());
     let page = renderer.render(RenderRequest { page: 0, scale: 1.0, ..Default::default() });

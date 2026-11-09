@@ -5,7 +5,7 @@
 //! A document whose next save rewrites it in full is judged by the header that save writes: the
 //! version it keeps, followed by the writer's own binary comment.
 
-use pdfcraft_cos::Document;
+use iridium_pdf_cos::Document;
 
 /// What the header of `doc`, as it will be saved, breaks of 6.1.2.
 #[derive(Debug, Default, PartialEq, Eq)]

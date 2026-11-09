@@ -1,7 +1,7 @@
 //! `doc_info` lists the objects of a file that could not be read: each reads as null, so the file
 //! opens, but what it held is lost and nothing was repaired.
 
-use pdfcraft_automation::{Automation, Content};
+use iridium_pdf_automation::{Automation, Content};
 use serde_json::{Value, json};
 
 /// A one-page PDF whose document information dictionary (object 4) is `info`.
@@ -42,7 +42,7 @@ fn info_of(a: &mut Automation, path: &str) -> Value {
 /// nothing is reported as repaired.
 #[test]
 fn doc_info_lists_an_object_that_could_not_be_read() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-unreadable-objects-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-unreadable-objects-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("broken.pdf"), with_info("<< /Title (Report) /Author ) >>")).unwrap();

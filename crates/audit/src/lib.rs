@@ -24,8 +24,8 @@
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
-use pdfcraft_cos::{Dict, Document};
-use pdfcraft_edit::TextLine;
+use iridium_pdf_cos::{Dict, Document};
+use iridium_pdf_edit::TextLine;
 
 mod cover;
 
@@ -86,9 +86,9 @@ pub enum AuditError {
     #[error("covered text exceeds the audit's report budget")]
     TooMuchOutput,
     #[error(transparent)]
-    Cos(#[from] pdfcraft_cos::CosError),
+    Cos(#[from] iridium_pdf_cos::CosError),
     #[error(transparent)]
-    Edit(#[from] pdfcraft_edit::EditError),
+    Edit(#[from] iridium_pdf_edit::EditError),
 }
 
 /// Fraction of a text line's ink (the area of its words), or of its box, that must lie under a
@@ -212,10 +212,10 @@ fn audit(doc: &Document, limits: Limits) -> Result<Vec<AuditFinding>, AuditError
     let copying = doc.permissions().is_none_or(|p| p.copy());
     let mut budget = Budget { limits, comparisons: 0, page_cost: 0, covered_text: 0 };
     let mut out = Vec::new();
-    for (n, page) in pdfcraft_model::pages(doc).iter().enumerate() {
+    for (n, page) in iridium_pdf_model::pages(doc).iter().enumerate() {
         // The glyphs themselves: `/ActualText` is the file's own claim about them, and an empty
         // or substitute one must not hide text a cover sits on.
-        let lines = pdfcraft_edit::glyph_text_lines(doc, page).map_err(|e| AuditError::Text(n, e.to_string()))?;
+        let lines = iridium_pdf_edit::glyph_text_lines(doc, page).map_err(|e| AuditError::Text(n, e.to_string()))?;
         budget.start_page(&lines);
         // 1. Opaque filled rectangles over extractable text.
         for r in cover::filled_rects(doc, &page.dict)? {
@@ -383,8 +383,8 @@ fn annots(doc: &Document, page: &Dict) -> Result<Vec<AnnotationCover>, AuditErro
 /// loaded fails the audit: the subtype decides whether the object is checked at all.
 fn subtype(doc: &Document, dict: &Dict) -> Result<Option<Vec<u8>>, AuditError> {
     let name = match dict.get(b"Subtype") {
-        Some(pdfcraft_cos::Object::Ref(r)) => doc.try_get(r.num)?.as_name().map(<[u8]>::to_vec),
-        other => other.and_then(pdfcraft_cos::Object::as_name).map(<[u8]>::to_vec),
+        Some(iridium_pdf_cos::Object::Ref(r)) => doc.try_get(r.num)?.as_name().map(<[u8]>::to_vec),
+        other => other.and_then(iridium_pdf_cos::Object::as_name).map(<[u8]>::to_vec),
     };
     Ok(name)
 }

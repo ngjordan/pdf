@@ -3,9 +3,9 @@
 //! The viewer makes them clickable the way link annotations are: the address opens only through
 //! [`crate::links::document_url`] and the confirmation, like any link from a document. No clause
 //! of ISO 32000-2 covers this (it defines link annotations, not reading addresses out of page
-//! text); the detector is the one Create links from URLs uses ([`pdfcraft_annot::links::find_urls`]).
+//! text); the detector is the one Create links from URLs uses ([`iridium_pdf_annot::links::find_urls`]).
 
-use pdfcraft_render::{PageInfo, PageText};
+use iridium_pdf_render::{PageInfo, PageText};
 
 /// Pages with more glyphs than this aren't searched for addresses: the work is linear, but it is
 /// done for each page as it comes into view.
@@ -70,7 +70,7 @@ pub fn find_text_links(text: &PageText) -> Vec<TextLink> {
     // Each address with the text it was found in.
     let found: std::cell::RefCell<Vec<(Option<String>, String)>> = Default::default();
     let hits = text.find_with(|chars| {
-        let mut urls = pdfcraft_annot::links::find_urls(chars);
+        let mut urls = iridium_pdf_annot::links::find_urls(chars);
         urls.truncate(MAX_TEXT_LINKS_PER_PAGE);
         let ranges = urls.iter().map(|u| u.0.clone()).collect();
         *found.borrow_mut() =
@@ -108,7 +108,7 @@ fn web_uri(chars: &[char], range: std::ops::Range<usize>, uri: String) -> String
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pdfcraft_render::TextGlyph;
+    use iridium_pdf_render::TextGlyph;
 
     /// One line of text, a glyph per character, 6 points apart; `\n` starts the next line.
     fn page_text(s: &str) -> PageText {

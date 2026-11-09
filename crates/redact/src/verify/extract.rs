@@ -2,8 +2,8 @@
 
 use std::collections::HashMap;
 
-use pdfcraft_content::{Matrix, parse};
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, Stream};
+use iridium_pdf_content::{Matrix, parse};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, Stream};
 
 use super::util::{Ctx, latin1, resolve_strict, squash};
 use crate::annots_of;
@@ -12,7 +12,7 @@ use crate::verify::limits::{MAX_CMAP, MAX_CMAP_ENTRIES, MAX_CMAP_WORK, MAX_DEPTH
 /// Is this one of the glyph-carrying text-showing operators (`Tj`, `'`, `"`, and `TJ` with at
 /// least one non-empty string)? A `TJ` of numbers only (the gap redaction leaves for a removed
 /// string) moves the cursor but shows nothing, so it does not count.
-pub(super) fn carries_glyphs(op: &pdfcraft_content::Op) -> bool {
+pub(super) fn carries_glyphs(op: &iridium_pdf_content::Op) -> bool {
     let nonempty = |o: &Object| o.as_string().is_some_and(|s| !s.bytes.is_empty());
     match op.op.as_slice() {
         b"Tj" | b"'" | b"\"" => op.operands.last().is_some_and(nonempty),
@@ -85,7 +85,7 @@ impl Decoder {
                 match &*doc.resolve(it) {
                     Object::Int(i) => code = u32::try_from(*i).unwrap_or(0),
                     Object::Name(n) => {
-                        if let Some(c) = std::str::from_utf8(n).ok().and_then(pdfcraft_fonts::pdf::glyph_unicode) {
+                        if let Some(c) = std::str::from_utf8(n).ok().and_then(iridium_pdf_fonts::pdf::glyph_unicode) {
                             d.map.insert(code, c.to_string());
                         }
                         code = code.saturating_add(1);
@@ -228,7 +228,7 @@ impl Font {
                     }
                 }
                 f.default_width = missing.unwrap_or(0.0);
-            } else if let Some(std) = pdfcraft_fonts::Std14::from_base_font(&String::from_utf8_lossy(font.name(b"BaseFont").unwrap_or(b""))) {
+            } else if let Some(std) = iridium_pdf_fonts::Std14::from_base_font(&String::from_utf8_lossy(font.name(b"BaseFont").unwrap_or(b""))) {
                 // No /Widths: a standard font has exact published widths, by WinAnsi code (Symbol,
                 // ZapfDingbats and other encodings are refused before the proof is reached).
                 for code in 0..=255u8 {
@@ -548,7 +548,7 @@ impl Extractor<'_> {
 
     /// Show the strings of one text-showing operator: extract their text, and place each glyph
     /// to count the ones inside a region. `tm` moves along with the pen.
-    fn show_text(&mut self, font: &Font, op: &pdfcraft_content::Op, gs: &TextGs, tm: &mut Matrix, placed: bool) {
+    fn show_text(&mut self, font: &Font, op: &iridium_pdf_content::Op, gs: &TextGs, tm: &mut Matrix, placed: bool) {
         let o = op.op.as_slice();
         // Strings and TJ adjustments, in order.
         let items: Vec<&Object> = match o {

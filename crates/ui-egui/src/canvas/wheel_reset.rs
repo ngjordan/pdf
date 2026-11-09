@@ -22,17 +22,17 @@ pub(crate) fn reset_this_pass(ctx: &Context) -> bool {
 
 /// Separates reset requests belonging to different native viewports.
 fn pending(viewport: ViewportId) -> Id {
-    Id::unique(("pdfcraft-wheel-reset-pending", viewport))
+    Id::unique(("iridium-pdf-wheel-reset-pending", viewport))
 }
 
 /// Records whether this pass contains an internal reset that must be hidden from app routing.
 fn injected(viewport: ViewportId) -> Id {
-    Id::unique(("pdfcraft-wheel-reset-injected", viewport))
+    Id::unique(("iridium-pdf-wheel-reset-injected", viewport))
 }
 
 /// Shares reset ownership with app wheel readers only during the pass that applied it.
 fn applied(viewport: ViewportId) -> Id {
-    Id::unique(("pdfcraft-wheel-reset-applied", viewport))
+    Id::unique(("iridium-pdf-wheel-reset-applied", viewport))
 }
 
 /// A zero-distance cancellation clears egui's private wheel queue before fresh input arrives.
@@ -53,7 +53,7 @@ struct WheelReset;
 impl Plugin for WheelReset {
     /// Identifies the input ownership hook in egui diagnostics.
     fn debug_name(&self) -> &'static str {
-        "pdfcraft-wheel-reset"
+        "iridium-pdf-wheel-reset"
     }
 
     /// Cancel only the old wheel copy before egui processes this pass's fresh input.

@@ -1,8 +1,8 @@
-# pdfcraft-prc
+# iridium-pdf-prc
 
 A reader for PRC (ISO 14739-1), the 3D model format a PDF `/3D` stream of `/Subtype /PRC` carries (ISO 32000-2 §13.6.3).
 
-- **Layer:** L0, standalone. No dependency on any other PdfCraft crate.
+- **Layer:** L0, standalone. No dependency on any other PDF crate.
 - **Licence:** MIT OR Apache-2.0. Inflation through `flate2` with the pure-Rust `miniz_oxide` backend.
 - `#![forbid(unsafe_code)]`. Never panics on input: inflated bytes, decoded elements, schema steps and walk depth are capped, and damage returns `PrcError`.
 

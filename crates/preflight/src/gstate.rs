@@ -21,7 +21,7 @@
 
 use std::collections::{BTreeSet, HashSet, VecDeque};
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object};
 
 /// How deep a direct object is followed: as deep as the parser nests them.
 const MAX_DEPTH: u8 = 128;
@@ -246,7 +246,7 @@ mod tests {
     use std::collections::BTreeSet;
     use std::sync::Arc;
 
-    use pdfcraft_cos::Document;
+    use iridium_pdf_cos::Document;
 
     use super::{Findings, check};
     use crate::{Level, verify};

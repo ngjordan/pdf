@@ -89,9 +89,9 @@ pub(super) enum Within {
     Xdp,
 }
 
-pub(super) const WRAP_OPEN: &str = "<pdfcraft-wrap xmlns:xfa=\"http://www.xfa.org/schema/xfa-data/1.0/\" xmlns:xdp=\"http://ns.adobe.com/xdp/\">";
+pub(super) const WRAP_OPEN: &str = "<iridium-pdf-wrap xmlns:xfa=\"http://www.xfa.org/schema/xfa-data/1.0/\" xmlns:xdp=\"http://ns.adobe.com/xdp/\">";
 
-pub(super) const WRAP_CLOSE: &str = "</pdfcraft-wrap>";
+pub(super) const WRAP_CLOSE: &str = "</iridium-pdf-wrap>";
 
 /// Write `wants` into the data of the datasets packet in `text`, changing only what has to
 /// change: values go into the data nodes they bind to, missing nodes are added, and everything

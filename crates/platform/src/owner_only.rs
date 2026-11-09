@@ -240,19 +240,19 @@ enum Kind {
 fn set_access_list(path: &std::path::Path, me: &str, kind: Kind) -> std::io::Result<()> {
     // No double quotes: the command line would strip them.
     const FILE: &str = "$s = New-Object Security.AccessControl.FileSecurity; \
-        $s.SetSecurityDescriptorSddlForm('D:P(A;;FA;;;' + $env:PDFCRAFT_ACL_USER + ')(A;;FA;;;SY)', 'Access'); \
-        [IO.File]::SetAccessControl($env:PDFCRAFT_ACL_PATH, $s)";
+        $s.SetSecurityDescriptorSddlForm('D:P(A;;FA;;;' + $env:IRIDIUM_PDF_ACL_USER + ')(A;;FA;;;SY)', 'Access'); \
+        [IO.File]::SetAccessControl($env:IRIDIUM_PDF_ACL_PATH, $s)";
     const FOLDER: &str = "$s = New-Object Security.AccessControl.DirectorySecurity; \
-        $s.SetSecurityDescriptorSddlForm('D:P(A;OICI;FA;;;' + $env:PDFCRAFT_ACL_USER + ')(A;OICI;FA;;;SY)', 'Access'); \
-        [IO.Directory]::SetAccessControl($env:PDFCRAFT_ACL_PATH, $s)";
+        $s.SetSecurityDescriptorSddlForm('D:P(A;OICI;FA;;;' + $env:IRIDIUM_PDF_ACL_USER + ')(A;OICI;FA;;;SY)', 'Access'); \
+        [IO.Directory]::SetAccessControl($env:IRIDIUM_PDF_ACL_PATH, $s)";
     let script = match kind {
         Kind::File => FILE,
         Kind::Folder => FOLDER,
     };
     let out = system_tool(POWERSHELL)
         .args(["-NoProfile", "-NonInteractive", "-Command", script])
-        .env("PDFCRAFT_ACL_PATH", path)
-        .env("PDFCRAFT_ACL_USER", me)
+        .env("IRIDIUM_PDF_ACL_PATH", path)
+        .env("IRIDIUM_PDF_ACL_USER", me)
         .output()?;
     if out.status.success() {
         Ok(())
@@ -296,16 +296,16 @@ macro_rules! describe_raw {
 #[cfg(windows)]
 pub fn read_with_sddl(path: &std::path::Path, max: u64) -> std::io::Result<(String, Vec<u8>)> {
     const SCRIPT: &str = concat!(
-        "$fs = [IO.File]::Open($env:PDFCRAFT_ACL_PATH, 'Open', 'Read', 'Read'); try {         $raw = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList @($fs.GetAccessControl().GetSecurityDescriptorBinaryForm(), 0); ",
+        "$fs = [IO.File]::Open($env:IRIDIUM_PDF_ACL_PATH, 'Open', 'Read', 'Read'); try {         $raw = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList @($fs.GetAccessControl().GetSecurityDescriptorBinaryForm(), 0); ",
         describe_raw!(),
-        "$max = [int]$env:PDFCRAFT_ACL_MAX + 1; $buf = New-Object byte[] $max; $total = 0;         while ($total -lt $max) { $n = $fs.Read($buf, $total, $max - $total); if ($n -le 0) { break }; $total += $n };         [Console]::Out.Write($sddl + [char]10 + [BitConverter]::ToString($buf, 0, $total)) } finally { $fs.Dispose() }"
+        "$max = [int]$env:IRIDIUM_PDF_ACL_MAX + 1; $buf = New-Object byte[] $max; $total = 0;         while ($total -lt $max) { $n = $fs.Read($buf, $total, $max - $total); if ($n -le 0) { break }; $total += $n };         [Console]::Out.Write($sddl + [char]10 + [BitConverter]::ToString($buf, 0, $total)) } finally { $fs.Dispose() }"
     );
     // Bounded so the script's `[int]` and buffer stay small; a control file is far below this.
     let max = max.min(1 << 20);
     let out = system_tool(POWERSHELL)
         .args(["-NoProfile", "-NonInteractive", "-Command", SCRIPT])
-        .env("PDFCRAFT_ACL_PATH", path)
-        .env("PDFCRAFT_ACL_MAX", max.to_string())
+        .env("IRIDIUM_PDF_ACL_PATH", path)
+        .env("IRIDIUM_PDF_ACL_MAX", max.to_string())
         .output()?;
     let read = if out.status.success() { sddl_and_bytes(&String::from_utf8_lossy(&out.stdout)) } else { None };
     read.ok_or_else(|| std::io::Error::other("PowerShell could not read the file with its owner and access list"))
@@ -318,11 +318,11 @@ pub fn read_with_sddl(path: &std::path::Path, max: u64) -> std::io::Result<(Stri
 pub fn sddl_of(path: &std::path::Path) -> std::io::Result<String> {
     const SCRIPT: &str = concat!(
         // Stop: a failed read (a missing file) must end the script with an error, not print `O:`.
-        "$ErrorActionPreference = 'Stop';         $raw = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList @([IO.File]::GetAccessControl($env:PDFCRAFT_ACL_PATH).GetSecurityDescriptorBinaryForm(), 0); ",
+        "$ErrorActionPreference = 'Stop';         $raw = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList @([IO.File]::GetAccessControl($env:IRIDIUM_PDF_ACL_PATH).GetSecurityDescriptorBinaryForm(), 0); ",
         describe_raw!(),
         "[Console]::Out.Write($sddl + [char]10)"
     );
-    let out = system_tool(POWERSHELL).args(["-NoProfile", "-NonInteractive", "-Command", SCRIPT]).env("PDFCRAFT_ACL_PATH", path).output()?;
+    let out = system_tool(POWERSHELL).args(["-NoProfile", "-NonInteractive", "-Command", SCRIPT]).env("IRIDIUM_PDF_ACL_PATH", path).output()?;
     let read = if out.status.success() { sddl_and_bytes(&String::from_utf8_lossy(&out.stdout)) } else { None };
     read.map(|(sddl, _)| sddl).ok_or_else(|| std::io::Error::other("PowerShell could not read the file's owner and access list"))
 }
@@ -438,7 +438,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn a_file_in_a_shared_folder_is_restricted_to_its_owner() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-owner-only-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-owner-only-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let ok = std::process::Command::new("icacls").arg(&dir).arg("/grant").arg("*S-1-5-32-545:(OI)(CI)R").output().unwrap();
         assert!(ok.status.success(), "{}", String::from_utf8_lossy(&ok.stderr));
@@ -462,7 +462,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn a_file_created_in_a_private_folder_is_private_from_the_start() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-owner-only-private-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-owner-only-private-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let ok = std::process::Command::new("icacls").arg(&dir).arg("/grant").arg("*S-1-5-32-545:(OI)(CI)R").output().unwrap();
@@ -488,7 +488,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn a_file_in_a_folder_granting_only_modify_is_still_restricted() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-owner-only-modify-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-owner-only-modify-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let me = current_user_sid().unwrap();
@@ -512,7 +512,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn a_file_with_no_access_list_is_refused() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-owner-only-null-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-owner-only-null-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let file = dir.join("ctl.json");
@@ -524,9 +524,9 @@ mod tests {
                 "-NoProfile",
                 "-NonInteractive",
                 "-Command",
-                "$s = New-Object Security.AccessControl.FileSecurity; $s.SetSecurityDescriptorSddlForm('D:NO_ACCESS_CONTROL', 'Access'); [IO.File]::SetAccessControl($env:PDFCRAFT_NULL_PATH, $s)",
+                "$s = New-Object Security.AccessControl.FileSecurity; $s.SetSecurityDescriptorSddlForm('D:NO_ACCESS_CONTROL', 'Access'); [IO.File]::SetAccessControl($env:IRIDIUM_PDF_NULL_PATH, $s)",
             ])
-            .env("PDFCRAFT_NULL_PATH", &file)
+            .env("IRIDIUM_PDF_NULL_PATH", &file)
             .output()
             .unwrap();
         assert!(null.status.success(), "{}", String::from_utf8_lossy(&null.stderr));
@@ -542,7 +542,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn a_file_whose_access_list_cant_be_replaced_is_not_restricted() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-owner-only-ow-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-owner-only-ow-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let me = current_user_sid().unwrap();
@@ -556,10 +556,10 @@ mod tests {
                 "-NoProfile",
                 "-NonInteractive",
                 "-Command",
-                "$s = New-Object Security.AccessControl.FileSecurity; $s.SetSecurityDescriptorSddlForm('D:P(A;;FR;;;' + $env:PDFCRAFT_OW_USER + ')(A;;WO;;;OW)', 'Access'); [IO.File]::SetAccessControl($env:PDFCRAFT_OW_PATH, $s)",
+                "$s = New-Object Security.AccessControl.FileSecurity; $s.SetSecurityDescriptorSddlForm('D:P(A;;FR;;;' + $env:IRIDIUM_PDF_OW_USER + ')(A;;WO;;;OW)', 'Access'); [IO.File]::SetAccessControl($env:IRIDIUM_PDF_OW_PATH, $s)",
             ])
-            .env("PDFCRAFT_OW_PATH", &file)
-            .env("PDFCRAFT_OW_USER", &me)
+            .env("IRIDIUM_PDF_OW_PATH", &file)
+            .env("IRIDIUM_PDF_OW_USER", &me)
             .output()
             .unwrap();
         assert!(rights.status.success(), "{}", String::from_utf8_lossy(&rights.stderr));
@@ -574,7 +574,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn tool_failures_are_errors() {
-        let missing = std::env::temp_dir().join(format!("pdfcraft-owner-only-missing-{}", std::process::id())).join("none.json");
+        let missing = std::env::temp_dir().join(format!("iridium-pdf-owner-only-missing-{}", std::process::id())).join("none.json");
         assert!(restrict_to_owner(&missing, &user()).is_err(), "icacls on a missing file");
         assert!(sddl_of(&missing).is_err(), "Get-Acl on a missing file");
         let me = current_user_sid().unwrap();
@@ -605,7 +605,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn the_file_is_read_with_its_descriptor_through_one_handle() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-owner-only-read-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-owner-only-read-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let file = dir.join("ctl.json");
         std::fs::write(&file, br#"{"port":1}"#).unwrap();
@@ -643,7 +643,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn entries_of_the_files_own_are_replaced() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-owner-only-own-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-owner-only-own-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let me = current_user_sid().unwrap();

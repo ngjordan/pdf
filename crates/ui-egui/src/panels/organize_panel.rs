@@ -9,14 +9,14 @@
 //! toolbar did, so they run, refuse and undo the same way.
 
 use egui::{Align2, CornerRadius, Rect, Sense, Stroke, vec2};
-use pdfcraft_engine::Edit;
+use iridium_pdf_engine::Edit;
 
 use crate::canvas::ViewAction;
 use crate::theme::{self, Tokens};
-use crate::{LeftPanel, PdfCraftApp, icons, widgets};
+use crate::{LeftPanel, PdfApp, icons, widgets};
 
 /// Whether the left panel is Organize pages: the tool is chosen, or the active view shows the grid.
-pub(crate) fn showing(app: &PdfCraftApp) -> bool {
+pub(crate) fn showing(app: &PdfApp) -> bool {
     app.left == LeftPanel::Tool("organize") || app.active.and_then(|i| app.views.get(i)).is_some_and(|v| v.organize)
 }
 
@@ -39,7 +39,7 @@ enum Act {
     Command(&'static str),
 }
 
-pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
+pub(crate) fn panel(app: &mut PdfApp, ui: &mut egui::Ui, t: &Tokens) {
     let Some((index, id)) = app.active_ids() else { return };
     let Some(doc) = app.session.get(id) else { return };
     let info = &doc.info;
@@ -71,7 +71,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
         widgets::section_title(ui, tl!("Pages selected"));
         let current = view.current;
         let picked = view.organize_range.show(ui, &view.selected, n, current, |ui| {
-            use pdfcraft_engine::{PageOrientation as O, PageParity as P, filter_pages};
+            use iridium_pdf_engine::{PageOrientation as O, PageParity as P, filter_pages};
             let all: Vec<usize> = (0..n).collect();
             let mut chosen = None;
             for (label, parity, orient) in [
@@ -188,7 +188,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
 /// Document Structure and Unspecified, then OK and Cancel. OK is off until a choice is made.
 /// Returns (OK, Cancel).
 pub(crate) fn page_props_body(ui: &mut egui::Ui, d: &mut crate::PagePropsDraft) -> (bool, bool) {
-    use pdfcraft_engine::TabOrder;
+    use iridium_pdf_engine::TabOrder;
     ui.label(egui::RichText::new(tl!("Page Properties")).font(theme::semibold(18.0)));
     widgets::section_title(ui, tl!("Tab Order"));
     for (order, label) in [
@@ -212,7 +212,7 @@ pub(crate) fn page_props_body(ui: &mut egui::Ui, d: &mut crate::PagePropsDraft) 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Availability {
     Ready,
-    /// Not in PdfCraft yet: shown muted, as Acrobat lists it, and says it is planned when hovered.
+    /// Not in PDF yet: shown muted, as Acrobat lists it, and says it is planned when hovered.
     Later,
 }
 

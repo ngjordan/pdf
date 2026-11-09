@@ -5,7 +5,7 @@
 //! linearized file's first-page trailer (ISO 32000-1 F.3.4). Trailers earlier in the chain don't
 //! stand in for it.
 
-use pdfcraft_cos::{Document, Object};
+use iridium_pdf_cos::{Document, Object};
 
 /// The longest string a conforming file may hold (ISO 32000-1 Annex C, Table C.1).
 const MAX_STRING: usize = 32767;
@@ -36,7 +36,7 @@ pub(crate) fn check(doc: &Document) -> Option<IdProblem> {
 /// are new, and the report says the identifier was added rather than completed.
 pub(crate) fn fix(doc: &mut Document) -> Option<String> {
     check(doc)?;
-    let Object::Array(mut id) = pdfcraft_cos::new_file_id(doc.bytes(), 0) else { return None };
+    let Object::Array(mut id) = iridium_pdf_cos::new_file_id(doc.bytes(), 0) else { return None };
     let permanent = doc
         .trailer()
         .get(b"ID")

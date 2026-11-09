@@ -8,7 +8,7 @@ use super::{AnnotError, Dict, Document, ObjRef, Object, PdfString, appearance};
 // ── reading ─────────────────────────────────────────────────────────────────────────────────
 
 /// One comment as the viewer lists it (the same fields and rules as
-/// `pdfcraft_render::Annotation`), read straight from the object graph. The engine uses it to
+/// `iridium_pdf_render::Annotation`), read straight from the object graph. The engine uses it to
 /// refresh the comment list after a comment edit without re-inspecting the whole document.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Summary {
@@ -33,7 +33,7 @@ pub struct Summary {
     pub intent: Option<String>,
     /// A Fill & Sign mark ([`is_fill_sign`]).
     pub fill_sign: bool,
-    /// The NoRotate flag (`/F` bit 5), as `pdfcraft_render::Annotation::no_rotate`.
+    /// The NoRotate flag (`/F` bit 5), as `iridium_pdf_render::Annotation::no_rotate`.
     pub no_rotate: bool,
     /// A line's two ends (`/L`), or the corners of connected lines, a polygon or a cloud
     /// (`/Vertices`), in user space; empty for other comments.
@@ -62,7 +62,7 @@ pub fn is_comment_subtype(subtype: &str) -> bool {
     !matches!(subtype, "Link" | "Widget" | "Popup" | "Screen" | "Movie" | "RichMedia" | "3D" | "PrinterMark" | "TrapNet" | "Watermark")
 }
 
-/// Where a reference to a reference (`5 0 obj 6 0 R endobj`) ends, as `pdfcraft_render::inspect`
+/// Where a reference to a reference (`5 0 obj 6 0 R endobj`) ends, as `iridium_pdf_render::inspect`
 /// follows it, within a few steps (a cycle stops there).
 fn final_ref(doc: &Document, mut r: ObjRef) -> ObjRef {
     for _ in 0..8 {
@@ -127,10 +127,10 @@ pub fn summaries(doc: &Document) -> Vec<Summary> {
                 .map(|o| doc.resolve(o))
                 .map(|a| {
                     let entries = a.as_array().into_iter().flatten().map(|x| doc.resolve(x).as_f64());
-                    pdfcraft_geom::quad_points::usable_quads(entries).into_iter().map(|q| q.map(|v| v as f32)).collect()
+                    iridium_pdf_geom::quad_points::usable_quads(entries).into_iter().map(|q| q.map(|v| v as f32)).collect()
                 })
                 .unwrap_or_default();
-            // Keep in step with `pdfcraft_render::inspect`.
+            // Keep in step with `iridium_pdf_render::inspect`.
             let points = match subtype.as_str() {
                 "Line" => Some(nums(b"L")).filter(|l| l.len() == 4).map(|l| l.as_chunks::<2>().0.to_vec()).unwrap_or_default(),
                 "PolyLine" | "Polygon" => nums(b"Vertices").as_chunks::<2>().0.to_vec(),
@@ -145,7 +145,7 @@ pub fn summaries(doc: &Document) -> Vec<Summary> {
                 subtype,
                 author: text_value(doc, d, b"T"),
                 // Acrobat ends lines with CR, which the interface would draw as nothing (keep in
-                // step with `pdfcraft_render::inspect`).
+                // step with `iridium_pdf_render::inspect`).
                 contents: text_value(doc, d, b"Contents").map(|s| s.replace("\r\n", "\n").replace('\r', "\n")),
                 modified: text_value(doc, d, b"M"),
                 name: text_value(doc, d, b"NM"),

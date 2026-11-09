@@ -10,8 +10,8 @@ use std::error::Error;
 use std::sync::Arc;
 use std::time::Instant;
 
-use pdfcraft_engine::Session;
-use pdfcraft_engine::export::{Exporter, ImageFormat};
+use iridium_pdf_engine::Session;
+use iridium_pdf_engine::export::{Exporter, ImageFormat};
 
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;

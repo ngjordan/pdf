@@ -6,7 +6,7 @@
 //! Drawn right, the bare program and the same program in an OpenType wrapper give the same
 //! pixels; the stand-in a serif font falls back to is a different face.
 
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest};
 use std::sync::Arc;
 
 const CFF: &[u8] = include_bytes!("../../../../vendor/hayro-interpret/assets/FoxitFixed.pfb");

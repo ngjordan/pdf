@@ -3,8 +3,8 @@
 //! Table D.2): the bundled stand-ins draw their € up to 722 units wide, and it overlapped the
 //! glyph after it in Helvetica and Times.
 
-use pdfcraft_fonts::Std14;
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest};
+use iridium_pdf_fonts::Std14;
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest};
 use std::sync::Arc;
 
 /// 100 pt at scale 1 is 100 pixels to the em, so a width of 556 units is 55.6 pixels.

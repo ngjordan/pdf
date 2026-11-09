@@ -12,7 +12,7 @@
 //! snapped, whatever the image asks (hayro patch 15). The other kinds without `/Interpolate` are
 //! not snapped upright or turned, and were already the same both ways; they stay in the test as a
 //! guard.
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RenderedPage};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest, RenderedPage};
 use std::sync::Arc;
 
 /// A PDF of the given objects (object 1 the catalog), with a cross-reference table.

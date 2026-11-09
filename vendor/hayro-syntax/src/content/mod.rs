@@ -223,7 +223,7 @@ impl<'a> UntypedIter<'a> {
                     // Only a name. An operand that is well formed but refused by a resource cap
                     // (a dictionary nested past the limit) still ends the stream, which is what
                     // `dictionaries_nested_without_keys_are_read_up_to_the_nesting_cap` in
-                    // pdfcraft's renderer asserts: reading on there would draw a page whose
+                    // iridium_pdf's renderer asserts: reading on there would draw a page whose
                     // content was deliberately not parsed.
                     warn!("skipped an unreadable name in content stream");
                     self.stack.clear();

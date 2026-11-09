@@ -3,10 +3,10 @@
 //! its collapse button, Esc or choosing a tool closes it again.
 
 use egui::{Align2, Color32, CornerRadius, Rect, Sense, Stroke, vec2};
-use pdfcraft_engine::catalog::{self, Availability, TOOL_CATEGORIES, ToolGroup};
+use iridium_pdf_engine::catalog::{self, Availability, TOOL_CATEGORIES, ToolGroup};
 
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, icons, widgets};
+use crate::{PdfApp, icons, widgets};
 
 const TILE: egui::Vec2 = vec2(148.0, 118.0);
 /// Item names a tile lists when the search found the tool by them.
@@ -33,7 +33,7 @@ fn matches(query: &str, group: &ToolGroup) -> Option<Vec<&'static str>> {
         return Some(Vec::new());
     }
     let action_hit = |id: &&str| {
-        pdfcraft_engine::commands::command(id).is_some_and(|spec| label_hit(spec.label, &crate::i18n::menu_label(spec.id, spec.label), query, rtl))
+        iridium_pdf_engine::commands::command(id).is_some_and(|spec| label_hit(spec.label, &crate::i18n::menu_label(spec.id, spec.label), query, rtl))
     };
     let items: Vec<_> =
         group.sections.iter().flat_map(|s| s.items.iter()).filter(|i| hit(i.label) || i.actions.iter().any(action_hit)).map(|i| i.label).collect();
@@ -42,7 +42,7 @@ fn matches(query: &str, group: &ToolGroup) -> Option<Vec<&'static str>> {
 
 /// Draw the view over the workspace: the title with Collapse, the search field, and each
 /// category's tiles that match the search. Choosing a tile opens that tool's panel.
-pub fn show(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
+pub fn show(app: &mut PdfApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     // A dialog, prompt or the command palette over the view owns Escape.
     if !app.modal_open() && !app.palette_open && ui.input(|i| i.key_pressed(egui::Key::Escape)) {

@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::canvas::{DocView, PageToolContext};
 use crate::page_cursor::Layer;
 use crate::theme::{self, Tokens};
-use crate::{Dialog, PdfCraftApp, QuickTool, widgets};
+use crate::{Dialog, PdfApp, QuickTool, widgets};
 
 /// Stamp files larger than this aren't kept in the library (it lives in the app's settings).
 pub const MAX_STAMP_BYTES: usize = 4 << 20;
@@ -47,7 +47,14 @@ mod b64 {
 
 /// The Stamp tool on one page: a click that nobody holds (`free`) places stamp `kind` centred on
 /// it, upright as the page is shown. `true` once one is placed.
-pub(crate) fn place(cx: PageToolContext<'_>, kind: pdfcraft_engine::StampKind, by_line: &str, author: &str, free: bool, view: &mut DocView) -> bool {
+pub(crate) fn place(
+    cx: PageToolContext<'_>,
+    kind: iridium_pdf_engine::StampKind,
+    by_line: &str,
+    author: &str,
+    free: bool,
+    view: &mut DocView,
+) -> bool {
     let PageToolContext { resp, xf, ptr, page, info, .. } = cx;
     let (Some(p), Some(page_info)) = (ptr.within(xf.rect), info.pages.get(page)) else { return false };
     view.cursor.claim(Layer::ToolArea, egui::CursorIcon::Crosshair);
@@ -59,11 +66,11 @@ pub(crate) fn place(cx: PageToolContext<'_>, kind: pdfcraft_engine::StampKind, b
     let a = page_info.view_to_user((f64::from(vx) - w / 2.0) as f32, (f64::from(vy) - h / 2.0) as f32);
     let b = page_info.view_to_user((f64::from(vx) + w / 2.0) as f32, (f64::from(vy) + h / 2.0) as f32);
     let rect = [f64::from(a[0].min(b[0])), f64::from(a[1].min(b[1])), f64::from(a[0].max(b[0])), f64::from(a[1].max(b[1]))];
-    let by = (kind.group() == pdfcraft_engine::StampGroup::Dynamic).then(|| by_line.to_owned());
-    let shape = pdfcraft_engine::Shape::Stamp { rect, stamp: kind, by };
-    view.pending_edit = Some(pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+    let by = (kind.group() == iridium_pdf_engine::StampGroup::Dynamic).then(|| by_line.to_owned());
+    let shape = iridium_pdf_engine::Shape::Stamp { rect, stamp: kind, by };
+    view.pending_edit = Some(iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
         page,
-        style: pdfcraft_engine::Style::default_for(&shape),
+        style: iridium_pdf_engine::Style::default_for(&shape),
         shape,
         contents: String::new(),
         author: author.to_owned(),
@@ -83,11 +90,11 @@ pub(crate) fn place_custom(cx: PageToolContext<'_>, stamp: &CustomStamp, author:
     let (vx, vy) = xf.screen_to_view(p);
     let u = page_info.view_to_user(vx, vy);
     let (x, y) = (f64::from(u[0]), f64::from(u[1]));
-    view.pending_edit = Some(pdfcraft_engine::Edit::AddCustomStamp {
+    view.pending_edit = Some(iridium_pdf_engine::Edit::AddCustomStamp {
         page,
         rect: [x, y, x, y],
         name: stamp.name.clone(),
-        file: pdfcraft_engine::MarkFile { name: stamp.file.clone(), bytes: stamp.data.clone(), page: stamp.page },
+        file: iridium_pdf_engine::MarkFile { name: stamp.file.clone(), bytes: stamp.data.clone(), page: stamp.page },
         author: author.to_owned(),
     });
     true
@@ -102,7 +109,7 @@ pub struct StampDraft {
     pub name: String,
 }
 
-pub(crate) fn create_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (bool, bool) {
+pub(crate) fn create_body(ui: &mut egui::Ui, app: &mut PdfApp, t: &Tokens) -> (bool, bool) {
     let categories: Vec<String> = {
         let mut c: Vec<String> = app.custom_stamps.iter().map(|s| s.category.clone()).collect();
         c.sort();
@@ -148,7 +155,7 @@ pub(crate) fn create_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) 
 }
 
 /// The Custom stamps section of the stamps palette.
-pub(crate) fn palette_section(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
+pub(crate) fn palette_section(app: &mut PdfApp, ui: &mut egui::Ui, t: &Tokens) {
     widgets::section_title(ui, tl!("Custom"));
     let mut remove = None;
     let mut categories: Vec<String> = app.custom_stamps.iter().map(|s| s.category.clone()).collect();
@@ -180,7 +187,7 @@ pub(crate) fn palette_section(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Toke
     }
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Create ▸ choose a PDF or an image for a new custom stamp.
     pub(crate) fn pick_stamp_file(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]

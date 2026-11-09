@@ -1,9 +1,9 @@
-//! The permission accessors of `pdfcraft_crypt::Permissions`, checked against the flag table of
+//! The permission accessors of `iridium_pdf_crypt::Permissions`, checked against the flag table of
 //! ISO 32000-1:2008 (Table 22). Expected values come from that table only.
 //!
 //! Bit n has the mask `1 << (n - 1)`. Readers use bits 3 to 6 and 9 to 12 and ignore the rest.
 
-use pdfcraft_crypt::{Algorithm, Auth, NewEncryption, Permissions, SecurityHandler, create};
+use iridium_pdf_crypt::{Algorithm, Auth, NewEncryption, Permissions, SecurityHandler, create};
 
 const ID: &[u8] = b"0123456789abcdef";
 const T: bool = true;

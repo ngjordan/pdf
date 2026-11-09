@@ -5,8 +5,8 @@
 //! [`detect`] is a pure function over the page's words and drawn shapes; [`page_shapes`] reads
 //! the shapes from a page's content, [`raster::shapes`] from a picture of the page (a scan).
 
-use pdfcraft_content::{Matrix, Pieces};
-use pdfcraft_cos::{DecodeBudget, Document, Object};
+use iridium_pdf_content::{Matrix, Pieces};
+use iridium_pdf_cos::{DecodeBudget, Document, Object};
 
 pub mod raster;
 
@@ -189,7 +189,7 @@ pub fn page_shapes(doc: &Document, page: usize) -> Shapes {
 /// and one past what is left reads as empty.
 pub(crate) fn shapes_within(doc: &Document, page: usize, budget: &mut DecodeBudget) -> Shapes {
     let mut out = Shapes::default();
-    let Some(p) = pdfcraft_model::pages(doc).into_iter().nth(page) else { return out };
+    let Some(p) = iridium_pdf_model::pages(doc).into_iter().nth(page) else { return out };
     let list: Vec<Object> = match p.dict.get(b"Contents").map(|c| doc.resolve(c)) {
         Some(c) => match &*c {
             Object::Array(a) => a.clone(),
@@ -214,7 +214,7 @@ pub(crate) fn shapes_within(doc: &Document, page: usize, budget: &mut DecodeBudg
     drop(pieces);
     // An operator at a time: dense content (`n n n …`) parsed whole holds about 80 bytes for each
     // byte it decoded.
-    for op in pdfcraft_content::ops(joined.data()) {
+    for op in iridium_pdf_content::ops(joined.data()) {
         match op.op.as_slice() {
             b"q" => saves.save(ctm),
             b"Q" => saves.restore(&mut ctm),

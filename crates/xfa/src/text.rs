@@ -3,7 +3,7 @@
 //! bundled here).
 
 use crate::model::{Font, HAlign, Para, Rect, RichText, Run};
-use pdfcraft_fonts::Std14;
+use iridium_pdf_fonts::Std14;
 
 /// The standard-14 family a typeface maps to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

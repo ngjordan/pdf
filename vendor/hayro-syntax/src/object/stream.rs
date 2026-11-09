@@ -131,7 +131,7 @@ impl<'a> Stream<'a> {
     fn crypt_filter(&self) -> Option<String> {
         let FiltersAndParams { filters, params } = self.filters_and_params();
         // A chain longer than cos decodes names none there, so it names none here either:
-        // `pdfcraft_filters::MAX_CHAIN`, and `/Crypt`.
+        // `iridium_pdf_filters::MAX_CHAIN`, and `/Crypt`.
         if filters.len() > 9 {
             return None;
         }

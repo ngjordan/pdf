@@ -1,5 +1,5 @@
-use pdfcraft_cos::{Document, ObjRef, Object};
-use pdfcraft_preflight::{Level, convert, verify};
+use iridium_pdf_cos::{Document, ObjRef, Object};
+use iridium_pdf_preflight::{Level, convert, verify};
 
 fn build(objs: &[&str], trailer_extra: &str) -> Document {
     let mut out = b"%PDF-1.7\n".to_vec();

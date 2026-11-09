@@ -2,8 +2,8 @@
 use serde_json::{Value, json};
 
 use crate::{Args, Automation, Content, Result, ToolError, failed, info, rendered_content, tools};
-use pdfcraft_engine::commands;
-use pdfcraft_render::{RenderRequest, RequestKind};
+use iridium_pdf_engine::commands;
+use iridium_pdf_render::{RenderRequest, RequestKind};
 
 /// The most steps one `command_batch` runs.
 pub(crate) const MAX_BATCH_STEPS: usize = 1000;

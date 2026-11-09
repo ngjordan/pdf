@@ -1,7 +1,7 @@
 //! `serialize` writes integers, references, hexadecimal strings, octal escapes and `#xx` name
 //! escapes with its own digit loops. They must give the bytes the standard formatter gives.
 
-use pdfcraft_cos::{ObjRef, Object, PdfString, serialize};
+use iridium_pdf_cos::{ObjRef, Object, PdfString, serialize};
 use proptest::prelude::*;
 
 fn bytes_of(o: &Object) -> Vec<u8> {

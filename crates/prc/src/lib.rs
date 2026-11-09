@@ -1,7 +1,7 @@
 //! A reader for PRC, the 3D model format a PDF `/3D` stream of `/Subtype /PRC` carries
 //! (ISO 32000-2 §13.6.3, ISO 14739-1).
 //!
-//! Layer L0, standalone: this crate depends on no other PdfCraft crate. It reads the
+//! Layer L0, standalone: this crate depends on no other PDF crate. It reads the
 //! uncompressed container, inflates each section, and decodes the bit-level primitives and
 //! the schema a newer producer uses to describe fields this reader does not know; it decodes
 //! tessellations and walks the product tree into placed, coloured meshes

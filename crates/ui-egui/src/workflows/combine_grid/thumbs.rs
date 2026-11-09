@@ -375,7 +375,7 @@ fn texture(
     ctx: &egui::Context,
     slot: Slot,
     size: [u32; 2],
-    pixels: pdfcraft_render::Pixels,
+    pixels: iridium_pdf_render::Pixels,
     max_side: usize,
 ) -> Result<(TextureHandle, usize), String> {
     let [w, h] = size.map(|v| v as usize);

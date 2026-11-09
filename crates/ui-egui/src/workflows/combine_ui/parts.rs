@@ -35,13 +35,13 @@ pub(super) fn combinable_in(dir: &std::path::Path, recursive: bool) -> (Vec<std:
 /// Whether a file with extension `ext` can join the list: a PDF, or an image or text file that
 /// becomes one.
 fn combinable(ext: &str) -> bool {
-    std::iter::once("pdf").chain(pdfcraft_engine::CONVERTIBLE).any(|c| ext.eq_ignore_ascii_case(c))
+    std::iter::once("pdf").chain(iridium_pdf_engine::CONVERTIBLE).any(|c| ext.eq_ignore_ascii_case(c))
 }
 
 /// Whether Combine takes a file by what it is: a PDF (by its header or its name) or an image or
 /// text file it converts, as `Session::as_pdf` tells them apart.
 pub(super) fn takes(name: &str, bytes: &[u8]) -> bool {
-    pdfcraft_engine::source_kind(name, bytes).is_some() || name.to_ascii_lowercase().ends_with(".pdf")
+    iridium_pdf_engine::source_kind(name, bytes).is_some() || name.to_ascii_lowercase().ends_with(".pdf")
 }
 
 /// A file's bookmark in the combined PDF: its name without ".pdf", or without the extension of
@@ -274,10 +274,10 @@ pub(super) fn utc_stamp(time: SystemTime) -> String {
     format!("{y:04}-{m:02}-{d:02} {:02}:{:02} UTC", rem / 3600, rem % 3600 / 60)
 }
 
-/// Days since 1970-01-01 → proleptic Gregorian (year, month, day): `pdfcraft_cos::civil_from_days`,
+/// Days since 1970-01-01 → proleptic Gregorian (year, month, day): `iridium_pdf_cos::civil_from_days`,
 /// which keeps the date past chrono's range by whole 400-year cycles. `days` is a `u64` second
 /// count over 86_400, at most about 2.1e14, so it always fits an `i64`.
 fn civil_from_days(days: u64) -> (i64, u32, u32) {
     // The fallback is unreachable: `days` is at most `u64::MAX / 86_400`, far below `i64::MAX`.
-    pdfcraft_cos::civil_from_days(i64::try_from(days).unwrap_or(i64::MAX))
+    iridium_pdf_cos::civil_from_days(i64::try_from(days).unwrap_or(i64::MAX))
 }

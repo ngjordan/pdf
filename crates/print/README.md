@@ -1,4 +1,4 @@
-# pdfcraft-print
+# iridium-pdf-print
 
 Layer L4: printing (execution plan M10.5).
 
@@ -47,8 +47,8 @@ This change does not alter persistence of other print preferences.
 Headless `doc_print` defaults are unchanged.
 
 `spool` delegates discovery, driver options, preferences and submission to
-[`craft-print`](https://github.com/storytold/craft-libs/tree/main/crates/print).
-PdfCraft retains page selection, imposition, annotations and print-permission checks.
+[`craft-print`](https://github.com/ngjordan/craft-libs/tree/main/crates/print).
+PDF retains page selection, imposition, annotations and print-permission checks.
 CUPS jobs stream through stdin with `fit-to-page=false`; on macOS they also carry the job
 name and owner (`com.apple.print.JobInfo.PMJobName`, `PMJobOwner`) as the system print dialog
 sends them, which some vendors' filters need (#5743). Windows renders sheets through
@@ -63,8 +63,8 @@ The desktop UI discovers printers and submits jobs on workers, so neither operat
 the dialog; the Windows backend starts without a console window. Physical printer output
 still needs hardware validation.
 
-In a browser there is no spooler: the app (`pdfcraft-ui-egui`'s `web_print`) draws the print-ready
-PDF's sheets with PdfCraft's renderer and prints them through the browser's print dialog, which
+In a browser there is no spooler: the app (`iridium-pdf-ui-egui`'s `web_print`) draws the print-ready
+PDF's sheets with PDF's renderer and prints them through the browser's print dialog, which
 sets copies, two-sided printing and colour. This crate stays free of web APIs.
 
 Not yet: print as image, poster labels, PostScript output, colour conversion for

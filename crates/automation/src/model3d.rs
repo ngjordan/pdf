@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use pdfcraft_engine::{Activation3d, Edit, MAX_3D_MODEL_BYTES, MarkFile, Model3dFormat};
+use iridium_pdf_engine::{Activation3d, Edit, MAX_3D_MODEL_BYTES, MarkFile, Model3dFormat};
 use serde_json::Value;
 
 use crate::comments::rect_to_user;

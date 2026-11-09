@@ -1,4 +1,4 @@
-use super::{Color32, CornerRadius, DocInfo, DocView, PdfCraftApp, Pos2, Rect, Sense, SnapshotKind, Stroke, Tokens, icons, vec2};
+use super::{Color32, CornerRadius, DocInfo, DocView, PdfApp, Pos2, Rect, Sense, SnapshotKind, Stroke, Tokens, icons, vec2};
 
 /// Whether `p` lies in the bottom-left quadrant of `area`, where the page size shows (#1855).
 pub(super) fn in_size_hint_zone(area: Rect, p: Pos2) -> bool {
@@ -63,7 +63,7 @@ pub(super) enum Notice {
 /// form's scripts having been turned off, security, forms and warnings.
 pub(super) fn notices(
     view: &mut DocView,
-    doc: &pdfcraft_engine::Document,
+    doc: &iridium_pdf_engine::Document,
     secured: bool,
     repaired: bool,
     signed: Option<(&str, Color32, &str, String)>,
@@ -164,19 +164,19 @@ pub(super) fn notices(
             text.push('.');
         }
         Some(("text-cursor-input", text, true))
-    } else if info.xfa == Some(pdfcraft_render::Xfa::Dynamic) {
+    } else if info.xfa == Some(iridium_pdf_render::Xfa::Dynamic) {
         Some((
             "triangle-alert",
-            tl!("This is a dynamic XFA form, which PdfCraft can't display yet. What you see is the file's placeholder page.").to_string(),
+            tl!("This is a dynamic XFA form, which PDF can't display yet. What you see is the file's placeholder page.").to_string(),
             false,
         ))
-    } else if info.xfa == Some(pdfcraft_render::Xfa::Static) {
+    } else if info.xfa == Some(iridium_pdf_render::Xfa::Static) {
         Some((
             "text-cursor-input",
             tl!("XFA form: its fields and its XFA data are kept in step, so other viewers show what you fill in.").to_string(),
             true,
         ))
-    } else if info.fields.iter().any(|f| f.kind != pdfcraft_render::FieldKind::PushButton) {
+    } else if info.fields.iter().any(|f| f.kind != iridium_pdf_render::FieldKind::PushButton) {
         // Push buttons alone (LaTeX `animate` frames, navigation buttons) leave nothing to fill in.
         Some((
             "text-cursor-input",
@@ -256,13 +256,13 @@ fn cut_pages_bar(view: &mut DocView, ui: &mut egui::Ui, t: &Tokens) {
     let n = view.cut_pages.len();
     let text = if n == 1 {
         crate::i18n::fmt(
-            tl!("Page {page} holds more content than PdfCraft can read: part of it isn't drawn, and only part of its text can be found or copied."),
+            tl!("Page {page} holds more content than PDF can read: part of it isn't drawn, and only part of its text can be found or copied."),
             &[("page", &page)],
         )
     } else {
         crate::i18n::fmt(
             tl!(
-                "{n} pages hold more content than PdfCraft can read, page {page} first: parts of them aren't drawn, and only part of their text can be found or copied."
+                "{n} pages hold more content than PDF can read, page {page} first: parts of them aren't drawn, and only part of their text can be found or copied."
             ),
             &[("n", &n.to_string()), ("page", &page)],
         )
@@ -344,7 +344,7 @@ pub(crate) fn quick_bar_offset(margin: f32, width: f32) -> f32 {
 }
 
 /// The unified quick-action bar and hotbar in the margin or docked to an edge.
-pub(super) fn quick_bar(app: &mut PdfCraftApp, area: Rect, page_left: Option<f32>, ui: &mut egui::Ui) {
+pub(super) fn quick_bar(app: &mut PdfApp, area: Rect, page_left: Option<f32>, ui: &mut egui::Ui) {
     crate::hotbar::show(app, area, page_left, ui);
 }
 

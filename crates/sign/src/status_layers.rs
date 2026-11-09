@@ -18,10 +18,10 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-use pdfcraft_content::{Op, num, serialize_ops, string};
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString, Stream};
-use pdfcraft_fonts::source_shaping::ShapedRun;
-use pdfcraft_fonts::{INTER_REGULAR, embedding, first_non_win_ansi, helvetica_width, win_ansi};
+use iridium_pdf_content::{Op, num, serialize_ops, string};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, PdfString, Stream};
+use iridium_pdf_fonts::source_shaping::ShapedRun;
+use iridium_pdf_fonts::{INTER_REGULAR, embedding, first_non_win_ansi, helvetica_width, win_ansi};
 
 use crate::pdf::{SignatureInfo, Status, walk_sig_fields};
 
@@ -128,19 +128,19 @@ fn script_of(words: &[&str]) -> Option<&'static str> {
 }
 
 /// A face that draws all of `words`: Inter when `script` is `None`, else a craft-fonts face that
-/// PdfCraft writes `script` into documents with. A face's scripts alone don't decide it: the
+/// PDF writes `script` into documents with. A face's scripts alone don't decide it: the
 /// Chinese one is for the interface alone (ATTRIBUTION.toml), whatever scripts it is meant for.
 fn face_for(script: Option<&str>, words: &[&str]) -> Option<&'static [u8]> {
     let draws = |bytes: &[u8]| words.iter().all(|w| embedding::covers(bytes, w));
     let faces = match script {
         None => return draws(INTER_REGULAR).then_some(INTER_REGULAR),
         // Sans first, like the other captions.
-        Some("Jpan") => pdfcraft_fonts::document_japanese_fonts_for_style(false, false),
-        Some("Arab") => pdfcraft_fonts::document_arabic_font().into_iter().collect(),
-        Some("Thai") => pdfcraft_fonts::document_thai_font().into_iter().collect(),
-        Some("Deva") => pdfcraft_fonts::document_devanagari_font().into_iter().collect(),
+        Some("Jpan") => iridium_pdf_fonts::document_japanese_fonts_for_style(false, false),
+        Some("Arab") => iridium_pdf_fonts::document_arabic_font().into_iter().collect(),
+        Some("Thai") => iridium_pdf_fonts::document_thai_font().into_iter().collect(),
+        Some("Deva") => iridium_pdf_fonts::document_devanagari_font().into_iter().collect(),
         // Telugu has no document face yet; its interface faces stand in.
-        Some("Telu") => pdfcraft_fonts::ui_telugu_fonts(),
+        Some("Telu") => iridium_pdf_fonts::ui_telugu_fonts(),
         Some(_) => Vec::new(),
     };
     faces.into_iter().map(|f| f.bytes).find(|b| draws(b))
@@ -425,7 +425,7 @@ fn recognise(doc: &Document, n_ref: ObjRef, drawing: &mut HashMap<u32, bool>) ->
 fn drawn_names(stream: &Stream) -> Option<HashSet<Vec<u8>>> {
     let content = stream.decoded_within(MAX_LAYER_DECODED).ok()?;
     let mut names = HashSet::new();
-    for op in pdfcraft_content::parse(&content).ops.iter().filter(|op| op.is("Do")) {
+    for op in iridium_pdf_content::parse(&content).ops.iter().filter(|op| op.is("Do")) {
         if let Some(name) = op.operands.last().and_then(Object::as_name)
             && names.insert(name.to_vec())
             && names.len() > MAX_DRAWN_NAMES
@@ -619,8 +619,8 @@ fn helvetica_caption(words: &str, bbox: &[f64; 4]) -> (Dict, Vec<u8>) {
 /// from it. `None` when the words cannot be shaped or a glyph has no usable outline; a caption too
 /// small to read is blank.
 fn outlined_caption(bytes: &[u8], words: &str, rtl: bool, bbox: &[f64; 4]) -> Option<(Dict, Vec<u8>)> {
-    let run = pdfcraft_fonts::source_shaping::shape(bytes, words).ok().filter(|run| !run.glyphs.is_empty())?;
-    let outlines = run.glyphs.iter().map(|g| pdfcraft_fonts::face_glyph(bytes, g.id.to_u32()).ok()).collect::<Option<Vec<_>>>()?;
+    let run = iridium_pdf_fonts::source_shaping::shape(bytes, words).ok().filter(|run| !run.glyphs.is_empty())?;
+    let outlines = run.glyphs.iter().map(|g| iridium_pdf_fonts::face_glyph(bytes, g.id.to_u32()).ok()).collect::<Option<Vec<_>>>()?;
     let Some(size) = caption_size(bbox, run.advance) else { return Some((Dict::new(), Vec::new())) };
     let x = caption_x(bbox, run.advance * size, rtl);
     let y = caption_baseline(bbox, size);
@@ -671,7 +671,7 @@ fn caption_baseline(bbox: &[f64; 4], size: f64) -> f64 {
 /// Shape `words` in a static face and embed the glyphs that takes, as the edit crate does for
 /// complex scripts: the font object and the shaped run. `None` when either step fails.
 fn shape_caption(doc: &mut Document, bytes: &[u8], family: &str, words: &str) -> Option<(Object, ShapedRun)> {
-    let run = pdfcraft_fonts::source_shaping::shape(bytes, words).ok().filter(|run| !run.glyphs.is_empty())?;
+    let run = iridium_pdf_fonts::source_shaping::shape(bytes, words).ok().filter(|run| !run.glyphs.is_empty())?;
     let mappings: Vec<_> = run.glyphs.iter().map(|g| (g.text.clone(), g.id)).collect();
     let mut fonts = Dict::new();
     let name = embedding::embed_mapping(doc, &mut fonts, bytes, family, &mappings).ok()?;
@@ -1184,14 +1184,14 @@ mod tests {
         let widget = (*doc.get(ObjRef::new(4, 0))).clone();
         let kids: Vec<ObjRef> = (0..24).map(|_| doc.add(widget.clone())).collect();
         doc.update_dict(ObjRef::new(8, 0), |f| f.set(b"Kids".to_vec(), kids.iter().map(|k| Object::Ref(*k)).collect::<Vec<_>>())).unwrap();
-        let before = pdfcraft_cos::write_incremental(&doc, &pdfcraft_cos::SaveOptions::default()).unwrap().len();
+        let before = iridium_pdf_cos::write_incremental(&doc, &iridium_pdf_cos::SaveOptions::default()).unwrap().len();
         let mut signatures = vec![sig("Signature1", Status::Valid)];
         assert!(show_status_layers(&mut doc, &mut signatures, &StatusCaptions::default()));
         assert!(signatures[0].verdict_shown, "every widget shows the state");
         let copy = widget_n(&doc, kids[0].num);
         assert_ne!(copy, ObjRef::new(10, 0));
         assert!(kids.iter().all(|k| widget_n(&doc, k.num) == copy), "the widgets share one copy");
-        let after = pdfcraft_cos::write_incremental(&doc, &pdfcraft_cos::SaveOptions::default()).unwrap().len();
+        let after = iridium_pdf_cos::write_incremental(&doc, &iridium_pdf_cos::SaveOptions::default()).unwrap().len();
         assert!(after - before < (1 << 20) + (64 << 10), "the display copy grew by {} bytes", after - before);
     }
 
@@ -1216,11 +1216,11 @@ mod tests {
             })
             .collect();
         doc.update_dict(ObjRef::new(8, 0), |f| f.set(b"Kids".to_vec(), kids.iter().map(|k| Object::Ref(*k)).collect::<Vec<_>>())).unwrap();
-        let before = pdfcraft_cos::write_incremental(&doc, &pdfcraft_cos::SaveOptions::default()).unwrap().len();
+        let before = iridium_pdf_cos::write_incremental(&doc, &iridium_pdf_cos::SaveOptions::default()).unwrap().len();
         let mut signatures = vec![sig("Signature1", Status::Valid)];
         assert!(show_status_layers(&mut doc, &mut signatures, &StatusCaptions::default()));
         assert!(signatures[0].verdict_shown);
-        let after = pdfcraft_cos::write_incremental(&doc, &pdfcraft_cos::SaveOptions::default()).unwrap().len();
+        let after = iridium_pdf_cos::write_incremental(&doc, &iridium_pdf_cos::SaveOptions::default()).unwrap().len();
         assert!(after - before < (1 << 20) + (256 << 10), "the display copy grew by {} bytes", after - before);
     }
 
@@ -1458,7 +1458,7 @@ mod tests {
     /// The caption layer as drawn for `status` with `captions`: the bytes all its `Tj`s show,
     /// the text its span gives for copy and search (if any), its font (none when it is drawn as
     /// outlines), its operators, and the document.
-    fn caption_of(captions: &StatusCaptions, status: Status) -> (Vec<u8>, Option<String>, Option<Dict>, Vec<pdfcraft_content::Op>, Document) {
+    fn caption_of(captions: &StatusCaptions, status: Status) -> (Vec<u8>, Option<String>, Option<Dict>, Vec<iridium_pdf_content::Op>, Document) {
         let mut doc = Fixture::layered().open();
         let mut sigs = vec![sig("Signature1", status)];
         show_status_layers(&mut doc, &mut sigs, captions);
@@ -1472,7 +1472,7 @@ mod tests {
             .and_then(|f| f.as_dict())
             .and_then(|f| f.get(b"Cap"))
             .and_then(|f| doc.dict(f));
-        let ops = pdfcraft_content::parse(&decoded(&doc, n4)).ops;
+        let ops = iridium_pdf_content::parse(&decoded(&doc, n4)).ops;
         let shown = ops
             .iter()
             .filter(|op| op.is("Tj"))
@@ -1503,7 +1503,7 @@ mod tests {
         assert_eq!(font.name(b"Subtype"), Some(&b"Type0"[..]));
         assert_eq!(font.name(b"BaseFont"), Some(&b"Inter"[..]));
         assert_eq!(actual.as_deref(), Some("Действительность неизвестна"));
-        assert_eq!(pdfcraft_fonts::pdf::Metrics::from_dict(&doc, &font).decode(&shown), "Действительность неизвестна");
+        assert_eq!(iridium_pdf_fonts::pdf::Metrics::from_dict(&doc, &font).decode(&shown), "Действительность неизвестна");
     }
 
     #[test]
@@ -1527,9 +1527,9 @@ mod tests {
             let (shown, actual, font, ops, _) = caption_of(&captions(valid, unknown, invalid), Status::Valid);
             // Decided apart from `face_for`: whether craft-fonts brings a face meant for the script.
             let has_face = match script {
-                "Jpan" => !pdfcraft_fonts::document_japanese_fonts_for_style(false, false).is_empty(),
+                "Jpan" => !iridium_pdf_fonts::document_japanese_fonts_for_style(false, false).is_empty(),
                 "Hani" => false,
-                script => pdfcraft_fonts::CRAFT_FONTS.iter().any(|f| f.covers(script)),
+                script => iridium_pdf_fonts::CRAFT_FONTS.iter().any(|f| f.covers(script)),
             };
             if has_face {
                 assert!(shown.is_empty() && font.is_none(), "{script}: outlines, not text");
@@ -1638,7 +1638,7 @@ mod tests {
             let mut sigs = vec![sig("Signature1", status)];
             let _ = has_status_layers(&doc, &sigs);
             let _ = show_status_layers(&mut doc, &mut sigs, &StatusCaptions::default());
-            let saved = pdfcraft_cos::write_incremental(&doc, &pdfcraft_cos::SaveOptions::default());
+            let saved = iridium_pdf_cos::write_incremental(&doc, &iridium_pdf_cos::SaveOptions::default());
             assert!(saved.is_ok(), "iteration {i}: {:?}", saved.err());
         }
     }

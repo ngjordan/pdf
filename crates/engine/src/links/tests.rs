@@ -1,7 +1,7 @@
 #[test]
 fn remote_documents_must_be_regular_pdf_files() {
     use super::{RemoteDocumentPathError as E, read_remote_document as read};
-    let dir = std::env::temp_dir().join(format!("pdfcraft-gotor-read-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-gotor-read-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("folder.pdf")).unwrap();
     std::fs::write(dir.join("doc.PDF"), b"%PDF-1.7\n").unwrap();
@@ -111,9 +111,9 @@ fn remote_document_paths_to_other_computers_and_devices_are_refused() {
 }
 
 #[test]
-fn urls_follow_the_artcraft_scheme() {
+fn urls_follow_the_app_scheme() {
     assert_eq!(super::APP_PAGE, format!("{}/apps/{}", super::WEBSITE, super::APP));
-    assert_eq!(super::GITHUB, format!("https://github.com/storytold/{}", super::APP));
+    assert_eq!(super::GITHUB, format!("https://github.com/ngjordan/{}", super::APP));
     for l in super::LINKS {
         assert!(l.url.starts_with("https://"), "{}", l.url);
         assert!(crate::commands::command(l.command).is_some(), "{} is a registered command", l.command);

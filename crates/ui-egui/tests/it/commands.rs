@@ -7,8 +7,8 @@ use egui::os::OperatingSystem;
 use egui::{Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_engine::commands::COMMANDS;
-use pdfcraft_ui_egui::{Dialog, PdfCraftApp};
+use iridium_pdf_engine::commands::COMMANDS;
+use iridium_pdf_ui_egui::{Dialog, PdfApp};
 
 fn fixture(n: usize) -> Vec<u8> {
     let mut objs: Vec<String> = vec!["<< /Type /Catalog /Pages 2 0 R >>".into()];
@@ -35,9 +35,9 @@ fn fixture(n: usize) -> Vec<u8> {
     out
 }
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, fixture(3)).unwrap();
         app
@@ -75,15 +75,15 @@ fn every_registered_command_is_implemented() {
         if PICKERS.contains(&spec.id) || spec.id == "edit.copy" {
             continue;
         }
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         if spec.id.starts_with("form.") || spec.id == "comment.flatten" {
             app.open_bytes("form.pdf", None, include_bytes!("../data/form.pdf").to_vec()).unwrap();
         } else if spec.id == "protect.unlock" {
             // Only a permissions password: opens restricted, and can be unlocked.
-            let mut doc = pdfcraft_cos::Document::open(std::sync::Arc::new(fixture(3))).unwrap();
-            doc.set_encryption(&pdfcraft_cos::NewEncryption {
-                algorithm: pdfcraft_cos::Algorithm::Aes256,
+            let mut doc = iridium_pdf_cos::Document::open(std::sync::Arc::new(fixture(3))).unwrap();
+            doc.set_encryption(&iridium_pdf_cos::NewEncryption {
+                algorithm: iridium_pdf_cos::Algorithm::Aes256,
                 user_password: "",
                 owner_password: "owner",
                 permissions: 0b0100,
@@ -91,20 +91,20 @@ fn every_registered_command_is_implemented() {
                 seed: [5; 32],
             })
             .unwrap();
-            app.open_bytes("restricted.pdf", None, pdfcraft_cos::write_full(&doc, &Default::default()).unwrap()).unwrap();
+            app.open_bytes("restricted.pdf", None, iridium_pdf_cos::write_full(&doc, &Default::default()).unwrap()).unwrap();
         } else {
             app.open_bytes("doc.pdf", None, fixture(3)).unwrap();
         }
         // Give undo/redo something to do.
-        app.apply_edit(pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
+        app.apply_edit(iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
         if spec.id == "edit.redo" {
             app.undo();
         }
         // Copying comments needs a selected comment; pasting needs copied ones.
         if matches!(spec.id, "comment.copy" | "comment.paste") {
-            let shape = pdfcraft_engine::Shape::Rectangle { rect: [10.0, 10.0, 50.0, 50.0] };
-            let style = pdfcraft_engine::Style::default_for(&shape);
-            assert!(app.apply_edit(pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+            let shape = iridium_pdf_engine::Shape::Rectangle { rect: [10.0, 10.0, 50.0, 50.0] };
+            let style = iridium_pdf_engine::Style::default_for(&shape);
+            assert!(app.apply_edit(iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
                 page: 0,
                 shape,
                 style,
@@ -117,7 +117,7 @@ fn every_registered_command_is_implemented() {
             }
         }
         if spec.id.starts_with("edit.") && (spec.id.ends_with(".update") || spec.id.ends_with(".remove")) {
-            use pdfcraft_engine::{Background, Edit, HeaderFooter, Watermark};
+            use iridium_pdf_engine::{Background, Edit, HeaderFooter, Watermark};
             let mut hf = HeaderFooter::default();
             hf.text[1] = "x".into();
             app.apply_edit(Edit::AddHeaderFooter { pages: vec![0], settings: hf, replace: false });
@@ -135,7 +135,7 @@ fn every_registered_command_is_implemented() {
             });
         }
         if matches!(spec.id, "comment.flatten" | "comment.export" | "comment.summarize") {
-            use pdfcraft_engine::{Edit, NewAnnotation, Shape, Style};
+            use iridium_pdf_engine::{Edit, NewAnnotation, Shape, Style};
             let shape = Shape::Rectangle { rect: [10.0, 10.0, 50.0, 50.0] };
             app.apply_edit(Edit::AddAnnotation(NewAnnotation {
                 page: 0,
@@ -146,9 +146,12 @@ fn every_registered_command_is_implemented() {
             }));
         }
         if spec.id.starts_with("redact.") {
-            use pdfcraft_engine::{Edit, NewAnnotation, Shape, Style};
-            let shape =
-                Shape::Redact { quads: vec![pdfcraft_engine::rect_quad([10.0, 10.0, 50.0, 50.0])], overlay: String::new(), look: Default::default() };
+            use iridium_pdf_engine::{Edit, NewAnnotation, Shape, Style};
+            let shape = Shape::Redact {
+                quads: vec![iridium_pdf_engine::rect_quad([10.0, 10.0, 50.0, 50.0])],
+                overlay: String::new(),
+                look: Default::default(),
+            };
             app.apply_edit(Edit::AddAnnotation(NewAnnotation {
                 page: 0,
                 style: Style::default_for(&shape),
@@ -158,8 +161,8 @@ fn every_registered_command_is_implemented() {
             }));
         }
         if spec.id == "protect.remove" {
-            let p = pdfcraft_engine::Protection { open_password: Some("pw".into()), ..Default::default() };
-            app.apply_edit(pdfcraft_engine::Edit::Protect(p));
+            let p = iridium_pdf_engine::Protection { open_password: Some("pw".into()), ..Default::default() };
+            app.apply_edit(iridium_pdf_engine::Edit::Protect(p));
         }
         // The cover toggle needs two-page view first (it is disabled elsewhere).
         if spec.id == "view.layout.cover" {
@@ -172,7 +175,7 @@ fn every_registered_command_is_implemented() {
                 assert!(app.views[0].view_history(false));
             }
         }
-        let dir = std::env::temp_dir().join(format!("pdfcraft-cmd-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-cmd-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         app.save_override = Some(dir.join("out.pdf").to_string_lossy().into_owned());
         // A picker the list above misses (file.pin_folder, create.multiple_separate did) must not
@@ -184,7 +187,7 @@ fn every_registered_command_is_implemented() {
 
 #[test]
 fn disabled_commands_explain_themselves() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("language", "en").unwrap();
     assert!(!app.execute("file.save"));
     assert_eq!(app.toast.as_ref().map(|t| t.0.as_str()), Some("Open a document first"));
@@ -199,13 +202,13 @@ fn disabled_commands_explain_themselves() {
 
 #[test]
 fn a_tool_chosen_with_no_document_asks_for_one_and_runs_on_it() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-tool-open-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-tool-open-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("picked.pdf");
     std::fs::write(&path, fixture(2)).unwrap();
     let pick = path.to_string_lossy().into_owned();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.pick_override = Some(vec![pick]);
         app
@@ -222,7 +225,7 @@ fn a_tool_chosen_with_no_document_asks_for_one_and_runs_on_it() {
     assert_eq!(doc.bytes.as_slice(), fixture(2).as_slice());
     // Cancelled: nothing opens and nothing runs.
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.pick_override = Some(Vec::new());
         app
@@ -236,14 +239,14 @@ fn a_tool_chosen_with_no_document_asks_for_one_and_runs_on_it() {
 
 #[test]
 fn a_tool_chosen_with_an_already_open_file_focuses_its_tab_and_still_runs() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-tool-focus-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-tool-focus-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("picked.pdf");
     std::fs::write(&path, fixture(2)).unwrap();
     let pick = path.to_string_lossy().into_owned();
     let picked = pick.clone();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         // The file is already open, but the Home tab is showing (no active document).
         app.open_path(&picked);
@@ -275,7 +278,7 @@ fn shortcuts_run_registered_commands() {
     h.run_steps(2);
     h.key_press_modifiers(Modifiers::COMMAND | Modifiers::CTRL, Key::H);
     h.run_steps(2);
-    assert_eq!(h.state().mode, pdfcraft_ui_egui::Mode::Read);
+    assert_eq!(h.state().mode, iridium_pdf_ui_egui::Mode::Read);
 }
 
 #[test]
@@ -326,7 +329,7 @@ fn the_pages_menu_comes_from_the_registry() {
 /// original.
 #[test]
 fn the_open_recent_menu_lists_files_and_opens_one() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-recent-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-recent-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("recent.pdf");
     std::fs::write(&path, fixture(2)).unwrap();
@@ -334,10 +337,10 @@ fn the_open_recent_menu_lists_files_and_opens_one() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe({
         let path = path.clone();
         move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_bytes("doc.pdf", None, fixture(3)).unwrap();
-            app.recent.push(pdfcraft_ui_egui::RecentFile { name: "recent.pdf".into(), path, pages: 2, size: 0 });
+            app.recent.push(iridium_pdf_ui_egui::RecentFile { name: "recent.pdf".into(), path, pages: 2, size: 0 });
             app
         }
     });
@@ -367,15 +370,15 @@ fn the_open_recent_menu_is_disabled_while_the_list_is_empty() {
     );
 }
 
-fn recent_file(name: &str) -> pdfcraft_ui_egui::RecentFile {
-    pdfcraft_ui_egui::RecentFile { name: name.into(), path: format!("/nowhere/{name}"), pages: 1, size: 0 }
+fn recent_file(name: &str) -> iridium_pdf_ui_egui::RecentFile {
+    iridium_pdf_ui_egui::RecentFile { name: name.into(), path: format!("/nowhere/{name}"), pages: 1, size: 0 }
 }
 
 /// Check that Clear Recent Files empties the list and disables Open Recent.
 #[test]
 fn clear_recent_files_at_the_foot_of_open_recent_empties_the_list() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, fixture(3)).unwrap();
         app.recent.extend([recent_file("first.pdf"), recent_file("second.pdf")]);
@@ -394,11 +397,11 @@ fn clear_recent_files_at_the_foot_of_open_recent_empties_the_list() {
 
 #[test]
 fn clear_recent_files_runs_from_the_palette_and_is_saved() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.recent.extend([recent_file("first.pdf"), recent_file("second.pdf")]);
     assert!(app.execute("file.clear_recent"));
     assert!(app.recent.is_empty());
-    let mut restarted = PdfCraftApp::new();
+    let mut restarted = PdfApp::new();
     restarted.recent.push(recent_file("stale.pdf"));
     restarted.restore(&app.persist());
     assert!(restarted.recent.is_empty(), "the empty list is what's saved");
@@ -458,14 +461,14 @@ fn localized_shortcuts_update_immediately_and_keep_command_ids_and_key_bindings(
     h.run_steps(2);
     h.key_press(Key::Enter);
     h.run_steps(3);
-    assert_eq!(h.state().mode, pdfcraft_ui_egui::Mode::Read);
+    assert_eq!(h.state().mode, iridium_pdf_ui_egui::Mode::Read);
     assert!(!h.state().palette_open);
     let doc = h.state().session.get(h.state().views[0].id).unwrap();
     assert!(!doc.dirty);
 }
 
 /// View ▸ Zoom open in the menu bar, with egui told the app runs on `os`.
-fn view_menu(os: OperatingSystem) -> Harness<'static, PdfCraftApp> {
+fn view_menu(os: OperatingSystem) -> Harness<'static, PdfApp> {
     let mut h = harness();
     h.ctx.set_os(os);
     h.run_steps(2);
@@ -572,7 +575,7 @@ fn quit_shortcut_requires_exact_modifiers_and_preserves_unsaved_work() {
 #[test]
 fn command_w_closes_empty_macos_window_but_not_an_empty_windows_window() {
     for (os, should_close) in [(OperatingSystem::Mac, true), (OperatingSystem::Windows, false)] {
-        let mut h = Harness::builder().with_size(egui::vec2(1000.0, 700.0)).build_eframe(|_cc| PdfCraftApp::new());
+        let mut h = Harness::builder().with_size(egui::vec2(1000.0, 700.0)).build_eframe(|_cc| PdfApp::new());
         h.ctx.set_os(os);
         h.run_steps(4);
         assert!(h.state().views.is_empty());
@@ -593,14 +596,14 @@ fn command_w_still_closes_the_document_tab_on_macos() {
     assert!(h.state().views.is_empty(), "⌘W closes the clean document tab");
 }
 
-fn palette_ime_output_requests_interrupt(h: &Harness<'_, PdfCraftApp>, phase: &str) -> bool {
+fn palette_ime_output_requests_interrupt(h: &Harness<'_, PdfApp>, phase: &str) -> bool {
     assert!(h.state().palette_open, "palette closed during {phase}");
     let ime = h.output().platform_output.ime.as_ref().expect("focused palette advertises IME");
     eprintln!("{phase}: query={:?}; should_interrupt_composition={}", h.state().palette_query, ime.should_interrupt_composition);
     ime.should_interrupt_composition
 }
 
-fn palette_ime_output_is_uninterrupted(h: &Harness<'_, PdfCraftApp>, phase: &str) {
+fn palette_ime_output_is_uninterrupted(h: &Harness<'_, PdfApp>, phase: &str) {
     assert!(!palette_ime_output_requests_interrupt(h, phase), "palette interrupted composition during {phase}");
 }
 
@@ -680,7 +683,7 @@ fn ctrl_tab_steps_through_the_tabs_in_order_and_wraps_around() {
     h.state_mut().open_bytes("third.pdf", None, fixture(1)).unwrap();
     h.run_steps(3);
     let ctrl = Modifiers::CTRL | Modifiers::COMMAND;
-    let press = |h: &mut Harness<'static, PdfCraftApp>, modifiers: Modifiers| {
+    let press = |h: &mut Harness<'static, PdfApp>, modifiers: Modifiers| {
         h.key_press_modifiers(modifiers, Key::Tab);
         h.run_steps(2);
         h.state().active

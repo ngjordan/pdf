@@ -28,9 +28,9 @@ permissions:
 jobs:
   windows-arm64:
     # Intentionally tracked at @main (not SHA-pinned) so org-wide CI improvements, security fixes, and build optimizations propagate without PR churn across all craftapp repos.
-    uses: storytold/craft-common-actions/.github/workflows/windows-arm64.yml@main
+    uses: ngjordan/craft-common-actions/.github/workflows/windows-arm64.yml@main
     with:
-      app-name: pdfcraft
-      app-dir: PdfCraft
-      install-relative-path: Programs/ArtCraft/PdfCraft
+      app-name: iridium-pdf
+      app-dir: PDF
+      install-relative-path: Programs/the upstream project/PDF
       install-scope: perUser

@@ -3,8 +3,8 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
-use pdfcraft_content::Matrix;
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, SaveOptions, write_full};
+use iridium_pdf_content::Matrix;
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, SaveOptions, write_full};
 
 use super::extract::extract_page;
 use super::geometry::{Finding, check_geometry};
@@ -74,11 +74,11 @@ impl Snapshot {
         let mut by_page: Vec<usize> = chosen.iter().map(|m| m.page).collect();
         by_page.sort_unstable();
         by_page.dedup();
-        let page_list = pdfcraft_model::pages(doc);
+        let page_list = iridium_pdf_model::pages(doc);
         let ctx = Ctx::new(HashSet::new());
         let mut regions: Vec<RegionSnap> = Vec::new();
         let mut pages = BTreeMap::new();
-        let mut images = pdfcraft_cos::ImageBudget::new(doc);
+        let mut images = iridium_pdf_cos::ImageBudget::new(doc);
         // What was cut, each copy once, however many overlapping marks it lay under: the allowance
         // for what stays is what the source holds less this.
         let (mut cut_text, mut cut_raw) = (String::new(), String::new());
@@ -93,7 +93,7 @@ impl Snapshot {
             let mut scratch = doc.clone();
             let mut sink = Report::default();
             let removed: Vec<Removed> = {
-                let mut scope = Scope::new(&rects, Mode::Apply, &mut sink, pdfcraft_cos::DecodeBudget::page(), &mut images);
+                let mut scope = Scope::new(&rects, Mode::Apply, &mut sink, iridium_pdf_cos::DecodeBudget::page(), &mut images);
                 scope.removed = Some(Vec::new());
                 process(&mut scratch, &mut scope, &data, &resources, Matrix::IDENTITY);
                 scope.removed.take().unwrap_or_default()
@@ -310,7 +310,7 @@ impl Snapshot {
     fn check_output(&self, out: &Document, ctx: &Ctx) -> (HashMap<usize, Vec<Finding>>, PagesAfter) {
         let mut findings: HashMap<usize, Vec<Finding>> = HashMap::new();
         let mut after: PagesAfter = BTreeMap::new();
-        let out_pages = pdfcraft_model::pages(out);
+        let out_pages = iridium_pdf_model::pages(out);
         for &pi in self.pages.keys() {
             let idx: Vec<usize> = (0..self.regions.len()).filter(|&i| self.regions.get(i).is_some_and(|r| r.page == pi)).collect();
             let Some(page) = out_pages.get(pi) else {

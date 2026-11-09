@@ -1,9 +1,9 @@
 # PDF workflow research reference
 
-> **Last reviewed:** 2026-10-17 · **Last updated:** 2026-10-17 · **Status:** reference documentation. Feature and roadmap snapshot: [`924c4da4`](https://github.com/storytold/pdfcraft/tree/924c4da4ac2879ac9107c6c82e20ac6be5570f0a), dated 2026-10-16. Detailed code inspection remains pinned to `3f044b62`, dated 2026-10-13.
+> **Last reviewed:** 2026-10-17 · **Last updated:** 2026-10-17 · **Status:** reference documentation. Feature and roadmap snapshot: [`924c4da4`](https://github.com/ngjordan/iridium-pdf/tree/924c4da4ac2879ac9107c6c82e20ac6be5570f0a), dated 2026-10-16. Detailed code inspection remains pinned to `3f044b62`, dated 2026-10-13.
 
 This reference consolidates archived comparative research, public source locators and
-PdfCraft feature evidence. It separates documented workflows, historical observations,
+PDF feature evidence. It separates documented workflows, historical observations,
 evaluation criteria and current feature records so contributors can assess the collected
 material without treating an old research claim as a present product fact.
 
@@ -40,7 +40,7 @@ market share, incidence or representative satisfaction. Historical pricing, lice
 legal, security and superiority assertions are excluded. No competitor was installed or
 benchmarked for this documentation contribution.
 
-## Reconciliation with PdfCraft
+## Reconciliation with PDF
 
 Earlier research described measurement, a command palette, visual comparison, Tags panels
 and reusable actions as missing. The inspected source and newer checklist already contain
@@ -59,7 +59,7 @@ evidence is identified without changing its recorded status.
 These are newly written summaries and public source links. No third-party screenshots,
 visual designs, source code, fonts, sample documents, private paths, account data or raw
 session logs are included. Historical implementation classes, toolkit choices and old
-effort estimates are not adopted as PdfCraft architecture.
+effort estimates are not adopted as PDF architecture.
 
 Static checks cover the feature IDs, statuses, milestone assignments, reference IDs and
 local links. Evaluation scenarios are research criteria, not tests already executed.

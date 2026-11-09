@@ -4,8 +4,8 @@
 
 use std::sync::Arc;
 
-use pdfcraft_cos::{Algorithm, CosError, Document, NewEncryption, ObjRef, Object, SaveOptions, write_full, write_incremental};
-use pdfcraft_crypt::StreamKind;
+use iridium_pdf_cos::{Algorithm, CosError, Document, NewEncryption, ObjRef, Object, SaveOptions, write_full, write_incremental};
+use iridium_pdf_crypt::StreamKind;
 
 const PAGE: &str = "BT /F1 12 Tf 20 100 Td (Visible page) Tj ET";
 const ATTACHED: &[u8] = b"the attached file's own words";
@@ -29,7 +29,7 @@ fn fixture_with(algorithm: Algorithm, auth_event: &str, named: bool) -> Vec<u8> 
     let id0 = [7u8; 16];
     let params =
         NewEncryption { algorithm, user_password: PASSWORD, owner_password: "owner pw", permissions: -4, encrypt_metadata: true, seed: [3; 32] };
-    let handler = pdfcraft_crypt::create(&params, &id0).unwrap();
+    let handler = iridium_pdf_crypt::create(&params, &id0).unwrap();
     let d = handler.dict();
     let kind = if named { StreamKind::Named(b"StdCF") } else { StreamKind::EmbeddedFile };
     let cipher = handler.encrypt_stream(EMBEDDED.num, 0, ATTACHED, kind);
@@ -79,7 +79,7 @@ fn fixture_with(algorithm: Algorithm, auth_event: &str, named: bool) -> Vec<u8> 
     out
 }
 
-fn stream(doc: &Document, r: ObjRef) -> pdfcraft_cos::Stream {
+fn stream(doc: &Document, r: ObjRef) -> iridium_pdf_cos::Stream {
     match &*doc.get(r) {
         Object::Stream(s) => s.clone(),
         other => panic!("object {} isn't a stream: {other:?}", r.num),

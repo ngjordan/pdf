@@ -6,5 +6,5 @@ nextest-version = "0.9.150"
 # serializes cargo test; nextest gives each test its own process. Reserve all slots
 # so other tests cannot charge their CPU/render-worker time to a frame budget.
 [[profile.default.overrides]]
-filter = 'package(pdfcraft-ui-egui) & binary(perf)'
+filter = 'package(iridium-pdf-ui-egui) & binary(perf)'
 threads-required = "num-test-threads"

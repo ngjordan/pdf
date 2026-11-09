@@ -10,7 +10,7 @@ use super::{
 /// menus as in the Attachments panel: the comment is where the reader finds its file. Reading
 /// the file changes nothing, so a read-only document offers them too.
 pub(crate) fn attachment_items(ui: &mut egui::Ui, view: &mut DocView, info: &DocInfo, a: &Annotation) {
-    let source = pdfcraft_render::AttachmentSource::Annotation { page: a.page, index: a.index };
+    let source = iridium_pdf_render::AttachmentSource::Annotation { page: a.page, index: a.index };
     let Some(file) = info.attachments.iter().find(|f| f.source == source) else { return };
     if ui.button(tl!("Save attachment…")).clicked() {
         view.comments.attachment_request = Some((a.page, a.index, false));
@@ -120,7 +120,7 @@ pub(crate) fn context_menu(
             });
             // The checkmark of the reviewer using this copy: checkmarks are each reviewer's own
             // (ISO 32000-2 Table 174: "The annotation has been marked by the user").
-            let marked = pdfcraft_render::ReviewStates::new(&info.annotations).marked_by(a, &prefs.author);
+            let marked = iridium_pdf_render::ReviewStates::new(&info.annotations).marked_by(a, &prefs.author);
             if ui.add_enabled(allowed, egui::Button::new(tl!(if marked { "Remove checkmark" } else { "Mark with checkmark" }))).clicked() {
                 action = Some(CanvasAction::Edit(Box::new(Edit::MarkAnnotation { page, index, marked: !marked, author: prefs.author.clone() })));
                 ui.close();
@@ -205,7 +205,7 @@ pub(super) const RECENT_CUSTOM: usize = 5;
 
 /// Return the stable egui id for the recent custom-colour palette.
 fn recent_custom_id() -> egui::Id {
-    egui::Id::unique("pdfcraft-recent-custom-colours")
+    egui::Id::unique("iridium-pdf-recent-custom-colours")
 }
 
 /// Custom colours picked with "Other colour…" this session, newest first (#1193).

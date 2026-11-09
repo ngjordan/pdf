@@ -1,4 +1,4 @@
-use pdfcraft_fonts::shaped_text::{Piece, ShapedFonts, clusters, first_undrawable_in_line, is_thai, thai_message, thai_pieces};
+use iridium_pdf_fonts::shaped_text::{Piece, ShapedFonts, clusters, first_undrawable_in_line, is_thai, thai_message, thai_pieces};
 
 use super::{Dict, Document, EditError, Object, Rgb, added};
 
@@ -18,7 +18,7 @@ impl MarkText {
     /// face, or the face lacks a character) is refused, saying what to do.
     pub(crate) fn new<'a>(
         doc: &mut Document,
-        all: &[pdfcraft_model::Page],
+        all: &[iridium_pdf_model::Page],
         pages: &[usize],
         lines: impl IntoIterator<Item = &'a str>,
     ) -> Result<Self, EditError> {
@@ -35,7 +35,7 @@ impl MarkText {
         }
         let mut fonts = Dict::new();
         let shaped =
-            ShapedFonts::new(clusters(pieces.iter().map(Vec::as_slice)), pdfcraft_fonts::shaped_glyph, &taken, &mut fonts, "PCTh", &mut |o| {
+            ShapedFonts::new(clusters(pieces.iter().map(Vec::as_slice)), iridium_pdf_fonts::shaped_glyph, &taken, &mut fonts, "PCTh", &mut |o| {
                 Object::Ref(doc.add(o))
             })
             .map_err(|(e, c)| EditError::Invalid(thai_message(e, &c.text)))?;
@@ -59,11 +59,11 @@ impl MarkText {
         let plain = || vec![Piece::Latin(line.into())];
         // `new` shaped every line drawn, so this shapes.
         let pieces = if self.fonts.is_empty() || !line.chars().any(is_thai) { plain() } else { thai_pieces(line).unwrap_or_else(|_| plain()) };
-        self.shaped.show_line(out, &pieces, x, y, size, latin, pdfcraft_fonts::win_ansi, width, current);
+        self.shaped.show_line(out, &pieces, x, y, size, latin, iridium_pdf_fonts::win_ansi, width, current);
     }
 
     /// Add the fonts to `page`'s own resources.
-    pub(crate) fn add_to(&self, doc: &mut Document, page: &pdfcraft_model::Page) -> Result<(), EditError> {
+    pub(crate) fn add_to(&self, doc: &mut Document, page: &iridium_pdf_model::Page) -> Result<(), EditError> {
         if self.fonts.is_empty() {
             return Ok(());
         }
@@ -182,7 +182,7 @@ pub(crate) fn shrink_matrix(hf: &HeaderFooter, size: (f64, f64), view: [f64; 6])
 /// the document, an image (drawn into a unit square) or a form (a page of a PDF).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MarkSource {
-    pub xobject: pdfcraft_cos::ObjRef,
+    pub xobject: iridium_pdf_cos::ObjRef,
     /// Its natural size in points.
     pub size: (f64, f64),
     /// An image XObject (unit square); otherwise a form whose `/Matrix` maps it to `size`.
@@ -278,7 +278,7 @@ pub(crate) fn picture(src: &MarkSource, page: (f64, f64), scale: f64, rotation: 
 }
 
 /// Register a mark picture in the page's own resources (`/PCPic<num>`).
-pub(crate) fn add_picture_resource(doc: &mut Document, page: &pdfcraft_model::Page, src: &MarkSource) -> Result<(), EditError> {
+pub(crate) fn add_picture_resource(doc: &mut Document, page: &iridium_pdf_model::Page, src: &MarkSource) -> Result<(), EditError> {
     let p = doc.get(page.obj).as_dict().cloned().unwrap_or_default();
     let mut res = p.get(b"Resources").map(|r| doc.resolve(r)).and_then(|r| r.as_dict().cloned()).unwrap_or_default();
     let mut xo = res.get(b"XObject").map(|x| doc.resolve(x)).and_then(|x| x.as_dict().cloned()).unwrap_or_default();
@@ -298,7 +298,7 @@ pub struct Context {
 // Model-derived transforms can contain tiny scale factors; retain their PDF decimal precision.
 pub(crate) fn matrix_number(value: f64) -> String {
     let mut bytes = Vec::new();
-    pdfcraft_cos::serialize(&Object::Real(value), &mut bytes);
+    iridium_pdf_cos::serialize(&Object::Real(value), &mut bytes);
     String::from_utf8_lossy(&bytes).into_owned()
 }
 

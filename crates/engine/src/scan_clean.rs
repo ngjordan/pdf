@@ -10,7 +10,7 @@
 //!
 //! A page is a scan when its pictures cover at least half of it (as for Recognize text); the
 //! pictures each covering at least a tenth of the page are its scan. What is not cleaned is
-//! reported, never skipped silently: pages that are no scan, and scan images in a form PdfCraft
+//! reported, never skipped silently: pages that are no scan, and scan images in a form PDF
 //! can't rewrite yet (CMYK, indexed, JPEG 2000, JBIG2, CCITT fax, a stencil mask, a remapping
 //! decode array, a scan drawn inside grouped Form artwork) or whose data is broken.
 //!
@@ -18,7 +18,7 @@
 //! [`ScanCleanJob::run`] cleans anywhere (a worker thread), and [`Session::apply_scan_clean`]
 //! makes the result one undoable step, "Enhance scanned file" (the name the Scan & OCR tool has).
 
-use pdfcraft_cos::{ObjRef, Object, Stream};
+use iridium_pdf_cos::{ObjRef, Object, Stream};
 
 use crate::camera_clean::{CleanUp, MAX_LEVEL, clean_samples};
 use crate::edit::check_permission;
@@ -103,7 +103,7 @@ struct Target {
 
 /// What cleaning scanned pages needs, independent of the session.
 pub struct ScanCleanJob {
-    cos: pdfcraft_cos::Document,
+    cos: iridium_pdf_cos::Document,
     targets: Vec<Target>,
     settings: ScanCleanSettings,
     /// The document's edit generation it was taken at: a result is for that state only.
@@ -230,7 +230,7 @@ impl ScanCleanJob {
         let mut images = Vec::new();
         let mut changed_pages: Vec<usize> = Vec::new();
         // One decoding allowance for the whole run, sized by the file.
-        let mut budget = pdfcraft_cos::ImageBudget::new(&cos);
+        let mut budget = iridium_pdf_cos::ImageBudget::new(&cos);
         for (done, target) in targets.into_iter().enumerate() {
             if !progress(done, total) {
                 return Err(EditError::Cancelled);
@@ -257,10 +257,10 @@ impl ScanCleanJob {
 /// Image `object` cleaned with `settings`: the new stream, `None` when nothing changes, or why it
 /// can't be cleaned.
 fn clean_image(
-    cos: &pdfcraft_cos::Document,
+    cos: &iridium_pdf_cos::Document,
     object: ObjRef,
     settings: ScanCleanSettings,
-    budget: &mut pdfcraft_cos::ImageBudget,
+    budget: &mut iridium_pdf_cos::ImageBudget,
 ) -> Result<Option<Stream>, String> {
     let obj = cos.get(object);
     let Object::Stream(s) = &*obj else { return Err("it is not an image".into()) };
@@ -293,7 +293,7 @@ fn clean_image(
 }
 
 /// [`Edit::EnhanceScan`]: put the cleaned images in place. Each object must still be an image.
-pub(crate) fn write_back(doc: &mut pdfcraft_cos::Document, images: &[(ObjRef, Stream)]) -> Result<(), EditError> {
+pub(crate) fn write_back(doc: &mut iridium_pdf_cos::Document, images: &[(ObjRef, Stream)]) -> Result<(), EditError> {
     for (object, stream) in images {
         let is_image = matches!(&*doc.get(*object), Object::Stream(s) if s.dict.name(b"Subtype") == Some(b"Image"));
         if !is_image {

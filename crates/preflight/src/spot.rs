@@ -13,7 +13,7 @@
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 
-use pdfcraft_cos::{DecodeBudget, Dict, Document, ObjRef, Object, Stream};
+use iridium_pdf_cos::{DecodeBudget, Dict, Document, ObjRef, Object, Stream};
 
 /// How deep a direct object is followed (arrays and dictionaries inside one another): as deep as
 /// the parser nests them.
@@ -239,7 +239,7 @@ mod tests {
     use std::collections::BTreeSet;
     use std::sync::Arc;
 
-    use pdfcraft_cos::{Dict, Document, Object};
+    use iridium_pdf_cos::{Dict, Document, Object};
 
     use super::{Findings, check, same_number};
     use crate::{Level, objects, verify};

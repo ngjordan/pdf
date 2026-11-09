@@ -22,7 +22,7 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object};
 
 use crate::{INHERITABLE, OrganizeError, pages_root, rebuild, walk};
 
@@ -134,7 +134,7 @@ fn insert_file_bookmark(doc: &mut Document, mark: &Mark, after: usize) -> Result
     let root = crate::outline::container(doc, &[])?;
     let item = doc.add(Object::Null);
     let mut d = Dict::new();
-    d.set(b"Title".to_vec(), Object::String(pdfcraft_cos::PdfString::text(&mark.title)));
+    d.set(b"Title".to_vec(), Object::String(iridium_pdf_cos::PdfString::text(&mark.title)));
     d.set(b"Dest".to_vec(), Object::Array(vec![Object::Ref(mark.page), Object::name("Fit")]));
     if let Some((f, l, n)) = write_outline_level(doc, item, &mark.outline)? {
         d.set(b"First".to_vec(), Object::Ref(f));
@@ -574,7 +574,7 @@ pub fn import_value(dst: &mut Document, src: &Document, value: &Object) -> Resul
 /// and its `/Matrix` undoes the page rotation, so it draws upright as displayed. Returns the
 /// form and its displayed size in points.
 pub fn page_as_form(dst: &mut Document, src: &Document, page: usize) -> Result<(ObjRef, (f64, f64)), OrganizeError> {
-    use pdfcraft_cos::Stream;
+    use iridium_pdf_cos::Stream;
     let all = walk(src)?;
     // `walk` gives the inheritable attributes (resources, boxes, rotation); the content is
     // the page's own.

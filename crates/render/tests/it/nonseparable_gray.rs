@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
 fn pdf(objects: &[String]) -> Vec<u8> {
     let mut out = b"%PDF-1.7\n".to_vec();

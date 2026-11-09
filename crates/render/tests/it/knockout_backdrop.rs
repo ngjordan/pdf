@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
 const MAGENTA: [u8; 3] = [255, 0, 255];
 const GREEN: [u8; 3] = [0, 255, 0];

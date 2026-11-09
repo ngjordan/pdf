@@ -3,12 +3,12 @@
 
 use std::path::PathBuf;
 
-use pdfcraft_automation::{Automation, Content};
+use iridium_pdf_automation::{Automation, Content};
 use serde_json::{Value, json};
 
 /// A fresh directory for one test.
 fn tmp(name: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("pdfcraft-find-text-{}-{name}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("iridium-pdf-find-text-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d

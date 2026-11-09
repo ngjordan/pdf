@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
 /// The page's grey backdrop, `0.5 g`, as the renderer writes it.
 const BACKDROP: f64 = 128.0;

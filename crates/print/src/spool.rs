@@ -1,5 +1,5 @@
 //! System print spooler supplied by craft-print. PDF composition and permission checks
-//! stay in PdfCraft; these adapters retain the application's print-error surface.
+//! stay in PDF; these adapters retain the application's print-error surface.
 
 pub use craft_print::{
     Duplex, HANDLED_OPTIONS, HAS_PRINTER_PREFERENCES, Job, Printer, PrinterOption, Scaling, lp_args, lpstat_command, parse_lpoptions, parse_lpstat,
@@ -173,7 +173,7 @@ pub(crate) fn with_job_info(job: &Job, owner: Option<&str>) -> Job {
     let mut named = job.clone();
     for (key, value) in [(JOB_NAME_KEY, job.title.as_str()), (JOB_OWNER_KEY, owner.unwrap_or_default())] {
         if !job.options.iter().any(|(k, _)| k.eq_ignore_ascii_case(key)) {
-            named.options.push((key.to_string(), job_option_value(value, "PdfCraft")));
+            named.options.push((key.to_string(), job_option_value(value, "PDF")));
         }
     }
     named

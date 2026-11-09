@@ -1,4 +1,4 @@
-use pdfcraft_fonts::shaped_text::{is_thai, thai_refusal, thai_width};
+use iridium_pdf_fonts::shaped_text::{is_thai, thai_refusal, thai_width};
 
 use super::marks::{
     Background, Context, HeaderFooter, MarkKind, MarkText, Watermark, add_picture_resource, bates_start, expand, matrix_number, n, picture, rgb,

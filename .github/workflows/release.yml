@@ -24,14 +24,14 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: storytold/craft-common-actions/.github/workflows/refresh-contributors.yml@main
+    uses: ngjordan/craft-common-actions/.github/workflows/refresh-contributors.yml@main
   release:
     needs: credits
     # Intentionally tracked at @main (not SHA-pinned) so org-wide CI improvements, security fixes, and build optimizations propagate without PR churn across all craftapp repos.
-    uses: storytold/craft-common-actions/.github/workflows/release.yml@main
+    uses: ngjordan/craft-common-actions/.github/workflows/release.yml@main
     with:
-      app-name: pdfcraft
-      app-title: PdfCraft
+      app-name: iridium-pdf
+      app-title: PDF
       craft-fonts-ref: b076417b5880bd4154bd22f00695b1d28c6bea83
       version: ${{ inputs.version }}
       contributors-artifact: ${{ needs.credits.outputs.artifact-name }}

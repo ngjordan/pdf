@@ -1,10 +1,10 @@
-//! Headless screenshot of the real PdfCraft shell (egui_kittest + wgpu, no window needed).
+//! Headless screenshot of the real PDF shell (egui_kittest + wgpu, no window needed).
 //!
 //! ```text
-//! cargo run -p pdfcraft-ui-egui --example shot -- out.png [file.pdf] [--size 1440x900] [--scale 2] [--page 3 --panel pages …]
+//! cargo run -p iridium-pdf-ui-egui --example shot -- out.png [file.pdf] [--size 1440x900] [--scale 2] [--page 3 --panel pages …]
 //! ```
 //! `--width N` downscales the image to N pixels wide (README screenshots). Any other
-//! `--key value` pair is passed to `PdfCraftApp::set_option`
+//! `--key value` pair is passed to `PdfApp::set_option`
 //! (the same verbs as the desktop app's command-line flags and the future control channel).
 //! `--ocr-verify on` ignores any file and instead builds a synthetic scanned page, recognizes
 //! it with the real engines (models required: `cargo xtask models`) and opens the OCR Verify
@@ -13,15 +13,15 @@
 use std::time::{Duration, Instant};
 
 use egui_kittest::Harness;
-use pdfcraft_engine::ocr::{MergeStrategy, OcrSettings};
-use pdfcraft_engine::{Session, export};
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_engine::ocr::{MergeStrategy, OcrSettings};
+use iridium_pdf_engine::{Session, export};
+use iridium_pdf_ui_egui::PdfApp;
 
 /// Build a one-page PDF that is only a picture of a sentence (as a scanner would produce),
 /// recognize it with the engines named in `settings` and open the OCR Verify screen on the
 /// result — the same path the review tests use, with a real recognition behind it. The toolbar
 /// dropdowns are seeded to the ensemble the shot ran.
-fn load_ocr_verify(app: &mut PdfCraftApp) -> Result<(), String> {
+fn load_ocr_verify(app: &mut PdfApp) -> Result<(), String> {
     let mut s = Session::new();
     let text = s
         .create_from_text(
@@ -40,7 +40,7 @@ fn load_ocr_verify(app: &mut PdfCraftApp) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     let scan = s.create_from_images(&[("scan.png".into(), scan_png.into_inner())]).map_err(|e| e.to_string())?.to_vec();
     let settings =
-        OcrSettings { engine: pdfcraft_engine::ocr::EngineChoice::Auto, strategy: MergeStrategy::ConfidenceWeighted, ..OcrSettings::default() };
+        OcrSettings { engine: iridium_pdf_engine::ocr::EngineChoice::Auto, strategy: MergeStrategy::ConfidenceWeighted, ..OcrSettings::default() };
     app.ocr_draft.engine = settings.engine;
     app.ocr_draft.strategy = settings.strategy;
     app.open_bytes("scan.pdf", None, scan).map_err(|e| e.to_string())?;
@@ -50,7 +50,7 @@ fn load_ocr_verify(app: &mut PdfCraftApp) -> Result<(), String> {
     }
     let Some((_, id)) = app.active_ids() else { return Err("no open document".into()) };
     let job = app.session.ocr_job(id, &[], settings.clone()).ok_or("the OCR job could not be captured")?;
-    let recognizers = pdfcraft_engine::ocr::recognizers(&settings)?;
+    let recognizers = iridium_pdf_engine::ocr::recognizers(&settings)?;
     let guard = job.guard.clone();
     let pages = job.run(&recognizers, |_, _| true);
     app.ocr_verify.load(id, guard, pages);
@@ -79,7 +79,7 @@ fn main() -> Result<(), String> {
         }
     }
     let mut harness = Harness::builder().with_size(size).with_pixels_per_point(scale).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         if ocr_verify {
             if let Err(e) = load_ocr_verify(&mut app) {
                 eprintln!("shot: --ocr-verify: {e}");

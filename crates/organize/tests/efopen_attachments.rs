@@ -4,8 +4,8 @@
 
 use std::sync::Arc;
 
-use pdfcraft_cos::{Algorithm, Document, NewEncryption, SaveOptions, write_full};
-use pdfcraft_organize::{OrganizeError, combine};
+use iridium_pdf_cos::{Algorithm, Document, NewEncryption, SaveOptions, write_full};
+use iridium_pdf_organize::{OrganizeError, combine};
 
 /// The password values (`/O`, `/U`, `/OE`, `/UE`, `/Perms`) of an AES-256 (R6) protection with a
 /// user password, as a save writes them.

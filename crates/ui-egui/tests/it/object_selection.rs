@@ -2,8 +2,8 @@
 use egui::{Key, Modifiers, Pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_engine::{AddedText, Edit, EditableObject};
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_engine::{AddedText, Edit, EditableObject};
+use iridium_pdf_ui_egui::PdfApp;
 
 fn fixture(clipping: bool) -> Vec<u8> {
     fixture_with_background(clipping, false)
@@ -46,18 +46,18 @@ fn fixture_with_background(clipping: bool, background: bool) -> Vec<u8> {
     out
 }
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     harness_with(false)
 }
 
-fn harness_with(clipping: bool) -> Harness<'static, PdfCraftApp> {
+fn harness_with(clipping: bool) -> Harness<'static, PdfApp> {
     harness_document(clipping, false)
 }
 
-fn harness_document(clipping: bool, background: bool) -> Harness<'static, PdfCraftApp> {
+fn harness_document(clipping: bool, background: bool) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
-        app.session = pdfcraft_engine::Session::new().with_clock(|| 1_700_000_000);
+        let mut app = PdfApp::new();
+        app.session = iridium_pdf_engine::Session::new().with_clock(|| 1_700_000_000);
         app.set_option("language", "en").unwrap();
         app.open_bytes("group.pdf", None, fixture_with_background(clipping, background)).unwrap();
         let id = app.views[0].id;
@@ -77,15 +77,15 @@ fn harness_document(clipping: bool, background: bool) -> Harness<'static, PdfCra
     h
 }
 
-fn at(h: &Harness<'static, PdfCraftApp>, x: f32, y: f32) -> Pos2 {
+fn at(h: &Harness<'static, PdfApp>, x: f32, y: f32) -> Pos2 {
     let r = h.state().views[0].page_screen_rect(0).unwrap();
     r.min + egui::vec2(x, y) * (r.width() / 400.0)
 }
-fn objects(h: &Harness<'static, PdfCraftApp>) -> Vec<EditableObject> {
+fn objects(h: &Harness<'static, PdfApp>) -> Vec<EditableObject> {
     let app = h.state();
     app.session.get(app.views[0].id).unwrap().editable_objects(0).unwrap()
 }
-fn click(h: &mut Harness<'static, PdfCraftApp>, p: Pos2, mods: Modifiers) {
+fn click(h: &mut Harness<'static, PdfApp>, p: Pos2, mods: Modifiers) {
     h.hover_at(p);
     h.run_steps(2);
     for pressed in [true, false] {
@@ -93,7 +93,7 @@ fn click(h: &mut Harness<'static, PdfCraftApp>, p: Pos2, mods: Modifiers) {
     }
     h.run_steps(4);
 }
-fn marquee(h: &mut Harness<'static, PdfCraftApp>) {
+fn marquee(h: &mut Harness<'static, PdfApp>) {
     let (a, b) = (at(h, 25.0, 45.0), at(h, 235.0, 175.0));
     h.hover_at(a);
     h.run_steps(2);
@@ -105,7 +105,7 @@ fn marquee(h: &mut Harness<'static, PdfCraftApp>) {
     h.run_steps(4);
     h.get_by_label("3 objects selected");
 }
-fn drag(h: &mut Harness<'static, PdfCraftApp>, a: Pos2, b: Pos2) {
+fn drag(h: &mut Harness<'static, PdfApp>, a: Pos2, b: Pos2) {
     h.hover_at(a);
     h.run_steps(2);
     h.drag_at(a);
@@ -134,7 +134,7 @@ fn marquee_and_mixed_group_drag_move_once_and_undo_together() {
     h.get_by_label("3 objects selected");
     let app = h.state();
     assert_eq!(app.session.get(app.views[0].id).unwrap().can_undo(), Some("Move objects"));
-    if let Ok(path) = std::env::var("PDFCRAFT_GROUP_SHOT") {
+    if let Ok(path) = std::env::var("IRIDIUM_PDF_GROUP_SHOT") {
         let _gpu = crate::gpu();
         h.render().unwrap().save(path).unwrap();
     }
@@ -294,7 +294,7 @@ fn group_drag_respects_document_rotation_and_view_rotation() {
             let app = h.state();
             let doc = app.session.get(app.views[0].id).unwrap();
             let o = before.iter().find(|o| o.target == *target).unwrap();
-            let p = pdfcraft_ui_egui::canvas::PageXform {
+            let p = iridium_pdf_ui_egui::canvas::PageXform {
                 rect: app.views[0].page_screen_rect(0).unwrap(),
                 rot: 90,
                 pw: doc.info.pages[0].width,
@@ -307,7 +307,7 @@ fn group_drag_respects_document_rotation_and_view_rotation() {
         h.get_by_label("3 objects selected");
         let app = h.state();
         let doc = app.session.get(app.views[0].id).unwrap();
-        let xf = pdfcraft_ui_egui::canvas::PageXform {
+        let xf = iridium_pdf_ui_egui::canvas::PageXform {
             rect: app.views[0].page_screen_rect(0).unwrap(),
             rot: 90,
             pw: doc.info.pages[0].width,
@@ -348,8 +348,8 @@ fn group_drags_cancel_on_focus_loss_tab_switch_home_and_modal_dialogs() {
                 h.state_mut().open_bytes("other.pdf", None, fixture(false)).unwrap();
             }
             2 => h.state_mut().active = None,
-            3 => h.state_mut().dialog = Some(pdfcraft_ui_egui::Dialog::About),
-            _ => h.state_mut().request_document_url("https://example.invalid/", pdfcraft_ui_egui::LinkOrigin::Link),
+            3 => h.state_mut().dialog = Some(iridium_pdf_ui_egui::Dialog::About),
+            _ => h.state_mut().request_document_url("https://example.invalid/", iridium_pdf_ui_egui::LinkOrigin::Link),
         }
         h.run_steps(2);
         h.drop_at(b);
@@ -380,7 +380,8 @@ fn modifier_selection_picks_foreground_text_and_added_items_over_background_artw
     let after = objects(&h);
     for old in before {
         let new = after.iter().find(|o| o.target == old.target).unwrap();
-        let stationary = old.text.as_deref() == Some("Keep here") || (old.target.kind == pdfcraft_engine::ObjectKind::Image && old.target.index == 0);
+        let stationary =
+            old.text.as_deref() == Some("Keep here") || (old.target.kind == iridium_pdf_engine::ObjectKind::Image && old.target.index == 0);
         let shift = if stationary { [0.0, 0.0] } else { [25.0, -30.0] };
         assert!(new.rect.iter().enumerate().all(|(i, value)| (value - old.rect[i] - shift[i % 2]).abs() < 0.01), "{old:?} -> {new:?}");
     }
@@ -505,17 +506,17 @@ fn a_double_click_on_a_grouped_paragraph_opens_it() {
     assert!(h.state().views[0].line_editor.is_some(), "the paragraph is open for typing");
 }
 
-fn texts(h: &Harness<'static, PdfCraftApp>, view: usize) -> Vec<String> {
+fn texts(h: &Harness<'static, PdfApp>, view: usize) -> Vec<String> {
     let app = h.state();
     app.session.get(app.views[view].id).unwrap().editable_objects(0).unwrap().into_iter().filter_map(|o| o.text).collect()
 }
 
-fn can_undo(h: &Harness<'static, PdfCraftApp>, view: usize) -> Option<String> {
+fn can_undo(h: &Harness<'static, PdfApp>, view: usize) -> Option<String> {
     let app = h.state();
     app.session.get(app.views[view].id).unwrap().can_undo().map(str::to_string)
 }
 
-fn keys(h: &mut Harness<'static, PdfCraftApp>, modifiers: Modifiers, key: Key) {
+fn keys(h: &mut Harness<'static, PdfApp>, modifiers: Modifiers, key: Key) {
     h.key_press_modifiers(modifiers, key);
     h.run_steps(4);
 }
@@ -581,7 +582,7 @@ fn objects_copy_cut_and_paste_with_the_keys_on_the_page_and_into_another_documen
     h.run_steps(4);
     let other = h.state().active.unwrap();
     assert_eq!(other, 1);
-    h.state_mut().quick_tool = pdfcraft_ui_egui::QuickTool::EditText;
+    h.state_mut().quick_tool = iridium_pdf_ui_egui::QuickTool::EditText;
     h.run_steps(2);
     keys(&mut h, Modifiers::COMMAND, Key::V);
     assert_eq!(can_undo(&h, other).as_deref(), Some("Paste"));

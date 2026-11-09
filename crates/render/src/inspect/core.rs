@@ -81,7 +81,7 @@ pub fn inspect(bytes: Arc<Vec<u8>>, password: Option<&str>) -> Result<DocInfo, O
         Err(p) => return Err(OpenError::Invalid(format!("the page tree could not be read: {}", crate::raster::panic_message(&p)))),
     }
     // Never silent: the pages of a file whose last update has no `/Prev` were found by rebuilding
-    // its cross-reference data (`pdfcraft-cos` rebuilds it under the same conditions and logs it).
+    // its cross-reference data (`iridium-pdf-cos` rebuilds it under the same conditions and logs it).
     let unlinked = pdf.rebuilt_unlinked_update();
     let options = load_options(password);
     // Geometry no longer needs the renderer parser. Do not overlap its allocations with
@@ -191,7 +191,7 @@ impl<'a> Inspector<'a> {
             info.producer = self.text(d, b"Producer");
             const STANDARD: [&[u8]; 9] =
                 [b"Title", b"Author", b"Subject", b"Keywords", b"Creator", b"Producer", b"CreationDate", b"ModDate", b"Trapped"];
-            // The same rule as the engine's list after an edit (`pdfcraft_organize::custom_info`,
+            // The same rule as the engine's list after an edit (`iridium_pdf_organize::custom_info`,
             // trimmed and without empty values): text strings only, so a name value is not a
             // custom property, and the cap counts listed entries.
             info.custom = d
@@ -463,13 +463,13 @@ mod unlinked_update_tests {
     /// rebuilt table, the page tree's pages in its order, and the file says it was rebuilt.
     #[test]
     fn an_update_without_prev_shows_the_page_tree_and_says_it_was_rebuilt() {
-        let info = inspect(Arc::new(pdfcraft_testkit::update_without_prev(false)), None).expect("the unlinked file opens");
+        let info = inspect(Arc::new(iridium_pdf_testkit::update_without_prev(false)), None).expect("the unlinked file opens");
         assert_eq!(info.pages.len(), 3, "{:?}", info.pages);
         assert_eq!(info.pages.iter().map(|p| p.width).collect::<Vec<_>>(), [200.0, 300.0, 400.0]);
         assert_eq!(info.warnings, [UNLINKED_UPDATE]);
         // The structure is read from the rebuilt table as well: the second page's link.
         assert_eq!(info.links.len(), 1, "{:?}", info.links);
-        let linked = inspect(Arc::new(pdfcraft_testkit::update_without_prev(true)), None).expect("the linked file opens");
+        let linked = inspect(Arc::new(iridium_pdf_testkit::update_without_prev(true)), None).expect("the linked file opens");
         assert_eq!(linked.pages.len(), 3);
         assert!(linked.warnings.is_empty(), "{:?}", linked.warnings);
         assert_eq!(linked.links.len(), 1);
@@ -479,15 +479,15 @@ mod unlinked_update_tests {
     /// `/Prev` the file is rebuilt as the document model rebuilds it, and with it, it isn't.
     #[test]
     fn a_hybrid_update_without_prev_is_rebuilt_as_the_document_model_rebuilds_it() {
-        let bytes = Arc::new(pdfcraft_testkit::hybrid_update_without_prev(false));
+        let bytes = Arc::new(iridium_pdf_testkit::hybrid_update_without_prev(false));
         let info = inspect(bytes.clone(), None).expect("the unlinked hybrid file opens");
         assert_eq!(info.pages.iter().map(|p| p.width).collect::<Vec<_>>(), [200.0, 300.0, 400.0]);
         assert_eq!(info.warnings, [UNLINKED_UPDATE]);
-        assert!(pdfcraft_cos::Document::open(bytes).expect("cos opens it").rebuilt_unlinked_update());
-        let bytes = Arc::new(pdfcraft_testkit::hybrid_update_without_prev(true));
+        assert!(iridium_pdf_cos::Document::open(bytes).expect("cos opens it").rebuilt_unlinked_update());
+        let bytes = Arc::new(iridium_pdf_testkit::hybrid_update_without_prev(true));
         let linked = inspect(bytes.clone(), None).expect("the linked hybrid file opens");
         assert_eq!(linked.pages.len(), 3);
         assert!(linked.warnings.is_empty(), "{:?}", linked.warnings);
-        assert!(!pdfcraft_cos::Document::open(bytes).expect("cos opens it").rebuilt_unlinked_update());
+        assert!(!iridium_pdf_cos::Document::open(bytes).expect("cos opens it").rebuilt_unlinked_update());
     }
 }

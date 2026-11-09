@@ -1,5 +1,5 @@
 [package]
-name = "pdfcraft-optimize"
+name = "iridium-pdf-optimize"
 description = "The PDF Optimizer: image downsampling and recompression, discarding objects, clean-up"
 version.workspace = true
 edition.workspace = true
@@ -11,11 +11,11 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
-pdfcraft-cos = { workspace = true }
-pdfcraft-filters = { workspace = true }
-pdfcraft-content = { workspace = true }
-pdfcraft-model = { workspace = true }
-pdfcraft-annot = { workspace = true }
+iridium-pdf-cos = { workspace = true }
+iridium-pdf-filters = { workspace = true }
+iridium-pdf-content = { workspace = true }
+iridium-pdf-model = { workspace = true }
+iridium-pdf-annot = { workspace = true }
 thiserror.workspace = true
 # JPEG decoding (zune-jpeg) and encoding, and bicubic resampling; already in the tree.
 image = { version = "0.25", default-features = false, features = ["jpeg"] }
@@ -27,5 +27,5 @@ zune-jpeg = "0.5"
 thread-priority = "3.1"
 
 [dev-dependencies]
-pdfcraft-render = { workspace = true }
+iridium-pdf-render = { workspace = true }
 proptest.workspace = true

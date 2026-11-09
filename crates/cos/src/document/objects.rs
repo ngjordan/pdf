@@ -328,7 +328,7 @@ impl Document {
     /// reference (`/Predictor 7 0 R`) resolved; `/JBIG2Globals` stays a reference. A `/Crypt`
     /// entry, which no decoder reads ([`Stream::filters`] leaves it out), is null. `s` itself
     /// when none of those is indirect, or when the other filters are more than any decoder takes
-    /// ([`pdfcraft_filters::MAX_CHAIN`]). Only small values are copied, so a file can't have a
+    /// ([`iridium_pdf_filters::MAX_CHAIN`]). Only small values are copied, so a file can't have a
     /// large object copied once for each key and filter.
     pub fn with_direct_parms<'s>(&self, s: &'s Stream) -> Cow<'s, Stream> {
         let Some(made) = self.direct_parms(s) else { return Cow::Borrowed(s) };
@@ -360,7 +360,7 @@ impl Document {
             Some(f) => vec![crypt(f)],
             None => Vec::new(),
         };
-        if filters.iter().filter(|c| !**c).count() > pdfcraft_filters::MAX_CHAIN {
+        if filters.iter().filter(|c| !**c).count() > iridium_pdf_filters::MAX_CHAIN {
             return None;
         }
         let mut changed = matches!(p, Object::Ref(_));
@@ -408,9 +408,9 @@ impl Document {
     /// `/DecodeParms` (resolved; the dictionary of a lone filter, or its entry in an array), with the
     /// defaults of ISO 32000-2 Table 11 for what that leaves out. `None` for another image, and for
     /// one whose `/Filter` isn't a name or an array of names.
-    pub fn fax_params(&self, s: &Stream) -> Option<pdfcraft_filters::CcittParams> {
+    pub fn fax_params(&self, s: &Stream) -> Option<iridium_pdf_filters::CcittParams> {
         let chain = s.readable_filters().ok()?;
-        if !matches!(chain.last(), Some((pdfcraft_filters::Filter::CcittFax, _))) {
+        if !matches!(chain.last(), Some((iridium_pdf_filters::Filter::CcittFax, _))) {
             return None;
         }
         let parms = self.last_filter_parms(s);
@@ -419,8 +419,8 @@ impl Document {
             Some(Object::Bool(b)) => *b,
             _ => default,
         };
-        let d = pdfcraft_filters::CcittParams::default();
-        Some(pdfcraft_filters::CcittParams {
+        let d = iridium_pdf_filters::CcittParams::default();
+        Some(iridium_pdf_filters::CcittParams {
             k: int(b"K", d.k),
             columns: int(b"Columns", d.columns),
             rows: int(b"Rows", d.rows),
@@ -468,28 +468,29 @@ impl Document {
     pub(crate) fn decoded_image_spending(&self, s: &Stream, max: usize, work: &mut u64) -> Result<Vec<u8>, CosError> {
         let max = max.min(MAX_DECODED);
         let s = &*self.with_direct_parms(s);
-        let filter = |e: pdfcraft_filters::FilterError| CosError::Filter(e.to_string());
+        let filter = |e: iridium_pdf_filters::FilterError| CosError::Filter(e.to_string());
         let chain = s.readable_filters().map_err(filter)?;
         // The filters before the image codec, such as ASCII85Decode, are undone first.
-        let undo = |before: &[(pdfcraft_filters::Filter, pdfcraft_filters::Params)], work: &mut u64| match before {
+        let undo = |before: &[(iridium_pdf_filters::Filter, iridium_pdf_filters::Params)], work: &mut u64| match before {
             [] => Ok(Cow::Borrowed(&s.raw[..])),
-            _ => pdfcraft_filters::decode_tolerant_within(before, &s.raw, max, work).map(Cow::Owned).map_err(filter),
+            _ => iridium_pdf_filters::decode_tolerant_within(before, &s.raw, max, work).map(Cow::Owned).map_err(filter),
         };
         // `/Width` and `/Height` are read as given directly, as every caller reads them first: one
         // given by reference has the image refused there, before it gets here.
         let height = s.dict.int(b"Height").and_then(|h| u32::try_from(h).ok());
-        if let Some(((pdfcraft_filters::Filter::Jbig2, _), before)) = chain.split_last() {
+        if let Some(((iridium_pdf_filters::Filter::Jbig2, _), before)) = chain.split_last() {
             let (Some(columns), Some(height)) = (s.dict.int(b"Width").and_then(|w| u32::try_from(w).ok()), height) else {
                 return Err(CosError::Filter("a JBIG2 image's /Width or /Height isn't a size".into()));
             };
             // Nothing to read for what can't be decoded: the images of a file share its globals.
             let globals = if *work == 0 { None } else { self.jbig2_globals(s, work)? };
             let data = if *work == 0 { Cow::Borrowed(&[][..]) } else { undo(before, work)? };
-            return pdfcraft_filters::decode_jbig2_within(&data, globals.as_deref().map(Vec::as_slice), columns, height, max, work).map_err(filter);
+            return iridium_pdf_filters::decode_jbig2_within(&data, globals.as_deref().map(Vec::as_slice), columns, height, max, work)
+                .map_err(filter);
         }
         let Some(p) = self.fax_params(s) else {
             // The last filter gives the image's rows: rows without the tags of the PNG predictor
-            // they declare are read as they are (`pdfcraft_filters::decode_image_tolerant_within`).
+            // they declare are read as they are (`iridium_pdf_filters::decode_image_tolerant_within`).
             return match height {
                 Some(rows) => s.decoded_image_rows_spending(max, rows, work),
                 None => s.decoded_spending(max, work),
@@ -497,14 +498,14 @@ impl Document {
         };
         // As many rows as the image has: a /Rows below /Height would cut the picture short, and
         // rows past /Height aren't drawn.
-        let p = pdfcraft_filters::CcittParams { rows: 0, ..p };
+        let p = iridium_pdf_filters::CcittParams { rows: 0, ..p };
         if s.dict.int(b"Width") != Some(p.columns) {
             return Err(CosError::Filter("a fax image's /Columns aren't its /Width".into()));
         }
         let stride = usize::try_from(p.columns).unwrap_or(usize::MAX).div_ceil(8).max(1);
         let rows = u32::try_from(max / stride).unwrap_or(u32::MAX).min(height.unwrap_or(0));
         let data = undo(chain.split_last().map_or(&[][..], |(_, before)| before), work)?;
-        pdfcraft_filters::decode_ccitt_within(&data, &p, rows, work).map_err(filter)
+        iridium_pdf_filters::decode_ccitt_within(&data, &p, rows, work).map_err(filter)
     }
 
     /// The `/JBIG2Globals` stream a JBIG2 image `s` names by reference in its last filter's
@@ -512,7 +513,7 @@ impl Document {
     /// globals. Redaction finds with it the other images that share a redacted image's globals.
     pub fn jbig2_globals_ref(&self, s: &Stream) -> Option<ObjRef> {
         let chain = s.readable_filters().ok()?;
-        if !matches!(chain.last(), Some((pdfcraft_filters::Filter::Jbig2, _))) {
+        if !matches!(chain.last(), Some((iridium_pdf_filters::Filter::Jbig2, _))) {
             return None;
         }
         self.last_filter_parms(s).get(b"JBIG2Globals").and_then(Object::as_ref)

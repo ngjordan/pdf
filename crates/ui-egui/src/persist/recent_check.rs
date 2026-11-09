@@ -10,7 +10,7 @@
 
 use std::sync::{Arc, Mutex, PoisonError};
 
-use crate::PdfCraftApp;
+use crate::PdfApp;
 
 /// The recent files restored from settings that haven't been checked yet, and the check under way.
 #[derive(Debug, Default)]
@@ -42,10 +42,10 @@ fn gone(path: &str) -> bool {
     matches!(std::fs::exists(path), Ok(false))
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Start checking the recent files restored from settings, and drop the ones found gone so
     /// far (called each frame). The check runs on a worker thread, inline in tests
-    /// ([`PdfCraftApp::run_inline`]).
+    /// ([`PdfApp::run_inline`]).
     pub(crate) fn check_restored_recent(&mut self) {
         let paths = std::mem::take(&mut self.recent_check.unchecked);
         // The web build's recent files aren't paths on a file system.
@@ -65,7 +65,7 @@ impl PdfCraftApp {
             };
             if self.run_inline {
                 work();
-            } else if std::thread::Builder::new().name("pdfcraft-recent".into()).spawn(work).is_err() {
+            } else if std::thread::Builder::new().name("iridium-pdf-recent".into()).spawn(work).is_err() {
                 // No worker: the entries stay listed, as if the check hadn't reached them.
                 return;
             }
@@ -96,7 +96,7 @@ mod tests {
     /// listed (CodeRabbit on #5692).
     #[test]
     fn a_file_opened_while_the_check_is_pending_stays() {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.recent = vec![crate::state::RecentFile { name: "a.pdf".into(), path: "/gone/a.pdf".into(), pages: 1, size: 0 }];
         // The worker's answer is waiting: it found the file gone.
         app.recent_check.gone = Some(Arc::new(Mutex::new(vec!["/gone/a.pdf".to_string()])));
@@ -112,7 +112,7 @@ mod tests {
 
     #[test]
     fn only_a_path_known_to_be_missing_is_gone() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-recent-check-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-recent-check-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let here = dir.join("here.pdf");
         std::fs::write(&here, b"%PDF-1.7").unwrap();

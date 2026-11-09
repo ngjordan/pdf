@@ -2,7 +2,7 @@
 
 use egui::{Pos2, pos2};
 use egui_kittest::{Harness, kittest::Queryable};
-use pdfcraft_ui_egui::{PdfCraftApp, QuickTool, comments::CommentTool};
+use iridium_pdf_ui_egui::{PdfApp, QuickTool, comments::CommentTool};
 use serde_json::{Value, json};
 
 // Contributor-original blank page: no document assets or fonts are needed.
@@ -22,9 +22,9 @@ startxref
 %%EOF";
 
 /// Start a fresh shell with the state a previous process saved.
-fn harness(saved: Option<String>) -> Harness<'static, PdfCraftApp> {
+fn harness(saved: Option<String>) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         if let Some(saved) = saved {
             app.restore(&saved);
         }
@@ -40,7 +40,7 @@ fn harness(saved: Option<String>) -> Harness<'static, PdfCraftApp> {
 }
 
 /// Place and post a callout at known PDF coordinates, independently of panel and zoom changes.
-fn callout(h: &mut Harness<'static, PdfCraftApp>, y: f32) {
+fn callout(h: &mut Harness<'static, PdfApp>, y: f32) {
     let r = h.state().views[0].page_screen_rect(0).unwrap();
     let at = |x: f32| -> Pos2 { pos2(r.left() + x / 300.0 * r.width(), r.top() + (200.0 - y) / 200.0 * r.height()) };
     h.hover_at(at(40.0));
@@ -58,8 +58,8 @@ fn callout(h: &mut Harness<'static, PdfCraftApp>, y: f32) {
 }
 
 /// Optional private visual evidence, kept outside the repository by the test runner.
-fn shot(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
-    if let Ok(dir) = std::env::var("PDFCRAFT_PIN_SHOTS") {
+fn shot(h: &mut Harness<'static, PdfApp>, name: &str) {
+    if let Ok(dir) = std::env::var("IRIDIUM_PDF_PIN_SHOTS") {
         h.render().unwrap().save(std::path::Path::new(&dir).join(name)).unwrap();
     }
 }
@@ -97,7 +97,7 @@ fn pin_from_quick_bar_survives_restart_and_unpinning() {
     });
     assert!(!matches!(h.state().quick_tool, QuickTool::Comment(_)), "unpinning restores one-shot use");
 
-    let mut restored = PdfCraftApp::new();
+    let mut restored = PdfApp::new();
     restored.comment_prefs.pinned = true;
     restored.restore(&saved);
     assert!(!restored.comment_prefs.pinned, "unpinning survives the next restart too");
@@ -106,12 +106,12 @@ fn pin_from_quick_bar_survives_restart_and_unpinning() {
 #[test]
 fn saved_pin_round_trips_both_boolean_values() {
     for pinned in [true, false] {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.comment_prefs.pinned = pinned;
         let saved = app.persist();
         let value: Value = serde_json::from_str(&saved).unwrap();
         assert_eq!(value["comment_tool_pinned"], json!(pinned));
-        let mut restored = PdfCraftApp::new();
+        let mut restored = PdfApp::new();
         restored.comment_prefs.pinned = !pinned;
         restored.restore(&saved);
         assert_eq!(restored.comment_prefs.pinned, pinned);
@@ -122,7 +122,7 @@ fn saved_pin_round_trips_both_boolean_values() {
 #[test]
 fn restoring_explicit_pin_choice_overrides_current_choice() {
     for pinned in [true, false] {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.comment_prefs.pinned = !pinned;
         app.restore(&json!({"comment_tool_pinned": pinned}).to_string());
         assert_eq!(app.comment_prefs.pinned, pinned);
@@ -131,7 +131,7 @@ fn restoring_explicit_pin_choice_overrides_current_choice() {
 
 #[test]
 fn legacy_settings_keep_the_default_and_other_preferences() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     assert!(!app.comment_prefs.pinned);
     let legacy = r#"{"author":"Legacy reviewer","comment_styles":[{"tool":"comment.line","color":[0.25,0.5,1.0]}]}"#;
     app.restore(legacy);
@@ -146,7 +146,7 @@ fn legacy_settings_keep_the_default_and_other_preferences() {
 #[test]
 fn malformed_pin_values_preserve_the_current_choice() {
     for pinned in [false, true] {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.comment_prefs.pinned = pinned;
         for value in [json!(null), json!(0), json!(1), json!(-1), json!("true"), json!("false"), json!([]), json!({})] {
             app.restore(&json!({"comment_tool_pinned": value, "author": "Still restored"}).to_string());

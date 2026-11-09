@@ -8,7 +8,7 @@ fn asks_for_password(kind: &open_worker::ResultKind) -> bool {
     matches!(
         kind,
         open_worker::ResultKind::Prepared { result, .. }
-            if matches!(**result, Err(pdfcraft_render::OpenError::NeedsPassword | pdfcraft_render::OpenError::WrongPassword))
+            if matches!(**result, Err(iridium_pdf_render::OpenError::NeedsPassword | iridium_pdf_render::OpenError::WrongPassword))
     )
 }
 
@@ -18,13 +18,13 @@ pub(crate) fn same_file(a: &str, b: &str) -> bool {
     a == b || matches!((std::path::absolute(a), std::path::absolute(b)), (Ok(x), Ok(y)) if x == y)
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Open a document the way it asks to be opened: navigation panel, layout, magnification,
     /// page and the place on it (Document Properties ▸ Initial View, `/OpenAction`). With Always
     /// use my default zoom and page layout on, the layout and magnification stay at the defaults
     /// the view opened with, and the view goes to the opening page's top.
-    fn apply_initial_view(&mut self, index: usize, v: &pdfcraft_engine::InitialView) {
-        use pdfcraft_engine::{InitialLayout as L, Magnification as M, Navigation as N};
+    fn apply_initial_view(&mut self, index: usize, v: &iridium_pdf_engine::InitialView) {
+        use iridium_pdf_engine::{InitialLayout as L, Magnification as M, Navigation as N};
         let pages = self.session.get(self.views[index].id).map_or(0, |d| d.info.pages.len());
         // A right panel the user closed stays closed, whatever the document asks for (#2884).
         // A document that asks for full screen gets the panel it names for outside it
@@ -256,9 +256,9 @@ impl PdfCraftApp {
                     }
                     Err(error) => self.notify_fmt("Couldn't open {name}: {e}", &[("name", &pending.name), ("e", &error)]),
                 },
-                Err(error @ (pdfcraft_render::OpenError::NeedsPassword | pdfcraft_render::OpenError::WrongPassword)) => {
+                Err(error @ (iridium_pdf_render::OpenError::NeedsPassword | iridium_pdf_render::OpenError::WrongPassword)) => {
                     let password_error =
-                        matches!(error, pdfcraft_render::OpenError::WrongPassword).then(|| "Incorrect password. Try again.".to_string());
+                        matches!(error, iridium_pdf_render::OpenError::WrongPassword).then(|| "Incorrect password. Try again.".to_string());
                     self.password_prompt = Some(PasswordPrompt {
                         name: pending.name,
                         path: pending.path,
@@ -286,7 +286,7 @@ impl PdfCraftApp {
         password: Option<&str>,
         activate: bool,
     ) -> Result<(), String> {
-        use pdfcraft_render::OpenError;
+        use iridium_pdf_render::OpenError;
         let prepared = match self.session.prepare_open(name, path.clone(), bytes.clone(), password) {
             Ok(prepared) => prepared,
             Err(e @ (OpenError::NeedsPassword | OpenError::WrongPassword)) => {
@@ -319,7 +319,7 @@ impl PdfCraftApp {
         name: &str,
         path: Option<String>,
         size: usize,
-        prepared: pdfcraft_engine::PreparedDocument,
+        prepared: iridium_pdf_engine::PreparedDocument,
         activate: bool,
     ) -> Result<DocId, String> {
         let id = self.session.commit_open(prepared);
@@ -431,8 +431,8 @@ impl PdfCraftApp {
                 return;
             }
         };
-        let mime = pdfcraft_engine::mime_for_name(&name).map(str::to_string);
-        if self.apply_edit(pdfcraft_engine::Edit::AddAttachment { name, bytes, description: None, mime }) {
+        let mime = iridium_pdf_engine::mime_for_name(&name).map(str::to_string);
+        if self.apply_edit(iridium_pdf_engine::Edit::AddAttachment { name, bytes, description: None, mime }) {
             self.choose_right_panel(Some(RightPanel::Attachments));
         }
     }
@@ -441,7 +441,7 @@ impl PdfCraftApp {
     pub fn attachment_action(&mut self, doc: DocId, index: usize, open: bool) {
         let Some(d) = self.session.get(doc) else { return };
         let Some(att) = d.info.attachments.get(index).cloned() else { return };
-        let data = pdfcraft_render::attachment_data(&d.bytes, d.password.as_deref(), &att);
+        let data = iridium_pdf_render::attachment_data(&d.bytes, d.password.as_deref(), &att);
         #[cfg(not(target_arch = "wasm32"))]
         let source = d.path.clone();
         match (data, open) {
@@ -461,7 +461,7 @@ impl PdfCraftApp {
                         Ok(()) => {
                             // Windows: the file keeps the document's Mark-of-the-Web (#3990). Best
                             // effort: a volume without alternate data streams can't carry it.
-                            let _ = pdfcraft_platform::zone::mark_from(&path, source.as_deref().map(std::path::Path::new));
+                            let _ = iridium_pdf_platform::zone::mark_from(&path, source.as_deref().map(std::path::Path::new));
                             app.notify_fmt("Saved {name}", &[("name", &path.display().to_string())])
                         }
                         Err(e) => app.notify_fmt("Couldn't save: {e}", &[("e", &e.to_string())]),
@@ -475,7 +475,7 @@ impl PdfCraftApp {
 
     /// [`Self::attachment_action`] for the file of the attachment comment at (page, index).
     pub fn comment_attachment_action(&mut self, doc: DocId, page: usize, index: usize, open: bool) {
-        let source = pdfcraft_render::AttachmentSource::Annotation { page, index };
+        let source = iridium_pdf_render::AttachmentSource::Annotation { page, index };
         // The menus offer the items only for a listed file, so a miss is a comment gone since.
         if let Some(i) = self.session.get(doc).and_then(|d| d.info.attachments.iter().position(|a| a.source == source)) {
             self.attachment_action(doc, i, open);
@@ -592,7 +592,7 @@ impl PdfCraftApp {
                 }
                 _ => self.notify_tr("Restrictions lifted"),
             },
-            Err(pdfcraft_engine::EditError::WrongPassword) => {
+            Err(iridium_pdf_engine::EditError::WrongPassword) => {
                 p.input.clear();
                 p.error = Some("Incorrect password. Try again.".to_string());
                 self.unlock_prompt = Some(p);

@@ -11,8 +11,8 @@
 //! resources of the page and of the forms it draws. They are rewritten in place, so a page
 //! outside the run that uses one changes too; [`Fixed::elsewhere`] counts those.
 
-use pdfcraft_content::{Op, parse, serialize_ops};
-use pdfcraft_cos::{Dict, Document, Name, ObjRef, Object, Stream};
+use iridium_pdf_content::{Op, parse, serialize_ops};
+use iridium_pdf_cos::{Dict, Document, Name, ObjRef, Object, Stream};
 use std::collections::{HashMap, HashSet};
 
 use crate::page_streams::PageStreams;

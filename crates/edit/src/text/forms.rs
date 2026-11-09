@@ -4,8 +4,8 @@
 //! source glyph operators become page content; no cover rectangle or replacement text box is
 //! added. Unsupported compositing and malformed streams stay intact.
 
-use pdfcraft_content::Matrix;
-use pdfcraft_cos::{Dict, Document, Object};
+use iridium_pdf_content::Matrix;
+use iridium_pdf_cos::{Dict, Document, Object};
 
 use super::{ContentStream, Read, content_streams, joined, page_dict, rewritten_contents, splice};
 use crate::{EditError, ungroup};
@@ -44,7 +44,7 @@ pub fn prepare(doc: &mut Document, page: usize) -> Result<Preparation, EditError
     let mut result = Preparation::default();
     let mut bytes_left = MAX_PREPARED_BYTES;
     let mut visits = 0usize;
-    let mut decode = pdfcraft_cos::DecodeBudget::new(MAX_PREPARED_BYTES, 0);
+    let mut decode = iridium_pdf_cos::DecodeBudget::new(MAX_PREPARED_BYTES, 0);
     // Forms found to be artwork, or refused for a reason in the form itself (`Refusal::intrinsic`):
     // a placement of one that an expanded group adds is left as it is without being read or
     // counted, so logos drawn inside many text groups don't use up the limit. A form refused only
@@ -131,7 +131,7 @@ pub fn prepare(doc: &mut Document, page: usize) -> Result<Preparation, EditError
                         result.refused.push(format!("{}: its text is grouped more than {MAX_LEVELS} levels deep", image.name));
                         continue;
                     }
-                    let data_len = pdfcraft_content::serialize_ops(&inline).len();
+                    let data_len = iridium_pdf_content::serialize_ops(&inline).len();
                     bytes_left = bytes_left.checked_sub(data_len).ok_or_else(|| {
                         EditError::Invalid("grouped page content exceeds the 16 MiB editing budget; the page was left unchanged".into())
                     })?;
@@ -215,7 +215,7 @@ pub fn grouped_text_at(doc: &Document, page: usize, image: usize) -> Result<bool
     }
     let resources = p.dict.get(b"Resources").map(|r| doc.resolve(r)).and_then(|r| r.as_dict().cloned()).unwrap_or_default();
     let space = ungroup::page_blend_space(doc, &p.dict);
-    let mut budget = pdfcraft_cos::DecodeBudget::new(MAX_PREPARED_BYTES, 0);
+    let mut budget = iridium_pdf_cos::DecodeBudget::new(MAX_PREPARED_BYTES, 0);
     Ok(match ungroup::ungroup_ops(doc, &resources, &parsed.ops, img.op, space.as_ref(), Matrix(img.matrix), &mut budget) {
         Ok(u) => u.shows_text == Some(true),
         Err(r) => r.renaming,
@@ -239,11 +239,11 @@ fn repair_thai_fonts(doc: &mut Document, page: usize) -> Result<usize, EditError
         } else {
             continue;
         }
-        let Some(map) = pdfcraft_fonts::pdf::recovered_thai_map(doc, &font) else { continue };
+        let Some(map) = iridium_pdf_fonts::pdf::recovered_thai_map(doc, &font) else { continue };
         // Append corrective bfchar entries after the original entries so valid Latin mappings
         // remain. The original map's accidental oversized range is still overridden for Thai.
         let Some(Object::Stream(tu)) = font.get(b"ToUnicode").map(|r| doc.resolve(r)).as_deref().cloned() else { continue };
-        let old = pdfcraft_cos::DecodeBudget::new(1 << 20, 0).decode_strict(doc, &tu)?;
+        let old = iridium_pdf_cos::DecodeBudget::new(1 << 20, 0).decode_strict(doc, &tu)?;
         // After the last `endcmap`: a stream with more than one must not have an earlier block
         // (or its oversized range) after the corrective entries.
         let marker = b"endcmap";
@@ -256,7 +256,7 @@ fn repair_thai_fonts(doc: &mut Document, page: usize) -> Result<usize, EditError
         let mut bytes = old.get(..at).unwrap_or_default().to_vec();
         bytes.extend_from_slice(added.as_bytes());
         bytes.extend_from_slice(old.get(at..).unwrap_or_default());
-        let tu = doc.add(Object::Stream(pdfcraft_cos::Stream::flate(Dict::new(), &bytes)));
+        let tu = doc.add(Object::Stream(iridium_pdf_cos::Stream::flate(Dict::new(), &bytes)));
         font.set(b"ToUnicode".to_vec(), Object::Ref(tu));
         let object = doc.add(Object::Dict(font));
         fonts.set(name.clone(), Object::Ref(object));

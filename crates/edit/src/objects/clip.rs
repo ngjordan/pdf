@@ -18,8 +18,8 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use pdfcraft_content::{Matrix, Op, serialize_ops};
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, Stream};
+use iridium_pdf_content::{Matrix, Op, serialize_ops};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, Stream};
 
 use super::{EditableObject, MAX_COORDINATE, MAX_MOVE_OBJECTS, ObjectKind, ObjectTarget, checked_streams, editable_objects, valid_rect};
 use crate::EditError;
@@ -88,7 +88,7 @@ pub fn copy_objects(doc: &Document, page: usize, targets: &[ObjectTarget]) -> Re
             }
         }
     }
-    let p = pdfcraft_model::pages(doc).into_iter().nth(page).ok_or(EditError::NoSuchPage(page))?;
+    let p = iridium_pdf_model::pages(doc).into_iter().nth(page).ok_or(EditError::NoSuchPage(page))?;
     let res = p.dict.get(b"Resources").map(|r| doc.resolve(r)).and_then(|r| r.as_dict().cloned()).unwrap_or_default();
     let shows = crate::text::show_starts(doc, &ops, &res)?;
     let drawn = replay(&ops, &keep, &shows)?;
@@ -226,7 +226,7 @@ pub fn paste_objects(doc: &mut Document, page: usize, copied: &CopiedObjects, of
     {
         return Err(EditError::Invalid("the paste position is out of range".into()));
     }
-    let p = pdfcraft_model::pages(doc).into_iter().nth(page).ok_or(EditError::NoSuchPage(page))?;
+    let p = iridium_pdf_model::pages(doc).into_iter().nth(page).ok_or(EditError::NoSuchPage(page))?;
     crate::check_on_top(doc, &p)?;
     let res = p.dict.get(b"Resources").map(|r| doc.resolve(r)).and_then(|r| r.as_dict().cloned()).unwrap_or_default();
     let mut xobjects = res.get(b"XObject").map(|x| doc.resolve(x)).and_then(|x| x.as_dict().cloned()).unwrap_or_default();
@@ -250,7 +250,7 @@ pub fn paste_objects(doc: &mut Document, page: usize, copied: &CopiedObjects, of
     let space = page_blend_space(doc, &p.dict);
     // Drawn by a `Do` of its own: not translucent, and in no path or text object.
     let draw = [Op::new("Do", vec![Object::Name(name.clone())])];
-    let mut budget = pdfcraft_cos::DecodeBudget::new(MAX_FORM_BYTES, 0);
+    let mut budget = iridium_pdf_cos::DecodeBudget::new(MAX_FORM_BYTES, 0);
     let Ungrouped { ops, resources: mut merged, patterns, .. } =
         ungroup_ops(doc, &with_copy, &draw, 0, space.as_ref(), Matrix::translate(offset[0], offset[1]), &mut budget).map_err(|r| match r.error {
             EditError::Invalid(why) => {

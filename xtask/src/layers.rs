@@ -27,7 +27,7 @@ impl Class {
     }
 }
 
-/// Every workspace crate (package name without the `pdfcraft-` prefix) and its layer.
+/// Every workspace crate (package name without the `iridium-pdf-` prefix) and its layer.
 pub const TABLE: &[(&str, Class)] = &[
     // L0 foundation (standalone, publishable)
     ("geom", Class::Standalone(0)),
@@ -87,7 +87,7 @@ pub const TABLE: &[(&str, Class)] = &[
     ("testkit", Class::Testkit),
     ("oracle", Class::Testkit),
     // L8 apps + tooling
-    ("pdfcraft", Class::Exempt),
+    ("iridium-pdf", Class::Exempt),
     ("cli", Class::Exempt),
     ("web", Class::Exempt),
     ("ocr-worker", Class::Exempt),
@@ -115,7 +115,7 @@ pub const UI_CRATES: &[&str] = &["egui", "eframe", "winit", "egui_kittest", "cra
 pub const UI_MIN_LAYER: u8 = 7;
 
 pub fn short_name(pkg: &str) -> &str {
-    pkg.strip_prefix("pdfcraft-").unwrap_or(pkg)
+    pkg.strip_prefix("iridium-pdf-").unwrap_or(pkg)
 }
 
 pub fn classify(pkg: &str) -> Option<Class> {
@@ -286,79 +286,79 @@ mod tests {
     #[test]
     fn current_graph_shape_passes() {
         let g = [
-            c("pdfcraft-geom", &[]),
-            c("pdfcraft-render", &[("hayro", Normal, false), ("lopdf", Normal, false)]),
-            c("pdfcraft-engine", &[("pdfcraft-render", Normal, true)]),
-            c("pdfcraft-ui-egui", &[("pdfcraft-engine", Normal, true), ("egui", Normal, false), ("egui_kittest", Dev, false)]),
-            c("pdfcraft", &[("pdfcraft-ui-egui", Normal, true)]),
+            c("iridium-pdf-geom", &[]),
+            c("iridium-pdf-render", &[("hayro", Normal, false), ("lopdf", Normal, false)]),
+            c("iridium-pdf-engine", &[("iridium-pdf-render", Normal, true)]),
+            c("iridium-pdf-ui-egui", &[("iridium-pdf-engine", Normal, true), ("egui", Normal, false), ("egui_kittest", Dev, false)]),
+            c("iridium_pdf", &[("iridium-pdf-ui-egui", Normal, true)]),
         ];
         assert!(check(&g).is_empty(), "{:?}", check(&g));
     }
 
     #[test]
     fn upward_and_sideways_edges_flagged() {
-        let v = check(&[c("pdfcraft-model", &[("pdfcraft-engine", Normal, true)])]);
+        let v = check(&[c("iridium-pdf-model", &[("iridium-pdf-engine", Normal, true)])]);
         assert!(matches!(v[..], [Violation::Upward { from: 2, to: 6, .. }]));
         // forms -> js must go through the ActionRunner trait, never directly.
-        let v = check(&[c("pdfcraft-forms", &[("pdfcraft-js", Normal, true)])]);
+        let v = check(&[c("iridium-pdf-forms", &[("iridium-pdf-js", Normal, true)])]);
         assert!(matches!(v[..], [Violation::Upward { from: 3, to: 3, .. }]));
     }
 
     #[test]
     fn listed_sideways_edges_allowed() {
-        assert!(check(&[c("pdfcraft-redact", &[("pdfcraft-edit", Normal, true)])]).is_empty());
-        assert!(!check(&[c("pdfcraft-edit", &[("pdfcraft-redact", Normal, true)])]).is_empty());
+        assert!(check(&[c("iridium-pdf-redact", &[("iridium-pdf-edit", Normal, true)])]).is_empty());
+        assert!(!check(&[c("iridium-pdf-edit", &[("iridium-pdf-redact", Normal, true)])]).is_empty());
     }
 
     #[test]
     fn cos_may_use_only_its_listed_foundation() {
-        assert!(check(&[c("pdfcraft-cos", &[("pdfcraft-filters", Normal, true), ("pdfcraft-crypt", Normal, true)])]).is_empty());
-        let v = check(&[c("pdfcraft-cos", &[("pdfcraft-arlington", Normal, true)])]);
+        assert!(check(&[c("iridium-pdf-cos", &[("iridium-pdf-filters", Normal, true), ("iridium-pdf-crypt", Normal, true)])]).is_empty());
+        let v = check(&[c("iridium-pdf-cos", &[("iridium-pdf-arlington", Normal, true)])]);
         assert!(matches!(v[..], [Violation::StandaloneHasWorkspaceDep { .. }]));
-        let v = check(&[c("pdfcraft-filters", &[("pdfcraft-geom", Normal, true)])]);
+        let v = check(&[c("iridium-pdf-filters", &[("iridium-pdf-geom", Normal, true)])]);
         assert!(matches!(v[..], [Violation::StandaloneHasWorkspaceDep { .. }]));
     }
 
     #[test]
     fn ui_crates_below_l7_flagged() {
         for dep in ["egui", "eframe", "winit", "rfd", "wgpu", "wgpu-core", "egui_dock", "craft-ui"] {
-            let v = check(&[c("pdfcraft-engine", &[(dep, Normal, false)])]);
+            let v = check(&[c("iridium-pdf-engine", &[(dep, Normal, false)])]);
             assert!(matches!(v[..], [Violation::UiBelowL7 { layer: 6, .. }]), "{dep}");
         }
-        assert!(check(&[c("pdfcraft-platform", &[("winit", Normal, false)])]).is_empty());
-        assert!(check(&[c("pdfcraft-ui-egui", &[("craft-ui", Normal, false)])]).is_empty());
+        assert!(check(&[c("iridium-pdf-platform", &[("winit", Normal, false)])]).is_empty());
+        assert!(check(&[c("iridium-pdf-ui-egui", &[("craft-ui", Normal, false)])]).is_empty());
     }
 
     #[test]
     fn test_support_only_as_dev_dependency() {
-        let v = check(&[c("pdfcraft-cos", &[("pdfcraft-testkit", Normal, true)])]);
+        let v = check(&[c("iridium-pdf-cos", &[("iridium-pdf-testkit", Normal, true)])]);
         assert!(!v.is_empty());
-        assert!(check(&[c("pdfcraft-render", &[("pdfcraft-oracle", Dev, true)])]).is_empty());
-        let v = check(&[c("pdfcraft-render", &[("pdfcraft-oracle", Normal, true)])]);
+        assert!(check(&[c("iridium-pdf-render", &[("iridium-pdf-oracle", Dev, true)])]).is_empty());
+        let v = check(&[c("iridium-pdf-render", &[("iridium-pdf-oracle", Normal, true)])]);
         assert!(matches!(v[..], [Violation::TestkitAsNormalDep { .. }]));
 
         // A standalone crate may use test support in its own tests: a dev-dependency is not part
         // of the graph the standalone rule protects. `cos` is where the qpdf oracle is needed.
-        assert!(check(&[c("pdfcraft-cos", &[("pdfcraft-oracle", Dev, true)])]).is_empty());
-        assert!(check(&[c("pdfcraft-geom", &[("pdfcraft-testkit", Dev, true)])]).is_empty());
+        assert!(check(&[c("iridium-pdf-cos", &[("iridium-pdf-oracle", Dev, true)])]).is_empty());
+        assert!(check(&[c("iridium-pdf-geom", &[("iridium-pdf-testkit", Dev, true)])]).is_empty());
         // ...but only as a dev-dependency, and only for test support. Product crates are still
         // off-limits to a standalone crate however they are depended on.
-        let v = check(&[c("pdfcraft-cos", &[("pdfcraft-oracle", Normal, true)])]);
+        let v = check(&[c("iridium-pdf-cos", &[("iridium-pdf-oracle", Normal, true)])]);
         assert!(matches!(v[..], [Violation::StandaloneHasWorkspaceDep { .. }]), "{v:?}");
-        let v = check(&[c("pdfcraft-cos", &[("pdfcraft-model", Dev, true)])]);
+        let v = check(&[c("iridium-pdf-cos", &[("iridium-pdf-model", Dev, true)])]);
         assert!(matches!(v[..], [Violation::StandaloneHasWorkspaceDep { .. }]), "{v:?}");
     }
 
     #[test]
     fn unregistered_crate_is_error() {
-        let v = check(&[c("pdfcraft-mystery", &[])]);
-        assert!(matches!(&v[..], [Violation::Unregistered { krate }] if krate == "pdfcraft-mystery"));
+        let v = check(&[c("iridium-pdf-mystery", &[])]);
+        assert!(matches!(&v[..], [Violation::Unregistered { krate }] if krate == "iridium-pdf-mystery"));
     }
 
     #[test]
     fn apps_exempt() {
-        for app in ["pdfcraft", "pdfcraft-cli", "pdfcraft-web", "pdfcraft-ocr-worker", "xtask"] {
-            assert!(check(&[c(app, &[("egui", Normal, false), ("pdfcraft-ui-egui", Normal, true)])]).is_empty());
+        for app in ["iridium-pdf", "iridium-pdf-cli", "iridium-pdf-web", "iridium-pdf-ocr-worker", "xtask"] {
+            assert!(check(&[c(app, &[("egui", Normal, false), ("iridium-pdf-ui-egui", Normal, true)])]).is_empty());
         }
     }
 }

@@ -2,7 +2,7 @@
 //!
 //! There are no model files to find: the first time recognition is needed the page downloads
 //! them from `models/` beside itself (packaging/web/package.sh puts them there) and installs the
-//! recogniser they load. Pages are then read by Web Workers (apps/pdfcraft-ocr-worker), so the
+//! recogniser they load. Pages are then read by Web Workers (apps/iridium-pdf-ocr-worker), so the
 //! page keeps responding and two pages are read at once: the page renders a page, hands its
 //! pixels to an idle worker and places the lines that come back. Where workers can't run (the
 //! worker files are missing, the browser refuses them, they never get ready) the page reads the
@@ -14,7 +14,7 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 use crate::ocr_route::{Inbox, Router};
-use pdfcraft_engine::ocr::{
+use iridium_pdf_engine::ocr::{
     DETECTION_MODEL, FileJob, Line, Ocr, OcrImage, OcrPage, OcrSettings, OcrShot, OcrSteps, Opened, RECOGNITION_MODEL, StrategyOutcome,
 };
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
@@ -29,7 +29,7 @@ const START_TIMEOUT_MS: f64 = 60_000.0;
 /// Workers with nothing to do are closed after this, giving their memory back.
 const IDLE_CLOSE_MS: f64 = 60_000.0;
 /// The `<meta>` naming the worker's loader script (xtask/src/web.rs writes it).
-const WORKER_META: &str = "meta[name=\"pdfcraft-ocr-worker\"]";
+const WORKER_META: &str = "meta[name=\"iridium-pdf-ocr-worker\"]";
 
 fn now() -> f64 {
     js_sys::Date::now()
@@ -68,7 +68,7 @@ pub fn start(ctx: egui::Context) {
     wasm_bindgen_futures::spawn_local(async move {
         let next = match load().await {
             Ok((ocr, files)) => {
-                pdfcraft_engine::ocr::install(ocr);
+                iridium_pdf_engine::ocr::install(ocr);
                 MODELS.with_borrow_mut(|m| *m = Some(files));
                 State::NotStarted
             }
@@ -121,7 +121,7 @@ enum Slot {
     Dead,
 }
 
-/// What a worker said (see apps/pdfcraft-ocr-worker for the messages).
+/// What a worker said (see apps/iridium-pdf-ocr-worker for the messages).
 enum Event {
     Ready,
     Loaded,
@@ -178,7 +178,7 @@ impl Event {
             Some("ready") => Event::Ready,
             Some("loaded") => Event::Loaded,
             Some("lines") => match id {
-                Some(id) => Event::Lines(id, pdfcraft_engine::ocr::lines_from_json(&text("lines"), "ocrs").map_err(|e| e.to_string())),
+                Some(id) => Event::Lines(id, iridium_pdf_engine::ocr::lines_from_json(&text("lines"), "ocrs").map_err(|e| e.to_string())),
                 None => Event::Failed(None, "a result without its page".into()),
             },
             Some("failed") => Event::Failed(id, text("error")),
@@ -409,7 +409,7 @@ impl Pages {
                             }
                             // No worker can take it: read it here, with the job's engines.
                             None => {
-                                let page = match pdfcraft_engine::ocr::recognizers(self.steps.settings()) {
+                                let page = match iridium_pdf_engine::ocr::recognizers(self.steps.settings()) {
                                     Ok(r) => shot.read(&r),
                                     Err(e) => shot.place(Err(e)),
                                 };

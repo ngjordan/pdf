@@ -78,7 +78,7 @@ pub fn with_field_appearances_cached(doc: &Document, cache: &mut FieldAppearance
             let target = copy.get_or_insert_with(|| doc.clone());
             let mut stream = stream;
             // Thai glyphs are streams of their own.
-            pdfcraft_fonts::shaped_text::store_streams(target, &mut stream.dict);
+            iridium_pdf_fonts::shaped_text::store_streams(target, &mut stream.dict);
             let ap = target.add(Object::Stream(stream));
             let mut fresh = Dict::new();
             match &state {
@@ -183,7 +183,7 @@ fn appearance_inputs(doc: &Document, w: &Widget) -> Vec<std::sync::Arc<Object>> 
 /// miss, never a stale hit.
 #[derive(Clone, Debug, Default)]
 pub struct FieldAppearanceCache {
-    entries: std::collections::HashMap<ObjRef, (Vec<std::sync::Arc<Object>>, pdfcraft_cos::Stream)>,
+    entries: std::collections::HashMap<ObjRef, (Vec<std::sync::Arc<Object>>, iridium_pdf_cos::Stream)>,
     bytes: usize,
     hits: u64,
     builds: u64,
@@ -198,7 +198,7 @@ impl FieldAppearanceCache {
         *self = Self::default();
     }
 
-    fn get(&mut self, w: ObjRef, inputs: &[std::sync::Arc<Object>]) -> Option<pdfcraft_cos::Stream> {
+    fn get(&mut self, w: ObjRef, inputs: &[std::sync::Arc<Object>]) -> Option<iridium_pdf_cos::Stream> {
         let (from, stream) = self.entries.get(&w)?;
         if from.len() != inputs.len() || !from.iter().zip(inputs).all(|(a, b)| std::sync::Arc::ptr_eq(a, b)) {
             return None;
@@ -207,7 +207,7 @@ impl FieldAppearanceCache {
         Some(stream.clone())
     }
 
-    fn insert(&mut self, w: ObjRef, inputs: Vec<std::sync::Arc<Object>>, stream: &pdfcraft_cos::Stream) {
+    fn insert(&mut self, w: ObjRef, inputs: Vec<std::sync::Arc<Object>>, stream: &iridium_pdf_cos::Stream) {
         self.builds += 1;
         if self.bytes.saturating_add(stream.raw.len()) > Self::MAX_BYTES {
             self.clear();
@@ -251,14 +251,14 @@ pub fn declares_pdfa(doc: &Document) -> bool {
     }
 }
 
-/// Every field with a widget whose appearance PdfCraft drew with `?` for a character its font
-/// can't hold (`pdfcraft_fonts::UNDRAWN_MARK`): the field's name and that character, once per
+/// Every field with a widget whose appearance PDF drew with `?` for a character its font
+/// can't hold (`iridium_pdf_fonts::UNDRAWN_MARK`): the field's name and that character, once per
 /// field.
 pub fn undrawn_fields(doc: &Document) -> Vec<(String, char)> {
     fields(doc)
         .into_iter()
         .filter_map(|f| {
-            let c = f.widgets.iter().find_map(|w| doc.get(w.obj).as_dict().and_then(pdfcraft_fonts::undrawn_mark))?;
+            let c = f.widgets.iter().find_map(|w| doc.get(w.obj).as_dict().and_then(iridium_pdf_fonts::undrawn_mark))?;
             Some((f.name, c))
         })
         .collect()

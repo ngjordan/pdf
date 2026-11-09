@@ -16,8 +16,8 @@
 //! the verifier is known to disagree with the standard are left out on purpose and recorded as gaps
 //! where the change that adds them is reviewed. Nothing here is a conformance claim.
 
-use pdfcraft_cos::{Algorithm, Document, NewEncryption};
-use pdfcraft_preflight::{Level, convert, declared, icc, verify};
+use iridium_pdf_cos::{Algorithm, Document, NewEncryption};
+use iridium_pdf_preflight::{Level, convert, declared, icc, verify};
 
 /// A document from hand-written objects and extra trailer entries (copied from the crate's unit
 /// tests).
@@ -138,7 +138,7 @@ fn page_document(page: &str, packet: Option<&str>, catalog_extra: &str, more: &[
     let mut objs = vec![catalog.as_str(), pages, metadata.as_str(), page];
     objs.extend_from_slice(more);
     let doc = build(&objs, trailer_extra);
-    assert_eq!(pdfcraft_model::pages(&doc).len(), 1, "the page of this case does not resolve");
+    assert_eq!(iridium_pdf_model::pages(&doc).len(), 1, "the page of this case does not resolve");
     doc
 }
 

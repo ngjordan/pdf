@@ -2,8 +2,8 @@
 //! fixed also draws, or one drawn under two scales, is rewritten as a copy for the use that
 //! needs it, so the other uses keep drawing it as it was.
 
-use pdfcraft_cos::{Document, ObjRef, Object};
-use pdfcraft_edit::{Hairlines, fix_hairlines};
+use iridium_pdf_cos::{Document, ObjRef, Object};
+use iridium_pdf_edit::{Hairlines, fix_hairlines};
 use std::sync::Arc;
 
 /// A document of `objects` (object `i + 1` is the `i`th: a dictionary, and stream data when
@@ -43,13 +43,13 @@ fn flat(doc: &Document, r: ObjRef) -> String {
 
 /// Page `i`'s content (a single stream), flattened.
 fn page_text(doc: &Document, i: usize) -> String {
-    let page = pdfcraft_model::pages(doc).swap_remove(i);
+    let page = iridium_pdf_model::pages(doc).swap_remove(i);
     flat(doc, page.dict.get(b"Contents").and_then(Object::as_ref).unwrap())
 }
 
 /// The object page `i`'s resources draw as `name`.
 fn xobject(doc: &Document, i: usize, name: &[u8]) -> ObjRef {
-    let page = pdfcraft_model::pages(doc).swap_remove(i);
+    let page = iridium_pdf_model::pages(doc).swap_remove(i);
     let res = doc.resolve(page.dict.get(b"Resources").unwrap());
     let xo = doc.resolve(res.as_dict().unwrap().get(b"XObject").unwrap());
     xo.as_dict().unwrap().get(name).and_then(Object::as_ref).unwrap()

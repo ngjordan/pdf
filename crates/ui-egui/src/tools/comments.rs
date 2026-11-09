@@ -9,12 +9,12 @@
 //!   Reply, Set status, Colour and Delete.
 //! - **Composer:** the floating "Add a comment" card used for new notes, text boxes and edits.
 //!
-//! Everything is turned into `pdfcraft_engine::Edit`s, queued on the view as `pending_edit` and
+//! Everything is turned into `iridium_pdf_engine::Edit`s, queued on the view as `pending_edit` and
 //! applied by the app, so each change is one undo step.
 
 use egui::{Color32, CornerRadius, Pos2, Rect, Sense, Stroke, pos2, vec2};
-use pdfcraft_engine::{Edit, LineEnding, Markup, NewAnnotation, NoteIcon, ReviewState, Rgb, Shape, Style};
-use pdfcraft_render::{Annotation, DocInfo, PageInfo, PageText};
+use iridium_pdf_engine::{Edit, LineEnding, Markup, NewAnnotation, NoteIcon, ReviewState, Rgb, Shape, Style};
+use iridium_pdf_render::{Annotation, DocInfo, PageInfo, PageText};
 
 use crate::canvas::{DocView, PageXform};
 use crate::page_pointer::PagePointer;
@@ -290,7 +290,7 @@ impl CommentTool {
             Self::Caret => Shape::Caret { rect: [0.0; 4] },
             Self::ReplaceText => Shape::TextMarkup { kind: Markup::StrikeOut, quads: Vec::new() },
             Self::Eraser => Shape::Ink { strokes: Vec::new() },
-            Self::Attach => Shape::Attachment { at: [0.0; 2], icon: pdfcraft_engine::AttachIcon::PushPin, file: String::new(), data: Vec::new() },
+            Self::Attach => Shape::Attachment { at: [0.0; 2], icon: iridium_pdf_engine::AttachIcon::PushPin, file: String::new(), data: Vec::new() },
         }
     }
 }
@@ -374,9 +374,9 @@ impl CommentPrefs {
     }
 
     /// The text box tool's border shape (the other tools keep a rectangle).
-    pub fn set_border_shape(&mut self, tool: CommentTool, shape: pdfcraft_engine::BorderShape) {
+    pub fn set_border_shape(&mut self, tool: CommentTool, shape: iridium_pdf_engine::BorderShape) {
         if let Some((_, s)) = self.styles.iter_mut().find(|(t, _)| *t == tool) {
-            s.border_shape = if tool == CommentTool::TextBox { shape } else { pdfcraft_engine::BorderShape::Rectangle };
+            s.border_shape = if tool == CommentTool::TextBox { shape } else { iridium_pdf_engine::BorderShape::Rectangle };
         }
     }
 

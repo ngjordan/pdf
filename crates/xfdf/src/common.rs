@@ -196,7 +196,7 @@ pub(crate) fn quad_has_area(q: &[f64; 8]) -> bool {
 pub(crate) fn text_of(doc: &Document, d: &Dict, k: &[u8]) -> Option<String> {
     d.get(k).and_then(|o| match &*doc.resolve(o) {
         Object::String(s) => Some(s.to_text()),
-        Object::Name(n) => Some(pdfcraft_forms::name_text(n)),
+        Object::Name(n) => Some(iridium_pdf_forms::name_text(n)),
         _ => None,
     })
 }

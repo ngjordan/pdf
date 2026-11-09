@@ -4,9 +4,9 @@ use super::files::{AssessError, Assessed, CombineFile, Incoming, Secret, Snapsho
 #[cfg(not(target_arch = "wasm32"))]
 use super::parts::combinable_in;
 use super::parts::{Part, items_of, moved_order, natural, parts_of, range_of, takes, title_of};
-use super::{Arc, BTreeSet, CombineTab, HISTORY, Modifiers, PdfCraftApp};
+use super::{Arc, BTreeSet, CombineTab, HISTORY, Modifiers, PdfApp};
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Show the Combine files tab (File ▸ Combine files…), opening it if needed.
     pub fn open_combine_tab(&mut self) {
         self.combine_tab.open = true;
@@ -287,7 +287,7 @@ impl PdfCraftApp {
                 Err(e) => {
                     // (The engine's message names the file, which the row already shows.)
                     let e = match e {
-                        pdfcraft_engine::EditError::Source(m) => m,
+                        iridium_pdf_engine::EditError::Source(m) => m,
                         other => other.to_string(),
                     };
                     let why = e.strip_prefix(&format!("{name}: ")).unwrap_or(&e).to_string();
@@ -401,9 +401,9 @@ impl PdfCraftApp {
         let _ = recursive;
     }
 
-    /// Add the files at `paths` to the Combine files list and show it: `pdfcraft --combine` and
-    /// File Explorer's "Combine files in PdfCraft" (#585), where each selected file arrives as a
-    /// launch of its own and the running PdfCraft collects them here. Nothing to add shows the
+    /// Add the files at `paths` to the Combine files list and show it: `iridium_pdf --combine` and
+    /// File Explorer's "Combine files in PDF" (#585), where each selected file arrives as a
+    /// launch of its own and the running PDF collects them here. Nothing to add shows the
     /// tab all the same.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn combine_paths(&mut self, paths: &[String]) {

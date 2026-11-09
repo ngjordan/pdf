@@ -2,9 +2,9 @@
 
 use std::sync::Arc;
 
-use pdfcraft_automation::{Automation, Content};
-use pdfcraft_cos::{Dict, Document, Object, Stream};
-use pdfcraft_engine::DocId;
+use iridium_pdf_automation::{Automation, Content};
+use iridium_pdf_cos::{Dict, Document, Object, Stream};
+use iridium_pdf_engine::DocId;
 use serde_json::{Value, json};
 
 fn tool(automation: &mut Automation, name: &str, args: Value) -> Value {
@@ -31,17 +31,17 @@ fn fixture(cell: &[u8], partial: bool, compressed: bool, retained: bool) -> Vec<
         b"Resources".to_vec(),
         Object::Dict(Dict::from_iter([(
             b"Font".to_vec(),
-            Object::Dict(Dict::from_iter([(b"F1".to_vec(), Object::Ref(pdfcraft_cos::ObjRef::new(4, 0)))])),
+            Object::Dict(Dict::from_iter([(b"F1".to_vec(), Object::Ref(iridium_pdf_cos::ObjRef::new(4, 0)))])),
         )])),
     );
     let width = if partial { 400 } else { 170 };
     let survivor = if retained { " 290 115 50 30 re f" } else { "" };
     let content = format!("BT /F1 20 Tf 40 250 Td (PUBLIC) Tj ET /Pattern cs /P0 scn 35 110 {width} 35 re f{survivor}");
     let mut page_stream = Vec::new();
-    pdfcraft_cos::serialize(&Object::Stream(Stream::from_raw(Dict::new(), content.into_bytes())), &mut page_stream);
+    iridium_pdf_cos::serialize(&Object::Stream(Stream::from_raw(Dict::new(), content.into_bytes())), &mut page_stream);
     let mut pattern_stream = Vec::new();
     let stream = if compressed { Stream::flate(pattern, cell) } else { Stream::from_raw(pattern, cell.to_vec()) };
-    pdfcraft_cos::serialize(&Object::Stream(stream), &mut pattern_stream);
+    iridium_pdf_cos::serialize(&Object::Stream(stream), &mut pattern_stream);
     let objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_vec(),

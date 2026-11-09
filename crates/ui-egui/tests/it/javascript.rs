@@ -3,7 +3,7 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::{Dialog, PdfCraftApp};
+use iridium_pdf_ui_egui::{Dialog, PdfApp};
 
 /// A form with a text field and a push button whose Mouse Up script fills it in.
 fn form() -> Vec<u8> {
@@ -30,9 +30,9 @@ fn form() -> Vec<u8> {
     out
 }
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("form.pdf", None, form()).unwrap();
         app
@@ -41,7 +41,7 @@ fn harness() -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn value(h: &Harness<'static, PdfCraftApp>, name: &str) -> Vec<String> {
+fn value(h: &Harness<'static, PdfApp>, name: &str) -> Vec<String> {
     let app = h.state();
     let id = app.active_ids().unwrap().1;
     app.session.get(id).unwrap().form.iter().find(|f| f.name == name).unwrap().value.clone()
@@ -87,12 +87,12 @@ fn button_scripts_run_and_alert() {
 /// once the rest have been shown.
 #[test]
 fn every_message_a_script_shows_takes_the_toast_in_turn() {
-    use pdfcraft_engine::js::{MessageButtons, MessageIcon};
+    use iridium_pdf_engine::js::{MessageButtons, MessageIcon};
     let mut h = harness();
     let id = h.state().active_ids().unwrap().1;
     h.state_mut().run_button_script(id, "hello", "app.alert('First', 1, 0, 'Order form'); app.alert('Second', 3); app.alert('Third');");
     h.run_steps(2);
-    let shown = |h: &Harness<'static, PdfCraftApp>| h.state().toast.clone().map(|t| t.0);
+    let shown = |h: &Harness<'static, PdfApp>| h.state().toast.clone().map(|t| t.0);
     assert_eq!(shown(&h).as_deref(), Some("First"));
     let m = h.state().toast_script.clone().expect("the toast shows the script's message");
     assert_eq!((m.title.as_deref(), m.icon, m.buttons), (Some("Order form"), MessageIcon::Warning, MessageButtons::Ok));
@@ -126,7 +126,7 @@ fn every_message_a_script_shows_takes_the_toast_in_turn() {
     // rest have been shown.
     h.state_mut().toast = None;
     h.run_steps(2);
-    let many: Vec<_> = (0..105).map(|i| pdfcraft_engine::js::Message::plain(format!("Message {i}"))).collect();
+    let many: Vec<_> = (0..105).map(|i| iridium_pdf_engine::js::Message::plain(format!("Message {i}"))).collect();
     h.state_mut().show_script_messages(many);
     assert_eq!(shown(&h).as_deref(), Some("Message 0"));
     for i in 1..100 {
@@ -176,7 +176,7 @@ fn document_scripts_and_preferences() {
     h.run_steps(2);
     assert!(!h.state().session.javascript());
     let saved = h.state().persist();
-    let mut fresh = PdfCraftApp::new();
+    let mut fresh = PdfApp::new();
     fresh.set_option("language", "en").unwrap();
     fresh.restore(&saved);
     assert!(!fresh.session.javascript(), "the preference is remembered");
@@ -184,10 +184,10 @@ fn document_scripts_and_preferences() {
 
 #[test]
 fn merge_data_files_into_a_spreadsheet() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-merge-ui-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-merge-ui-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let out = dir.join("report.csv");
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("language", "en").unwrap();
     app.save_override = Some(out.to_string_lossy().into_owned());
     app.merge_data_files(vec![("form.pdf".into(), form())]);
@@ -199,9 +199,10 @@ fn merge_data_files_into_a_spreadsheet() {
 
 #[test]
 fn prepare_a_form_detects_fields_on_a_paper_form() {
-    let paper = pdfcraft_engine::Session::new().create_from_text("t", "Name: ____________________\n\nPhone: ____________________").unwrap().to_vec();
+    let paper =
+        iridium_pdf_engine::Session::new().create_from_text("t", "Name: ____________________\n\nPhone: ____________________").unwrap().to_vec();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("paper.pdf", None, paper.clone()).unwrap();
         app

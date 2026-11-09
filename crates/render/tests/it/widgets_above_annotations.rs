@@ -2,7 +2,7 @@
 //! comment that covers it. Form fields' widgets are drawn after the page's other annotations
 //! (hayro-interpret patch (86)), so the check box shows; the comment covered it before.
 
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest};
 use std::sync::Arc;
 
 /// A 200 × 200 pt page whose `/Annots` lists `order` of: `W`, a check box drawing a green box,

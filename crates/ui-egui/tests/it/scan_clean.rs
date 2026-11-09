@@ -3,8 +3,8 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_engine::{Edit, NewAnnotation, NoteIcon, Session, Shape, Style};
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_engine::{Edit, NewAnnotation, NoteIcon, Session, Shape, Style};
+use iridium_pdf_ui_egui::PdfApp;
 
 /// A two-page PDF: page 1 a grey scan with a darker gutter and text bars (and a sticky note),
 /// page 2 the same scan again.
@@ -25,9 +25,9 @@ fn scan() -> Vec<u8> {
     s.save_bytes(id).unwrap().to_vec()
 }
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("scan.pdf", None, scan()).unwrap();
         app.run_inline = true;
@@ -65,7 +65,7 @@ fn enhance_scanned_file_cleans_the_chosen_pages_and_says_what_it_did() {
 fn nothing_to_enhance_is_said_not_done() {
     let mut h = harness();
     let id = h.state().active_ids().unwrap().1;
-    h.state_mut().scan_clean_draft.settings = pdfcraft_engine::scan_clean::ScanCleanSettings { level: 0, edge_shadows: false, despeckle: false };
+    h.state_mut().scan_clean_draft.settings = iridium_pdf_engine::scan_clean::ScanCleanSettings { level: 0, edge_shadows: false, despeckle: false };
     assert!(h.state_mut().execute("ocr.enhance"));
     h.run_steps(2);
     // With every filter off the button is disabled; starting anyway changes nothing.

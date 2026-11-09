@@ -6,7 +6,7 @@
 //! `open` and `children`. What export writes, import takes back unchanged. A file also carries
 //! `"truncated": true` when the export left out bookmarks nested past the listing limit.
 use crate::{Args, Automation, Result, ToolError, failed};
-use pdfcraft_engine::{DocId, Edit, OutlineNode};
+use iridium_pdf_engine::{DocId, Edit, OutlineNode};
 use serde_json::{Value, json};
 
 /// Deepest nesting a bookmark tree may have (the listing reaches 33 levels).
@@ -60,11 +60,11 @@ impl Automation {
         Ok(out)
     }
 
-    fn outline_of(&self, id: DocId, path: &[usize]) -> Result<pdfcraft_engine::OutlineTree> {
+    fn outline_of(&self, id: DocId, path: &[usize]) -> Result<iridium_pdf_engine::OutlineTree> {
         match self.session.outline_tree(id, path) {
             // The engine names the path 0-based; the caller gave it 1-based.
             Some(tree) => tree.map_err(|e| match e {
-                pdfcraft_organize::OutlineError::NoSuchBookmark(_) => failed(format!("there is no bookmark at {:?}", one_based(path))),
+                iridium_pdf_organize::OutlineError::NoSuchBookmark(_) => failed(format!("there is no bookmark at {:?}", one_based(path))),
                 e => failed(e),
             }),
             None => Err(failed(format!("document {} is not open, or its bookmarks can't be read for editing", id.0))),
@@ -78,7 +78,7 @@ impl Automation {
         let index = a.opt_int("position")?.map_or(usize::MAX, |p| usize::try_from(p.max(1) - 1).unwrap_or(usize::MAX));
         let replace = a.opt_bool("replace")?.unwrap_or(false);
         let count = self.doc(a)?.info.pages.len();
-        let unmapped = pdfcraft_engine::outline_unmapped(&bookmarks, count);
+        let unmapped = iridium_pdf_engine::outline_unmapped(&bookmarks, count);
         let mut out = self.apply(a, Edit::ImportBookmarks { parent, index, bookmarks, replace })?;
         out["unmapped"] = json!(unmapped.iter().map(|p| one_based(p)).collect::<Vec<_>>());
         Ok(out)
@@ -122,8 +122,8 @@ fn list_of(list: &Value, at: &[usize], count: &mut usize) -> Result<Vec<OutlineN
         return Err(bad(at, &format!("bookmarks may nest at most {MAX_DEPTH} levels deep")));
     }
     *count = count.saturating_add(items.len());
-    if *count > pdfcraft_engine::MAX_IMPORT_BOOKMARKS {
-        return Err(ToolError::InvalidArgs(format!("at most {} bookmarks can be imported at once", pdfcraft_engine::MAX_IMPORT_BOOKMARKS)));
+    if *count > iridium_pdf_engine::MAX_IMPORT_BOOKMARKS {
+        return Err(ToolError::InvalidArgs(format!("at most {} bookmarks can be imported at once", iridium_pdf_engine::MAX_IMPORT_BOOKMARKS)));
     }
     let mut out = Vec::with_capacity(items.len());
     for (i, item) in items.iter().enumerate() {
@@ -189,7 +189,7 @@ fn view_of(v: &Value, at: &[usize]) -> Result<(Vec<u8>, Vec<Option<f64>>)> {
                 .collect::<Result<_>>()?
         }
     };
-    let arity = pdfcraft_engine::outline_view_arity(kind.as_bytes()).ok_or_else(|| bad(at, VIEW_TYPES))?;
+    let arity = iridium_pdf_engine::outline_view_arity(kind.as_bytes()).ok_or_else(|| bad(at, VIEW_TYPES))?;
     if values.len() != arity {
         return Err(bad(at, &format!("a {kind} view takes {arity} values (numbers, or null to keep the reader's)")));
     }

@@ -420,7 +420,7 @@ fn no_rotate_turn(rotation: Rotation, rect: &kurbo::Rect) -> Affine {
 }
 
 /// PdfCraft patch: the normal appearance of a Highlight annotation that has none (ISO 32000-2
-/// §12.5.6.10), drawn as PdfCraft draws its own highlights (pdfcraft-annot): each /QuadPoints
+/// §12.5.6.10), drawn as PdfCraft draws its own highlights (iridium-pdf-annot): each /QuadPoints
 /// quadrilateral filled with /C at /CA opacity, blended with Multiply so the marked-up content
 /// stays legible. /QuadPoints that aren't groups of eight numbers, or a /C that isn't a gray, RGB
 /// or CMYK colour (absent or empty means transparent), draw nothing.

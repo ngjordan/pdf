@@ -1,8 +1,8 @@
 //! Fix hairlines follows the line width an ExtGState's `/LW` sets through `gs`: a stroke it
 //! leaves thin is found, and the width put back after a widened stroke is that one.
 
-use pdfcraft_cos::{Document, ObjRef, Object};
-use pdfcraft_edit::{Hairlines, fix_hairlines};
+use iridium_pdf_cos::{Document, ObjRef, Object};
+use iridium_pdf_edit::{Hairlines, fix_hairlines};
 use std::sync::Arc;
 
 /// A document of `objects` (object `i + 1` is the `i`th: a dictionary, and stream data when
@@ -42,7 +42,7 @@ fn flat(doc: &Document, r: ObjRef) -> String {
 
 /// Page `i`'s content (a single stream), flattened.
 fn page_text(doc: &Document, i: usize) -> String {
-    let page = pdfcraft_model::pages(doc).swap_remove(i);
+    let page = iridium_pdf_model::pages(doc).swap_remove(i);
     flat(doc, page.dict.get(b"Contents").and_then(Object::as_ref).unwrap())
 }
 

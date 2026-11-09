@@ -23,13 +23,13 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 
-use pdfcraft_automation::file_access::AutomationRoots;
-use pdfcraft_automation::{Automation, ToolError, tools};
+use iridium_pdf_automation::file_access::AutomationRoots;
+use iridium_pdf_automation::{Automation, ToolError, tools};
 use serde_json::{Value, json};
 
 /// A fresh empty directory for one test.
 fn tmp(name: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("pdfcraft-hostile-{}-{name}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("iridium-pdf-hostile-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).expect("temp dir");
     d
@@ -105,7 +105,7 @@ fn escapes(base: &std::path::Path, linked: bool) -> Vec<String> {
     // Backslashes separate only on Windows; elsewhere this is an ordinary file name in the root.
     if cfg!(windows) {
         out.push(r"..\..\outside.pdf".into());
-        out.push(r"\\.\pipe\pdfcraft-hostile-escape.pdf".into());
+        out.push(r"\\.\pipe\iridium-pdf-hostile-escape.pdf".into());
     }
     out
 }
@@ -128,7 +128,7 @@ fn dir_symlink(target: &std::path::Path, link: &std::path::Path) -> std::io::Res
 }
 
 /// The properties of `def` whose values are paths, by name and whether they are a list.
-fn path_props(def: &pdfcraft_automation::ToolDef) -> Vec<(String, bool)> {
+fn path_props(def: &iridium_pdf_automation::ToolDef) -> Vec<(String, bool)> {
     let Some(props) = def.input_schema["properties"].as_object() else { return Vec::new() };
     props
         .iter()
@@ -150,7 +150,7 @@ fn path_props(def: &pdfcraft_automation::ToolDef) -> Vec<(String, bool)> {
 /// `doc` gets a **real** open document when one is given. Without that, almost every tool fails at
 /// `self.doc()` before it ever looks at a path, and a confinement test would pass vacuously — as
 /// an earlier version of this file did, even with `resolve` disabled entirely.
-fn plausible_with(def: &pdfcraft_automation::ToolDef, doc: Option<u64>) -> serde_json::Map<String, Value> {
+fn plausible_with(def: &iridium_pdf_automation::ToolDef, doc: Option<u64>) -> serde_json::Map<String, Value> {
     let mut obj = plausible(def);
     if let Some(id) = doc
         && def.input_schema["properties"].as_object().is_some_and(|p| p.contains_key("doc"))
@@ -160,7 +160,7 @@ fn plausible_with(def: &pdfcraft_automation::ToolDef, doc: Option<u64>) -> serde
     obj
 }
 
-fn plausible(def: &pdfcraft_automation::ToolDef) -> serde_json::Map<String, Value> {
+fn plausible(def: &iridium_pdf_automation::ToolDef) -> serde_json::Map<String, Value> {
     let mut obj = serde_json::Map::new();
     let props = def.input_schema["properties"].as_object().cloned().unwrap_or_default();
     for req in def.input_schema["required"].as_array().into_iter().flatten().filter_map(Value::as_str) {
@@ -202,8 +202,8 @@ fn blank_doc(a: &mut Automation) -> u64 {
     created
         .into_iter()
         .find_map(|c| match c {
-            pdfcraft_automation::Content::Json(v) => v["doc"].as_u64(),
-            pdfcraft_automation::Content::Png { .. } => None,
+            iridium_pdf_automation::Content::Json(v) => v["doc"].as_u64(),
+            iridium_pdf_automation::Content::Png { .. } => None,
         })
         .expect("the new document has an id")
 }
@@ -229,10 +229,10 @@ fn empty_dir(dir: &Path) {
 /// `action_run` keeps going when one input path is refused and reports that refusal on the file.
 /// That is still a confinement refusal: every file has an error naming the boundary, and none
 /// has an output.
-fn per_file_confinement_refusal(content: &[pdfcraft_automation::Content]) -> bool {
+fn per_file_confinement_refusal(content: &[iridium_pdf_automation::Content]) -> bool {
     let Some(files) = content.iter().find_map(|c| match c {
-        pdfcraft_automation::Content::Json(v) => v.get("files").and_then(Value::as_array),
-        pdfcraft_automation::Content::Png { .. } => None,
+        iridium_pdf_automation::Content::Json(v) => v.get("files").and_then(Value::as_array),
+        iridium_pdf_automation::Content::Png { .. } => None,
     }) else {
         return false;
     };
@@ -424,7 +424,7 @@ fn listing(dir: &Path) -> Vec<(PathBuf, u64)> {
 
 /// A six-page file whose fourth `/Kids` entry points at an object that does not exist (#2660),
 /// with a link, a URI link and a comment on every page, and a form field and text added by
-/// PdfCraft (its `/PCAdded` marker) on the last. Readers
+/// PDF (its `/PCAdded` marker) on the last. Readers
 /// disagree on such a file: the viewer stopped at the dangling entry and saw three pages, while
 /// the editing layer sees all six, so annotations come back on pages the viewer does not have.
 fn dangling_kid_pdf() -> Vec<u8> {
@@ -499,8 +499,8 @@ fn no_tool_panics_when_the_viewer_sees_fewer_pages_than_the_file_has() {
             Ok(Ok(content)) => content
                 .into_iter()
                 .find_map(|c| match c {
-                    pdfcraft_automation::Content::Json(v) => Some(v),
-                    pdfcraft_automation::Content::Png { .. } => None,
+                    iridium_pdf_automation::Content::Json(v) => Some(v),
+                    iridium_pdf_automation::Content::Png { .. } => None,
                 })
                 .ok_or_else(|| format!("{tool} answered without JSON")),
             Ok(Err(e)) => Err(format!("{tool} failed: {e:?}")),
@@ -517,8 +517,8 @@ fn no_tool_panics_when_the_viewer_sees_fewer_pages_than_the_file_has() {
         let doc = opened
             .into_iter()
             .find_map(|c| match c {
-                pdfcraft_automation::Content::Json(v) => v["doc"].as_u64(),
-                pdfcraft_automation::Content::Png { .. } => None,
+                iridium_pdf_automation::Content::Json(v) => v["doc"].as_u64(),
+                iridium_pdf_automation::Content::Png { .. } => None,
             })
             .expect("the opened document has an id");
         if let Err(e) = guarded(&mut a, def.name, &Value::Object(plausible_with(&def, Some(doc)))) {

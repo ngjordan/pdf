@@ -1,4 +1,4 @@
-//! pdfcraft-platform — L7 operating-system services shared by the desktop app (`ui-egui`) and the
+//! iridium-pdf-platform — L7 operating-system services shared by the desktop app (`ui-egui`) and the
 //! automation tools (`automation`), which sit on the same layer and can't depend on each other,
 //! and by the two executables (`owner_only`, for the `--control` file).
 

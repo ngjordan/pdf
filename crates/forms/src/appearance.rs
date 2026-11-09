@@ -12,7 +12,7 @@
 //! can't hold (outside WinAnsi in Helvetica, or beyond U+FFFF in a UCS-2 CMap) is drawn as `?`, as
 //! Acrobat keeps a value its field font can't show: the value itself is stored as typed,
 //! [`field_appearance_drawn`] returns the first such character, and the caller marks the widget
-//! (`pdfcraft_fonts::UNDRAWN_MARK`) and asks other viewers to redraw the field
+//! (`iridium_pdf_fonts::UNDRAWN_MARK`) and asks other viewers to redraw the field
 //! (`/NeedAppearances`). Widths are the field font's own (its `/Widths`, or the standard-14
 //! metrics), Helvetica's when Helvetica stands in, and one em per full-width character in
 //! composite fonts.
@@ -21,10 +21,10 @@
 //! the appearance `/Matrix` so that box lands on the widget rectangle. Any other value is 0, and
 //! rotation 0 leaves `/Matrix` off.
 
-use pdfcraft_cos::{Dict, Document, Object, Stream};
-use pdfcraft_fonts::pdf::Metrics;
-use pdfcraft_fonts::shaped_text::{self, Piece, ShapedFonts};
-use pdfcraft_fonts::{UnicodeCMap, cjk_width, helvetica_width, literal, win_ansi, wrap_with};
+use iridium_pdf_cos::{Dict, Document, Object, Stream};
+use iridium_pdf_fonts::pdf::Metrics;
+use iridium_pdf_fonts::shaped_text::{self, Piece, ShapedFonts};
+use iridium_pdf_fonts::{UnicodeCMap, cjk_width, helvetica_width, literal, win_ansi, wrap_with};
 
 use crate::{Field, FieldKind, Widget, acroform, flags};
 
@@ -324,7 +324,7 @@ impl FontText {
     /// [`field_appearance_drawn`], so that `?` is never silent (AGENTS.md §4).
     fn first_unencodable(&self, s: &str) -> Option<char> {
         match self {
-            Self::WinAnsi => pdfcraft_fonts::first_undrawable(s),
+            Self::WinAnsi => iridium_pdf_fonts::first_undrawable(s),
             Self::Simple(metrics) => {
                 s.chars().map(|c| if c == '\t' { ' ' } else { c }).find(|c| metrics.encode(c.encode_utf8(&mut [0; 4])).is_none())
             }
@@ -500,7 +500,7 @@ fn frame(doc: &Document, wd: &Dict, w: f64, h: f64) -> (String, f64) {
     (c, 0.0)
 }
 
-/// Whether `wd` is a check box or radio button PdfCraft laid out for a round XFA check button
+/// Whether `wd` is a check box or radio button PDF laid out for a round XFA check button
 /// (`/PCXfaRound true`, written by the XFA layout).
 pub(crate) fn is_round(doc: &Document, wd: &Dict) -> bool {
     matches!(wd.get(b"PCXfaRound").map(|o| doc.resolve(o)).as_deref(), Some(Object::Bool(true)))
@@ -622,7 +622,7 @@ fn comb_dividers(doc: &Document, wd: &Dict, w: f64, h: f64, cells: usize) -> Str
 }
 
 /// Where a list box draws its options: one row per option from the top, starting with option
-/// `top` (`/TI`, §12.7.4.4). The appearance PdfCraft writes and the viewer's in-place list share
+/// `top` (`/TI`, §12.7.4.4). The appearance PDF writes and the viewer's in-place list share
 /// it, so a click picks the option drawn under the pointer (#1524).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ListRows {
@@ -708,7 +708,7 @@ pub fn field_appearance_as(doc: &Document, f: &Field, w: &Widget, values: &[Stri
 }
 
 /// [`field_appearance_as`] with the first character it drew as `?` because the field's font can't
-/// hold it: the form's font is a simple (WinAnsi) font, Helvetica stands in for one PdfCraft can't
+/// hold it: the form's font is a simple (WinAnsi) font, Helvetica stands in for one PDF can't
 /// write with (an embedded subset, `Identity-H`), or a UCS-2 CMap meets a character beyond U+FFFF.
 pub fn field_appearance_drawn(doc: &Document, f: &Field, w: &Widget, values: &[String], format: bool) -> (Stream, Option<char>) {
     let (stream, unencodable, _) = field_appearance_fit(doc, f, w, values, format);
@@ -1144,7 +1144,7 @@ pub(crate) fn button_state_shown(doc: &Document, f: &Field, w: &Widget, on: bool
     if on {
         let mk = wd.get(b"MK").map(|m| doc.resolve(m)).and_then(|m| m.as_dict().cloned());
         let caption = mk.as_ref().and_then(|mk| mk.get(b"CA")).and_then(|o| doc.resolve(o).as_string().map(|s| s.to_text()));
-        let dingbats = pdfcraft_fonts::Std14::ZapfDingbats;
+        let dingbats = iridium_pdf_fonts::Std14::ZapfDingbats;
         // The caption's first character as a ZapfDingbats code, when the font has a glyph there.
         let code = caption
             .and_then(|s| s.chars().next())
@@ -1180,7 +1180,7 @@ pub(crate) fn button_state_shown(doc: &Document, f: &Field, w: &Widget, on: bool
 /// How a push button widget `w` of field `f` with no normal appearance looks: its `/MK`
 /// background and border, in the `/BS` width and style ([`frame`]: Table 168, `B` beveled, `I`
 /// inset), with its caption `/MK /CA` (Table 192) centred in the `/DA` font, size and colour.
-/// A button with an icon (`/MK /I`) is drawn as PdfCraft draws its own buttons, icon included.
+/// A button with an icon (`/MK /I`) is drawn as PDF draws its own buttons, icon included.
 pub(crate) fn push_button_shown(doc: &Document, f: &Field, w: &Widget) -> Stream {
     let wobj = doc.get(w.obj);
     let wd = wobj.as_dict().cloned().unwrap_or_default();
@@ -1197,7 +1197,7 @@ pub(crate) fn push_button_shown(doc: &Document, f: &Field, w: &Widget) -> Stream
     let mut fonts = Dict::new();
     if !caption.is_empty() && mk.get(b"TP").and_then(|t| doc.resolve(t).as_int()) != Some(1) {
         let da = wd.get(b"DA").and_then(|o| doc.resolve(o).as_string().map(|s| s.to_text()));
-        // The automatic size PdfCraft's own buttons use.
+        // The automatic size PDF's own buttons use.
         let auto = ((height - 4.0) * 0.6).clamp(4.0, 14.0);
         let (ops, name, font, _) = button_caption(doc, da.as_deref().unwrap_or(&f.da), &caption, width, height, auto);
         content.extend(ops);

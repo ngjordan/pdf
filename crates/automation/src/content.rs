@@ -2,7 +2,7 @@
 //! move/resize/retype/restyle it, delete it. Geometry is in points from the top-left of the
 //! displayed page (y down), like every other tool.
 
-use pdfcraft_engine::{ADDED_CHAR_SPACING_LIMIT, AddedContent, AddedText, Edit, FontFamily, TextAlign, TextInk};
+use iridium_pdf_engine::{ADDED_CHAR_SPACING_LIMIT, AddedContent, AddedText, Edit, FontFamily, TextAlign, TextInk};
 use serde_json::{Value, json};
 
 use crate::comments::parse_color;
@@ -83,8 +83,8 @@ fn style(a: &Args, t: &mut AddedText) -> Result<()> {
         t.aligns.clear();
     }
     if let Some(aligns) = opt_aligns(a)? {
-        let count = pdfcraft_engine::paragraph_align::count(&t.text);
-        t.aligns = pdfcraft_engine::paragraph_align::tidy(aligns.into_iter().take(count).collect(), t.align);
+        let count = iridium_pdf_engine::paragraph_align::count(&t.text);
+        t.aligns = iridium_pdf_engine::paragraph_align::tidy(aligns.into_iter().take(count).collect(), t.align);
     }
     if let Some(c) = a.opt_num("char_spacing")? {
         if !(-ADDED_CHAR_SPACING_LIMIT..=ADDED_CHAR_SPACING_LIMIT).contains(&c) {
@@ -224,7 +224,7 @@ impl Automation {
             AddedContent::Text(t) => {
                 if let Some(s) = a.opt_str("text")? {
                     // Each paragraph keeps its own alignment through the retyping.
-                    t.aligns = pdfcraft_engine::paragraph_align::remap(&t.text, s, &t.aligns);
+                    t.aligns = iridium_pdf_engine::paragraph_align::remap(&t.text, s, &t.aligns);
                     t.text = s.to_string();
                 }
                 style(a, t)?;
@@ -253,7 +253,7 @@ impl Automation {
                     i.flip_v = !i.flip_v;
                 }
                 if let Some(c) = rect_arg(a, "crop")? {
-                    if !pdfcraft_engine::AddedImage::crop_valid(c) {
+                    if !iridium_pdf_engine::AddedImage::crop_valid(c) {
                         return Err(bad(
                             "crop takes fractions from 0 to under 1 (left, bottom, right, top); left and right together, and bottom and top together, trim at most 0.95",
                         ));
@@ -296,7 +296,7 @@ impl Automation {
         let to_doc = match a.opt_int("to_doc")? {
             Some(d) => {
                 let d = u64::try_from(d).map_err(|_| bad("to_doc must be positive"))?;
-                self.session.get(pdfcraft_engine::DocId(d)).ok_or_else(|| failed(format!("no open document with id {d} (see doc_list)")))?.id
+                self.session.get(iridium_pdf_engine::DocId(d)).ok_or_else(|| failed(format!("no open document with id {d} (see doc_list)")))?.id
             }
             None => from,
         };
@@ -323,8 +323,8 @@ impl Automation {
         };
         let on_page = || doc.added().iter().filter(|x| x.page == to_page);
         let rect = match at {
-            Some(at) => pdfcraft_engine::added_paste_rect(content.rect(), [pw, ph], 0, Some(at)),
-            None => pdfcraft_engine::added_paste_place(on_page().map(|x| &x.content), &content, [pw, ph]),
+            Some(at) => iridium_pdf_engine::added_paste_rect(content.rect(), [pw, ph], 0, Some(at)),
+            None => iridium_pdf_engine::added_paste_place(on_page().map(|x| &x.content), &content, [pw, ph]),
         };
         let before = on_page().count();
         let target = json!({ "doc": to_doc.0 });
@@ -356,8 +356,8 @@ impl Automation {
 
     /// The references `objects` names (from object_list), or with `all` every object on `page`,
     /// as ⌘A selects them in Edit a PDF; refused when `generation` is not the document's.
-    fn object_targets(&self, a: &Args, page: usize) -> Result<Vec<pdfcraft_engine::ObjectTarget>> {
-        use pdfcraft_engine::{MAX_MOVE_OBJECTS, ObjectKind, ObjectTarget};
+    fn object_targets(&self, a: &Args, page: usize) -> Result<Vec<iridium_pdf_engine::ObjectTarget>> {
+        use iridium_pdf_engine::{MAX_MOVE_OBJECTS, ObjectKind, ObjectTarget};
         let doc = self.doc(a)?;
         if let Some(g) = a.get("generation") {
             let g = g.as_u64().ok_or_else(|| bad("generation must be a non-negative integer from object_list"))?;
@@ -428,11 +428,11 @@ impl Automation {
         let cut = a.opt_bool("cut")?.unwrap_or(false);
         let doc = self.doc(a)?;
         if cut && !doc.allows_modification() {
-            return Err(failed(pdfcraft_engine::EditError::NotPermitted("changes")));
+            return Err(failed(iridium_pdf_engine::EditError::NotPermitted("changes")));
         }
         let clip = doc.copy_objects(page, &targets).map_err(failed)?;
         let out = json!({ "copied": clip.objects().len(), "text": clip.text() });
-        self.objects_clipboard = Some(pdfcraft_engine::ObjectClipboard::new(clip));
+        self.objects_clipboard = Some(iridium_pdf_engine::ObjectClipboard::new(clip));
         if !cut {
             return Ok(out);
         }

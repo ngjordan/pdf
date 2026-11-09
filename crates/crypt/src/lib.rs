@@ -1,4 +1,4 @@
-//! pdfcraft-crypt — the PDF standard security handler (ISO 32000-2 §7.6), standalone (L0).
+//! iridium-pdf-crypt — the PDF standard security handler (ISO 32000-2 §7.6), standalone (L0).
 //!
 //! Supports every revision of the standard handler:
 //! - R2 (40-bit RC4), R3 (RC4 up to 128-bit), R4 (crypt filters: RC4 or AES-128);
@@ -347,7 +347,7 @@ impl SecurityHandler {
     /// with a 40- or 48-bit key (pdf.js issue 19484). The renderer's `hayro-syntax` reads them
     /// the same way, so a page it shows is one this crate can read and save. AES-128 keys are
     /// left as they are: `AESV2` takes a 128-bit key (Table 25), and Acrobat's extension is only
-    /// seen with RC4. Every key PdfCraft writes under `/V 4` is 16 bytes already.
+    /// seen with RC4. Every key PDF writes under `/V 4` is 16 bytes already.
     fn object_key(&self, method: Method, num: u32, generation: u16) -> Vec<u8> {
         if method == Method::Aes256 {
             return self.key.clone();
@@ -428,7 +428,7 @@ impl SecurityHandler {
 // ── Passwords ──────────────────────────────────────────────────────────────────────────────────
 
 /// PDFDocEncoding (ISO 32000-2 Annex D) where it differs from Latin-1: bytes 0x18–0x1F and
-/// 0x80–0xA0 (0x9F is undefined). Here rather than in pdfcraft-cos, which decodes text strings
+/// 0x80–0xA0 (0x9F is undefined). Here rather than in iridium-pdf-cos, which decodes text strings
 /// with it, because R2–R4 passwords need it too and cos depends on this crate.
 const PDFDOC_LOW: [char; 8] = ['˘', 'ˇ', 'ˆ', '˙', '˝', '˛', '˚', '˜'];
 const PDFDOC_HIGH: [char; 33] = [

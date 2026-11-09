@@ -22,7 +22,7 @@ pub enum PrintError {
     #[error("{0}")]
     Spool(String),
     #[error(transparent)]
-    Cos(#[from] pdfcraft_cos::CosError),
+    Cos(#[from] iridium_pdf_cos::CosError),
 }
 
 /// How an interface says one of our wordings in its own language, holes and all: given the English

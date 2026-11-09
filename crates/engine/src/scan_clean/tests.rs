@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use pdfcraft_testkit::Pdf;
+use iridium_pdf_testkit::Pdf;
 
 use super::*;
 
@@ -84,7 +84,7 @@ fn samples(s: &Session, id: DocId) -> optimize::Samples {
     let object = doc.page_images(0)[0].object.unwrap();
     let cos = &doc.editor.as_ref().unwrap().cos;
     let Object::Stream(img) = &*cos.get(object) else { panic!("the image") };
-    optimize::decode_samples(cos, img, &mut pdfcraft_cos::ImageBudget::with_work(u64::MAX)).unwrap()
+    optimize::decode_samples(cos, img, &mut iridium_pdf_cos::ImageBudget::with_work(u64::MAX)).unwrap()
 }
 
 fn grey_at(px: &optimize::Samples, x: usize, y: usize) -> u8 {
@@ -161,7 +161,7 @@ fn a_jpeg_scan_stays_a_jpeg_in_colour() {
     assert!(at(150, 63).iter().all(|&v| v <= 60), "stroke: {:?}", at(150, 63));
     // The file still renders.
     let doc = s.get(id).unwrap();
-    let shot = pdfcraft_render::PageRenderer::new(doc.bytes.clone(), doc.config.clone()).render(pdfcraft_render::RenderRequest {
+    let shot = iridium_pdf_render::PageRenderer::new(doc.bytes.clone(), doc.config.clone()).render(iridium_pdf_render::RenderRequest {
         page: 0,
         scale: 1.0,
         ..Default::default()
@@ -369,9 +369,9 @@ fn a_page_mixing_its_own_image_and_a_scan_in_a_form_cleans_the_one_and_reports_t
 #[test]
 fn protected_documents_keep_their_encryption_and_restrictions() {
     let protect = |user: &str, permissions: i32| {
-        let mut doc = pdfcraft_cos::Document::open(Arc::new(grey_scan())).unwrap();
-        doc.set_encryption(&pdfcraft_cos::NewEncryption {
-            algorithm: pdfcraft_cos::Algorithm::Aes256,
+        let mut doc = iridium_pdf_cos::Document::open(Arc::new(grey_scan())).unwrap();
+        doc.set_encryption(&iridium_pdf_cos::NewEncryption {
+            algorithm: iridium_pdf_cos::Algorithm::Aes256,
             user_password: user,
             owner_password: "owner",
             permissions,
@@ -379,14 +379,14 @@ fn protected_documents_keep_their_encryption_and_restrictions() {
             seed: [7; 32],
         })
         .unwrap();
-        Arc::new(pdfcraft_cos::write_full(&doc, &Default::default()).unwrap())
+        Arc::new(iridium_pdf_cos::write_full(&doc, &Default::default()).unwrap())
     };
     // Opened with the password: cleaned, saved still encrypted, and the clean scan reads back.
     let mut s = Session::new();
     let id = s.open("x.pdf", None, protect("pw", -1), Some("pw")).unwrap();
     assert_eq!(s.enhance_scanned_pages(id, &[], ScanCleanSettings::at(100)).unwrap().images, 1);
     let saved = s.save_bytes(id).unwrap();
-    assert!(pdfcraft_cos::Document::open(saved.clone()).is_err(), "still protected");
+    assert!(iridium_pdf_cos::Document::open(saved.clone()).is_err(), "still protected");
     let id2 = s.open("y.pdf", None, saved, Some("pw")).unwrap();
     assert!(grey_at(&samples(&s, id2), 3, 40) >= 235);
     // Changes withheld: refused before any work.

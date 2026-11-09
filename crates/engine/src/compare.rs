@@ -4,12 +4,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use pdfcraft_cos::ObjRef;
+use iridium_pdf_cos::ObjRef;
 
-pub use pdfcraft_compare::{Change, Comparison, Kind, Side};
+pub use iridium_pdf_compare::{Change, Comparison, Kind, Side};
 // How far Office export reads into form XObjects; `OfficeExport::truncated_pages` lists the pages
 // that draw more.
-pub use pdfcraft_edit::{MAX_FORM_DEPTH, MAX_FORM_VISITS};
+pub use iridium_pdf_edit::{MAX_FORM_DEPTH, MAX_FORM_VISITS};
 
 use crate::{DocId, Edit, EditError, Markup, NewAnnotation, NoteIcon, Session, Shape};
 
@@ -28,24 +28,25 @@ pub fn colour(kind: Kind) -> crate::Rgb {
 
 impl crate::Document {
     /// Standards ▸ Verify PDF/A: the rules the document breaks for `level`.
-    pub fn pdfa_verify(&self, level: pdfcraft_preflight::Level) -> Vec<pdfcraft_preflight::Issue> {
-        self.editor.as_ref().map(|e| pdfcraft_preflight::verify(&e.cos, level)).unwrap_or_default()
+    pub fn pdfa_verify(&self, level: iridium_pdf_preflight::Level) -> Vec<iridium_pdf_preflight::Issue> {
+        self.editor.as_ref().map(|e| iridium_pdf_preflight::verify(&e.cos, level)).unwrap_or_default()
     }
 
     /// The standards the document declares (Standards panel).
-    pub fn standards(&self) -> pdfcraft_preflight::Declared {
-        self.editor.as_ref().map(|e| pdfcraft_preflight::declared(&e.cos)).unwrap_or_default()
+    pub fn standards(&self) -> iridium_pdf_preflight::Declared {
+        self.editor.as_ref().map(|e| iridium_pdf_preflight::declared(&e.cos)).unwrap_or_default()
     }
 
     /// Every word of the document in reading order, with page and box.
-    pub fn words(&self) -> Vec<pdfcraft_compare::Word> {
-        let config = pdfcraft_render::RenderConfig { password: self.password.as_deref().map(Arc::from), ..Default::default() };
-        let mut r = pdfcraft_render::PageRenderer::new(self.bytes.clone(), config);
+    pub fn words(&self) -> Vec<iridium_pdf_compare::Word> {
+        let config = iridium_pdf_render::RenderConfig { password: self.password.as_deref().map(Arc::from), ..Default::default() };
+        let mut r = iridium_pdf_render::PageRenderer::new(self.bytes.clone(), config);
         let mut out = Vec::new();
         for (page, info) in self.info.pages.iter().enumerate() {
-            let res = r.render(pdfcraft_render::RenderRequest { page, kind: pdfcraft_render::RequestKind::Text, scale: 1.0, ..Default::default() });
+            let res =
+                r.render(iridium_pdf_render::RenderRequest { page, kind: iridium_pdf_render::RequestKind::Text, scale: 1.0, ..Default::default() });
             if let Some(t) = res.text {
-                out.extend(crate::js::page_words(&t, info).into_iter().map(|(text, rect)| pdfcraft_compare::Word { text, page, rect }));
+                out.extend(crate::js::page_words(&t, info).into_iter().map(|(text, rect)| iridium_pdf_compare::Word { text, page, rect }));
             }
         }
         out
@@ -60,7 +61,7 @@ impl Session {
         let b = self.get(new).ok_or(EditError::NoDocument)?;
         a.check_copying()?;
         b.check_copying()?;
-        Ok(pdfcraft_compare::compare(&a.words(), &b.words()))
+        Ok(iridium_pdf_compare::compare(&a.words(), &b.words()))
     }
 
     /// [`Session::compare`], keeping the changes on `pages` of `new` (0-based; empty: every page).
@@ -78,22 +79,22 @@ impl Session {
         let a = self.get(old).ok_or(EditError::NoDocument)?;
         let b = self.get(new).ok_or(EditError::NoDocument)?;
         let renderer = |d: &crate::Document| {
-            pdfcraft_render::PageRenderer::new(
+            iridium_pdf_render::PageRenderer::new(
                 d.bytes.clone(),
-                pdfcraft_render::RenderConfig { password: d.password.as_deref().map(Arc::from), ..Default::default() },
+                iridium_pdf_render::RenderConfig { password: d.password.as_deref().map(Arc::from), ..Default::default() },
             )
         };
         let (mut ra, mut rb) = (renderer(a), renderer(b));
         let scale = dpi.clamp(18.0, 150.0) / 72.0;
         let mut out = Vec::new();
         for (page, info) in b.info.pages.iter().enumerate().take(a.info.pages.len()) {
-            let req = pdfcraft_render::RenderRequest { page, scale, ..Default::default() };
+            let req = iridium_pdf_render::RenderRequest { page, scale, ..Default::default() };
             let (x, y) = (ra.render(req), rb.render(req));
             if x.error.is_some() || y.error.is_some() {
                 continue;
             }
             let s = y.width as f32 / info.width.max(1e-3);
-            for r in pdfcraft_compare::visual_regions((&y.rgba, y.width, y.height), (&x.rgba, x.width, x.height), 24) {
+            for r in iridium_pdf_compare::visual_regions((&y.rgba, y.width, y.height), (&x.rgba, x.width, x.height), 24) {
                 let p = info.view_to_user(r[0] as f32 / s, r[1] as f32 / s);
                 let q = info.view_to_user(r[2] as f32 / s, r[3] as f32 / s);
                 out.push((page, [p[0].min(q[0]) as f64, p[1].min(q[1]) as f64, p[0].max(q[0]) as f64, p[1].max(q[1]) as f64]));
@@ -111,7 +112,7 @@ impl Session {
     pub fn compare_report_of(&self, old: DocId, new: DocId, pages: &[usize]) -> Result<Arc<Vec<u8>>, EditError> {
         let c = self.compare_pages(old, new, pages)?;
         let name = |id| self.get(id).map(|d| d.name.clone()).unwrap_or_default();
-        self.create_report("Compare Report", &pdfcraft_compare::report(&c, &name(old), &name(new)))
+        self.create_report("Compare Report", &iridium_pdf_compare::report(&c, &name(old), &name(new)))
     }
 
     /// Mark the differences in `new` as comments: highlights over replaced and inserted text
@@ -208,7 +209,7 @@ type PreparedImage = Result<(&'static str, Arc<[u8]>), bool>;
 
 /// Displayed points per user-space unit on `info`'s page (`/UserUnit`), 1 when the page has no
 /// usable size.
-pub(crate) fn display_unit(info: &pdfcraft_render::PageInfo) -> f64 {
+pub(crate) fn display_unit(info: &iridium_pdf_render::PageInfo) -> f64 {
     let crop_width = f64::from(info.crop[2] - info.crop[0]);
     let display_width = f64::from(if info.rotation.is_multiple_of(180) { info.width } else { info.height });
     if crop_width > 0.0 && crop_width.is_finite() && display_width.is_finite() { display_width / crop_width } else { 1.0 }
@@ -223,16 +224,16 @@ pub(crate) fn weight_and_slant(base_font: &str) -> (bool, bool) {
 impl crate::Document {
     /// The pages as paragraphs and images (for Word, HTML and RTF export), including what
     /// form XObjects draw.
-    pub fn export_pages(&self) -> Vec<pdfcraft_export::Page> {
+    pub fn export_pages(&self) -> Vec<iridium_pdf_export::Page> {
         self.export_pages_checked(true, MAX_EXPORT_IMAGE_BYTES).0
     }
 
     /// [`Self::export_pages`], and the pages whose forms were left partly unread or whose
     /// pictures went past `image_budget` bytes ([`OfficeExport::truncated_pages`]). Without
     /// `images` no picture is prepared.
-    pub(crate) fn export_pages_checked(&self, images: bool, image_budget: usize) -> (Vec<pdfcraft_export::Page>, Vec<usize>) {
+    pub(crate) fn export_pages_checked(&self, images: bool, image_budget: usize) -> (Vec<iridium_pdf_export::Page>, Vec<usize>) {
         let Some(editor) = self.editor.as_ref() else { return (Vec::new(), Vec::new()) };
-        self.export_pages_within(images, image_budget, &mut pdfcraft_cos::ImageBudget::new(&editor.cos))
+        self.export_pages_within(images, image_budget, &mut iridium_pdf_cos::ImageBudget::new(&editor.cos))
     }
 
     /// [`Self::export_pages_checked`], its pictures decoded within `image_work`, which is shared
@@ -241,8 +242,8 @@ impl crate::Document {
         &self,
         images: bool,
         image_budget: usize,
-        image_work: &mut pdfcraft_cos::ImageBudget,
-    ) -> (Vec<pdfcraft_export::Page>, Vec<usize>) {
+        image_work: &mut iridium_pdf_cos::ImageBudget,
+    ) -> (Vec<iridium_pdf_export::Page>, Vec<usize>) {
         let Some(cos) = self.editor.as_ref().map(|e| &e.cos) else { return (Vec::new(), Vec::new()) };
         let mut truncated = Vec::new();
         // Each image object is encoded once and shared by every place that draws it.
@@ -262,7 +263,7 @@ impl crate::Document {
                     [a[0].min(b[0]) as f64, (info.height - a[1].max(b[1])) as f64, a[0].max(b[0]) as f64, (info.height - a[1].min(b[1])) as f64]
                 };
                 let unit = display_unit(info);
-                let reading = pdfcraft_edit::reading_blocks_checked(cos, i).unwrap_or_default();
+                let reading = iridium_pdf_edit::reading_blocks_checked(cos, i).unwrap_or_default();
                 let forms_unread = reading.truncated;
                 let blocks = reading
                     .blocks
@@ -272,7 +273,7 @@ impl crate::Document {
                         let (bold, italic) = weight_and_slant(&b.base_font);
                         // `text` is trimmed; the editor text keeps the source's own spaces.
                         let space_around = [b.editor_text.starts_with(char::is_whitespace), b.editor_text.ends_with(char::is_whitespace)];
-                        pdfcraft_export::Block {
+                        iridium_pdf_export::Block {
                             space_around,
                             text: b.text,
                             rect: visible_rect(b.rect),
@@ -284,7 +285,7 @@ impl crate::Document {
                         }
                     })
                     .collect();
-                let placed = if images { pdfcraft_edit::reading_images(cos, i).unwrap_or_default() } else { Vec::new() };
+                let placed = if images { iridium_pdf_edit::reading_images(cos, i).unwrap_or_default() } else { Vec::new() };
                 let mut over_budget = false;
                 let images = placed
                     .iter()
@@ -293,13 +294,13 @@ impl crate::Document {
                         let prepared = encoded.entry(object).or_insert_with(|| {
                             let refused = image_work.refused();
                             let (ext, bytes) =
-                                pdfcraft_create::image_file_within(cos, object, &mut *image_work).map_err(|_| image_work.refused() > refused)?;
+                                iridium_pdf_create::image_file_within(cos, object, &mut *image_work).map_err(|_| image_work.refused() > refused)?;
                             image_bytes = image_bytes.checked_sub(bytes.len()).ok_or(true)?;
                             Ok((if ext == "jpg" { "jpg" } else { "png" }, Arc::from(bytes)))
                         });
                         over_budget |= matches!(prepared, Err(true));
                         let (ext, bytes) = prepared.clone().ok()?;
-                        Some(pdfcraft_export::Image {
+                        Some(iridium_pdf_export::Image {
                             ext,
                             bytes,
                             rect: visible_rect(im.rect),
@@ -312,10 +313,10 @@ impl crate::Document {
                     truncated.push(i);
                 }
                 // The page colour (Edit a PDF ▸ Background, a producer's page fill) for formats that keep one.
-                let background = pdfcraft_edit::page_background(cos, i).ok().flatten();
+                let background = iridium_pdf_edit::page_background(cos, i).ok().flatten();
                 // The ruled lines tell a drawn table from text that merely lines up (#5149).
-                let rules = pdfcraft_edit::page_rules(cos, i).unwrap_or_default().into_iter().map(visible_rect).collect();
-                pdfcraft_export::Page { width: info.width as f64, height: info.height as f64, blocks, images, background, rules }
+                let rules = iridium_pdf_edit::page_rules(cos, i).unwrap_or_default().into_iter().map(visible_rect).collect();
+                iridium_pdf_export::Page { width: info.width as f64, height: info.height as f64, blocks, images, background, rules }
             })
             .collect();
         (pages, truncated)
@@ -336,12 +337,12 @@ impl crate::Document {
         // Word and HTML name the document's language (`/Lang`), so spelling is checked in it.
         let language = self.initial_view().language;
         let bytes = match format {
-            OfficeFormat::Docx => pdfcraft_export::docx_with_language(&pages, &title, language.as_deref()),
-            OfficeFormat::Pptx => pdfcraft_export::pptx(&pages, &title),
-            OfficeFormat::Html => pdfcraft_export::html_with_language(&pages, &title, language.as_deref()).into_bytes(),
-            OfficeFormat::HtmlSimple => pdfcraft_export::html_simple_with_language(&pages, &title, language.as_deref()).into_bytes(),
-            OfficeFormat::Rtf => pdfcraft_export::rtf(&pages).into_bytes(),
-            OfficeFormat::Markdown => pdfcraft_export::markdown(&pages).into_bytes(),
+            OfficeFormat::Docx => iridium_pdf_export::docx_with_language(&pages, &title, language.as_deref()),
+            OfficeFormat::Pptx => iridium_pdf_export::pptx(&pages, &title),
+            OfficeFormat::Html => iridium_pdf_export::html_with_language(&pages, &title, language.as_deref()).into_bytes(),
+            OfficeFormat::HtmlSimple => iridium_pdf_export::html_simple_with_language(&pages, &title, language.as_deref()).into_bytes(),
+            OfficeFormat::Rtf => iridium_pdf_export::rtf(&pages).into_bytes(),
+            OfficeFormat::Markdown => iridium_pdf_export::markdown(&pages).into_bytes(),
         };
         OfficeExport { bytes, truncated_pages }
     }

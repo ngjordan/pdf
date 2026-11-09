@@ -63,7 +63,7 @@ impl Pdf {
         }
         let root_encrypted = root.as_ref().ok().map(|(x, _)| x.is_encrypted());
         // PdfCraft patch: (hayro-syntax (45)) said of the file whichever table is kept, as
-        // `pdfcraft-cos` says it under the same conditions.
+        // `iridium-pdf-cos` says it under the same conditions.
         let rebuilt_unlinked_update = root.as_ref().is_ok_and(|(_, rebuilt)| *rebuilt);
         if cut_off_update_follows(data.as_ref())
             && let Some(xref) = fallback(data.clone(), password)

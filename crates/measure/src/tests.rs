@@ -1,6 +1,6 @@
 use super::*;
-use pdfcraft_cos::{SaveOptions, write_full};
-use pdfcraft_testkit::Pdf;
+use iridium_pdf_cos::{SaveOptions, write_full};
+use iridium_pdf_testkit::Pdf;
 use std::sync::Arc;
 fn fixture(content: &str, attrs: &str, extra: &[&str]) -> Document {
     fixture_with("4 0 R", content, attrs, extra)
@@ -80,7 +80,7 @@ fn standard_annotations_captions_restyle_move_and_unknown_keys() {
     let (r, dict) = annot(&d, 0, 0).unwrap();
     assert_eq!(dict.name(b"IT"), Some(&b"LineDimension"[..]));
     d.update_dict(r, |d| d.set(b"VendorKey".to_vec(), Object::Int(42))).unwrap();
-    pdfcraft_annot::set_style(&mut d, 0, 0, pdfcraft_annot::StyleChange::new(Some([1.0, 0.0, 0.0]), None, Some(2.0), None), &meta).unwrap();
+    iridium_pdf_annot::set_style(&mut d, 0, 0, iridium_pdf_annot::StyleChange::new(Some([1.0, 0.0, 0.0]), None, Some(2.0), None), &meta).unwrap();
     let (_, dict) = annot(&d, 0, 0).unwrap();
     assert_eq!(dict.int(b"VendorKey"), Some(42));
     let ap = d.resolve(dict.get(b"AP").unwrap());
@@ -88,7 +88,7 @@ fn standard_annotations_captions_restyle_move_and_unknown_keys() {
     let Object::Stream(stream) = normal.as_ref() else { panic!("appearance missing") };
     let stream = String::from_utf8(stream.decoded().unwrap()).unwrap();
     assert!(stream.contains("(10.000 m) Tj"), "{stream}");
-    pdfcraft_annot::move_annotation(&mut d, 0, 0, 50.0, 60.0, &meta).unwrap();
+    iridium_pdf_annot::move_annotation(&mut d, 0, 0, 50.0, 60.0, &meta).unwrap();
     assert_eq!(list(&d).measurements[0].points, vec![[50.0, 60.0], [53.0, 64.0]]);
     close(list(&d).measurements[0].reading.value, 10.0);
 }
@@ -237,7 +237,7 @@ fn imported_measurement_appearance_is_not_silently_replaced() {
         d.remove(b"PCMeasureValue");
     })
     .unwrap();
-    assert!(pdfcraft_annot::set_appearance(&mut d, r).is_err());
+    assert!(iridium_pdf_annot::set_appearance(&mut d, r).is_err());
     assert_eq!(annot(&d, 0, 0).unwrap().1.get(b"AP"), Some(&original));
     close(list(&d).measurements[0].reading.value, 100.0);
 }
@@ -438,7 +438,7 @@ fn listing_skips_repeated_refs_and_caps_what_it_keeps() {
     let points: Vec<Point> = (0..MAX_POINTS).map(|i| [i as f64 * 0.1, 0.0]).collect();
     add(&mut d, &new(Kind::Perimeter, points), &Meta::default()).unwrap();
     let (r, mut annotation) = annot(&d, 0, 0).unwrap();
-    let page = pdfcraft_model::pages(&d)[0].obj;
+    let page = iridium_pdf_model::pages(&d)[0].obj;
     let set_annots = |d: &mut Document, list: Vec<Object>| d.update_dict(page, |p| p.set(b"Annots".to_vec(), Object::Array(list))).unwrap();
     // One annotation referenced 1000 times is one measurement.
     set_annots(&mut d, vec![Object::Ref(r); 1000]);
@@ -465,9 +465,9 @@ fn ortho_holds_a_vertex_level_or_plumb_with_the_last() {
 #[test]
 fn a_stream_over_the_byte_budget_uses_it_up_once() {
     // 50 references to one Flate stream that inflates past the 16 MiB budget decode once.
-    let big = pdfcraft_cos::Stream::flate(Dict::new(), &vec![b' '; 17 << 20]);
+    let big = iridium_pdf_cos::Stream::flate(Dict::new(), &vec![b' '; 17 << 20]);
     let hex: String = big.raw.iter().map(|b| format!("{b:02x}")).collect();
-    let bomb = String::from_utf8(pdfcraft_testkit::stream_obj("/Filter [/ASCIIHexDecode /FlateDecode]", hex)).unwrap();
+    let bomb = String::from_utf8(iridium_pdf_testkit::stream_obj("/Filter [/ASCIIHexDecode /FlateDecode]", hex)).unwrap();
     let contents = format!("[4 0 R{}]", " 5 0 R".repeat(50));
     let d = fixture_with(&contents, "0 0 m 10 0 l S", "", &[bomb.as_str()]);
     let g = snap::geometry_with_limits(&d, 0, SMALL).unwrap();

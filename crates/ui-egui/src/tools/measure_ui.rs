@@ -1,9 +1,9 @@
 //! Measure objects: page-space clicks, live readings and persistent drawing scales.
 #[cfg(not(target_arch = "wasm32"))]
 use crate::file_filter::AddFilterAnyCase as _;
-use crate::{LeftPanel, PdfCraftApp, QuickTool, canvas::DocView, page_cursor::Layer, theme::Tokens, widgets};
+use crate::{LeftPanel, PdfApp, QuickTool, canvas::DocView, page_cursor::Layer, theme::Tokens, widgets};
 use egui::{Color32, Pos2, Stroke};
-use pdfcraft_engine::{
+use iridium_pdf_engine::{
     Document, Edit, Style,
     measure::{self, Kind, NewMeasurement, PageUnit, Point, Reading, Scale},
 };
@@ -273,7 +273,7 @@ fn start_read(ctx: &egui::Context, state: &mut MeasureView, doc: &Document, page
         let _ = sender.send(job());
         repaint.request_repaint();
     };
-    if let Err(e) = std::thread::Builder::new().name("pdfcraft-snap".into()).spawn(work) {
+    if let Err(e) = std::thread::Builder::new().name("iridium-pdf-snap".into()).spawn(work) {
         state.paths = Some((page, generation, Err(e.to_string())));
         return true;
     }
@@ -474,11 +474,11 @@ fn finish(state: &mut MeasureView, pending: &mut Option<Edit>, doc: &Document, p
         state.cancel();
     }
 }
-pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
+pub(crate) fn panel(app: &mut PdfApp, ui: &mut egui::Ui, t: &Tokens) {
     egui::ScrollArea::vertical().id_salt("measure-panel").show(ui, |ui| panel_body(app, ui, t));
 }
 /// Draw the measurement panel: tool selection, scale calibration, snapping and the current reading.
-fn panel_body(app: &mut PdfCraftApp, ui: &mut egui::Ui, _t: &Tokens) {
+fn panel_body(app: &mut PdfApp, ui: &mut egui::Ui, _t: &Tokens) {
     crate::widgets::begin_dialog(ui);
     let Some((index, id)) = app.active_ids() else {
         ui.label(tl!("Open a PDF to measure it."));
@@ -682,7 +682,7 @@ fn panel_body(app: &mut PdfCraftApp, ui: &mut egui::Ui, _t: &Tokens) {
         export_csv(app);
     }
 }
-pub(crate) fn command(app: &mut PdfCraftApp, id: &str) {
+pub(crate) fn command(app: &mut PdfApp, id: &str) {
     app.left = LeftPanel::Tool("measure");
     app.left_open = true;
     if let Some((index, _)) = app.active_ids()
@@ -695,7 +695,7 @@ pub(crate) fn command(app: &mut PdfCraftApp, id: &str) {
         export_csv(app);
     }
 }
-fn export_csv(app: &mut PdfCraftApp) {
+fn export_csv(app: &mut PdfApp) {
     let Some((_, id)) = app.active_ids() else { return };
     let result = app.session.get(id).ok_or_else(|| "no such document".to_string()).and_then(|d| d.measurements());
     match result {
@@ -710,13 +710,12 @@ fn export_csv(app: &mut PdfCraftApp) {
             }
             #[cfg(not(target_arch = "wasm32"))]
             {
-                let write = move |app: &mut PdfCraftApp, path: std::path::PathBuf| match crate::editing::write_atomically(
-                    &path.to_string_lossy(),
-                    csv.as_bytes(),
-                ) {
-                    Ok(()) => app.notify(tl!("Saved measurements.")),
-                    Err(e) => app.notify(e.to_string()),
-                };
+                let write =
+                    move |app: &mut PdfApp, path: std::path::PathBuf| match crate::editing::write_atomically(&path.to_string_lossy(), csv.as_bytes())
+                    {
+                        Ok(()) => app.notify(tl!("Saved measurements.")),
+                        Err(e) => app.notify(e.to_string()),
+                    };
                 match app.export_dir_override.as_ref().map(|d| std::path::PathBuf::from(d).join("measurements.csv")) {
                     Some(path) => write(app, path),
                     None => {
@@ -779,7 +778,7 @@ mod tests {
     #[test]
     fn only_a_small_file_is_read_for_snapping_on_the_window_thread() {
         let ctx = egui::Context::default();
-        let mut session = pdfcraft_engine::Session::new();
+        let mut session = iridium_pdf_engine::Session::new();
 
         let small = session.open_new("small.pdf", std::sync::Arc::new(lined_pdf(10))).unwrap();
         let mut state = MeasureView::default();
@@ -811,7 +810,7 @@ mod tests {
         let pdf = lined_pdf(lines);
         assert!(pdf.len() < SNAP_SMALL_FILE);
         let ctx = egui::Context::default();
-        let mut session = pdfcraft_engine::Session::new();
+        let mut session = iridium_pdf_engine::Session::new();
         let id = session.open_new("small.pdf", std::sync::Arc::new(pdf)).unwrap();
         let doc = session.get(id).unwrap();
         let mut state = MeasureView::default();
@@ -830,7 +829,7 @@ mod tests {
     #[test]
     fn only_one_snapping_read_runs_at_a_time() {
         let ctx = egui::Context::default();
-        let mut session = pdfcraft_engine::Session::new();
+        let mut session = iridium_pdf_engine::Session::new();
         let id = session.open_new("big.pdf", std::sync::Arc::new(lined_pdf(SNAP_SMALL_FILE / 20 + 1))).unwrap();
         let doc = session.get(id).unwrap();
         let (sender, receiver) = std::sync::mpsc::channel();
@@ -847,7 +846,7 @@ mod tests {
     #[test]
     fn a_snapping_read_that_stops_is_an_error() {
         let ctx = egui::Context::default();
-        let mut session = pdfcraft_engine::Session::new();
+        let mut session = iridium_pdf_engine::Session::new();
         let id = session.open_new("small.pdf", std::sync::Arc::new(lined_pdf(10))).unwrap();
         let doc = session.get(id).unwrap();
         let (sender, receiver) = std::sync::mpsc::channel();
@@ -861,7 +860,7 @@ mod tests {
     #[test]
     fn the_reading_message_goes_when_the_drawing_is_read() {
         let ctx = egui::Context::default();
-        let mut session = pdfcraft_engine::Session::new();
+        let mut session = iridium_pdf_engine::Session::new();
         let id = session.open_new("small.pdf", std::sync::Arc::new(lined_pdf(10))).unwrap();
         let doc = session.get(id).unwrap();
         let mut state = MeasureView { error: Some(tl!("Reading the drawing for snapping…").into()), ..MeasureView::default() };

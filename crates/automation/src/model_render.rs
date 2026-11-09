@@ -1,9 +1,9 @@
 //! `model_render`: a page's 3D model (ISO 32000-2 §13.6) drawn to a PNG, without a viewer.
 
-use pdfcraft_engine::model3d::Model3dKind;
-use pdfcraft_prc::PrcFile;
-use pdfcraft_prc_render::nav::{Axis, NamedView, Orbit, Upright, reach};
-use pdfcraft_prc_render::{Bounds, Camera, RenderOptions, WorldMesh, assemble, render};
+use iridium_pdf_engine::model3d::Model3dKind;
+use iridium_pdf_prc::PrcFile;
+use iridium_pdf_prc_render::nav::{Axis, NamedView, Orbit, Upright, reach};
+use iridium_pdf_prc_render::{Bounds, Camera, RenderOptions, WorldMesh, assemble, render};
 use serde_json::Value;
 
 use super::Automation;

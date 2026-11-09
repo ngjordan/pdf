@@ -17,7 +17,7 @@ pub(super) fn classify_changes(doc: &Document, old: Option<Document>, p: Option<
     // file's slot accepts two generations (#1143), and a page signed as `3 5 R` and edited as
     // `3 0 R` is still that page. The loop over changed objects refuses any slot whose accepted
     // generations changed, so a number names the same slot in both revisions.
-    let old_content: HashSet<u32> = pdfcraft_annot::page_refs(&old)
+    let old_content: HashSet<u32> = iridium_pdf_annot::page_refs(&old)
         .unwrap_or_default()
         .into_iter()
         .flat_map(|pg| {
@@ -41,7 +41,7 @@ pub(super) fn classify_changes(doc: &Document, old: Option<Document>, p: Option<
     // object is judged by the role it held when signed, never by the labels or keys its new,
     // attacker-written version carries (relabelling a signed page /Type /Sig, or dropping its
     // /Type and adding /ModDate, must not reclassify it away from page content).
-    let signed_page_refs = pdfcraft_annot::page_refs(&old).unwrap_or_default();
+    let signed_page_refs = iridium_pdf_annot::page_refs(&old).unwrap_or_default();
     let signed_pages: HashSet<u32> = signed_page_refs.iter().map(|r| r.num).collect();
     // The signed pages' /Annots arrays that are objects of their own. Adding an annotation updates
     // such an array in place (the page dictionary does not change), so it is judged like a
@@ -93,7 +93,7 @@ pub(super) fn classify_changes(doc: &Document, old: Option<Document>, p: Option<
     let dss = dss_parts(doc, &old);
     // Stored at the same place in both (and not edited since): the same bytes, unchanged.
     let same_place = |num: u32| -> bool {
-        use pdfcraft_cos::XrefEntry;
+        use iridium_pdf_cos::XrefEntry;
         if doc.is_edited(num) {
             return false;
         }
@@ -411,7 +411,7 @@ impl ChangedObjectClassifier<'_> {
         }
     }
 
-    fn stream_change(&self, r: ObjRef, stream: &pdfcraft_cos::Stream, before: Option<&Object>) -> Option<&'static str> {
+    fn stream_change(&self, r: ObjRef, stream: &iridium_pdf_cos::Stream, before: Option<&Object>) -> Option<&'static str> {
         // File plumbing is the stream's role when signed; a later /Type label cannot change it.
         let was_plumbing = matches!(before, Some(Object::Stream(previous)) if matches!(previous.dict.name(b"Type"), Some(b"XRef" | b"ObjStm")));
         if self.old_content.contains(&r.num) {
@@ -1040,7 +1040,7 @@ mod tests {
         before.set(b"MediaBox".to_vec(), Object::Array(vec![Object::Int(0), Object::Int(0), Object::Real(612.0), Object::Real(792.0)]));
         before.set(
             b"PieceInfo".to_vec(),
-            Object::Dict(Dict::from_iter([(b"Note".to_vec(), Object::String(pdfcraft_cos::PdfString::literal("signed")))])),
+            Object::Dict(Dict::from_iter([(b"Note".to_vec(), Object::String(iridium_pdf_cos::PdfString::literal("signed")))])),
         );
         let mut reordered = page(
             vec![
@@ -1052,7 +1052,7 @@ mod tests {
         reordered.set(b"MediaBox".to_vec(), Object::Array(vec![Object::Real(0.0), Object::Int(0), Object::Int(612), Object::Int(792)]));
         reordered.set(
             b"PieceInfo".to_vec(),
-            Object::Dict(Dict::from_iter([(b"Note".to_vec(), Object::String(pdfcraft_cos::PdfString { bytes: b"signed".to_vec(), hex: true }))])),
+            Object::Dict(Dict::from_iter([(b"Note".to_vec(), Object::String(iridium_pdf_cos::PdfString { bytes: b"signed".to_vec(), hex: true }))])),
         );
         assert_eq!(page_change_kind(&doc, &doc, &before, Some(&before)), None);
         assert_eq!(page_change_kind(&doc, &doc, &reordered, Some(&before)), None);
@@ -1139,7 +1139,7 @@ mod tests {
         let mut doc = Document::open(Arc::new(signed)).unwrap();
         let other = ObjRef { num: 5, generation: 0 };
         doc.update_dict(ObjRef { num: 3, generation: 0 }, |p| p.set(b"DocMDP".to_vec(), Object::Ref(other))).unwrap();
-        let edited = pdfcraft_cos::write_incremental(&doc, &pdfcraft_cos::SaveOptions { object_streams: false, ..Default::default() }).unwrap();
+        let edited = iridium_pdf_cos::write_incremental(&doc, &iridium_pdf_cos::SaveOptions { object_streams: false, ..Default::default() }).unwrap();
         let doc = Document::open(Arc::new(edited)).unwrap();
         match classify_changes(&doc, Some(old), Some(1)) {
             Modification::Disallowed(kinds) => assert!(kinds.contains(&kind::STRUCTURE), "{kinds:?}"),

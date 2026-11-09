@@ -3,7 +3,7 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::{By, Queryable};
-use pdfcraft_ui_egui::{Dialog, PdfCraftApp};
+use iridium_pdf_ui_egui::{Dialog, PdfApp};
 
 /// `n` pages of 200×300; page i says "Page i+1" plus "page" and "Pages" for find tests.
 fn fixture(n: usize) -> Vec<u8> {
@@ -31,9 +31,9 @@ fn fixture(n: usize) -> Vec<u8> {
     out
 }
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("a.pdf", None, fixture(5)).unwrap();
         app.open_bytes("b.pdf", None, fixture(2)).unwrap();
@@ -48,18 +48,18 @@ fn harness() -> Harness<'static, PdfCraftApp> {
 fn close_all_asks_only_for_changed_documents() {
     let mut h = harness();
     // Change the active document (b.pdf).
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
     h.state_mut().execute("file.close_all");
     h.run_steps(2);
     assert_eq!(h.state().views.len(), 1, "the clean document closed at once");
-    assert_eq!(h.state().close_request, Some(pdfcraft_ui_egui::CloseRequest::All), "b.pdf asks to be saved");
+    assert_eq!(h.state().close_request, Some(iridium_pdf_ui_egui::CloseRequest::All), "b.pdf asks to be saved");
     h.get_by_label_contains("Save changes");
 }
 
 #[test]
 fn revert_after_confirming() {
     let mut h = harness();
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::DeletePages { pages: vec![0] });
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::DeletePages { pages: vec![0] });
     assert!(h.state_mut().execute("file.revert"));
     h.run_steps(2);
     assert_eq!(h.state().dialog, Some(Dialog::Revert));
@@ -231,7 +231,7 @@ fn find_shortcuts_work_from_the_find_field() {
 
 /// Open the find bar on the first document, search for the single uppercase "PAGE" on each
 /// page, and wait until every text layer has answered. Returns the document's view index.
-fn find_one_match_per_page(h: &mut Harness<'static, PdfCraftApp>) -> usize {
+fn find_one_match_per_page(h: &mut Harness<'static, PdfApp>) -> usize {
     h.state_mut().active = Some(0);
     h.run_steps(2);
     let view = h.state().active.expect("a document is shown");
@@ -388,10 +388,10 @@ fn marking_while_searching_does_not_jitter_or_reset_search_state() {
     assert!(h.state().views[0].goto.is_none());
 
     // User draws or marks an annotation on page 0
-    let shape = pdfcraft_engine::Shape::Ink { strokes: vec![vec![[10.0, 10.0], [20.0, 20.0]]] };
-    let stroke = pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+    let shape = iridium_pdf_engine::Shape::Ink { strokes: vec![vec![[10.0, 10.0], [20.0, 20.0]]] };
+    let stroke = iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
         page: 0,
-        style: pdfcraft_engine::Style::default_for(&shape),
+        style: iridium_pdf_engine::Style::default_for(&shape),
         shape,
         contents: String::new(),
         author: "tester".into(),
@@ -424,10 +424,10 @@ fn marking_while_searching_does_not_jitter_or_reset_search_state() {
     h.run_steps(2);
     h.state_mut().views[0].goto = None;
     for p in 1..=4 {
-        let shape = pdfcraft_engine::Shape::Ink { strokes: vec![vec![[15.0 * p as f64, 20.0], [30.0 * p as f64, 40.0]]] };
-        let stroke = pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+        let shape = iridium_pdf_engine::Shape::Ink { strokes: vec![vec![[15.0 * p as f64, 20.0], [30.0 * p as f64, 40.0]]] };
+        let stroke = iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
             page: p,
-            style: pdfcraft_engine::Style::default_for(&shape),
+            style: iridium_pdf_engine::Style::default_for(&shape),
             shape,
             contents: String::new(),
             author: "tester".into(),
@@ -449,7 +449,7 @@ fn marking_while_searching_does_not_jitter_or_reset_search_state() {
 
 #[test]
 fn layouts_fit_height_labels_and_system_theme() {
-    use pdfcraft_ui_egui::canvas::{Fit, PageLayout};
+    use iridium_pdf_ui_egui::canvas::{Fit, PageLayout};
     let mut h = harness();
     h.state_mut().active = Some(0);
     // Fit height: the page's height fills the view (less the margins).
@@ -474,10 +474,10 @@ fn layouts_fit_height_labels_and_system_theme() {
     assert!(a.left() > vp.center().x - 1.0, "the cover sits on the right");
     assert!(b.top() > a.bottom() && (b.top() - c.top()).abs() < 1.0, "then pairs 2–3");
     // Page labels in the page box.
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::NumberPages {
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::NumberPages {
         from: 0,
         to: 1,
-        style: pdfcraft_engine::LabelStyle::LowerRoman,
+        style: iridium_pdf_engine::LabelStyle::LowerRoman,
         prefix: String::new(),
         first: 1,
     });
@@ -495,10 +495,10 @@ fn layouts_fit_height_labels_and_system_theme() {
     assert!(!h.state_mut().views[0].go_to_typed("xx", &labels));
     // Follow the system theme.
     h.state_mut().set_option("theme", "system").unwrap();
-    assert_eq!(h.state().theme_preference, pdfcraft_ui_egui::theme::ThemePreference::System);
+    assert_eq!(h.state().theme_preference, iridium_pdf_ui_egui::theme::ThemePreference::System);
 }
 
-fn page_input_focused(h: &Harness<'static, PdfCraftApp>) -> bool {
+fn page_input_focused(h: &Harness<'static, PdfApp>) -> bool {
     let focused = h.ctx.memory(|m| m.focused());
     let view = &h.state().views[h.state().active.unwrap()];
     // Also identifies the original editor when running this test-only patch on the baseline.
@@ -506,14 +506,14 @@ fn page_input_focused(h: &Harness<'static, PdfCraftApp>) -> bool {
 }
 
 /// Exercise the real navigation editor, including its focus and Enter handling.
-fn focus_page_input(h: &mut Harness<'static, PdfCraftApp>) {
+fn focus_page_input(h: &mut Harness<'static, PdfApp>) {
     let text = h.state().views[h.state().active.unwrap()].page_input.clone();
     h.get(By::new().role(egui::accesskit::Role::TextInput).value(&text)).focus();
     h.run_steps(1);
     assert!(page_input_focused(h), "the actual page editor has focus");
 }
 
-fn type_page_input(h: &mut Harness<'static, PdfCraftApp>, text: &str) {
+fn type_page_input(h: &mut Harness<'static, PdfApp>, text: &str) {
     focus_page_input(h);
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
     h.run_steps(1);
@@ -522,8 +522,8 @@ fn type_page_input(h: &mut Harness<'static, PdfCraftApp>, text: &str) {
     h.run_steps(2);
 }
 
-fn restart_page_labels(h: &mut Harness<'static, PdfCraftApp>) {
-    use pdfcraft_engine::{Edit, LabelStyle};
+fn restart_page_labels(h: &mut Harness<'static, PdfApp>) {
+    use iridium_pdf_engine::{Edit, LabelStyle};
     let session = std::mem::take(&mut h.state_mut().session);
     h.state_mut().session = session.with_clock(|| 1_700_000_000);
     h.state_mut().active = Some(0);
@@ -540,7 +540,7 @@ fn end_shows_the_bottom_of_the_last_page() {
     use egui::Key;
     let mut h = harness();
     h.state_mut().active = Some(0);
-    h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::Width;
+    h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Width;
     h.run_steps(4);
     let vp = h.state().views[0].viewport_rect();
     assert!(h.state().views[0].page_screen_rect(0).is_some_and(|r| r.height() > vp.height()), "a page is taller than the window");
@@ -607,13 +607,13 @@ fn page_label_input_keeps_current_page_when_submitted_unchanged() {
     assert_eq!(after.can_undo().map(str::to_owned), undo);
     assert_eq!(after.dirty, dirty, "navigation does not edit the PDF");
     assert_eq!(h.state().session.save_bytes(id).unwrap(), before_bytes, "navigation preserves saved PDF bytes");
-    let mut empty = pdfcraft_ui_egui::canvas::DocView::new(pdfcraft_engine::DocId(0), &Default::default(), Default::default());
+    let mut empty = iridium_pdf_ui_egui::canvas::DocView::new(iridium_pdf_engine::DocId(0), &Default::default(), Default::default());
     assert!(!empty.go_to_typed("1", &[]), "an empty view has no current page to retain");
 }
 
 #[test]
 fn page_label_input_resolves_labels_numbers_and_restores_invalid_input() {
-    use pdfcraft_engine::{Edit, LabelStyle};
+    use iridium_pdf_engine::{Edit, LabelStyle};
     let mut h = harness();
     restart_page_labels(&mut h);
     h.state_mut().apply_edit(Edit::NumberPages { from: 4, to: 4, style: LabelStyle::Decimal, prefix: "A-".into(), first: 8 });
@@ -675,8 +675,8 @@ fn page_label_input_takes_a_position_in_parentheses() {
 
 #[test]
 fn page_label_input_preserves_literal_whitespace_before_trimmed_lookup() {
-    use pdfcraft_render::{DocInfo, PageInfo};
-    use pdfcraft_ui_egui::canvas::DocView;
+    use iridium_pdf_render::{DocInfo, PageInfo};
+    use iridium_pdf_ui_egui::canvas::DocView;
     // The importer trims label prefixes, so supply literal labels directly to the view.
     for label in [" 1", "1 "] {
         let info = DocInfo {
@@ -687,7 +687,7 @@ fn page_label_input_preserves_literal_whitespace_before_trimmed_lookup() {
             ..Default::default()
         };
         let labels: Vec<String> = info.pages.iter().map(|page| page.label.clone()).collect();
-        let mut view = DocView::new(pdfcraft_engine::DocId(0), &info, Default::default());
+        let mut view = DocView::new(iridium_pdf_engine::DocId(0), &info, Default::default());
         view.document_replaced(&info);
         assert_eq!(view.page_input, label, "the displayed label retains its literal whitespace");
         let unchanged = view.page_input.clone();
@@ -723,7 +723,7 @@ fn page_label_input_focus_command_refreshes_same_frame_navigation_and_preserves_
 
 #[test]
 fn page_label_input_new_document_does_not_inherit_or_commit_the_previous_draft() {
-    use pdfcraft_engine::{Edit, LabelStyle, Session};
+    use iridium_pdf_engine::{Edit, LabelStyle, Session};
     let mut h = harness();
     restart_page_labels(&mut h);
     h.state_mut().views[0].go_to_page(3);
@@ -796,7 +796,7 @@ fn page_label_input_preserves_typing_and_refreshes_after_navigation_and_tab_chan
 
 #[test]
 fn page_label_input_same_document_replacement_refreshes_the_focused_label() {
-    use pdfcraft_engine::{Edit, LabelStyle, Session};
+    use iridium_pdf_engine::{Edit, LabelStyle, Session};
     use std::sync::Arc;
     for (pages, roman, page, label) in [(5, false, 3, "4"), (5, true, 3, "iv"), (3, false, 2, "3")] {
         let mut h = harness();
@@ -848,7 +848,7 @@ fn page_label_input_same_document_replacement_refreshes_the_focused_label() {
 
 #[test]
 fn page_label_input_same_document_replacement_keeps_full_label_selected_for_typing() {
-    use pdfcraft_engine::{Edit, LabelStyle, Session};
+    use iridium_pdf_engine::{Edit, LabelStyle, Session};
     use std::sync::Arc;
     for settling_frames in [3, 0] {
         let mut h = harness();
@@ -915,13 +915,13 @@ fn page_label_input_same_document_replacement_keeps_full_label_selected_for_typi
 fn two_page_view_steps_a_spread_at_a_time() {
     // #70: ⌘→ went to the right-hand page of the same spread, so the view never moved.
     use egui::{Key, Modifiers};
-    use pdfcraft_ui_egui::canvas::{Fit, PageLayout};
+    use iridium_pdf_ui_egui::canvas::{Fit, PageLayout};
     let mut h = harness();
     h.state_mut().active = Some(0);
     h.state_mut().views[0].fit = Fit::Width;
     h.state_mut().views[0].layout = PageLayout::TwoUp;
     h.run_steps(4);
-    let step = |h: &mut Harness<'static, PdfCraftApp>, key| {
+    let step = |h: &mut Harness<'static, PdfApp>, key| {
         h.key_press_modifiers(Modifiers::COMMAND, key);
         h.run_steps(4);
         h.state().views[0].current
@@ -946,7 +946,7 @@ trailer << /Root 1 0 R >>
 %%EOF"
         .to_vec();
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("damaged.pdf", None, damaged.clone()).unwrap();
         app
@@ -955,15 +955,15 @@ trailer << /Root 1 0 R >>
     h.get_by_label_contains("This file was damaged and has been repaired.");
     h.get_by_label("Details").click();
     h.run_steps(3);
-    assert_eq!(h.state().dialog, Some(Dialog::Properties(pdfcraft_ui_egui::PropsTab::Advanced)));
+    assert_eq!(h.state().dialog, Some(Dialog::Properties(iridium_pdf_ui_egui::PropsTab::Advanced)));
     h.get_by_label("Repair log");
 }
 
 #[test]
 fn initial_view_is_edited_and_honoured_on_open() {
-    use pdfcraft_engine::{InitialLayout, Magnification, Navigation};
+    use iridium_pdf_engine::{InitialLayout, Magnification, Navigation};
     let mut h = harness();
-    h.state_mut().dialog = Some(Dialog::Properties(pdfcraft_ui_egui::PropsTab::InitialView));
+    h.state_mut().dialog = Some(Dialog::Properties(iridium_pdf_ui_egui::PropsTab::InitialView));
     h.run_steps(2);
     h.get_by_label("Open to page");
     {
@@ -986,24 +986,24 @@ fn initial_view_is_edited_and_honoured_on_open() {
     assert_eq!(s.session.get(id).unwrap().can_undo(), Some("Change document properties"));
     // Opening the saved file follows it.
     let bytes = s.session.save_bytes(id).unwrap();
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("language", "en").unwrap();
     app.open_bytes("again.pdf", None, bytes.to_vec()).unwrap();
     let view = &app.views[0];
-    assert_eq!((view.current, view.cover, app.right), (1, true, Some(pdfcraft_ui_egui::RightPanel::Bookmarks)));
+    assert_eq!((view.current, view.cover, app.right), (1, true, Some(iridium_pdf_ui_egui::RightPanel::Bookmarks)));
 }
 
 #[test]
 fn initial_view_magnification_offers_25_and_100_percent() {
     use egui::accesskit::Role;
-    use pdfcraft_engine::Magnification;
-    use pdfcraft_ui_egui::canvas::Fit;
-    fn open_initial_view(h: &mut Harness<'static, PdfCraftApp>) {
-        h.state_mut().dialog = Some(Dialog::Properties(pdfcraft_ui_egui::PropsTab::InitialView));
+    use iridium_pdf_engine::Magnification;
+    use iridium_pdf_ui_egui::canvas::Fit;
+    fn open_initial_view(h: &mut Harness<'static, PdfApp>) {
+        h.state_mut().dialog = Some(Dialog::Properties(iridium_pdf_ui_egui::PropsTab::InitialView));
         // The dialog's height settles a frame after it opens; egui centers from the previous size.
         h.run_steps(6);
     }
-    fn pick(h: &mut Harness<'static, PdfCraftApp>, label: &str) {
+    fn pick(h: &mut Harness<'static, PdfApp>, label: &str) {
         h.get_by_role_and_label(Role::ComboBox, "Magnification").click();
         h.run_steps(3);
         // The list is taller than the popup, so the item may need scrolling into view.
@@ -1014,13 +1014,13 @@ fn initial_view_magnification_offers_25_and_100_percent() {
     }
     /// Clicks OK, then reopens the saved file: its initial magnification, and the zoom and fit
     /// its view opens at.
-    fn save(h: &mut Harness<'static, PdfCraftApp>) -> (Magnification, f32, Fit) {
+    fn save(h: &mut Harness<'static, PdfApp>) -> (Magnification, f32, Fit) {
         h.get_by_label("OK").click();
         h.run_steps(3);
         let s = h.state();
         let id = s.views[s.active.unwrap()].id;
         let bytes = s.session.save_bytes(id).unwrap();
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.open_bytes("again.pdf", None, bytes.to_vec()).unwrap();
         let view = &app.views[0];
         (app.session.get(view.id).unwrap().initial_view().magnification, view.zoom, view.fit)
@@ -1040,7 +1040,7 @@ fn initial_view_magnification_offers_25_and_100_percent() {
     assert_eq!(save(&mut h), (Magnification::ActualSize, 1.0, Fit::None));
 }
 
-fn drag(h: &mut Harness<'static, PdfCraftApp>, a: egui::Pos2, b: egui::Pos2) {
+fn drag(h: &mut Harness<'static, PdfApp>, a: egui::Pos2, b: egui::Pos2) {
     h.hover_at(a);
     h.run_steps(1);
     h.drag_at(a);
@@ -1100,7 +1100,7 @@ fn a_snapshot_keeps_its_resolution_when_zoomed_out() {
         h.state_mut().set_option("zoom", &zoom.to_string()).unwrap();
         h.run_steps(2);
         let (w, _) = h.state_mut().snapshot(i, 0, [15.0, 125.0, 180.0, 160.0]).expect("a snapshot");
-        let on_screen = (165.0 * zoom / 100.0 * pdfcraft_ui_egui::canvas::PT * ppp).ceil() as u32;
+        let on_screen = (165.0 * zoom / 100.0 * iridium_pdf_ui_egui::canvas::PT * ppp).ceil() as u32;
         assert!(w.abs_diff(on_screen) <= 1, "{w} pixels at {zoom}%, {on_screen} on screen");
     }
 }
@@ -1123,7 +1123,7 @@ trailer << /Root 1 0 R >>
         stream.len()
     );
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("large.pdf", None, pdf.into_bytes()).unwrap();
         app.system_clipboard = false;
@@ -1159,10 +1159,10 @@ fn fit_visible_zooms_to_the_content_width() {
 
 #[test]
 fn tab_and_window_show_the_document_title_when_asked() {
-    use pdfcraft_engine::Edit;
+    use iridium_pdf_engine::Edit;
     let mut h = harness();
     h.run_steps(2);
-    assert_eq!(h.state().window_title, "b.pdf — PdfCraft");
+    assert_eq!(h.state().window_title, "b.pdf — PDF");
     {
         let s = h.state_mut();
         let id = s.views[s.active.unwrap()].id;
@@ -1173,23 +1173,23 @@ fn tab_and_window_show_the_document_title_when_asked() {
     }
     h.run_steps(2);
     // The edits are unsaved, so the title says so (#3640).
-    assert_eq!(h.state().window_title, "Quarterly report • — PdfCraft");
+    assert_eq!(h.state().window_title, "Quarterly report • — PDF");
     h.get_by_label_contains("Quarterly report");
 }
 
 #[test]
 fn the_window_title_marks_unsaved_changes_until_saved() {
-    use pdfcraft_engine::Edit;
+    use iridium_pdf_engine::Edit;
     let mut h = harness();
     h.run_steps(2);
-    assert_eq!(h.state().window_title, "b.pdf — PdfCraft");
+    assert_eq!(h.state().window_title, "b.pdf — PDF");
     {
         let s = h.state_mut();
         let id = s.views[s.active.unwrap()].id;
         s.session.apply(id, Edit::SetInfo { key: "Subject".into(), value: "Budget".into() }).unwrap();
     }
     h.run_steps(2);
-    assert_eq!(h.state().window_title, "b.pdf • — PdfCraft", "unsaved changes (#3640)");
+    assert_eq!(h.state().window_title, "b.pdf • — PDF", "unsaved changes (#3640)");
     // Removed on drop, so a failing assert below doesn't leave it behind.
     struct Dir(std::path::PathBuf);
     impl Drop for Dir {
@@ -1197,7 +1197,7 @@ fn the_window_title_marks_unsaved_changes_until_saved() {
             let _ = std::fs::remove_dir_all(&self.0);
         }
     }
-    let dir = Dir(std::env::temp_dir().join(format!("pdfcraft-title-dirty-{}", std::process::id())));
+    let dir = Dir(std::env::temp_dir().join(format!("iridium-pdf-title-dirty-{}", std::process::id())));
     std::fs::create_dir_all(&dir.0).unwrap();
     // Saved under its own name, so the title changes only by the mark.
     h.state_mut().save_override = Some(dir.0.join("b.pdf").to_string_lossy().into_owned());
@@ -1205,17 +1205,17 @@ fn the_window_title_marks_unsaved_changes_until_saved() {
     h.run_steps(2);
     let s = h.state();
     assert!(!s.session.get(s.views[s.active.unwrap()].id).unwrap().dirty);
-    assert_eq!(s.window_title, "b.pdf — PdfCraft", "saved");
+    assert_eq!(s.window_title, "b.pdf — PDF", "saved");
 }
 
 /// #3640: text typed but not yet applied is unsaved work too, as closing the tab says, so the
 /// title marks it.
 #[test]
 fn the_window_title_marks_a_draft_that_is_not_applied_yet() {
-    use pdfcraft_ui_egui::fill_sign::TypeBox;
+    use iridium_pdf_ui_egui::fill_sign::TypeBox;
     let mut h = harness();
     h.run_steps(2);
-    assert_eq!(h.state().window_title, "b.pdf — PdfCraft");
+    assert_eq!(h.state().window_title, "b.pdf — PDF");
     let i = h.state().active.unwrap();
     h.state_mut().views[i].fill_text = Some(TypeBox {
         page: 0,
@@ -1223,14 +1223,14 @@ fn the_window_title_marks_a_draft_that_is_not_applied_yet() {
         text: "Typed".into(),
         size: 10.0,
         color: [0.0; 3],
-        border: pdfcraft_ui_egui::fill_sign::TextBorder::NONE,
+        border: iridium_pdf_ui_egui::fill_sign::TextBorder::NONE,
         focus: false,
     });
     h.run_steps(2);
     let s = h.state();
     assert!(!s.session.get(s.views[i].id).unwrap().dirty, "nothing applied to the document yet");
-    assert_eq!(s.window_title, "b.pdf • — PdfCraft");
-    assert_eq!(s.page_title, "b.pdf • — PdfCraft");
+    assert_eq!(s.window_title, "b.pdf • — PDF");
+    assert_eq!(s.page_title, "b.pdf • — PDF");
 }
 
 /// #3640: a document that arrives while the window or browser tab is hidden, when eframe runs
@@ -1240,7 +1240,7 @@ fn a_document_opened_while_hidden_names_the_titles() {
     let mut h = harness();
     h.run_steps(2);
     let before = h.state().views.len();
-    let bytes = pdfcraft_engine::Session::new().create_from_text("Arrived", "Arrived while hidden").unwrap();
+    let bytes = iridium_pdf_engine::Session::new().create_from_text("Arrived", "Arrived while hidden").unwrap();
     h.state().inbox.lock().unwrap().push(("arrived.pdf".into(), bytes.to_vec()));
     let ctx = h.ctx.clone();
     let mut frame = eframe::Frame::_new_kittest();
@@ -1254,15 +1254,15 @@ fn a_document_opened_while_hidden_names_the_titles() {
     }
     let s = h.state();
     assert_eq!(s.views.len(), before + 1, "the document opened in logic");
-    assert_eq!(s.page_title, "arrived.pdf — PdfCraft");
-    assert_eq!(s.window_title, "arrived.pdf — PdfCraft");
+    assert_eq!(s.page_title, "arrived.pdf — PDF");
+    assert_eq!(s.window_title, "arrived.pdf — PDF");
 }
 
 /// #3640: a document that asks to show its own title shows it in the window, but the web page's
 /// title, which an embedding host reads to tell which file opened, keeps the file's name.
 #[test]
 fn the_web_page_title_names_the_file_when_the_document_shows_its_title() {
-    use pdfcraft_engine::Edit;
+    use iridium_pdf_engine::Edit;
     let mut h = harness();
     {
         let s = h.state_mut();
@@ -1273,15 +1273,15 @@ fn the_web_page_title_names_the_file_when_the_document_shows_its_title() {
         s.session.apply(id, Edit::SetInitialView(Box::new(v))).unwrap();
     }
     h.run_steps(2);
-    assert_eq!(h.state().window_title, "Budget 2026 • — PdfCraft");
-    assert_eq!(h.state().page_title, "b.pdf • — PdfCraft");
+    assert_eq!(h.state().window_title, "Budget 2026 • — PDF");
+    assert_eq!(h.state().page_title, "b.pdf • — PDF");
 }
 
 #[test]
 fn a_placeholder_title_leaves_the_file_name_on_the_tab_and_window() {
     // A browser's "Save as PDF" of a blank page or pop-up titles the document "about:blank"
     // and asks viewers to show the title: the file name says more.
-    use pdfcraft_engine::Edit;
+    use iridium_pdf_engine::Edit;
     let mut h = harness();
     {
         let s = h.state_mut();
@@ -1292,13 +1292,13 @@ fn a_placeholder_title_leaves_the_file_name_on_the_tab_and_window() {
         s.session.apply(id, Edit::SetInitialView(Box::new(v))).unwrap();
     }
     h.run_steps(2);
-    assert_eq!(h.state().window_title, "b.pdf • — PdfCraft");
+    assert_eq!(h.state().window_title, "b.pdf • — PDF");
     assert!(h.query_by_label_contains("about:blank").is_none());
 }
 
 #[test]
 fn an_earlier_revision_opens_from_document_properties() {
-    use pdfcraft_engine::Edit;
+    use iridium_pdf_engine::Edit;
     let mut h = harness();
     {
         let s = h.state_mut();
@@ -1308,7 +1308,7 @@ fn an_earlier_revision_opens_from_document_properties() {
         s.open_bytes("updated.pdf", None, bytes.to_vec()).unwrap();
     }
     h.run_steps(2);
-    h.state_mut().dialog = Some(Dialog::Properties(pdfcraft_ui_egui::PropsTab::Advanced));
+    h.state_mut().dialog = Some(Dialog::Properties(iridium_pdf_ui_egui::PropsTab::Advanced));
     h.run_steps(2);
     h.run_steps(2);
     // Let the dialog finish centering before the revision button is clicked.
@@ -1336,7 +1336,7 @@ fn an_earlier_revision_opens_from_document_properties() {
         s.views[s.active.unwrap()]
             .snapshot
             .as_ref()
-            .is_some_and(|snap| snap.kind == pdfcraft_ui_egui::canvas::SnapshotKind::Revision && snap.revision == 1)
+            .is_some_and(|snap| snap.kind == iridium_pdf_ui_egui::canvas::SnapshotKind::Revision && snap.revision == 1)
     );
     // An unknown revision errors without opening a tab.
     h.state_mut().active = Some(original);
@@ -1361,13 +1361,13 @@ fn an_earlier_revision_opens_from_document_properties() {
         s.views[s.active.unwrap()]
             .snapshot
             .as_ref()
-            .is_some_and(|snap| snap.kind == pdfcraft_ui_egui::canvas::SnapshotKind::Revision && snap.revision == 1)
+            .is_some_and(|snap| snap.kind == iridium_pdf_ui_egui::canvas::SnapshotKind::Revision && snap.revision == 1)
     );
 }
 
 #[test]
 fn wrapped_revision_buttons_stay_above_binding_and_open_the_saved_revision() {
-    use pdfcraft_engine::{Edit, Session};
+    use iridium_pdf_engine::{Edit, Session};
     let mut bytes = std::sync::Arc::new(fixture(1));
     // Reopen each save so the next edit appends to the preceding saved revision.
     for revision in 2..=13 {
@@ -1379,7 +1379,7 @@ fn wrapped_revision_buttons_stay_above_binding_and_open_the_saved_revision() {
     for width in [1400.0, 720.0] {
         let pdf = bytes.clone();
         let mut h = Harness::builder().with_size(egui::vec2(width, 900.0)).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_bytes("revisions.pdf", None, pdf.to_vec()).unwrap();
             app
@@ -1387,7 +1387,7 @@ fn wrapped_revision_buttons_stay_above_binding_and_open_the_saved_revision() {
         let s = h.state();
         let doc = s.session.get(s.views[s.active.unwrap()].id).unwrap();
         assert_eq!(doc.revision_ends().len(), 13, "the fixture contains thirteen saved revisions");
-        h.state_mut().dialog = Some(Dialog::Properties(pdfcraft_ui_egui::PropsTab::Advanced));
+        h.state_mut().dialog = Some(Dialog::Properties(iridium_pdf_ui_egui::PropsTab::Advanced));
         // Let the grid and the centered dialog settle before measuring or clicking.
         h.run_steps(6);
         let buttons: Vec<_> = (1..13).map(|n| (n, h.get_by_label(&format!("View revision {n}")).rect())).collect();
@@ -1424,7 +1424,7 @@ fn wrapped_revision_buttons_stay_above_binding_and_open_the_saved_revision() {
         assert_eq!(doc.name, format!("revisions (revision {lower_revision}).pdf"));
         assert_eq!(doc.info_value("Title"), Some(format!("Revision {lower_revision}")));
         let snapshot = view.snapshot.as_ref().expect("the saved revision opens as a snapshot");
-        assert_eq!(snapshot.kind, pdfcraft_ui_egui::canvas::SnapshotKind::Revision);
+        assert_eq!(snapshot.kind, iridium_pdf_ui_egui::canvas::SnapshotKind::Revision);
         assert_eq!(snapshot.revision, lower_revision);
     }
 }
@@ -1494,12 +1494,12 @@ fn space_audit_numbers_line_up_under_their_headers() {
 fn each_document_keeps_its_own_scroll_position() {
     // #189: every document's page view shared one scroll position, so switching tabs showed a
     // document at wherever the other one had been scrolled to (usually back at the top).
-    use pdfcraft_ui_egui::canvas::Fit;
+    use iridium_pdf_ui_egui::canvas::Fit;
     let mut h = harness();
     for v in &mut h.state_mut().views {
         v.fit = Fit::Width;
     }
-    let show = |h: &mut Harness<'static, PdfCraftApp>, i: usize| {
+    let show = |h: &mut Harness<'static, PdfApp>, i: usize| {
         h.state_mut().active = Some(i);
         h.run_steps(4);
         h.state().views[i].current
@@ -1523,7 +1523,7 @@ fn a_new_document_opens_at_the_top_after_a_relaunch() {
     // eframe saves egui's memory, scroll offsets included, with the settings and restores it at
     // the next launch, where document ids start again at 1: the first document opened then
     // started at the offset the previous session's first document was left at.
-    use pdfcraft_ui_egui::canvas::Fit;
+    use iridium_pdf_ui_egui::canvas::Fit;
     let mut h = harness();
     for v in &mut h.state_mut().views {
         v.fit = Fit::Width;
@@ -1554,14 +1554,14 @@ fn a_new_document_opens_at_the_top_after_a_relaunch() {
     // Next launch: a document never seen before, which gets a.pdf's old id.
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|cc| {
         cc.egui_ctx.memory_mut(|m| *m = memory);
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("c.pdf", None, fixture(5)).unwrap();
         app.views[0].fit = Fit::Width;
         app
     });
     h.run_steps(4);
-    assert_eq!(h.state().views[0].id, pdfcraft_engine::DocId(1));
+    assert_eq!(h.state().views[0].id, iridium_pdf_engine::DocId(1));
     assert_eq!(h.state().views[0].current, 0, "c.pdf opens on page 1");
     // It is still a scroll position of its own from then on.
     h.state_mut().views[0].goto = Some((2, 0.0));
@@ -1576,14 +1576,14 @@ fn arrow_and_page_keys_move_through_a_scrolling_document() {
     // #185: in the continuous (default) and two-page views the arrow keys and Page Down / Up did
     // nothing without ⌘.
     use egui::Key;
-    use pdfcraft_ui_egui::canvas::{Fit, PageLayout};
+    use iridium_pdf_ui_egui::canvas::{Fit, PageLayout};
     let mut h = harness();
     h.state_mut().active = Some(0);
     h.state_mut().views[0].fit = Fit::Width;
     h.run_steps(4);
     assert_eq!(h.state().views[0].layout, PageLayout::Single);
     assert!(h.state().views[0].continuous(), "the default view scrolls continuously");
-    let press = |h: &mut Harness<'static, PdfCraftApp>, key, times: usize| {
+    let press = |h: &mut Harness<'static, PdfApp>, key, times: usize| {
         for _ in 0..times {
             h.key_press(key);
             h.run_steps(2);
@@ -1596,7 +1596,7 @@ fn arrow_and_page_keys_move_through_a_scrolling_document() {
     assert_eq!(press(&mut h, Key::ArrowLeft, 1), 1);
     assert_eq!(press(&mut h, Key::ArrowLeft, 1), 0);
     // ↓ scrolls a line at a time, Page Down a screen: count the presses that reach page 2
-    let presses = |h: &mut Harness<'static, PdfCraftApp>, key| {
+    let presses = |h: &mut Harness<'static, PdfApp>, key| {
         let mut n = 0;
         while h.state().views[0].current == 0 {
             press(h, key, 1);
@@ -1626,14 +1626,14 @@ fn up_and_down_turn_pages_in_single_page_view() {
     // #273: in single-page view ↓ / ↑ only scrolled, so on a page that fits (or once scrolled to
     // the end) they did nothing, while the wheel turned the page there.
     use egui::Key;
-    use pdfcraft_ui_egui::canvas::{Fit, PageLayout};
+    use iridium_pdf_ui_egui::canvas::{Fit, PageLayout};
     let mut h = harness();
     h.state_mut().active = Some(0);
     h.state_mut().views[0].layout = PageLayout::Single;
     h.state_mut().views[0].continuous = false;
     h.state_mut().views[0].fit = Fit::Page;
     h.run_steps(4);
-    let press = |h: &mut Harness<'static, PdfCraftApp>, key, times: usize| {
+    let press = |h: &mut Harness<'static, PdfApp>, key, times: usize| {
         for _ in 0..times {
             h.key_press(key);
             h.run_steps(2);
@@ -1672,7 +1672,7 @@ fn left_and_right_scroll_a_page_wider_than_the_window_before_turning_it() {
     h.state_mut().active = Some(0);
     h.state_mut().views[0].set_zoom(12.0);
     h.run_steps(6);
-    let press = |h: &mut Harness<'static, PdfCraftApp>, modifiers, key| {
+    let press = |h: &mut Harness<'static, PdfApp>, modifiers, key| {
         h.key_press_modifiers(modifiers, key);
         h.run_steps(4);
         let v = &h.state().views[0];
@@ -1692,7 +1692,7 @@ fn left_and_right_scroll_a_page_wider_than_the_window_before_turning_it() {
     assert_eq!(h.state().views[0].current, 1);
     // Page 2 starts at its left edge, as reading on across: → scrolls it rather than turning
     // again at once.
-    let shown = |h: &Harness<'static, PdfCraftApp>, page: usize| {
+    let shown = |h: &Harness<'static, PdfApp>, page: usize| {
         let v = &h.state().views[0];
         (v.page_screen_rect(page).expect("on screen"), v.viewport_rect())
     };
@@ -1713,7 +1713,7 @@ fn left_and_right_scroll_a_page_wider_than_the_window_before_turning_it() {
     assert_eq!(press(&mut h, Modifiers::COMMAND, Key::ArrowRight).0, 1, "⌘→ turns the page at once");
     assert_eq!(press(&mut h, Modifiers::COMMAND, Key::ArrowRight).0, 2);
     // A page that fits across: → turns pages as before.
-    h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::Width;
+    h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Width;
     h.run_steps(6);
     assert_eq!(press(&mut h, Modifiers::NONE, Key::ArrowRight).0, 3);
 }
@@ -1724,7 +1724,7 @@ fn left_and_right_scroll_a_page_wider_than_the_window_before_turning_it() {
 fn left_and_right_follow_the_current_pages_width_in_continuous_view() {
     use egui::Key;
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("mixed.pdf", None, sized_fixture(&[(200, 1200), (3000, 1200), (200, 1200)])).unwrap();
         app
@@ -1737,7 +1737,7 @@ fn left_and_right_follow_the_current_pages_width_in_continuous_view() {
     h.run_steps(6);
     h.state_mut().views[0].go_to_page(0);
     h.run_steps(6);
-    let press = |h: &mut Harness<'static, PdfCraftApp>| {
+    let press = |h: &mut Harness<'static, PdfApp>| {
         h.key_press(Key::ArrowRight);
         h.run_steps(4);
         let v = &h.state().views[0];
@@ -1761,7 +1761,7 @@ fn right_scrolls_to_a_spreads_second_page_off_screen_before_turning() {
     const GAP: f32 = 14.0;
     let build = |zoom: f32| {
         let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_bytes("spread.pdf", None, sized_fixture(&[(600, 800); 4])).unwrap();
             app.set_option("layout", "two-page").unwrap();
@@ -1775,7 +1775,7 @@ fn right_scrolls_to_a_spreads_second_page_off_screen_before_turning() {
         h
     };
     let shown =
-        |h: &Harness<'static, PdfCraftApp>| (h.state().views[0].viewport_rect(), h.state().views[0].page_screen_rect(0).expect("page 1 on screen"));
+        |h: &Harness<'static, PdfApp>| (h.state().views[0].viewport_rect(), h.state().views[0].page_screen_rect(0).expect("page 1 on screen"));
     // Zoom until page 1's right edge sits half a gap inside the window's.
     let mut zoom = 2.0;
     let mut h = build(zoom);
@@ -1787,7 +1787,7 @@ fn right_scrolls_to_a_spreads_second_page_off_screen_before_turning() {
     let (inner, first) = shown(&h);
     assert!(first.right() <= inner.right() && first.right() + GAP > inner.right(), "the spread's gap at the window's edge: {first:?} in {inner:?}");
     assert!(h.state().views[0].page_screen_rect(1).is_none(), "its second page off screen");
-    assert!(h.state().views[0].layout == pdfcraft_ui_egui::canvas::PageLayout::TwoUp && !h.state().views[0].continuous);
+    assert!(h.state().views[0].layout == iridium_pdf_ui_egui::canvas::PageLayout::TwoUp && !h.state().views[0].continuous);
     h.key_press(Key::ArrowRight);
     h.run_steps(4);
     let v = &h.state().views[0];
@@ -1799,11 +1799,11 @@ fn right_scrolls_to_a_spreads_second_page_off_screen_before_turning() {
 fn v_h_and_space_pick_the_quick_tools() {
     // The toolbar's tooltips promise "Select (V)" and "Hand (H)", but the keys did nothing.
     use egui::{Key, Modifiers};
-    use pdfcraft_ui_egui::QuickTool;
+    use iridium_pdf_ui_egui::QuickTool;
     let mut h = harness();
     h.state_mut().active = Some(0);
     h.run_steps(2);
-    let press = |h: &mut Harness<'static, PdfCraftApp>, key| {
+    let press = |h: &mut Harness<'static, PdfApp>, key| {
         h.key_press(key);
         h.run_steps(2);
         h.state().quick_tool
@@ -1873,7 +1873,7 @@ fn page_down_steps_every_spread_when_several_fit_on_screen() {
     // than one spread fit on screen: the current page was whichever wholly visible page rounding
     // made "most visible", so the next step started from the wrong spread.
     use egui::{Key, Modifiers};
-    use pdfcraft_ui_egui::canvas::{Fit, PageLayout};
+    use iridium_pdf_ui_egui::canvas::{Fit, PageLayout};
     // a printed book: portrait cover and back, landscape two-page spreads between
     let mut sizes = vec![(200, 300)];
     sizes.extend([(400, 300); 10]);
@@ -1881,7 +1881,7 @@ fn page_down_steps_every_spread_when_several_fit_on_screen() {
     for fit in [Fit::Width, Fit::Page, Fit::Height] {
         let bytes = sized_fixture(&sizes);
         let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_bytes("book.pdf", None, bytes).unwrap();
             app
@@ -1904,29 +1904,29 @@ fn page_down_steps_every_spread_when_several_fit_on_screen() {
 }
 
 /// Open `sizes` in Fit width, continuous, with the Pages panel showing.
-fn pages_panel_harness(sizes: &[(u32, u32)]) -> Harness<'static, PdfCraftApp> {
+fn pages_panel_harness(sizes: &[(u32, u32)]) -> Harness<'static, PdfApp> {
     let bytes = sized_fixture(sizes);
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("cheques.pdf", None, bytes).unwrap();
-        app.right = Some(pdfcraft_ui_egui::RightPanel::Pages);
+        app.right = Some(iridium_pdf_ui_egui::RightPanel::Pages);
         app
     });
     h.run_steps(6);
     h.state_mut().active = Some(0);
-    h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::Width;
+    h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::Width;
     h.run_steps(6);
     h
 }
 
 /// A thumbnail in the Pages panel (the panel lists pages as "Page n" buttons).
-fn thumbnail(h: &Harness<'static, PdfCraftApp>, label: &str) -> egui::Pos2 {
+fn thumbnail(h: &Harness<'static, PdfApp>, label: &str) -> egui::Pos2 {
     h.get_all_by_label(label).find(|n| n.rect().left() > 1000.0).expect("the Pages panel thumbnail").rect().center()
 }
 
 /// Press and release `button` at `at`.
-fn press(h: &mut Harness<'static, PdfCraftApp>, at: egui::Pos2, button: egui::PointerButton) {
+fn press(h: &mut Harness<'static, PdfApp>, at: egui::Pos2, button: egui::PointerButton) {
     h.hover_at(at);
     h.run_steps(1);
     h.event(egui::Event::PointerButton { pos: at, button, pressed: true, modifiers: Default::default() });
@@ -1964,12 +1964,12 @@ fn pages_panel_thumbnails_have_a_context_menu() {
 }
 
 /// Where the Pages panel draws page `n`'s thumbnail.
-fn thumbnail_rect(h: &Harness<'static, PdfCraftApp>, n: usize) -> egui::Rect {
+fn thumbnail_rect(h: &Harness<'static, PdfApp>, n: usize) -> egui::Rect {
     h.get_all_by_label(&format!("Page {n}")).find(|t| t.rect().left() > 1000.0).expect("the Pages panel thumbnail").rect()
 }
 
 /// Whether `r` lies wholly in the part of the Pages panel in view.
-fn in_panel_view(h: &Harness<'static, PdfCraftApp>, r: egui::Rect) -> bool {
+fn in_panel_view(h: &Harness<'static, PdfApp>, r: egui::Rect) -> bool {
     h.state().views[0].pages_panel.expect("the Pages panel is shown").contains_rect(r)
 }
 
@@ -1980,7 +1980,7 @@ fn pages_panel_thumbnail_size_controls_show_more_pages_and_keep_the_selection() 
     h.run_steps(2);
     let usual = thumbnail_rect(&h, 1).width();
     let zoom = h.state().views[0].zoom;
-    let visible = |h: &Harness<'static, PdfCraftApp>| (1..=30).filter(|n| in_panel_view(h, thumbnail_rect(h, *n))).count();
+    let visible = |h: &Harness<'static, PdfApp>| (1..=30).filter(|n| in_panel_view(h, thumbnail_rect(h, *n))).count();
     let before = visible(&h);
     h.get_by_label("Smaller thumbnails").click();
     h.run_steps(4);
@@ -1990,7 +1990,7 @@ fn pages_panel_thumbnail_size_controls_show_more_pages_and_keep_the_selection() 
     assert_eq!(h.state().views[0].current, 0);
     assert_eq!(h.state().views[0].zoom, zoom, "only the thumbnails are resized");
     assert!(!h.state().session.get(h.state().views[0].id).unwrap().dirty);
-    if let Ok(dir) = std::env::var("PDFCRAFT_THUMBNAIL_SHOTS") {
+    if let Ok(dir) = std::env::var("IRIDIUM_PDF_THUMBNAIL_SHOTS") {
         let _gpu = crate::gpu();
         h.render().unwrap().save(format!("{dir}/small.png")).unwrap();
     }
@@ -2001,7 +2001,7 @@ fn pages_panel_thumbnail_size_controls_show_more_pages_and_keep_the_selection() 
     h.run_steps(4);
     assert!(thumbnail_rect(&h, 1).width() > usual);
     assert_eq!(h.state().views[0].target_pages(), vec![0, 1]);
-    if let Ok(dir) = std::env::var("PDFCRAFT_THUMBNAIL_SHOTS") {
+    if let Ok(dir) = std::env::var("IRIDIUM_PDF_THUMBNAIL_SHOTS") {
         let _gpu = crate::gpu();
         h.render().unwrap().save(format!("{dir}/large.png")).unwrap();
         h.state_mut().set_option("theme", "dark").unwrap();
@@ -2036,7 +2036,7 @@ fn pages_panel_thumbnail_zoom_is_bounded_independent_and_survives_reload() {
     h.state_mut().views[0].set_thumbnail_zoom(f32::MAX);
     assert_eq!(h.state().views[0].thumbnail_zoom(), 1.5);
     assert!(!h.state().session.get(h.state().views[0].id).unwrap().dirty);
-    let mut empty = PdfCraftApp::new();
+    let mut empty = PdfApp::new();
     assert!(empty.set_option("thumbnail-zoom", "100").is_err());
 }
 
@@ -2113,13 +2113,13 @@ fn a_page_change_while_thumbnails_are_dragged_does_not_scroll_the_pages_panel() 
 /// trackpad (point) scrolling keeps its own speed. The choice is saved.
 #[test]
 fn the_scroll_speed_preference_scales_mouse_wheel_notches() {
-    use pdfcraft_ui_egui::scroll_speed::ScrollSpeed;
+    use iridium_pdf_ui_egui::scroll_speed::ScrollSpeed;
     let scrolled = |speed: ScrollSpeed, unit: egui::MouseWheelUnit, dy: f32| -> f32 {
         let mut h = harness();
         h.state_mut().scroll_speed = speed;
         h.run_steps(2);
         let i = h.state().active.expect("a document is shown");
-        let top = |h: &Harness<'static, PdfCraftApp>| h.state().views[i].page_screen_rect(0).expect("page 1 on screen").min.y;
+        let top = |h: &Harness<'static, PdfApp>| h.state().views[i].page_screen_rect(0).expect("page 1 on screen").min.y;
         let before = top(&h);
         h.event(egui::Event::PointerMoved(h.state().views[i].viewport_rect().center()));
         h.event(egui::Event::MouseWheel {
@@ -2141,44 +2141,44 @@ fn the_scroll_speed_preference_scales_mouse_wheel_notches() {
     let point = egui::MouseWheelUnit::Point;
     let (normal_points, fast_points) = (scrolled(ScrollSpeed::Normal, point, 30.0), scrolled(ScrollSpeed::Fast, point, 30.0));
     assert!(normal_points > 0.0 && (normal_points - fast_points).abs() < 1.0, "trackpad: {normal_points} vs {fast_points}");
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("scroll_speed", "fast").unwrap();
     assert!(app.set_option("scroll_speed", "warp").unwrap_err().contains("slow, normal, or fast"));
-    let mut again = PdfCraftApp::new();
+    let mut again = PdfApp::new();
     again.restore(&app.persist());
     assert_eq!(again.scroll_speed, ScrollSpeed::Fast);
 }
 
 #[test]
 fn the_invert_middle_drag_preference_is_off_by_default_and_kept_in_the_settings() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     assert!(!app.invert_middle_drag, "the middle button keeps its direction unless asked");
     app.set_option("invert_middle_drag", "true").unwrap();
     assert!(app.set_option("invert_middle_drag", "yes").unwrap_err().contains("true or false"));
-    let mut again = PdfCraftApp::new();
+    let mut again = PdfApp::new();
     again.restore(&app.persist());
     assert!(again.invert_middle_drag, "turned on, it survives a restart");
     again.set_option("invert_middle_drag", "false").unwrap();
-    let mut off = PdfCraftApp::new();
+    let mut off = PdfApp::new();
     off.invert_middle_drag = true;
     off.restore(&again.persist());
     assert!(!off.invert_middle_drag, "turned off, that is saved too");
 }
 
 /// A 40 × 30 picture (one red corner) and a harness showing a PDF of it.
-fn picture_harness() -> (image::RgbaImage, Harness<'static, PdfCraftApp>) {
+fn picture_harness() -> (image::RgbaImage, Harness<'static, PdfApp>) {
     picture_harness_sized(egui::vec2(1400.0, 900.0))
 }
 
 /// [`picture_harness`] in a window of this size.
-fn picture_harness_sized(size: egui::Vec2) -> (image::RgbaImage, Harness<'static, PdfCraftApp>) {
+fn picture_harness_sized(size: egui::Vec2) -> (image::RgbaImage, Harness<'static, PdfApp>) {
     let mut px = image::RgbaImage::from_pixel(40, 30, image::Rgba([10, 200, 30, 255]));
     px.put_pixel(0, 0, image::Rgba([255, 0, 0, 255]));
     let mut png = std::io::Cursor::new(Vec::new());
     image::DynamicImage::ImageRgba8(px.clone()).write_to(&mut png, image::ImageFormat::Png).unwrap();
-    let pdf = pdfcraft_engine::Session::new().create_from_images(&[("p.png".into(), png.into_inner())]).unwrap();
+    let pdf = iridium_pdf_engine::Session::new().create_from_images(&[("p.png".into(), png.into_inner())]).unwrap();
     let mut h = Harness::builder().with_size(size).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("pic.pdf", None, pdf.to_vec()).unwrap();
         app
@@ -2254,7 +2254,7 @@ fn an_edit_clears_the_picked_picture_at_once() {
     h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed: false, modifiers: Default::default() });
     h.run_steps(2);
     assert!(h.state().views[i].picked_image.is_some(), "picked with the Select tool");
-    let delete = pdfcraft_engine::Edit::EditPageImage { page: 0, index: 0, change: pdfcraft_engine::ImageEdit::Delete };
+    let delete = iridium_pdf_engine::Edit::EditPageImage { page: 0, index: 0, change: iridium_pdf_engine::ImageEdit::Delete };
     assert!(h.state_mut().apply_edit(delete));
     // No frame has run since the edit.
     assert_eq!(h.state().views[i].picked_image, None);
@@ -2311,7 +2311,7 @@ fn a_picture_inside_form_artwork_under_text_is_selected_and_copied() {
     }
     pdf.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("scan.pdf", None, pdf).unwrap();
         app
@@ -2338,7 +2338,7 @@ fn a_picture_inside_form_artwork_under_text_is_selected_and_copied() {
 
 /// A picture in Edit text & images, right-clicked so its menu is open (in a tall window, so the
 /// whole menu is on screen).
-fn picture_menu() -> (image::RgbaImage, Harness<'static, PdfCraftApp>) {
+fn picture_menu() -> (image::RgbaImage, Harness<'static, PdfApp>) {
     let (px, mut h) = picture_harness_sized(egui::vec2(1400.0, 1500.0));
     h.state_mut().set_option("quick", "edit-text").unwrap();
     h.run_steps(3);
@@ -2352,7 +2352,7 @@ fn picture_menu() -> (image::RgbaImage, Harness<'static, PdfCraftApp>) {
     (px, h)
 }
 
-fn picture_count(h: &Harness<'static, PdfCraftApp>) -> usize {
+fn picture_count(h: &Harness<'static, PdfApp>) -> usize {
     let s = h.state();
     s.session.get(s.active_ids().unwrap().1).unwrap().page_images(0).len()
 }
@@ -2375,7 +2375,7 @@ fn the_picture_menu_cuts_a_picture_to_the_clipboard_and_removes_it() {
 #[test]
 fn the_picture_menu_marks_a_picture_for_redaction() {
     let (_, mut h) = picture_menu();
-    let marks = |h: &Harness<'static, PdfCraftApp>| {
+    let marks = |h: &Harness<'static, PdfApp>| {
         let s = h.state();
         s.session.get(s.active_ids().unwrap().1).unwrap().redaction_marks()
     };
@@ -2391,7 +2391,7 @@ fn the_picture_menu_opens_link_properties_and_recognize_text_for_the_picture() {
     let (_, mut h) = picture_menu();
     h.get_by_label("Create Link…").click();
     h.run_steps(3);
-    assert!(matches!(h.state().dialog, Some(pdfcraft_ui_egui::Dialog::LinkProps)));
+    assert!(matches!(h.state().dialog, Some(iridium_pdf_ui_egui::Dialog::LinkProps)));
     let draft = h.state().link_draft.clone().expect("the link draft");
     assert_eq!(draft.page, 0);
     assert!(draft.rect[2] > draft.rect[0] && draft.rect[3] > draft.rect[1], "over the picture: {:?}", draft.rect);
@@ -2399,7 +2399,7 @@ fn the_picture_menu_opens_link_properties_and_recognize_text_for_the_picture() {
     let (_, mut h) = picture_menu();
     h.get_by_label("Recognize Text…").click();
     h.run_steps(3);
-    assert!(matches!(h.state().dialog, Some(pdfcraft_ui_egui::Dialog::RecognizeText)));
+    assert!(matches!(h.state().dialog, Some(iridium_pdf_ui_egui::Dialog::RecognizeText)));
     let d = &h.state().ocr_draft;
     assert_eq!((format!("{:?}", d.pages), d.from, d.to), ("Range".to_string(), 1, 1));
 }
@@ -2454,7 +2454,7 @@ fn mouse_wheel_scrolls_while_selecting_text() {
     h.event(egui::Event::PointerButton { pos: end, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
     h.run_steps(2);
 }
-fn selection_wheel_harness() -> (Harness<'static, PdfCraftApp>, usize, egui::Pos2) {
+fn selection_wheel_harness() -> (Harness<'static, PdfApp>, usize, egui::Pos2) {
     let mut h = harness();
     h.state_mut().set_option("zoom", "200").unwrap();
     h.state_mut().set_option("left", "closed").unwrap();
@@ -2479,7 +2479,7 @@ fn selection_wheel_harness() -> (Harness<'static, PdfCraftApp>, usize, egui::Pos
 fn selection_wheel_delta(unit: egui::MouseWheelUnit, amount: f32, held: bool, animated: bool) -> f32 {
     let (mut h, view, end) = selection_wheel_harness();
     h.state_mut().animation_effects =
-        if animated { pdfcraft_ui_egui::motion::AnimationEffects::On } else { pdfcraft_ui_egui::motion::AnimationEffects::Off };
+        if animated { iridium_pdf_ui_egui::motion::AnimationEffects::On } else { iridium_pdf_ui_egui::motion::AnimationEffects::Off };
     if !held {
         h.event(egui::Event::PointerButton { pos: end, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
     }
@@ -2627,7 +2627,7 @@ fn page_command_without_selection_acts_on_the_page_pressed() {
     // Page 2 was gone to earlier; both pages show whole, so it stays current.
     h.state_mut().set_option("page", "2").unwrap();
     h.run_steps(5);
-    let at = |h: &Harness<'static, PdfCraftApp>, page: usize| {
+    let at = |h: &Harness<'static, PdfApp>, page: usize| {
         let v = &h.state().views[h.state().active.unwrap()];
         v.page_screen_rect(page).expect("page on screen").center()
     };
@@ -2674,9 +2674,9 @@ fn arrow_keys_follow_the_scroll_speed_preference() {
 /// sight; as in Acrobat, it is brought into view.
 #[test]
 fn go_to_page_brings_the_page_into_view_horizontally() {
-    use pdfcraft_ui_egui::canvas::Fit;
+    use iridium_pdf_ui_egui::canvas::Fit;
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("wide.pdf", None, sized_fixture(&[(595, 842), (595, 842), (595, 842), (6000, 2000)])).unwrap();
         app.views[0].fit = Fit::None;
@@ -2700,10 +2700,10 @@ fn the_accessible_window_has_the_window_title_as_its_name() {
     use egui_kittest::kittest::NodeT as _;
     let mut h = harness();
     h.run_steps(2);
-    let name = |h: &Harness<'static, PdfCraftApp>| h.root().accesskit_node().label().map(|l| l.to_string());
-    assert_eq!(name(&h).as_deref(), Some("b.pdf — PdfCraft"));
+    let name = |h: &Harness<'static, PdfApp>| h.root().accesskit_node().label().map(|l| l.to_string());
+    assert_eq!(name(&h).as_deref(), Some("b.pdf — PDF"));
     {
-        use pdfcraft_engine::Edit;
+        use iridium_pdf_engine::Edit;
         let s = h.state_mut();
         let id = s.views[s.active.unwrap()].id;
         s.session.apply(id, Edit::SetInfo { key: "Title".into(), value: "Quarterly report".into() }).unwrap();
@@ -2713,6 +2713,6 @@ fn the_accessible_window_has_the_window_title_as_its_name() {
     }
     h.run_steps(2);
     // Unsaved, so it carries the window title's mark too (#3640).
-    assert_eq!(name(&h).as_deref(), Some("Quarterly report • — PdfCraft"));
+    assert_eq!(name(&h).as_deref(), Some("Quarterly report • — PDF"));
     assert_eq!(name(&h), Some(h.state().window_title.clone()));
 }

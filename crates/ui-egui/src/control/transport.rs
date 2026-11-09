@@ -154,7 +154,7 @@ fn serve_with(client: ControlClient, limits: Limits) -> std::io::Result<Endpoint
     let expected = token.clone();
     let waiting = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let lingering = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    std::thread::Builder::new().name("pdfcraft-control".into()).spawn(move || {
+    std::thread::Builder::new().name("iridium-pdf-control".into()).spawn(move || {
         for stream in accepted(listener.incoming(), || std::thread::sleep(ACCEPT_RETRY)) {
             let _ = stream.set_write_timeout(Some(limits.write_timeout));
             // Admitted only while fewer than the limit wait to authenticate: refused on the
@@ -168,7 +168,7 @@ fn serve_with(client: ControlClient, limits: Limits) -> std::io::Result<Endpoint
             let client = client.clone();
             let expected = expected.clone();
             let lingering = lingering.clone();
-            let _ = std::thread::Builder::new().name("pdfcraft-control-conn".into()).spawn(move || {
+            let _ = std::thread::Builder::new().name("iridium-pdf-control-conn".into()).spawn(move || {
                 // Held until `auth` succeeds; given back however this thread ends.
                 let mut slot = Some(slot);
                 let Ok(read) = stream.try_clone() else { return };

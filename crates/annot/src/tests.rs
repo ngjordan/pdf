@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use pdfcraft_cos::{Document, ObjRef, Object, SaveOptions, write_incremental};
+use iridium_pdf_cos::{Document, ObjRef, Object, SaveOptions, write_incremental};
 
 use super::modify::text_box_of;
 use super::*;
@@ -143,7 +143,7 @@ fn every_tool_creates_a_drawable_comment() {
 }
 
 /// #260 (page 7): Acrobat draws an Ink annotation as a smooth curve through its `/InkList`
-/// points, where PdfCraft drew straight segments between them. Three or more points now make a
+/// points, where PDF drew straight segments between them. Three or more points now make a
 /// Catmull-Rom spline through every point (as cubic Béziers); two points stay a line, one a dot.
 #[test]
 fn ink_strokes_are_smooth_curves_through_their_points() {
@@ -292,7 +292,7 @@ fn a_state_model_without_a_state_is_the_default_state() {
     let next = set_review_state(&mut doc, 0, 0, ReviewState::Accepted, "Bob", &meta("next")).unwrap();
     assert_eq!(list(&doc, 0)[next].reference(b"IRT"), Some(r));
 
-    // A model PdfCraft doesn't know isn't a state: a status replying to such a reply is about
+    // A model PDF doesn't know isn't a state: a status replying to such a reply is about
     // that reply, not about the comment, so Bob's next change on the comment starts afresh.
     let mut doc = fixture();
     let other = add_reply(&mut doc, 0, 0, "", "Ann", &meta("other")).unwrap();
@@ -1191,7 +1191,7 @@ fn page_links_keep_their_zoom() {
         ("Dest", dest("FitBV", vec![Object::Int(20)]), LinkZoom::FitHeight),
         ("Dest", dest("FitR", vec![Object::Int(0), Object::Int(0), Object::Int(10), Object::Int(10)]), LinkZoom::FitPage),
         ("A", dest("XYZ", vec![null.clone(), null.clone(), Object::Real(1.5)]), LinkZoom::Percent(150.0)),
-        // A factor outside what PdfCraft writes reads as the destination has it, not capped, so
+        // A factor outside what PDF writes reads as the destination has it, not capped, so
         // it agrees with the viewer's `destination`; one whose percentage overflows stays finite.
         ("Dest", dest("XYZ", vec![null.clone(), null.clone(), Object::Real(100.0)]), LinkZoom::Percent(10000.0)),
         ("Dest", dest("XYZ", vec![null.clone(), null.clone(), Object::Real(0.005)]), LinkZoom::Percent(0.5)),
@@ -1201,7 +1201,7 @@ fn page_links_keep_their_zoom() {
         d.remove(b"Dest");
         d.remove(b"A");
         if key == "A" {
-            let mut go_to = pdfcraft_cos::Dict::new();
+            let mut go_to = iridium_pdf_cos::Dict::new();
             go_to.set(b"S".to_vec(), Object::name("GoTo"));
             go_to.set(b"D".to_vec(), value);
             d.set(b"A".to_vec(), Object::Dict(go_to));
@@ -1245,7 +1245,7 @@ fn a_rewritten_link_keeps_its_own_zoom_factor() {
         let mut d = doc.get(obj).as_dict().cloned().unwrap();
         d.remove(b"Dest");
         if key == "A" {
-            let mut go_to = pdfcraft_cos::Dict::new();
+            let mut go_to = iridium_pdf_cos::Dict::new();
             go_to.set(b"S".to_vec(), Object::name("GoTo"));
             go_to.set(b"D".to_vec(), xyz(pages[1], factor.clone()));
             d.set(b"A".to_vec(), Object::Dict(go_to));
@@ -1295,7 +1295,7 @@ fn an_unchanged_go_to_keeps_its_destination_and_a_new_page_keeps_its_fit() {
         let mut d = doc.get(obj).as_dict().cloned().unwrap();
         d.remove(b"Dest");
         if key == "A" {
-            let mut go_to = pdfcraft_cos::Dict::new();
+            let mut go_to = iridium_pdf_cos::Dict::new();
             go_to.set(b"S".to_vec(), Object::name("GoTo"));
             go_to.set(b"D".to_vec(), value);
             d.set(b"A".to_vec(), Object::Dict(go_to));
@@ -1823,8 +1823,8 @@ fn comments_without_appearances_get_one_for_display_only() {
     assert!(with_missing_appearances(&complete).is_none());
 }
 
-fn line_dict(coords: [f64; 4], ending: &str) -> pdfcraft_cos::Dict {
-    let mut d = pdfcraft_cos::Dict::new();
+fn line_dict(coords: [f64; 4], ending: &str) -> iridium_pdf_cos::Dict {
+    let mut d = iridium_pdf_cos::Dict::new();
     d.set(b"Subtype".to_vec(), Object::name("Line"));
     d.set(b"Rect".to_vec(), Object::Array([0.0, 0.0, 300.0, 300.0].into_iter().map(Object::Real).collect()));
     d.set(b"C".to_vec(), Object::Array([1.0, 0.0, 0.0].into_iter().map(Object::Real).collect()));
@@ -1835,7 +1835,7 @@ fn line_dict(coords: [f64; 4], ending: &str) -> pdfcraft_cos::Dict {
 
 #[test]
 fn malformed_optional_interior_color_does_not_hide_shape_strokes() {
-    let mut square = pdfcraft_cos::Dict::new();
+    let mut square = iridium_pdf_cos::Dict::new();
     square.set(b"Subtype".to_vec(), Object::name("Square"));
     square.set(b"Rect".to_vec(), Object::Array([0.0, 0.0, 40.0, 30.0].into_iter().map(Object::Real).collect()));
     square.set(b"C".to_vec(), Object::Array([1.0, 0.0, 0.0].into_iter().map(Object::Real).collect()));
@@ -1844,7 +1844,7 @@ fn malformed_optional_interior_color_does_not_hide_shape_strokes() {
     let mut circle = square.clone();
     circle.set(b"Subtype".to_vec(), Object::name("Circle"));
 
-    let mut polygon = pdfcraft_cos::Dict::new();
+    let mut polygon = iridium_pdf_cos::Dict::new();
     polygon.set(b"Subtype".to_vec(), Object::name("Polygon"));
     polygon.set(b"Rect".to_vec(), Object::Array([0.0, 0.0, 40.0, 30.0].into_iter().map(Object::Real).collect()));
     polygon.set(b"C".to_vec(), Object::Array([1.0, 0.0, 0.0].into_iter().map(Object::Real).collect()));
@@ -1853,7 +1853,7 @@ fn malformed_optional_interior_color_does_not_hide_shape_strokes() {
 
     let mut line = line_dict([0.0, 0.0, 40.0, 30.0], "None");
     line.set(b"IC".to_vec(), malformed.clone());
-    let mut polyline = pdfcraft_cos::Dict::new();
+    let mut polyline = iridium_pdf_cos::Dict::new();
     polyline.set(b"Subtype".to_vec(), Object::name("PolyLine"));
     polyline.set(b"Rect".to_vec(), Object::Array([0.0, 0.0, 40.0, 30.0].into_iter().map(Object::Real).collect()));
     polyline.set(b"C".to_vec(), Object::Array([1.0, 0.0, 0.0].into_iter().map(Object::Real).collect()));
@@ -2133,7 +2133,7 @@ fn a_stamp_without_an_appearance_draws_the_stamp_it_names() {
         let content = drawn(&stamp_dict(extra));
         assert!(!content.contains("Tj") && content.contains(" re\n") && content.matches(" l\n").count() == 2, "{extra}: {content}");
     }
-    // `/C` colours the stamp, as it does PdfCraft's own.
+    // `/C` colours the stamp, as it does PDF's own.
     assert!(drawn(&stamp_dict("/Name /Final /C [1 0 1]")).contains("1 0 1 RG"));
     // The placeholder stays grey whatever the `/C`: it is not the stamp, so it takes none of its colour.
     let placeholder = drawn(&stamp_dict("/Name /MyCustomStamp /C [1 0 0]"));
@@ -2142,7 +2142,7 @@ fn a_stamp_without_an_appearance_draws_the_stamp_it_names() {
     // (restyling, flattening) still find nothing they may write.
     assert!(appearance::display_stamp(&stamp_dict("/Name /Draft /AP << /N 9 0 R >>")).is_none());
     assert!(appearance::build(&bare_doc(), &stamp_dict("/Name /Draft")).is_none());
-    assert!(appearance::display_stamp(&stamp_dict("/Name /Draft /PCStamp true")).is_none(), "PdfCraft's own stamps are drawn by `build`");
+    assert!(appearance::display_stamp(&stamp_dict("/Name /Draft /PCStamp true")).is_none(), "PDF's own stamps are drawn by `build`");
     assert!(appearance::display_stamp(&stamp_dict("/Name /Draft /Rect [5 5 5 50]")).is_none(), "no width");
 }
 
@@ -2263,7 +2263,7 @@ fn redraw_keeps_shared_annotation_appearances_and_drops_stale_alternates() {
             d.set(b"Type".to_vec(), Object::name("XObject"));
             d.set(b"Subtype".to_vec(), Object::name("Form"));
             d.set(b"BBox".to_vec(), num_array(&[0.0, 0.0, 20.0, 10.0]));
-            let r = doc.add(Object::Stream(pdfcraft_cos::Stream::from_raw(d, bytes.to_vec())));
+            let r = doc.add(Object::Stream(iridium_pdf_cos::Stream::from_raw(d, bytes.to_vec())));
             entries.set(key.to_vec(), Object::Ref(r));
         }
         entries.set(b"VendorState".to_vec(), Object::name("Retained"));
@@ -2279,7 +2279,7 @@ fn redraw_keeps_shared_annotation_appearances_and_drops_stale_alternates() {
         assert_eq!(doc.resolve(source), before, "a shared AP must not change");
         for full in [false, true] {
             let bytes = if full {
-                pdfcraft_cos::write_full(&doc, &SaveOptions::default()).unwrap()
+                iridium_pdf_cos::write_full(&doc, &SaveOptions::default()).unwrap()
             } else {
                 assert!(!doc.revisions().is_empty(), "incremental save needs an existing revision");
                 assert!(!doc.encryption_changed() && !doc.full_save_required(), "this edit must not require a full rewrite");
@@ -2372,7 +2372,7 @@ fn drawings_resize_by_scaling_their_strokes() {
 #[test]
 fn comment_text_the_standard_fonts_cannot_draw_is_kept_and_marked() {
     let mut doc = fixture();
-    let mark = |doc: &Document, i: usize| pdfcraft_fonts::undrawn_mark(&list(doc, 0)[i]);
+    let mark = |doc: &Document, i: usize| iridium_pdf_fonts::undrawn_mark(&list(doc, 0)[i]);
     let mut boxed = new(0, Shape::TextBox { rect: [100.0, 600.0, 300.0, 650.0], font_size: 12.0 });
     boxed.contents = "签名 Ada".into();
     let t = add_annotation(&mut doc, &boxed, &meta("t")).unwrap();
@@ -2414,7 +2414,7 @@ fn comment_text_the_standard_fonts_cannot_draw_is_kept_and_marked() {
     drawn.set(b"Type".to_vec(), Object::name("XObject"));
     drawn.set(b"Subtype".to_vec(), Object::name("Form"));
     drawn.set(b"BBox".to_vec(), Object::Array([0.0, 0.0, 200.0, 30.0].iter().map(|v| Object::Real(*v)).collect()));
-    let drawn = doc.add(Object::Stream(pdfcraft_cos::Stream::from_raw(drawn, b"BT /F1 12 Tf (\x01\x02) Tj ET".to_vec())));
+    let drawn = doc.add(Object::Stream(iridium_pdf_cos::Stream::from_raw(drawn, b"BT /F1 12 Tf (\x01\x02) Tj ET".to_vec())));
     let mut ap = Dict::new();
     ap.set(b"N".to_vec(), Object::Ref(drawn));
     foreign.set(b"AP".to_vec(), Object::Dict(ap));
@@ -2449,7 +2449,7 @@ fn comment_text_the_standard_fonts_cannot_draw_is_kept_and_marked() {
     assert!(shown.get(b).as_dict().unwrap().contains(b"AP"), "displayed anyway");
     assert!(!doc.get(b).as_dict().unwrap().contains(b"AP"), "the document itself is unchanged");
     set_appearance(&mut doc, b).unwrap();
-    assert_eq!(doc.get(b).as_dict().and_then(pdfcraft_fonts::undrawn_mark), Some('欢'));
+    assert_eq!(doc.get(b).as_dict().and_then(iridium_pdf_fonts::undrawn_mark), Some('欢'));
     // Kept through a save.
     let doc = reopen(&doc);
     assert_eq!(text(&list(&doc, 0)[t], b"Contents"), "签名");
@@ -2790,7 +2790,7 @@ fn note_drawing(name: Option<&str>, color: [f64; 3]) -> Vec<u8> {
 }
 
 /// ISO 32000-2 §12.5.6.4, Table 175: a viewer shall provide icons for the seven standard names,
-/// and may support more. Each of the fourteen names PdfCraft offers draws a shape of its own, so
+/// and may support more. Each of the fourteen names PDF offers draws a shape of its own, so
 /// a note shows the icon it names; a name it doesn't know, and a note without one, draw `Note`
 /// (the table's default).
 #[test]
@@ -3113,7 +3113,7 @@ fn a_caption_from_rich_text_and_one_the_font_cant_draw() {
     assert!(s.windows(17).any(|w| w == b"(Dim & 50 mm <x>)"), "{}", String::from_utf8_lossy(&s));
     let cjk = table_178_line([0.0, 0.0, 100.0, 0.0], &[("Cap", Object::Bool(true)), ("Contents", Object::String(PdfString::text("長さ")))]);
     assert_eq!(crate::appearance::undrawable_text(&cjk), Some(("the line's caption", '長')));
-    // A PdfCraft measurement's label is its caption: the comment text isn't drawn a second time.
+    // A PDF measurement's label is its caption: the comment text isn't drawn a second time.
     let mut measured = cjk.clone();
     measured.set(b"PCMeasureValue".to_vec(), Object::String(PdfString::text("5 mm")));
     assert_eq!(crate::appearance::undrawable_text(&measured), None);
@@ -3167,7 +3167,7 @@ fn degenerate_and_absurd_leader_and_caption_values_do_not_panic() {
 }
 
 /// A comment's built appearance for the dictionary `body` (no `/AP`), as text, or `None` when
-/// PdfCraft can't draw it.
+/// PDF can't draw it.
 fn built(body: &str) -> Option<String> {
     let doc = document_of(&[
         b"<< /Type /Catalog /Pages 2 0 R >>",
@@ -3301,10 +3301,10 @@ fn plain_squares_and_circles_are_drawn_inside_rect_less_rd() {
     assert!(circle.starts_with("1 0 0 RG\n3 w\n183.5 150 m"), "{circle}");
 }
 
-/// The circles and rectangles PdfCraft draws write no `/RD`, so their appearance is unchanged by
+/// The circles and rectangles PDF draws write no `/RD`, so their appearance is unchanged by
 /// it: the stroke still sits half its width inside `/Rect`.
 #[test]
-fn pdfcraft_rectangles_and_ellipses_still_fill_their_rect() {
+fn iridium_pdf_rectangles_and_ellipses_still_fill_their_rect() {
     let mut doc = fixture();
     let rect = [10.0, 10.0, 110.0, 60.0];
     for shape in [Shape::Rectangle { rect }, Shape::Oval { rect }] {
@@ -3336,7 +3336,7 @@ fn a_reshaped_polygon_pads_its_rect_only_for_a_drawn_cloud() {
         let i = add_annotation(&mut doc, &new(0, shape), &meta("p")).unwrap();
         let (_, r) = annot_ref(&mut doc, 0, i).unwrap();
         if let Some(intensity) = be {
-            let mut b = pdfcraft_cos::Dict::new();
+            let mut b = iridium_pdf_cos::Dict::new();
             b.set(b"S".to_vec(), Object::name("C"));
             if let Some(i) = intensity {
                 b.set(b"I".to_vec(), Object::Int(i));
@@ -3363,7 +3363,7 @@ fn a_reshaped_intensity_two_cloud_stays_inside_its_rect() {
     let shape = Shape::Polygon { vertices: vec![[100.0, 100.0], [200.0, 100.0], [150.0, 200.0]], cloud: true };
     let i = add_annotation(&mut doc, &new(0, shape), &meta("p")).unwrap();
     let (_, r) = annot_ref(&mut doc, 0, i).unwrap();
-    let mut be = pdfcraft_cos::Dict::new();
+    let mut be = iridium_pdf_cos::Dict::new();
     be.set(b"S".to_vec(), Object::name("C"));
     be.set(b"I".to_vec(), Object::Int(2));
     doc.update_dict(r, |d| d.set(b"BE".to_vec(), Object::Dict(be))).unwrap();
@@ -3406,7 +3406,7 @@ fn a_reshaped_polygon_has_room_for_the_border_it_is_drawn_with() {
         doc.update_dict(r, |d| {
             d.remove(b"BS");
             if border == b"BS" {
-                let mut bs = pdfcraft_cos::Dict::new();
+                let mut bs = iridium_pdf_cos::Dict::new();
                 bs.set(b"W".to_vec(), width);
                 d.set(b"BS".to_vec(), Object::Dict(bs));
             } else {
@@ -3856,7 +3856,7 @@ fn text_markup_whose_quads_reach_past_its_rect_is_drawn_over_them() {
 }
 
 /// The box widens over the quads the markup is drawn over, read as every `/QuadPoints` reader
-/// reads them (`pdfcraft_geom::quad_points::usable_quads`): an indirect array or entry is
+/// reads them (`iridium_pdf_geom::quad_points::usable_quads`): an indirect array or entry is
 /// followed, and a malformed quad or trailing partial one is skipped while the others still widen
 /// the box, so what is drawn is not cut to `/Rect`.
 #[test]
@@ -4191,7 +4191,7 @@ fn thai_in_fill_sign_text_and_text_boxes_is_drawn_from_the_thai_face() {
         Shape::Typewriter { rect: [100.0, 700.0, 300.0, 716.0], font_size: 24.0 },
         Shape::TextBox { rect: [100.0, 400.0, 400.0, 430.0], font_size: 30.0 },
     ];
-    if pdfcraft_fonts::document_thai_font().is_none() {
+    if iridium_pdf_fonts::document_thai_font().is_none() {
         for shape in shapes {
             let err = add_annotation(&mut doc, &item(shape), &meta("t")).unwrap_err();
             assert!(matches!(&err, AnnotError::Undrawable(m) if m.contains("Thai") && m.contains("CRAFT_FONTS_DIR")), "{err:?}");
@@ -4202,13 +4202,13 @@ fn thai_in_fill_sign_text_and_text_boxes_is_drawn_from_the_thai_face() {
         assert_eq!(text(&list(&doc, 0)[t], b"Contents"), "hello");
         return;
     }
-    let reach = pdfcraft_fonts::shaped_text::thai_reach;
+    let reach = iridium_pdf_fonts::shaped_text::thai_reach;
     let (lo, hi) = (reach("ฎู").unwrap()[0], reach("น้ำ").unwrap()[1]);
     for (shape, size) in shapes.into_iter().zip([24.0, 30.0]) {
         let t = add_annotation(&mut doc, &item(shape), &meta("t")).unwrap();
         let doc = reopen(&doc);
         let d = &list(&doc, 0)[t];
-        assert_eq!((text(d, b"Contents").as_str(), pdfcraft_fonts::undrawn_mark(d)), (thai, None));
+        assert_eq!((text(d, b"Contents").as_str(), iridium_pdf_fonts::undrawn_mark(d)), (thai, None));
         let content = ap_content(&doc, d);
         assert!(!content.contains('?') && content.contains("/PCTh1 "), "{content}");
         // The glyphs and the text they stand for are objects of the saved file.

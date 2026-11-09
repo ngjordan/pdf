@@ -1,4 +1,4 @@
-use pdfcraft_cos::{Dict, Document, Object, Stream};
+use iridium_pdf_cos::{Dict, Document, Object, Stream};
 
 use super::*;
 
@@ -118,7 +118,7 @@ fn behind_parms_by_reference(doc: &mut Document, data: &[u8]) -> Object {
 
 #[test]
 fn embedded_editor_fonts_are_validated_without_installing_or_exporting() {
-    use pdfcraft_cos::Stream;
+    use iridium_pdf_cos::Stream;
     let mut doc = Document::new_empty();
     let bytes = include_bytes!("../../../../assets/fonts/Inter-Regular.ttf");
     let program = doc.add(Object::Stream(Stream::flate(Dict::new(), bytes)));
@@ -140,7 +140,7 @@ fn embedded_editor_fonts_are_validated_without_installing_or_exporting() {
 /// directly or by reference.
 #[test]
 fn a_font_without_widths_measures_with_its_embedded_program() {
-    use pdfcraft_cos::Stream;
+    use iridium_pdf_cos::Stream;
     use skrifa::MetadataProvider as _;
     let bytes = include_bytes!("../../../../assets/fonts/Inter-Regular.ttf");
     let face = skrifa::FontRef::new(bytes).unwrap();
@@ -1526,16 +1526,16 @@ fn composite_subset_without_cmap_uses_pdf_glyph_ids_in_editor_and_shaper_without
     }
     assert!(skrifa::FontRef::new(&subset).unwrap().cmap().is_err());
     let mut doc = Document::new_empty();
-    let program = doc.add(Object::Stream(pdfcraft_cos::Stream::flate(Dict::new(), &subset)));
+    let program = doc.add(Object::Stream(iridium_pdf_cos::Stream::flate(Dict::new(), &subset)));
     let mut descriptor = Dict::new();
     descriptor.set(b"FontFile2".to_vec(), Object::Ref(program));
     let mut gids = vec![0; 36];
     gids[34..36].copy_from_slice(&(expected.to_u32() as u16).to_be_bytes());
-    let gids = doc.add(Object::Stream(pdfcraft_cos::Stream::flate(Dict::new(), &gids)));
+    let gids = doc.add(Object::Stream(iridium_pdf_cos::Stream::flate(Dict::new(), &gids)));
     let mut descendant = Dict::new();
     descendant.set(b"FontDescriptor".to_vec(), Object::Dict(descriptor));
     descendant.set(b"CIDToGIDMap".to_vec(), Object::Ref(gids));
-    let unicode = doc.add(Object::Stream(pdfcraft_cos::Stream::flate(Dict::new(), b"1 beginbfchar <0011> <03a9> endbfchar")));
+    let unicode = doc.add(Object::Stream(iridium_pdf_cos::Stream::flate(Dict::new(), b"1 beginbfchar <0011> <03a9> endbfchar")));
     let source = font(
         &mut doc,
         vec![

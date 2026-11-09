@@ -1,6 +1,6 @@
 use super::thumbs::{Key, Look, MAX_SIDE, PREVIEW, PREVIEW_SIDE, SIZE_STEP, Thumbs, Want};
 use super::{
-    ABOVE, Align2, Arc, BAR_H, Color32, CombineFile, CornerRadius, ERROR, FALLBACK_PAGE, GridDrag, Lock, MAX_EXPAND, ON_PAPER, PdfCraftApp, Rect,
+    ABOVE, Align2, Arc, BAR_H, Color32, CombineFile, CornerRadius, ERROR, FALLBACK_PAGE, GridDrag, Lock, MAX_EXPAND, ON_PAPER, PdfApp, Rect,
     RowAction, Sense, Stroke, TextureHandle, Tokens, Vec2, WARNING, fit_name, icons, paper_size, pos2, theme, vec2,
 };
 
@@ -323,7 +323,7 @@ impl Card {
 /// The file a card's magnifier opened, shown large over the page: one of the pages it adds at a
 /// time, flipped with the buttons or the Left and Right keys; Esc, the close button or a click
 /// outside closes it. It closes by itself when the file leaves the list or has nothing to show.
-pub(crate) fn preview(app: &mut PdfCraftApp, ctx: &egui::Context, t: &Tokens) {
+pub(crate) fn preview(app: &mut PdfApp, ctx: &egui::Context, t: &Tokens) {
     // The command palette goes over everything: the preview waits under it (drawn again after).
     if app.palette_open {
         return;

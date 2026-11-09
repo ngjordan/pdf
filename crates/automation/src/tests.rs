@@ -1,5 +1,5 @@
 use super::*;
-use pdfcraft_platform::staging::STAGING_ATTEMPTS;
+use iridium_pdf_platform::staging::STAGING_ATTEMPTS;
 
 /// `n` pages, page i showing "Page i".
 fn numbered_pages(n: usize) -> Vec<u8> {
@@ -226,7 +226,7 @@ fn stop_at_limit_continuations_return_every_match_once_and_end_complete() {
 
 #[test]
 fn a_bounded_text_find_reads_only_the_pages_it_needs_and_says_it_stopped() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-automation-find-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-automation-find-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("long.pdf"), numbered_pages(200)).unwrap();
@@ -272,7 +272,7 @@ fn a_bounded_text_find_reads_only_the_pages_it_needs_and_says_it_stopped() {
 
 #[test]
 fn a_save_without_a_path_stays_inside_the_root() {
-    let base = std::env::temp_dir().join(format!("pdfcraft-automation-save-root-{}", std::process::id()));
+    let base = std::env::temp_dir().join(format!("iridium-pdf-automation-save-root-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&base);
     let root = base.join("root");
     let outside = base.join("outside");
@@ -351,7 +351,7 @@ fn other_shares_and_device_paths_are_refused_by_name() {
 #[cfg(windows)]
 #[test]
 fn a_trailing_dot_on_the_root_or_above_it_names_the_folder_windows_opens() {
-    let base = std::env::temp_dir().join(format!("pdfcraft-automation-dot-{}", std::process::id()));
+    let base = std::env::temp_dir().join(format!("iridium-pdf-automation-dot-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&base);
     std::fs::create_dir_all(base.join("root")).unwrap();
     std::fs::create_dir_all(base.join("outside")).unwrap();
@@ -369,14 +369,14 @@ fn a_trailing_dot_on_the_root_or_above_it_names_the_folder_windows_opens() {
 
 /// A fresh, empty folder for one staging test.
 fn staging_dir(test: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-staging-{}-{test}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-staging-{}-{test}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
 }
 
 fn staged(dir: &Path, suffix: u64) -> PathBuf {
-    dir.join(format!(".out.pdf.{suffix:016x}.pdfcraft-tmp"))
+    dir.join(format!(".out.pdf.{suffix:016x}.iridium-pdf-tmp"))
 }
 
 fn read(p: &Path) -> String {

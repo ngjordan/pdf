@@ -7,7 +7,7 @@
 //! The font is built here: `.notdef` and two 500-unit squares, CID 1 in the first font dict and
 //! CID 2 in the second, which is empty.
 
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest};
 use std::sync::Arc;
 
 /// A CFF INDEX with one-byte offsets.

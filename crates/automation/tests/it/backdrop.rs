@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use pdfcraft_automation::{Automation, Content};
+use iridium_pdf_automation::{Automation, Content};
 use serde_json::{Value, json};
 
 /// Two 200 × 100 pt pages saying "Hi": page 1 on a white fill of its own (as browsers write),
@@ -45,7 +45,7 @@ fn workdir() -> PathBuf {
 
 /// A folder of its own per test: the tests of this binary run at the same time.
 fn named_workdir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-automation-backdrop-{}-{name}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-automation-backdrop-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("a.pdf"), fixture()).unwrap();
@@ -157,10 +157,10 @@ fn secret_pdf(tag: Option<&str>) -> Vec<u8> {
 
 /// Every stream of a saved file, decoded, joined: what anyone reading the file can recover.
 fn every_stream(path: &std::path::Path) -> String {
-    let doc = pdfcraft_cos::Document::open(std::sync::Arc::new(std::fs::read(path).unwrap())).unwrap();
+    let doc = iridium_pdf_cos::Document::open(std::sync::Arc::new(std::fs::read(path).unwrap())).unwrap();
     doc.scan_objects()
         .filter_map(|(_, o)| match &*o {
-            pdfcraft_cos::Object::Stream(s) => Some(String::from_utf8_lossy(&s.decoded().unwrap_or_default()).into_owned()),
+            iridium_pdf_cos::Object::Stream(s) => Some(String::from_utf8_lossy(&s.decoded().unwrap_or_default()).into_owned()),
             _ => None,
         })
         .collect::<Vec<_>>()

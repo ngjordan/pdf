@@ -149,7 +149,7 @@ fn a_kept_comment_is_found_where_a_delete_moved_it() {
     assert_eq!((view.editing, view.editor_focus), (None, None), "the editor closes with the reply it was open on");
 }
 
-use pdfcraft_render::TextGlyph;
+use iridium_pdf_render::TextGlyph;
 
 /// One glyph per character, `w` points wide, on a line of `em`-point text whose baseline is at `y`, drawn
 /// along `direction` (a unit vector in view space, y down).
@@ -408,7 +408,7 @@ fn context_menu_colour_submenu_keeps_its_picker_open_and_a_swatch_closes_the_men
         }],
         ..Default::default()
     };
-    let mut view = DocView::new(pdfcraft_engine::DocId(1), &info, crate::canvas::ViewDefaults::default());
+    let mut view = DocView::new(iridium_pdf_engine::DocId(1), &info, crate::canvas::ViewDefaults::default());
     view.comments.selected = Some((0, 0));
     let prefs = CommentPrefs::default();
     let mut h = egui_kittest::Harness::new_ui_state(
@@ -481,7 +481,7 @@ fn proportional_corners_keep_the_opposite_anchor_and_edges_stretch_one_axis() {
 fn tools_round_trip_through_their_commands() {
     for t in ALL {
         assert_eq!(CommentTool::from_command(t.command()), Some(t));
-        assert!(pdfcraft_engine::commands::command(t.command()).is_some(), "{} is registered", t.command());
+        assert!(iridium_pdf_engine::commands::command(t.command()).is_some(), "{} is registered", t.command());
         assert!(icons::exists(t.icon()), "icon {}", t.icon());
         assert!(GROUPS[t.group()].contains(&t));
     }

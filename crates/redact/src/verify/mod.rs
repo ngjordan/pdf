@@ -59,7 +59,7 @@
 
 use std::fmt::Write as _;
 
-use pdfcraft_cos::ObjRef;
+use iridium_pdf_cos::ObjRef;
 
 mod extract;
 mod geometry;
@@ -251,8 +251,8 @@ pub struct ProofOptions {
 /// Handles for the tests to reach the byte sweep without a whole document.
 #[cfg(test)]
 pub(crate) mod tests_support {
-    use pdfcraft_content::parse;
-    use pdfcraft_cos::{Dict, Document, Object, Stream};
+    use iridium_pdf_content::parse;
+    use iridium_pdf_cos::{Dict, Document, Object, Stream};
 
     use super::extract::{carries_glyphs, parse_cmap};
     use super::limits::{MAX_STREAM, MAX_TOTAL_DECODED, MAX_WORK, MIN_STRUCTURED_NEEDLE};
@@ -352,7 +352,7 @@ pub(crate) mod tests_support {
             b"<< /Type /Font /Subtype /TrueType /BaseFont /Arial >>".to_vec(),
             crate::tests_verify::stream("", &format!("BT /F1 10 Tf 10 100 Td ({}) Tj ET", "x".repeat(700_000)).into_bytes()),
         ];
-        let doc = pdfcraft_cos::Document::open(std::sync::Arc::new(crate::tests_verify::pdf_bytes(objs, ""))).unwrap();
+        let doc = iridium_pdf_cos::Document::open(std::sync::Arc::new(crate::tests_verify::pdf_bytes(objs, ""))).unwrap();
         let mut needles = Vec::new();
         add_needle(&mut needles, false, "SECRETVALUE".to_string(), Some(0));
         let mut acc = Acc::new(Ctx::new(Default::default()));
@@ -378,10 +378,10 @@ pub(crate) mod tests_support {
         ];
         let bytes = std::sync::Arc::new(crate::tests_verify::pdf_bytes(objs, ""));
         let probe = |spent: u64| -> bool {
-            let doc = pdfcraft_cos::Document::open(bytes.clone()).unwrap();
+            let doc = iridium_pdf_cos::Document::open(bytes.clone()).unwrap();
             let ctx = Ctx::new(Default::default());
             ctx.work.set(spent);
-            let page = &pdfcraft_model::pages(&doc)[0];
+            let page = &iridium_pdf_model::pages(&doc)[0];
             extract_page(&doc, &page.dict, &ctx, &[]).is_ok()
         };
         (probe(0), !probe(MAX_WORK - 10_000))

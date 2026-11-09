@@ -25,8 +25,8 @@
 //! axis-aligned transform, filled before any other painting, and covering the crop box.
 //! Anything else is real content and stays.
 
-use pdfcraft_content::{Matrix, Op, Pieces};
-use pdfcraft_cos::{DecodeBudget, Dict, Document, ObjRef, Object, PdfString, Stream};
+use iridium_pdf_content::{Matrix, Op, Pieces};
+use iridium_pdf_cos::{DecodeBudget, Dict, Document, ObjRef, Object, PdfString, Stream};
 use sha2::{Digest, Sha256};
 
 use crate::{EditError, MarkKind};
@@ -113,7 +113,7 @@ impl Paint {
 /// The backdrop `page` (0-based) paints, if any. Finding the page walks the page tree, so to
 /// check many pages use [`page_backdrops`], which walks it once.
 pub fn page_backdrop(doc: &Document, page: usize) -> Result<Option<Backdrop>, EditError> {
-    let all = pdfcraft_model::pages(doc);
+    let all = iridium_pdf_model::pages(doc);
     let p = all.get(page).ok_or(EditError::NoSuchPage(page))?;
     Ok(scan(doc, p, None).map(|(b, _)| b))
 }
@@ -122,7 +122,7 @@ pub fn page_backdrop(doc: &Document, page: usize) -> Result<Option<Backdrop>, Ed
 /// A page past the end has none, and doesn't hide what the others paint: a page count taken
 /// elsewhere (the viewer's) can disagree with the page tree's on a malformed document.
 pub fn page_backdrops(doc: &Document, pages: &[usize]) -> Vec<Option<Backdrop>> {
-    let all = pdfcraft_model::pages(doc);
+    let all = iridium_pdf_model::pages(doc);
     pages.iter().map(|&p| all.get(p).and_then(|page| scan(doc, page, None)).map(|(b, _)| b)).collect()
 }
 
@@ -132,7 +132,7 @@ pub fn page_backdrops(doc: &Document, pages: &[usize]) -> Vec<Option<Backdrop>> 
 pub fn backdrops_left_off(doc: &Document) -> Vec<usize> {
     let tag_of = |o: &Object| crate::place::stream_tag(doc, o);
     let copy = |o: &Object| doc.resolve(o).as_dict().is_some_and(|d| d.get(TAG).is_some());
-    pdfcraft_model::pages(doc)
+    iridium_pdf_model::pages(doc)
         .iter()
         .enumerate()
         .filter(|(_, p)| {
@@ -149,7 +149,7 @@ pub fn backdrops_left_off(doc: &Document) -> Vec<usize> {
 
 /// Replace `page`'s white backdrop fill, if it has one (see the module doc). Returns whether it
 /// did; when it did, `page` no longer matches the document. A picture backdrop is left alone.
-pub(crate) fn replace(doc: &mut Document, page: &pdfcraft_model::Page) -> Result<bool, EditError> {
+pub(crate) fn replace(doc: &mut Document, page: &iridium_pdf_model::Page) -> Result<bool, EditError> {
     let Some((Backdrop::Fill, Some(found))) = scan(doc, page, None) else { return Ok(false) };
     let Some((piece, at)) = found.place() else { return Ok(false) };
     let op = found.pieces.data().get(found.op.clone()).unwrap_or_default().to_vec();
@@ -157,7 +157,7 @@ pub(crate) fn replace(doc: &mut Document, page: &pdfcraft_model::Page) -> Result
     let (Some(&(_, original)), Some(bytes)) = (found.refs.get(piece), edited.get(piece)) else { return Ok(false) };
     // The `n` among the copy's own operators. A copy whose fill can't be found that way again is
     // not made: there would be no safe way back.
-    let parsed = pdfcraft_content::parse(head(bytes));
+    let parsed = iridium_pdf_content::parse(head(bytes));
     let Some(index) = parsed.ops.iter().position(|o| o.span.start == at && o.op == b"n") else { return Ok(false) };
     let Some(before) = parsed.ops.get(..index) else { return Ok(false) };
     let mut note = Dict::new();
@@ -191,7 +191,7 @@ pub(crate) fn replace(doc: &mut Document, page: &pdfcraft_model::Page) -> Result
 /// Turn the fills [`replace`] turned off on `page` back on, where [`restored_copy`] finds that
 /// safe; a copy listed in several slots is restored in each. Returns how many slots it restored.
 /// A copy it can't restore stays as it is, tag and all, so [`backdrops_left_off`] names its page.
-pub(crate) fn restore(doc: &mut Document, page: &pdfcraft_model::Page) -> Result<usize, EditError> {
+pub(crate) fn restore(doc: &mut Document, page: &iridium_pdf_model::Page) -> Result<usize, EditError> {
     let mut list = crate::place::contents(doc, page)?;
     // Per copy: the stream that takes its place, or `None` when it stays.
     let mut done: Vec<(ObjRef, Option<ObjRef>)> = Vec::new();
@@ -237,7 +237,7 @@ pub(crate) fn restore(doc: &mut Document, page: &pdfcraft_model::Page) -> Result
 /// copy, or when turning the fill on could paint over something: the operators before the fill
 /// changed since (their hash no longer matches), or the page would no longer paint the fill
 /// first, covering it. What comes after the fill (an edit, a redaction) is kept as it is.
-fn restored_copy(doc: &Document, page: &pdfcraft_model::Page, copy: ObjRef) -> Option<(Vec<u8>, Dict, Option<ObjRef>)> {
+fn restored_copy(doc: &Document, page: &iridium_pdf_model::Page, copy: ObjRef) -> Option<(Vec<u8>, Dict, Option<ObjRef>)> {
     let obj = doc.get(copy);
     let Object::Stream(s) = &*obj else { return None };
     let note = s.dict.get(TAG).map(|n| doc.resolve(n))?;
@@ -249,7 +249,7 @@ fn restored_copy(doc: &Document, page: &pdfcraft_model::Page, copy: ObjRef) -> O
     }
     let hash = note.get(b"Before")?.as_string()?;
     let bytes = DecodeBudget::new(SCAN_BYTES, 0).decode_strict(doc, s).ok()?;
-    let parsed = pdfcraft_content::parse(head(&bytes));
+    let parsed = iridium_pdf_content::parse(head(&bytes));
     // The `n` standing in for the fill, after exactly the operators that came before it.
     let fill = parsed.ops.get(index)?;
     if fill.op != b"n" || !fill.operands.is_empty() || ops_hash(parsed.ops.get(..index)?) != hash.bytes {
@@ -350,7 +350,7 @@ fn bytes(kind: u8, b: &[u8], h: &mut Sha256) {
 
 /// Find the backdrop, and for a fill, where it is. With `swap`, that stream reads as those bytes
 /// instead of its own (to check a change before making it).
-fn scan(doc: &Document, p: &pdfcraft_model::Page, swap: Option<(ObjRef, &[u8])>) -> Option<(Backdrop, Option<Found>)> {
+fn scan(doc: &Document, p: &iridium_pdf_model::Page, swap: Option<(ObjRef, &[u8])>) -> Option<(Backdrop, Option<Found>)> {
     let crop = p.crop(doc);
     let c = p.dict.get(b"Contents")?;
     let list: Vec<Object> = match &*doc.resolve(c) {
@@ -399,7 +399,7 @@ fn scan(doc: &Document, p: &pdfcraft_model::Page, swap: Option<(ObjRef, &[u8])>)
         data.push(bytes);
     }
     let pieces = Pieces::join(&data);
-    let parsed = pdfcraft_content::parse(head(pieces.data()));
+    let parsed = iridium_pdf_content::parse(head(pieces.data()));
     let res = resources(doc, &p.dict);
     let found = walk(doc, &res, crop, &parsed.ops);
     // A match proves the graphics state for one execution only. Repeated references may
@@ -488,7 +488,7 @@ fn walk(doc: &Document, res: &Dict, crop: [f64; 4], ops: &[Op]) -> Option<(Backd
             b"f" | b"F" | b"f*" => {
                 // One rectangle: with two, a fill rule can cut a hole where content shows.
                 let covers = match path.as_deref() {
-                    Some([r]) => st.clip.and_then(|c| intersect(*r, c)).is_some_and(|r| pdfcraft_content::contains(r, crop, COVER_EPS)),
+                    Some([r]) => st.clip.and_then(|c| intersect(*r, c)).is_some_and(|r| iridium_pdf_content::contains(r, crop, COVER_EPS)),
                     _ => false,
                 };
                 return (covers && st.white && st.paint.plain() && !clip_next).then(|| (Backdrop::Fill, Some(op.span.clone())));
@@ -522,7 +522,7 @@ fn covers_unit_square(st: &State, crop: [f64; 4], image: bool) -> bool {
     image
         && st.paint.plain()
         && axis_aligned(&st.ctm)
-        && st.clip.and_then(|c| intersect(st.ctm.bbox([0.0, 0.0, 1.0, 1.0]), c)).is_some_and(|r| pdfcraft_content::contains(r, crop, COVER_EPS))
+        && st.clip.and_then(|c| intersect(st.ctm.bbox([0.0, 0.0, 1.0, 1.0]), c)).is_some_and(|r| iridium_pdf_content::contains(r, crop, COVER_EPS))
 }
 
 fn set_colour(st: &mut State, components: usize, op: &Op) {

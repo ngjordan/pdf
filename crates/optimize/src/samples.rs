@@ -3,7 +3,7 @@
 //! stays as it was apart from the encoding: its size, colour space, masks, `/Interpolate`,
 //! `/Intent`, `/Metadata` and every other entry are kept.
 
-use pdfcraft_cos::{Document, ImageBudget, Object, Stream};
+use iridium_pdf_cos::{Document, ImageBudget, Object, Stream};
 
 use crate::images::{MAX_PIXELS, allowance, components, is_dct, is_identity_decode, jpeg, pixels, ycc_encoded};
 
@@ -37,7 +37,7 @@ pub enum NotDecoded {
     BitDepth(i64),
     #[error("its decode array remaps the samples")]
     Decode,
-    #[error("it is compressed in a format PdfCraft cannot read back yet (JPEG 2000, JBIG2 or CCITT fax)")]
+    #[error("it is compressed in a format PDF cannot read back yet (JPEG 2000, JBIG2 or CCITT fax)")]
     Filter,
     #[error("its JPEG colour transform is ambiguous, so readers may disagree about its colours")]
     Ambiguous,
@@ -182,7 +182,7 @@ pub fn encode_samples(old: &Stream, samples: &Samples, quality: u8) -> Option<St
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pdfcraft_cos::Dict;
+    use iridium_pdf_cos::Dict;
 
     fn image(dict: &[(&str, Object)], raw: Vec<u8>) -> Stream {
         let mut d = Dict::new();
@@ -251,7 +251,7 @@ mod tests {
         // 10 × 2 with a TIFF predictor: each 1 bit flips the pixel from the one to its left.
         let packed = vec![0b1000_0000, 0b0000_0000, 0b0100_0000, 0b0000_0000];
         let parms = || {
-            let mut p = pdfcraft_cos::Dict::new();
+            let mut p = iridium_pdf_cos::Dict::new();
             for (k, v) in [("Predictor", 2), ("Colors", 1), ("BitsPerComponent", 1), ("Columns", 10)] {
                 p.set(k.as_bytes().to_vec(), Object::Int(v));
             }

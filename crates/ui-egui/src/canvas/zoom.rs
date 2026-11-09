@@ -141,7 +141,7 @@ impl DocView {
     }
 
     /// Displayed page size in points for this view rotation.
-    pub(super) fn display_size(&self, p: &pdfcraft_render::PageInfo) -> (f32, f32) {
+    pub(super) fn display_size(&self, p: &iridium_pdf_render::PageInfo) -> (f32, f32) {
         if self.rotation % 180 == 90 { (p.height, p.width) } else { (p.width, p.height) }
     }
 
@@ -306,7 +306,7 @@ impl DocView {
     pub(super) fn layout(&self, info: &DocInfo, content_w: f32, ppp: f32) -> Vec<Rect> {
         let s = self.zoom * PT;
         let gap = self.page_gap();
-        let page_size = |p: &pdfcraft_render::PageInfo| {
+        let page_size = |p: &iridium_pdf_render::PageInfo| {
             let (w, h) = self.display_size(p);
             if self.show_page_gaps {
                 vec2(w * s, h * s)
@@ -328,7 +328,7 @@ impl DocView {
             }
             PageLayout::TwoUp => {
                 // With a cover page, the first page sits alone on the right.
-                let rows: Vec<&[pdfcraft_render::PageInfo]> = if self.cover && !info.pages.is_empty() {
+                let rows: Vec<&[iridium_pdf_render::PageInfo]> = if self.cover && !info.pages.is_empty() {
                     std::iter::once(&info.pages[..1]).chain(info.pages[1..].chunks(2)).collect()
                 } else {
                     info.pages.chunks(2).collect()

@@ -4,7 +4,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use pdfcraft_cos::{Dict, Document as Cos, ObjRef, Object};
+use iridium_pdf_cos::{Dict, Document as Cos, ObjRef, Object};
 
 use crate::Document;
 
@@ -14,7 +14,7 @@ const MAX_COPY_PIXELS: u64 = 64_000_000;
 const MAX_FORM_DEPTH: usize = 12;
 
 /// A picture on a page, with its index in [`Document::page_images`].
-pub type PagePicture = (usize, pdfcraft_edit::PageImage);
+pub type PagePicture = (usize, iridium_pdf_edit::PageImage);
 
 /// The topmost of `pictures` under user-space point `at` (`[x, y]`). `pictures` is bottom first,
 /// as [`Document::page_pictures_job`] lists them, so the last one that holds `at` wins.
@@ -24,7 +24,7 @@ pub fn picture_at(pictures: &[PagePicture], at: [f64; 2]) -> Option<&PagePicture
 
 /// The pictures on `page`, bottom first: raster images, and Form artwork that holds one.
 fn pictures(cos: &Cos, page: usize) -> Vec<PagePicture> {
-    let images = pdfcraft_edit::page_images(cos, page).unwrap_or_default();
+    let images = iridium_pdf_edit::page_images(cos, page).unwrap_or_default();
     // Artwork drawn many times is searched once.
     let mut holds_one: HashMap<ObjRef, bool> = HashMap::new();
     images
@@ -72,7 +72,7 @@ impl Document {
         let img = self.page_images(page).into_iter().nth(index).ok_or_else(|| format!("page {} has no image {}", page + 1, index + 1))?;
         let object = img.object.ok_or("the image has no object")?;
         let picture = if img.is_form { picture_in_form(&editor.cos, object).ok_or("this artwork holds no picture")? } else { object };
-        pdfcraft_create::image_file(&editor.cos, picture)
+        iridium_pdf_create::image_file(&editor.cos, picture)
     }
 
     /// Copy Image: picture `index` on `page` at its own resolution, as straight (unpremultiplied)
@@ -104,26 +104,26 @@ impl Document {
         self.check_copying().map_err(|e| e.to_string())?;
         let editor = self.editor.as_ref().ok_or("the document can't be read")?;
         let item = self.added().iter().filter(|a| a.page == page).nth(index);
-        let Some(pdfcraft_edit::Content::Image(img)) = item.map(|a| &a.content) else {
+        let Some(iridium_pdf_edit::Content::Image(img)) = item.map(|a| &a.content) else {
             return Err(format!("item {} on page {} is not an added image", index + 1, page + 1));
         };
         picture_file(&editor.cos, img.image)
     }
 }
 
-/// An added image's picture as a file: [`pdfcraft_create::image_file`], except that a JPEG 2000
+/// An added image's picture as a file: [`iridium_pdf_create::image_file`], except that a JPEG 2000
 /// picture, which Add Image stores as the file it was given, is that file.
 fn picture_file(cos: &Cos, image: ObjRef) -> Result<(&'static str, Vec<u8>), String> {
     match &*cos.get(image) {
         Object::Stream(s) if s.dict.name(b"Subtype") == Some(b"Image") && s.dict.name(b"Filter") == Some(b"JPXDecode") => Ok(("jp2", s.raw.to_vec())),
-        _ => pdfcraft_create::image_file(cos, image),
+        _ => iridium_pdf_create::image_file(cos, image),
     }
 }
 
 /// Whether image object `image` in `cos` is the picture `file` (as [`picture_file`] writes it).
 /// The sizes are compared first, so an unrelated image is not re-encoded to find out.
 pub(crate) fn is_picture(cos: &Cos, image: ObjRef, file: &[u8]) -> bool {
-    let size = |s: &pdfcraft_cos::Stream| Some((u32::try_from(s.dict.int(b"Width")?).ok()?, u32::try_from(s.dict.int(b"Height")?).ok()?));
+    let size = |s: &iridium_pdf_cos::Stream| Some((u32::try_from(s.dict.int(b"Width")?).ok()?, u32::try_from(s.dict.int(b"Height")?).ok()?));
     // The object at that number now, not one of an earlier generation of it.
     if cos.generation(image.num) != image.generation {
         return false;
@@ -142,8 +142,8 @@ pub(crate) fn is_picture(cos: &Cos, image: ObjRef, file: &[u8]) -> bool {
 /// second paste from another document finds the first one's.
 pub(crate) fn added_picture(cos: &Cos, file: &[u8]) -> Option<ObjRef> {
     let mut seen = std::collections::HashSet::new();
-    pdfcraft_edit::list_added(cos).into_iter().find_map(|a| match a.content {
-        pdfcraft_edit::Content::Image(img) if seen.insert(img.image) && is_picture(cos, img.image, file) => Some(img.image),
+    iridium_pdf_edit::list_added(cos).into_iter().find_map(|a| match a.content {
+        iridium_pdf_edit::Content::Image(img) if seen.insert(img.image) && is_picture(cos, img.image, file) => Some(img.image),
         _ => None,
     })
 }

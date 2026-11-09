@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata (software centres, Flathub). Template: package.sh and the Flatpak
+     manifest substitute @VERSION@ and @DATE@ from Cargo.toml and the build date. -->
+<component type="desktop-application">
+  <id>ph.pdf</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT OR Apache-2.0</project_license>
+  <name>PDF</name>
+  <summary>Read, organize, combine, split and secure PDFs</summary>
+  <developer id="ph.pdf">
+    <name>Iridium Technologies, Inc.</name>
+  </developer>
+  <description>
+    <p>
+      PDF is an open-source PDF workbench. Read, comment on, fill in and sign PDFs;
+      organize, combine and split pages; edit, redact, protect and export documents.
+    </p>
+  </description>
+  <launchable type="desktop-id">ph.pdf.desktop</launchable>
+  <icon type="stock">ph.pdf</icon>
+  <!-- Only url types known to appstream 0.15 (Ubuntu 22.04, where CI validates): no vcs-browser. -->
+  <url type="homepage">https://iridium.ph/apps/iridium-pdf</url>
+  <url type="bugtracker">https://github.com/ngjordan/iridium-pdf/issues</url>
+  <url type="help">https://github.com/ngjordan/iridium-pdf</url>
+  <url type="contact">https://discord.gg/artcraft</url>
+  <categories>
+    <category>Office</category>
+    <category>Viewer</category>
+  </categories>
+  <keywords>
+    <keyword>pdf</keyword>
+    <keyword>viewer</keyword>
+    <keyword>annotate</keyword>
+    <keyword>forms</keyword>
+  </keywords>
+  <screenshots>
+    <screenshot type="default">
+      <caption>A PDF open with its threaded comments</caption>
+      <image>https://raw.githubusercontent.com/ngjordan/iridium-pdf/main/docs/images/iridium-pdf-viewer.png</image>
+    </screenshot>
+  </screenshots>
+  <branding>
+    <color type="primary" scheme_preference="light">#9fd0ff</color>
+    <color type="primary" scheme_preference="dark">#1f64ba</color>
+  </branding>
+  <requires>
+    <display_length compare="ge">760</display_length>
+  </requires>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <control>tablet</control>
+  </supports>
+  <provides>
+    <binary>iridium-pdf</binary>
+    <mediatype>application/pdf</mediatype>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="@VERSION@" date="@DATE@"/>
+  </releases>
+</component>

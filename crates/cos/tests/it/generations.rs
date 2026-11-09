@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use hayro_syntax::object::{Dict as HayroDict, ObjectIdentifier};
-use pdfcraft_cos::{Document, ObjRef, Object, SaveOptions, XrefEntry, write_full, write_incremental};
+use iridium_pdf_cos::{Document, ObjRef, Object, SaveOptions, XrefEntry, write_full, write_incremental};
 
 /// Object 3 was reused: only 3 1 R refers to the current value, never 3 0 R.
 fn reused_object() -> Arc<Vec<u8>> {

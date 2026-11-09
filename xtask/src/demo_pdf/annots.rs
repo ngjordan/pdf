@@ -81,7 +81,7 @@ impl Kind {
     }
 }
 
-const AUTHOR: &str = "PdfCraft Reviewer";
+const AUTHOR: &str = "PDF Reviewer";
 const AUTHOR_2: &str = "Layout Editor";
 
 /// Builds annotation dictionaries (and their appearance XObjects) for one document.
@@ -119,7 +119,7 @@ impl Annotator {
             "Subj" => text(subtype),
             "M" => Object::string_literal(when.pdf.clone()),
             "CreationDate" => Object::string_literal(when.pdf),
-            "NM" => Object::string_literal(format!("pdfcraft-showcase-{:03}-{}", self.seq, subtype.to_lowercase())),
+            "NM" => Object::string_literal(format!("iridium-pdf-showcase-{:03}-{}", self.seq, subtype.to_lowercase())),
         }
     }
 
@@ -269,7 +269,7 @@ impl Annotator {
         reply.set("AP", dictionary! { "N" => icon });
         let reply_id = doc.add_object(reply);
 
-        let mut state = self.base("Text", r, colors::TEAL, AUTHOR, "Accepted set by PdfCraft Reviewer", page);
+        let mut state = self.base("Text", r, colors::TEAL, AUTHOR, "Accepted set by PDF Reviewer", page);
         state.set("F", 30); // hidden: review-state annotations are shown only in the comments list
         state.set("Name", "Comment");
         state.set("IRT", self_id);
@@ -479,7 +479,7 @@ impl Annotator {
         let size = 22.0;
         let tw = Font::HelvBold.width(title, size) + 3.0 * (title.len() as f32 - 1.0);
         c.tracked_text(Font::HelvBold, size, (w - tw) / 2.0, h * 0.42, 3.0, title);
-        let date = format!("PDFCRAFT QA  \u{2022}  {}", &self.now.iso[..10]);
+        let date = format!("IRIDIUM_PDF QA  \u{2022}  {}", &self.now.iso[..10]);
         let dw = Font::Helv.width(&date, 7.0) + 1.0 * (date.chars().count() as f32 - 1.0);
         c.tracked_text(Font::Helv, 7.0, (w - dw) / 2.0, h * 0.2, 1.0, &date);
         let res = self.fonts.resources();
@@ -488,7 +488,7 @@ impl Annotator {
     }
 
     fn attachment(&mut self, doc: &mut Document, page: ObjectId, r: Rect) -> Dictionary {
-        let note = "Review notes for the PdfCraft showcase.\n\n\
+        let note = "Review notes for the PDF showcase.\n\n\
                     - Page 9 exercises every common annotation type.\n\
                     - Each annotation carries its own appearance stream.\n";
         let fs = embedded_file(doc, "review-notes.txt", "text/plain", note.as_bytes(), "Notes attached to a comment", &self.now);

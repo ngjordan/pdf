@@ -1,8 +1,8 @@
 //! End to end: a synthetic PRC stream parsed, assembled and rendered to pixels.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use pdfcraft_prc::PrcFile;
-use pdfcraft_prc_render::{Camera, Image, RenderOptions, assemble, render};
+use iridium_pdf_prc::PrcFile;
+use iridium_pdf_prc_render::{Camera, Image, RenderOptions, assemble, render};
 use std::io::Write as _;
 
 /// An MSB-first bit sink: the inverse of the PRC bit reader, for the few values these tests write.

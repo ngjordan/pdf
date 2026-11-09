@@ -1,6 +1,6 @@
 //! Prepare a form ▸ field detection on scanned pages. A page that is a picture has no text and
 //! no drawn shapes to read, so it is rendered and its lines and boxes are read from the pixels
-//! ([`pdfcraft_forms::detect::raster`]). The labels come from the page's text layer (an earlier
+//! ([`iridium_pdf_forms::detect::raster`]). The labels come from the page's text layer (an earlier
 //! Recognize text), else from text recognition when its models are installed. Without either,
 //! the fields are still found and get the default names (Text1, Check Box1, …).
 //!
@@ -8,8 +8,8 @@
 //! stored sideways and turned upright by `/Rotate` reads like any other page. The fields are
 //! mapped back to user space and turned with the page (`/MK /R`), so typed text reads upright.
 
-use pdfcraft_forms::detect::{Candidate, Word, detect, raster};
-use pdfcraft_render::{PageInfo, PageRenderer, PageText, RenderRequest};
+use iridium_pdf_forms::detect::{Candidate, Word, detect, raster};
+use iridium_pdf_render::{PageInfo, PageRenderer, PageText, RenderRequest};
 
 use crate::{DocId, Document, Session, ocr};
 
@@ -34,9 +34,9 @@ pub(crate) fn is_scan(doc: &Document, page: usize, info: &PageInfo) -> bool {
 /// The raster images (larger than one pixel) `page` draws, each with the share of the page (its
 /// crop box) it covers, when together they cover most of it ([`is_scan`]); `None` otherwise.
 /// Enhance ▸ Scanned document cleans these up ([`crate::scan_clean`]).
-pub(crate) fn scan_images(doc: &Document, page: usize, info: &PageInfo) -> Option<Vec<(pdfcraft_edit::PageImage, f64)>> {
+pub(crate) fn scan_images(doc: &Document, page: usize, info: &PageInfo) -> Option<Vec<(iridium_pdf_edit::PageImage, f64)>> {
     let area = page_area(info)?;
-    let images: Vec<(pdfcraft_edit::PageImage, f64)> = doc
+    let images: Vec<(iridium_pdf_edit::PageImage, f64)> = doc
         .page_images(page)
         .into_iter()
         .filter(|i| !i.is_form && i.width > 1 && i.height > 1)
@@ -57,7 +57,7 @@ pub(crate) fn scan_parts(
     doc: &Document,
     page: usize,
     info: &PageInfo,
-) -> Option<(Vec<(pdfcraft_edit::PageImage, f64)>, Vec<(pdfcraft_edit::PageImage, f64)>, bool)> {
+) -> Option<(Vec<(iridium_pdf_edit::PageImage, f64)>, Vec<(iridium_pdf_edit::PageImage, f64)>, bool)> {
     let area = page_area(info)?;
     let editor = doc.editor.as_ref();
     let (mut images, mut forms) = (Vec::new(), Vec::new());
@@ -83,10 +83,10 @@ pub(crate) fn scan_parts(
 /// Whether Form `form`, covering `points` square points of the page, draws a picture that could
 /// be a scan of it: one with at least [`MIN_FORM_DPI`] over that area, not a logo inside a page
 /// of vector artwork.
-fn holds_scan(cos: &pdfcraft_cos::Document, form: pdfcraft_cos::ObjRef, points: f64) -> bool {
+fn holds_scan(cos: &iridium_pdf_cos::Document, form: iridium_pdf_cos::ObjRef, points: f64) -> bool {
     let Some(picture) = crate::copy_image::picture_in_form(cos, form) else { return false };
     let obj = cos.get(picture);
-    let pdfcraft_cos::Object::Stream(s) = &*obj else { return false };
+    let iridium_pdf_cos::Object::Stream(s) = &*obj else { return false };
     let px = |k: &[u8]| s.dict.int(k).unwrap_or(0).max(0) as f64;
     let per_point = MIN_FORM_DPI / 72.0;
     px(b"Width") * px(b"Height") >= points * per_point * per_point
@@ -100,7 +100,7 @@ fn page_area(info: &PageInfo) -> Option<f64> {
 }
 
 /// The share of the crop box (of area `area`) that `image` covers, when it is a number.
-fn share(info: &PageInfo, area: f64, image: &pdfcraft_edit::PageImage) -> Option<f64> {
+fn share(info: &PageInfo, area: f64, image: &iridium_pdf_edit::PageImage) -> Option<f64> {
     let [cx0, cy0, cx1, cy1] = info.crop.map(f64::from);
     let r = image.visible_rect.unwrap_or(image.rect);
     let w = (r[2].min(cx1) - r[0].max(cx0)).max(0.0);

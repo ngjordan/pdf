@@ -9,8 +9,8 @@ use super::{AnnotError, Dict, Document, ObjRef, Object, Stream, appearance};
 ///
 /// A comment whose text the standard fonts can't draw, with an appearance another program drew
 /// (with a font that has those characters), keeps that appearance: redrawing it would put `?` in
-/// their place, so the edit is refused (`AnnotError::Undrawable`). One PdfCraft drew with `?`
-/// (marked `pdfcraft_fonts::UNDRAWN_MARK`) is redrawn.
+/// their place, so the edit is refused (`AnnotError::Undrawable`). One PDF drew with `?`
+/// (marked `iridium_pdf_fonts::UNDRAWN_MARK`) is redrawn.
 pub fn set_appearance(doc: &mut Document, r: ObjRef) -> Result<(), AnnotError> {
     refuse_foreign_text(doc, &annot_dict(doc, r))?;
     draw_appearance(doc, r)
@@ -26,7 +26,7 @@ pub(crate) fn redraw_or_restore(doc: &mut Document, r: ObjRef, before: Dict) -> 
 }
 
 /// Draw `r`'s normal appearance from its dictionary, whatever its text: characters the standard
-/// fonts can't draw come out as `?`, and the annotation is marked (`pdfcraft_fonts::UNDRAWN_MARK`,
+/// fonts can't draw come out as `?`, and the annotation is marked (`iridium_pdf_fonts::UNDRAWN_MARK`,
 /// cleared when all of it can be drawn) so the edit is reported and flattening won't make that
 /// `?` permanent. For new text (a new comment, changed contents), as Acrobat keeps text its font
 /// can't show, and for display-only copies.
@@ -56,13 +56,13 @@ fn page_box_listing(doc: &Document, r: ObjRef) -> Option<[f64; 4]> {
     if let Some(page) = named {
         return Some(page_with_inherited_boxes(doc, page).crop(doc));
     }
-    pdfcraft_model::pages(doc).into_iter().find(|p| annots(doc, p.obj).iter().any(|a| a.as_ref() == Some(r))).map(|p| p.crop(doc))
+    iridium_pdf_model::pages(doc).into_iter().find(|p| annots(doc, p.obj).iter().any(|a| a.as_ref() == Some(r))).map(|p| p.crop(doc))
 }
 
 /// The page `page` with the `/MediaBox` and `/CropBox` it inherits from its ancestors filled in
-/// (ISO 32000-2 §7.7.3.4), enough for [`pdfcraft_model::Page::crop`]. Follows at most 64
+/// (ISO 32000-2 §7.7.3.4), enough for [`iridium_pdf_model::Page::crop`]. Follows at most 64
 /// `/Parent` links and stops at a loop.
-fn page_with_inherited_boxes(doc: &Document, page: ObjRef) -> pdfcraft_model::Page {
+fn page_with_inherited_boxes(doc: &Document, page: ObjRef) -> iridium_pdf_model::Page {
     let mut dict = doc.get(page).as_dict().cloned().unwrap_or_default();
     let mut seen = std::collections::HashSet::from([page]);
     let mut up = dict.reference(b"Parent");
@@ -81,7 +81,7 @@ fn page_with_inherited_boxes(doc: &Document, page: ObjRef) -> pdfcraft_model::Pa
         }
         up = d.reference(b"Parent");
     }
-    pdfcraft_model::Page { obj: page, dict }
+    iridium_pdf_model::Page { obj: page, dict }
 }
 
 /// Draw the appearance for an annotation dictionary on a page whose visible region is `page`
@@ -277,7 +277,7 @@ fn apply_appearance(doc: &mut Document, r: ObjRef, d: &Dict, built: Built) -> Re
     // marked with the first.
     let Built { mut stream, missing, rect, markup_rect } = built;
     // A text box's Thai glyphs are streams of their own.
-    pdfcraft_fonts::shaped_text::store_streams(doc, &mut stream.dict);
+    iridium_pdf_fonts::shaped_text::store_streams(doc, &mut stream.dict);
     let ap = doc.add(Object::Stream(stream));
     // A copy (a shared /AP is left alone) that keeps unknown entries; the old down and rollover
     // appearances would show the previous look on press or hover, so they go with the old /N.
@@ -298,7 +298,7 @@ fn apply_appearance(doc: &mut Document, r: ObjRef, d: &Dict, built: Built) -> Re
             d.set(b"Rect".to_vec(), num_array(&rect));
         }
         d.remove(b"AS");
-        pdfcraft_fonts::set_undrawn_mark(d, missing);
+        iridium_pdf_fonts::set_undrawn_mark(d, missing);
     })?;
     Ok(())
 }
@@ -397,7 +397,9 @@ pub fn with_missing_appearances_cached(doc: &Document, cache: &mut AppearanceCac
                 continue;
             }
             let crop = appearance::is_drawn_from_points(&d)
-                .then(|| crops.get_or_insert_with(|| pdfcraft_model::pages(doc).iter().map(|p| (p.obj, p.crop(doc))).collect()).get(&page).copied())
+                .then(|| {
+                    crops.get_or_insert_with(|| iridium_pdf_model::pages(doc).iter().map(|p| (p.obj, p.crop(doc))).collect()).get(&page).copied()
+                })
                 .flatten();
             if let Some(built) = cache.get(r, crop) {
                 // Fails only when `r` isn't a dictionary, which the cached build ruled out.

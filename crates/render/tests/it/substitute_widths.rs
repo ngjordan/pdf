@@ -2,7 +2,7 @@
 //! drawn with a standard-font stand-in, its glyphs placed at the advances `/Widths` gives
 //! (ISO 32000-2 §9.6.2.1, Table 109) and their shapes kept.
 
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest};
 use std::sync::Arc;
 
 const SIZE: f64 = 80.0;

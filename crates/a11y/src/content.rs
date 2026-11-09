@@ -6,8 +6,8 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-use pdfcraft_cos::{DecodeBudget, Dict, Document, ObjRef, Object};
-use pdfcraft_model::Page;
+use iridium_pdf_cos::{DecodeBudget, Dict, Document, ObjRef, Object};
+use iridium_pdf_model::Page;
 
 use crate::{Finding, Rule};
 
@@ -53,7 +53,7 @@ struct Walk<'a> {
     budget: DecodeBudget,
 }
 
-fn bdc_marks(doc: &Document, op: &pdfcraft_content::Op, props: &Dict) -> bool {
+fn bdc_marks(doc: &Document, op: &iridium_pdf_content::Op, props: &Dict) -> bool {
     op.name(0) == Some(b"Artifact")
         || match op.operands.get(1) {
             Some(Object::Dict(d)) => d.contains(b"MCID"),
@@ -74,7 +74,7 @@ impl Walk<'_> {
         let mut stack: Vec<bool> = Vec::new();
         let mut untagged = 0;
         // One operator at a time: the walk keeps counts, never the stream's operators.
-        for op in pdfcraft_content::ops(data) {
+        for op in iridium_pdf_content::ops(data) {
             let inside = covered || stack.last().copied().unwrap_or(false);
             match op.op.as_slice() {
                 b"BMC" => stack.push(inside || op.name(0) == Some(b"Artifact")),

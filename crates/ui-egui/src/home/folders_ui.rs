@@ -9,7 +9,7 @@
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::SystemTime;
 
-use crate::PdfCraftApp;
+use crate::PdfApp;
 
 /// At most this many folders can be pinned.
 pub const MAX_PINNED: usize = 8;
@@ -208,7 +208,7 @@ fn cloud_drive(folder: &str) -> String {
     if account.is_empty() { provider.to_string() } else { format!("{provider} · {account}") }
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// File ▸ Pin folder to Home…: choose a folder whose newest PDFs Home lists.
     pub fn pin_folder_dialog(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
@@ -272,7 +272,7 @@ impl PdfCraftApp {
 
     /// List the pinned folders again if the last listing is older than a few seconds or the
     /// folders changed (called while Home shows; `now` is egui time). The listing runs on a
-    /// worker thread, inline in tests ([`PdfCraftApp::run_inline`]).
+    /// worker thread, inline in tests ([`PdfApp::run_inline`]).
     pub fn refresh_pinned(&mut self, now: f64) {
         self.poll_pinned();
         if self.pinned.scan.is_some() {
@@ -302,7 +302,7 @@ impl PdfCraftApp {
         };
         if self.run_inline {
             work();
-        } else if std::thread::Builder::new().name("pdfcraft-folders".into()).spawn(work).is_err() {
+        } else if std::thread::Builder::new().name("iridium-pdf-folders".into()).spawn(work).is_err() {
             // No worker: try again when the next listing is due.
             return;
         }
@@ -330,7 +330,7 @@ impl PdfCraftApp {
 
 /// The Home view's Folders section (desktop only: the web build has no folders to read).
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn section(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
+pub(crate) fn section(app: &mut PdfApp, ui: &mut egui::Ui) {
     use egui::{Align2, CornerRadius, Rect, Sense, vec2};
 
     use crate::theme::{self, Tokens};
@@ -541,7 +541,7 @@ mod tests {
 
     #[test]
     fn a_missing_folder_lists_as_unavailable() {
-        let missing = std::env::temp_dir().join(format!("pdfcraft-no-such-folder-{}", std::process::id()));
+        let missing = std::env::temp_dir().join(format!("iridium-pdf-no-such-folder-{}", std::process::id()));
         let l = list(&missing.to_string_lossy());
         assert!(l.unavailable);
         assert!(l.files.is_empty());

@@ -587,10 +587,10 @@ pub fn date_language(code: &str) -> Option<&'static DateLanguage> {
 /// `dd-mmm-yy` is `18-ott-26` in Italian (#5303). An unknown code is English.
 pub fn use_form_date_language(code: &str) {
     let l = date_language(code).unwrap_or(&DATE_LANGUAGES[0]);
-    let names = pdfcraft_forms::af::DateNames { months: l.months, months_short: l.months_short, days: l.days, days_short: l.days_short };
-    if pdfcraft_forms::af::date_names() != names {
-        pdfcraft_forms::af::set_date_names(names);
-        pdfcraft_js::set_date_names(l.months, l.months_short, l.days, l.days_short);
+    let names = iridium_pdf_forms::af::DateNames { months: l.months, months_short: l.months_short, days: l.days, days_short: l.days_short };
+    if iridium_pdf_forms::af::date_names() != names {
+        iridium_pdf_forms::af::set_date_names(names);
+        iridium_pdf_js::set_date_names(l.months, l.months_short, l.days, l.days_short);
     }
 }
 
@@ -601,7 +601,7 @@ pub fn unwritable(text: &str) -> String {
     let mut out = String::new();
     for c in text.chars() {
         let mut buf = [0u8; 4];
-        if c != '?' && pdfcraft_fonts::win_ansi(c.encode_utf8(&mut buf)) == b"?" && !out.contains(c) {
+        if c != '?' && iridium_pdf_fonts::win_ansi(c.encode_utf8(&mut buf)) == b"?" && !out.contains(c) {
             out.push(c);
         }
     }

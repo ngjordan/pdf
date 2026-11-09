@@ -410,5 +410,5 @@ pub(crate) fn held_bytes(object: &Object, data: &Arc<Vec<u8>>, depth: usize) -> 
 /// that has the same encryption (an earlier revision of the same file).
 pub(super) enum Credentials<'a> {
     Password(Option<&'a str>),
-    Handler { handler: &'a Arc<pdfcraft_crypt::SecurityHandler>, id0: Vec<u8> },
+    Handler { handler: &'a Arc<iridium_pdf_crypt::SecurityHandler>, id0: Vec<u8> },
 }

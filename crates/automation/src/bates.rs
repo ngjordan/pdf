@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use pdfcraft_engine::{Edit, HeaderFooter};
+use iridium_pdf_engine::{Edit, HeaderFooter};
 use serde_json::{Value, json};
 
 use super::error::{Result, ToolError, failed};

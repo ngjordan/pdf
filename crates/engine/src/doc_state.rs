@@ -35,8 +35,8 @@ pub enum ImageEdit {
 /// filled-in PDF form), as CSV with one row per file.
 pub fn merge_data_files(files: &[(String, Vec<u8>)]) -> Result<String, String> {
     let rows =
-        files.iter().map(|(name, bytes)| pdfcraft_xfdf::data_values(bytes).map_err(|e| format!("{name}: {e}"))).collect::<Result<Vec<_>, _>>()?;
-    Ok(pdfcraft_xfdf::merge_csv(&rows))
+        files.iter().map(|(name, bytes)| iridium_pdf_xfdf::data_values(bytes).map_err(|e| format!("{name}: {e}"))).collect::<Result<Vec<_>, _>>()?;
+    Ok(iridium_pdf_xfdf::merge_csv(&rows))
 }
 
 /// One file produced by a split: (1-based first page, last page, PDF bytes).
@@ -72,7 +72,7 @@ pub struct RecoverySnapshot {
 pub(crate) fn renderer_password(bytes: &[u8]) -> String {
     match std::str::from_utf8(bytes) {
         Ok(text) => text.to_owned(),
-        Err(_) => bytes.iter().map(|b| pdfcraft_cos::pdfdoc_char(*b)).collect(),
+        Err(_) => bytes.iter().map(|b| iridium_pdf_cos::pdfdoc_char(*b)).collect(),
     }
 }
 
@@ -81,18 +81,18 @@ pub(crate) fn renderer_password(bytes: &[u8]) -> String {
 /// itself when it holds none. ISO 32000-2 §12.7.5.3, Table 231 (a note to the Password flag):
 /// "it is imperative that PDF processors never store the value of the text field in the PDF file
 /// if this flag is set". The open document keeps them in memory.
-pub(crate) fn writable(cos: &pdfcraft_cos::Document) -> Result<std::borrow::Cow<'_, pdfcraft_cos::Document>, EditError> {
-    let has_form_pw = pdfcraft_forms::has_password_values(cos);
-    let has_xfa_pw = pdfcraft_xfa::has_password_values(cos);
+pub(crate) fn writable(cos: &iridium_pdf_cos::Document) -> Result<std::borrow::Cow<'_, iridium_pdf_cos::Document>, EditError> {
+    let has_form_pw = iridium_pdf_forms::has_password_values(cos);
+    let has_xfa_pw = iridium_pdf_xfa::has_password_values(cos);
     if !has_form_pw && !has_xfa_pw {
         return Ok(std::borrow::Cow::Borrowed(cos));
     }
     let mut copy = cos.clone();
     if has_form_pw {
-        pdfcraft_forms::clear_password_values(&mut copy).map_err(|e| EditError::Write(e.to_string()))?;
+        iridium_pdf_forms::clear_password_values(&mut copy).map_err(|e| EditError::Write(e.to_string()))?;
     }
     if has_xfa_pw {
-        pdfcraft_xfa::clear_password_values(&mut copy).map_err(|e| EditError::Write(e.to_string()))?;
+        iridium_pdf_xfa::clear_password_values(&mut copy).map_err(|e| EditError::Write(e.to_string()))?;
     }
     Ok(std::borrow::Cow::Owned(copy))
 }
@@ -108,12 +108,12 @@ pub fn guard<T>(f: impl FnOnce() -> T) -> Result<T, String> {
 
 /// Validate the signature fields of `cos` (written as `bytes`).
 pub(crate) fn signatures_of(
-    cos: &pdfcraft_cos::Document,
+    cos: &iridium_pdf_cos::Document,
     bytes: &[u8],
     trust: &TrustStore,
-    cache: &pdfcraft_sign::DigestCache,
+    cache: &iridium_pdf_sign::DigestCache,
 ) -> Vec<SignatureInfo> {
-    pdfcraft_sign::pdf::list_cached(cos, bytes, trust, cache)
+    iridium_pdf_sign::pdf::list_cached(cos, bytes, trust, cache)
 }
 
 /// What Optimize PDF did.

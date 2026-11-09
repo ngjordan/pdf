@@ -6,7 +6,7 @@
 
 use std::collections::HashSet;
 
-use pdfcraft_cos::{CosError, Dict, Document, ObjRef, Object};
+use iridium_pdf_cos::{CosError, Dict, Document, ObjRef, Object};
 
 use crate::alt;
 
@@ -195,7 +195,7 @@ pub fn layout_table_to_blocks(doc: &mut Document, table: ObjRef) -> Result<usize
 mod tests {
     use std::sync::Arc;
 
-    use pdfcraft_cos::{Document, ObjRef, Object};
+    use iridium_pdf_cos::{Document, ObjRef, Object};
 
     use super::*;
 

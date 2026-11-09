@@ -38,7 +38,7 @@ pub fn text_editor_fonts(doc: &Document, page: usize) -> Result<Vec<TextEditorFo
     let mut result = Vec::new();
     for (name, font) in fonts.iter().take(128) {
         let Some(font) = doc.dict(font) else { continue };
-        let Some(bytes) = pdfcraft_fonts::pdf::embedded_sfnt_within(doc, &font, &mut decode) else { continue };
+        let Some(bytes) = iridium_pdf_fonts::pdf::embedded_sfnt_within(doc, &font, &mut decode) else { continue };
         if bytes.len() > budget {
             continue;
         }
@@ -54,7 +54,7 @@ pub fn text_editor_fonts(doc: &Document, page: usize) -> Result<Vec<TextEditorFo
     // display newly inserted glyphs before Apply without changing the source text's face.
     let source_faces: Vec<_> = result.iter().map(|p| p.face.clone()).collect();
     for face in source_faces {
-        for full in pdfcraft_fonts::embedding::matching_faces(&face) {
+        for full in iridium_pdf_fonts::embedding::matching_faces(&face) {
             if full.bytes.len() > budget || result.iter().any(|p| p.resource == format!("PCApproved{}", full.name())) {
                 continue;
             }
@@ -69,7 +69,7 @@ pub fn text_editor_fonts(doc: &Document, page: usize) -> Result<Vec<TextEditorFo
     }
     // A missing source family must not make the bundled Thai replacement undiscoverable.
     // Offering it does not change the source; callers explicitly select this choice to replace it.
-    if let Some(thai) = pdfcraft_fonts::document_thai_font()
+    if let Some(thai) = iridium_pdf_fonts::document_thai_font()
         && thai.bytes.len() <= budget
     {
         result.push(TextEditorFont {
@@ -85,12 +85,12 @@ pub fn text_editor_fonts(doc: &Document, page: usize) -> Result<Vec<TextEditorFo
 /// Load an explicit full face into this page's resources. Nothing on the page is replaced;
 /// the new resource can complete matching source subsets or be chosen in a text style.
 pub fn register_text_font(doc: &mut Document, page: usize, bytes: &[u8]) -> Result<String, EditError> {
-    pdfcraft_fonts::embedding::validate_document_input(bytes).map_err(EditError::Invalid)?;
-    let (_, postscript) = pdfcraft_fonts::embedding::names(bytes).map_err(EditError::Invalid)?;
+    iridium_pdf_fonts::embedding::validate_document_input(bytes).map_err(EditError::Invalid)?;
+    let (_, postscript) = iridium_pdf_fonts::embedding::names(bytes).map_err(EditError::Invalid)?;
     let p = page_dict(doc, page)?;
     let mut resources = p.dict.get(b"Resources").and_then(|o| doc.dict(o)).unwrap_or_default();
     let mut fonts = resources.get(b"Font").and_then(|o| doc.dict(o)).unwrap_or_default();
-    let name = pdfcraft_fonts::embedding::embed(doc, &mut fonts, bytes, &postscript).map_err(EditError::Invalid)?;
+    let name = iridium_pdf_fonts::embedding::embed(doc, &mut fonts, bytes, &postscript).map_err(EditError::Invalid)?;
     resources.set(b"Font".to_vec(), Object::Dict(fonts));
     doc.update_dict(p.obj, |d| d.set(b"Resources".to_vec(), Object::Dict(resources)))?;
     Ok(name)

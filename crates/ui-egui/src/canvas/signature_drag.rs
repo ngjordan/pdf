@@ -3,8 +3,8 @@
 //! follows the pointer while it is moved: its own layer is drawn where it goes.
 
 use egui::{ColorImage, TextureHandle, TextureOptions, pos2, vec2};
-use pdfcraft_engine::{Document, Edit};
-use pdfcraft_render::{PageInfo, RenderPool, RenderRequest, Tile};
+use iridium_pdf_engine::{Document, Edit};
+use iridium_pdf_render::{PageInfo, RenderPool, RenderRequest, Tile};
 
 use crate::QuickTool;
 use crate::comments::{CommentView, Gesture, PageCx};
@@ -397,7 +397,7 @@ mod tests {
     /// the pointer. Once the drag ends, the next one asks again.
     #[test]
     fn a_comment_with_nothing_to_draw_is_prepared_once_per_drag() {
-        let mut session = pdfcraft_engine::Session::new();
+        let mut session = iridium_pdf_engine::Session::new();
         let id = session.open("silent.pdf", None, Arc::new(silent()), None).expect("opens");
         let doc = session.get(id).expect("open");
         let index = doc.info.annotations.iter().find(|a| a.subtype == "Sound").expect("listed").index;

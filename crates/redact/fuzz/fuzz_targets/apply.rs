@@ -6,8 +6,8 @@
 use std::sync::Arc;
 
 use libfuzzer_sys::fuzz_target;
-use pdfcraft_cos::Document;
-use pdfcraft_redact::{apply, marks};
+use iridium_pdf_cos::Document;
+use iridium_pdf_redact::{apply, marks};
 
 /// The largest input the target opens (16 MiB); larger inputs are skipped.
 const MAX_INPUT: usize = 16 << 20;

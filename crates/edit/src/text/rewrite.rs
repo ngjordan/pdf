@@ -96,21 +96,21 @@ pub(crate) fn replace_line_with_limit(doc: &mut Document, page: usize, line: usi
                 let size = font_size_before(&ops, first).unwrap_or(target.size);
                 let spacing = target.origin.state.char_spacing;
                 for run in runs {
-                    replacement.push(Op::new("Tf", vec![Object::name(&run.name), pdfcraft_content::num(size)]));
+                    replacement.push(Op::new("Tf", vec![Object::name(&run.name), iridium_pdf_content::num(size)]));
                     if let Some(tc) = run.spacing {
                         // A variation selector's empty glyph: shown at spacing zero, then the
                         // line's own spacing back, so it adds no advance.
-                        replacement.push(Op::new("Tc", vec![pdfcraft_content::num(tc)]));
+                        replacement.push(Op::new("Tc", vec![iridium_pdf_content::num(tc)]));
                         replacement.push(Op::new("Tj", vec![Object::String(PdfString::literal(run.bytes))]));
-                        replacement.push(Op::new("Tc", vec![pdfcraft_content::num(spacing)]));
+                        replacement.push(Op::new("Tc", vec![iridium_pdf_content::num(spacing)]));
                     } else {
                         replacement.push(Op::new("Tj", vec![Object::String(PdfString::literal(run.bytes))]));
                     }
                 }
-                replacement.push(Op::new("Tf", vec![Object::name(&target.font), pdfcraft_content::num(size)]));
+                replacement.push(Op::new("Tf", vec![Object::name(&target.font), iridium_pdf_content::num(size)]));
                 substituted = Some(format!("{} Type3", fallback.family));
             } else {
-                let win = pdfcraft_fonts::win_ansi(&fallback_shown);
+                let win = iridium_pdf_fonts::win_ansi(&fallback_shown);
                 // WinAnsi turns what it can't show into '?'; refuse rather than print the wrong thing.
                 let back: String = win.iter().map(|b| char::from_u32(u32::from(*b)).unwrap_or('?')).collect();
                 if fallback_shown.chars().zip(back.chars()).any(|(a, b)| b == '?' && a != '?') {
@@ -121,9 +121,9 @@ pub(crate) fn replace_line_with_limit(doc: &mut Document, page: usize, line: usi
                 let family = source_family(&target.base_font);
                 let base = family.base_font(target.bold, target.italic);
                 let substitute_name = format!("PCEd{}", base.replace('-', ""));
-                replacement.push(Op::new("Tf", vec![Object::name(&substitute_name), pdfcraft_content::num(size)]));
+                replacement.push(Op::new("Tf", vec![Object::name(&substitute_name), iridium_pdf_content::num(size)]));
                 replacement.push(Op::new("Tj", vec![Object::String(PdfString::literal(win))]));
-                replacement.push(Op::new("Tf", vec![Object::name(&target.font), pdfcraft_content::num(size)]));
+                replacement.push(Op::new("Tf", vec![Object::name(&target.font), iridium_pdf_content::num(size)]));
                 substituted = Some(base.to_string());
                 let mut f = Dict::new();
                 f.set(b"Type".to_vec(), Object::name("Font"));
@@ -250,8 +250,8 @@ fn choose_rewrite_path(
     let visual_indic = members.iter().any(|line| line.visual_order);
     let has_special_text = text.is_some_and(|draft| {
         draft.contains(row_break)
-            || pdfcraft_fonts::source_shaping::required(draft)
-            || !pdfcraft_fonts::embedding::matching_faces(&block.base_font).is_empty()
+            || iridium_pdf_fonts::source_shaping::required(draft)
+            || !iridium_pdf_fonts::embedding::matching_faces(&block.base_font).is_empty()
     });
     let has_multiple_runs = block.rows.iter().any(|row| row.len() > 1)
         || members.iter().any(|line| line.font != first.font || line.size != first.size || line.color != first.color);
@@ -419,7 +419,7 @@ fn choose_font(inputs: &FontInputs<'_>, fonts_res: &mut Dict) -> Result<FontChoi
         return Ok(FontChoice { show_font: first, encode: Box::new(move |s: &str| type3_encode(&fallback, s)), substituted });
     }
     let flat = inputs.flat;
-    let win = pdfcraft_fonts::win_ansi(flat);
+    let win = iridium_pdf_fonts::win_ansi(flat);
     let back: String = win.iter().map(|c| char::from_u32(u32::from(*c)).unwrap_or('?')).collect();
     let base = inputs.family.base_font(inputs.bold, inputs.italic);
     if flat.chars().zip(back.chars()).any(|(a, c)| c == '?' && a != '?') {
@@ -438,7 +438,7 @@ fn choose_font(inputs: &FontInputs<'_>, fonts_res: &mut Dict) -> Result<FontChoi
     let shown = name.clone();
     Ok(FontChoice {
         show_font: name,
-        encode: Box::new(move |s: &str| Some(vec![Type3Run { name: shown.clone(), bytes: pdfcraft_fonts::win_ansi(s), spacing: None }])),
+        encode: Box::new(move |s: &str| Some(vec![Type3Run { name: shown.clone(), bytes: iridium_pdf_fonts::win_ansi(s), spacing: None }])),
         substituted,
     })
 }
@@ -500,7 +500,7 @@ fn stroke_twin(fill: &Op) -> Op {
 
 /// Underlines in text space (the paragraph's text matrix), in its fill colour.
 fn underline_ops(fill: &[Op], tm: &[f64; 6], size: f64, underlines: &[(f64, f64, f64)]) -> Vec<Op> {
-    let n = pdfcraft_content::num;
+    let n = iridium_pdf_content::num;
     let mut ops = vec![Op::new("q", vec![]), Op::new("cm", tm.iter().map(|v| n(*v)).collect())];
     ops.extend(fill.iter().map(stroke_twin));
     ops.push(Op::new("w", vec![n(size * 0.06)]));
@@ -611,7 +611,7 @@ impl LineWriter<'_> {
         cursor: &mut LineCursor,
         ops: &mut Vec<Op>,
     ) -> Result<(f64, f64, f64), EditError> {
-        let n = pdfcraft_content::num;
+        let n = iridium_pdf_content::num;
         let (row, soft, gap) = wrap;
         let line_align = self.align_of(row);
         let body = line.trim_matches(' ');
@@ -669,7 +669,7 @@ impl LineWriter<'_> {
     }
 
     fn show_piece(&self, piece: &str, line: &str, tw: f64, cursor: &mut LineCursor, ops: &mut Vec<Op>) -> Result<(), EditError> {
-        let n = pdfcraft_content::num;
+        let n = iridium_pdf_content::num;
         if let Some(metrics) = self.source {
             let indic_piece = if metrics.visual_order { crate::indic::to_visual(piece) } else { piece.to_owned() };
             ops.extend(source_show(metrics, &indic_piece, self.size, self.space, self.char_spacing, tw)?);
@@ -725,7 +725,7 @@ struct BlockPlan<'a> {
 }
 
 fn block_ops(plan: &BlockPlan<'_>, writer: &LineWriter<'_>, wrapped: &[(String, bool, usize)], show_font: String) -> Result<Vec<Op>, EditError> {
-    let n = pdfcraft_content::num;
+    let n = iridium_pdf_content::num;
     let mut ops = vec![Op::new("q", vec![])];
     ops.extend(reveal_ops(plan.block, plan.lines, plan.style, plan.emit.ctm)?);
     // Moved: a translation inside that state.
@@ -995,7 +995,7 @@ pub(crate) fn rewrite_block_from(
     };
     let mut block_ops = block_ops(&plan, &writer, &wrapped, font.show_font.clone())?;
     let on_top = crate::lift_on_top(over, &mut block_ops);
-    let n = pdfcraft_content::num;
+    let n = iridium_pdf_content::num;
     block_ops.extend(after.ops().into_iter().filter(|op| !op.is("Tf") || after.font.is_some()));
     if split {
         block_ops.insert(0, Op::new("ET", vec![]));
@@ -1038,7 +1038,7 @@ pub(crate) fn reveal_ops(block: &TextBlock, lines: &[TextLine], style: &BlockSty
     if !block.invisible {
         return Ok(Vec::new());
     }
-    let n = pdfcraft_content::num;
+    let n = iridium_pdf_content::num;
     let mut ops = Vec::new();
     if let Some(colour) = style.cover {
         if colour.iter().any(|c| !c.is_finite() || !(0.0..=1.0).contains(c)) {
@@ -1069,7 +1069,7 @@ pub(crate) fn reveal_ops(block: &TextBlock, lines: &[TextLine], style: &BlockSty
 pub(crate) fn selectable_blocks(
     doc: &Document,
     page: usize,
-    excluded: &std::collections::BTreeSet<pdfcraft_cos::ObjRef>,
+    excluded: &std::collections::BTreeSet<iridium_pdf_cos::ObjRef>,
 ) -> Result<Vec<(usize, TextBlock)>, EditError> {
     let p = page_dict(doc, page)?;
     let streams = content_streams(doc, &p.dict)?;

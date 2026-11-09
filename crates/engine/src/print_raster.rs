@@ -5,10 +5,10 @@
 //! into an image-only document, and that document is imposed on the paper like any other. The
 //! print is no longer searchable text.
 
-use pdfcraft_cos::{SaveOptions, write_incremental};
-use pdfcraft_create::ImageResolution;
-use pdfcraft_print::{Content, Raster};
-use pdfcraft_render::{PRINT_TAG, PageRenderer, RenderRequest};
+use iridium_pdf_cos::{SaveOptions, write_incremental};
+use iridium_pdf_create::ImageResolution;
+use iridium_pdf_print::{Content, Raster};
+use iridium_pdf_render::{PRINT_TAG, PageRenderer, RenderRequest};
 
 use crate::export::encode_png;
 use crate::{Document, guard, print_layer_states};
@@ -25,9 +25,9 @@ pub fn rasterize(doc: &Document, pages: &[usize], raster: &Raster, content: Cont
     // Printing is not the View event: a layer the auto state turns off on screen keeps its
     // configured state on paper, as in a print that goes out as vectors.
     config.for_print = true;
-    let (printed, layers) = guard(|| -> Result<(Vec<u8>, Option<Vec<pdfcraft_render::Layer>>), String> {
-        let mut cos = pdfcraft_cos::Document::open_with_password(src.bytes.clone(), config.password.as_deref()).map_err(|e| e.to_string())?;
-        pdfcraft_print::keep_printed(&mut cos, content);
+    let (printed, layers) = guard(|| -> Result<(Vec<u8>, Option<Vec<iridium_pdf_render::Layer>>), String> {
+        let mut cos = iridium_pdf_cos::Document::open_with_password(src.bytes.clone(), config.password.as_deref()).map_err(|e| e.to_string())?;
+        iridium_pdf_print::keep_printed(&mut cos, content);
         // The layers as the vector print sets them: as shown, then the Print event's auto state.
         let layers = print_layer_states(&cos, &doc.info.layers);
         Ok((write_incremental(&cos, &SaveOptions::default()).map_err(|e| e.to_string())?, layers))
@@ -40,7 +40,7 @@ pub fn rasterize(doc: &Document, pages: &[usize], raster: &Raster, content: Cont
     let mut used: Option<f64> = None;
     for &page in pages {
         let (w, h) = src.sizes.get(page).copied().ok_or_else(|| format!("page {} does not exist", page + 1))?;
-        let scale = pdfcraft_render::effective_scale(w, h, (dpi / 72.0) as f32);
+        let scale = iridium_pdf_render::effective_scale(w, h, (dpi / 72.0) as f32);
         let page_dpi = f64::from(scale) * 72.0;
         // Every page of the image document shares one resolution, so its pages keep the
         // source's sizes; the lowest a page needed is used for all.
@@ -54,8 +54,8 @@ pub fn rasterize(doc: &Document, pages: &[usize], raster: &Raster, content: Cont
         images.push((format!("page-{}.png", page + 1), encode_png(r.width, r.height, &rgba)?));
     }
     let dpi = used.unwrap_or(dpi);
-    let doc = pdfcraft_create::from_images_with_resolution(&images, ImageResolution::Dpi(dpi)).map_err(|e| e.to_string())?;
-    pdfcraft_cos::write_full(&doc, &pdfcraft_cos::SaveOptions::default()).map_err(|e| e.to_string())
+    let doc = iridium_pdf_create::from_images_with_resolution(&images, ImageResolution::Dpi(dpi)).map_err(|e| e.to_string())?;
+    iridium_pdf_cos::write_full(&doc, &iridium_pdf_cos::SaveOptions::default()).map_err(|e| e.to_string())
 }
 
 /// Premultiplied RGBA composed over white paper (opaque), in grey when asked (Rec. 601 luma).

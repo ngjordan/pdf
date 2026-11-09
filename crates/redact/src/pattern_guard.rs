@@ -8,7 +8,7 @@
 
 use std::collections::HashSet;
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, Stream};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, Stream};
 
 use crate::RedactError;
 
@@ -241,12 +241,12 @@ impl Guard {
         if chain.is_empty() && normalized.raw.len() > max {
             return Err(PatternProblem::Limit);
         }
-        let data = pdfcraft_filters::decode(&chain, &normalized.raw, max).map_err(|error| match error {
-            pdfcraft_filters::FilterError::LimitExceeded(_) => PatternProblem::Limit,
+        let data = iridium_pdf_filters::decode(&chain, &normalized.raw, max).map_err(|error| match error {
+            iridium_pdf_filters::FilterError::LimitExceeded(_) => PatternProblem::Limit,
             _ => PatternProblem::Unreadable,
         })?;
         self.bytes_left = self.bytes_left.checked_sub(data.len()).ok_or(PatternProblem::Limit)?;
-        let parsed = pdfcraft_content::parse(&data);
+        let parsed = iridium_pdf_content::parse(&data);
         if parsed.skipped != 0 {
             return Err(PatternProblem::Unreadable);
         }
@@ -358,7 +358,7 @@ fn normalized_stream(doc: &Document, stream: &Stream) -> Result<Stream, PatternP
 }
 
 /// Page-tree nodes a walk of the tree may visit, pages included, before it refuses: the page tree
-/// is walked whole elsewhere too (`pdfcraft_model::pages`, `unlink_doomed`), so a long document
+/// is walked whole elsewhere too (`iridium_pdf_model::pages`, `unlink_doomed`), so a long document
 /// must not refuse here.
 const MAX_TREE_NODES: usize = 1_000_000;
 
@@ -369,7 +369,7 @@ const MAX_TREE_NODES: usize = 1_000_000;
 /// `MAX_OBJECTS`, pages are not.
 fn tree_holders(doc: &Document) -> Result<Vec<Object>, PatternProblem> {
     let Some(top) = doc.root().and_then(|root| doc.get(root).as_dict().and_then(|d| d.reference(b"Pages"))) else { return Ok(Vec::new()) };
-    let pages: HashSet<ObjRef> = pdfcraft_model::pages(doc).iter().map(|p| p.obj).collect();
+    let pages: HashSet<ObjRef> = iridium_pdf_model::pages(doc).iter().map(|p| p.obj).collect();
     // The `/Resources` values to inspect. A direct `/Parent` dictionary is written inline by a
     // full save, so it is a node like any other: its resources, `/Parent` and `/Kids` count.
     let mut holders = Vec::new();
@@ -452,7 +452,7 @@ pub(crate) fn check(doc: &Document, selected: &[usize], tree: bool) -> Result<()
             guard.resources(doc, &resources, false, 0).map_err(|reason| RedactError::Pattern { page, reason })?;
         }
     }
-    let pages = pdfcraft_model::pages(doc);
+    let pages = iridium_pdf_model::pages(doc);
     for &index in selected {
         let Some(page) = pages.get(index) else { return Err(RedactError::Unreadable(index.saturating_add(1))) };
         let mut guard = Guard::new();
@@ -484,7 +484,7 @@ pub(crate) fn check_pruned_unreachable(doc: &Document, pruned: &[ObjRef], page: 
     if pruned.is_empty() {
         return Ok(());
     }
-    let reachable = pdfcraft_cos::reachable_objects(doc)?;
+    let reachable = iridium_pdf_cos::reachable_objects(doc)?;
     let mut guard = Guard::new();
     let mut checked = HashSet::new();
     for &pattern in pruned {

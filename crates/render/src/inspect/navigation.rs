@@ -8,7 +8,7 @@ use super::{
 };
 
 /// `DocInfo::outline` holds the first this many bookmarks in outline order. Opening a document
-/// reads only this window; the rest are listed by page through `pdfcraft_organize`.
+/// reads only this window; the rest are listed by page through `iridium_pdf_organize`.
 pub(super) const OUTLINE_WINDOW: usize = 10_000;
 
 /// Deepest level `DocInfo::outline` nests (the top level is 0); deeper bookmarks are left out.
@@ -403,9 +403,9 @@ impl<'a> Inspector<'a> {
 }
 
 /// A text string's value, decoded by the same rules as the engine's object model
-/// ([`pdfcraft_cos::PdfString::to_text`]) so the panels and outline editing agree.
+/// ([`iridium_pdf_cos::PdfString::to_text`]) so the panels and outline editing agree.
 pub(super) fn text_string(bytes: &[u8]) -> String {
-    pdfcraft_cos::PdfString::literal(bytes).to_text()
+    iridium_pdf_cos::PdfString::literal(bytes).to_text()
 }
 
 /// What [`Inspector::name_tree_find`] has visited: node dictionaries, and the key and `/Names`

@@ -6,7 +6,7 @@
 //! few more installed faces, [`devanagari_fallback`], [`telugu_fallback`], [`sinhala_fallback`],
 //! [`tamil_fallback`], [`hebrew_fallback`] and [`hangul_fallback`], draw Hindi, Telugu, Sinhala,
 //! Tamil, Hebrew and Korean when one is installed. It is read at runtime and never embedded or
-//! shipped (AGENTS.md §1.4), and `PDFCRAFT_SYSTEM_FONTS=0` turns it off (published screenshots do).
+//! shipped (AGENTS.md §1.4), and `IRIDIUM_PDF_SYSTEM_FONTS=0` turns it off (published screenshots do).
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
@@ -69,7 +69,7 @@ pub fn fallback(need: Need) -> Option<Arc<FontData>> {
 }
 
 fn load(need: Need) -> Option<Arc<FontData>> {
-    if std::env::var_os("PDFCRAFT_SYSTEM_FONTS").is_some_and(|v| v == "0") {
+    if std::env::var_os("IRIDIUM_PDF_SYSTEM_FONTS").is_some_and(|v| v == "0") {
         return None;
     }
     let (probe, max) = match need {
@@ -123,7 +123,7 @@ pub fn hangul_fallback() -> Option<Arc<FontData>> {
 }
 
 fn script_fallback(candidates: &[PathBuf], probe: char) -> Option<Arc<FontData>> {
-    if std::env::var_os("PDFCRAFT_SYSTEM_FONTS").is_some_and(|v| v == "0") {
+    if std::env::var_os("IRIDIUM_PDF_SYSTEM_FONTS").is_some_and(|v| v == "0") {
         return None;
     }
     candidates.iter().find_map(|path| read(path, probe, MAX_BYTES))
@@ -412,7 +412,7 @@ fn unix_fonts(files: &'static [&'static str]) -> Vec<PathBuf> {
     // Read once per process, and not at all when installed fonts are turned off.
     let installed = INSTALLED
         .get_or_init(|| {
-            if std::env::var_os("PDFCRAFT_SYSTEM_FONTS").is_some_and(|v| v == "0") {
+            if std::env::var_os("IRIDIUM_PDF_SYSTEM_FONTS").is_some_and(|v| v == "0") {
                 return Vec::new();
             }
             fontconfig::font_files(&fontconfig::config_path())
@@ -515,7 +515,7 @@ mod tests {
     /// it is off, the way `tests/it/fonts.rs` skips for the same reason. Without this the suite goes red in exactly the
     /// mode `cargo xtask screenshots` uses.
     fn installed_faces_switched_off() -> bool {
-        std::env::var_os("PDFCRAFT_SYSTEM_FONTS").is_some_and(|v| v == "0")
+        std::env::var_os("IRIDIUM_PDF_SYSTEM_FONTS").is_some_and(|v| v == "0")
     }
 
     /// Check that the first readable fallback candidate wins, so reversing the preference list reverses the
@@ -526,7 +526,7 @@ mod tests {
         // different face and nobody would notice. Two bundled faces both cover 'A' and differ in
         // size, so the winner is identifiable by length alone.
         if installed_faces_switched_off() {
-            eprintln!("skipping: PDFCRAFT_SYSTEM_FONTS=0 turns the loader off before order matters");
+            eprintln!("skipping: IRIDIUM_PDF_SYSTEM_FONTS=0 turns the loader off before order matters");
             return;
         }
         let dir = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fonts"));
@@ -544,7 +544,7 @@ mod tests {
         // This one calls `script_fallback` too, so it fails under the documented switch that
         // published screenshots use — skip with a reason, as tests/it/fonts.rs does.
         if installed_faces_switched_off() {
-            eprintln!("skipping: PDFCRAFT_SYSTEM_FONTS=0 turns the loader off");
+            eprintln!("skipping: IRIDIUM_PDF_SYSTEM_FONTS=0 turns the loader off");
             return;
         }
         let inter = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fonts/Inter-Regular.ttf"));
@@ -622,7 +622,7 @@ mod tests {
     #[test]
     fn a_family_whose_name_has_spaces_is_still_found() {
         let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(0);
-        let root = std::env::temp_dir().join(format!("pdfcraft-macos-fonts-{}-{nanos}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("iridium-pdf-macos-fonts-{}-{nanos}", std::process::id()));
         let supplemental = root.join("Supplemental");
         std::fs::create_dir_all(&supplemental).expect("build a temp macOS-shaped font tree");
         let dirs = [root.to_string_lossy().to_string(), supplemental.to_string_lossy().to_string()];
@@ -650,7 +650,7 @@ mod tests {
     #[test]
     fn every_installed_devanagari_face_is_reachable_on_this_mac() {
         if installed_faces_switched_off() {
-            eprintln!("skipping on this machine: PDFCRAFT_SYSTEM_FONTS=0 turns installed faces off");
+            eprintln!("skipping on this machine: IRIDIUM_PDF_SYSTEM_FONTS=0 turns installed faces off");
             return;
         }
         let list = devanagari_candidates();

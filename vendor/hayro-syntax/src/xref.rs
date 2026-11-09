@@ -60,7 +60,7 @@ pub(crate) fn root_xref(data: PdfData, password: &[u8]) -> Result<(XRef, bool), 
         populate_xref_impl(data.as_ref(), xref_pos, &mut xref_map).ok_or(XRefError::Unknown)?;
     // PdfCraft patch: (hayro-syntax (45)) whether the newest section names an earlier one. Its
     // `/XRefStm` (a hybrid file's stream, §7.5.8.4) belongs to the same update and doesn't count,
-    // as `pdfcraft-cos` doesn't count it.
+    // as `iridium-pdf-cos` doesn't count it.
     let linked = Reader::new(trailer)
         .read_with_context::<Dict<'_>>(&ReaderContext::dummy())
         .is_some_and(|newest| prev_offset(data.as_ref(), &newest, &XrefMap::default()).is_some());
@@ -78,7 +78,7 @@ pub(crate) fn root_xref(data: PdfData, password: &[u8]) -> Result<(XRef, bool), 
     // the file, as for a broken one, so the page tree is found rather than whatever page
     // dictionaries `Pages::new_brute_force` turns up. Only when that section names no earlier
     // one, the file holds another `startxref`, and the page tree can't be read: the conditions
-    // `pdfcraft-cos` rebuilds under, so the two agree on the pages.
+    // `iridium-pdf-cos` rebuilds under, so the two agree on the pages.
     let cut_off = !linked
         && xref
             .get::<Dict<'_>>(xref.trailer_data().pages_ref)
@@ -920,7 +920,7 @@ pub(crate) enum XRefInput<'a> {
 }
 
 /// PdfCraft patch: (hayro-syntax (43)) how far from the end of the file a `startxref` counts as
-/// the file's own footer, as `pdfcraft-cos` judges it (ISO 32000-2 §7.5.5 puts it on the last lines
+/// the file's own footer, as `iridium-pdf-cos` judges it (ISO 32000-2 §7.5.5 puts it on the last lines
 /// of the file).
 const STARTXREF_TAIL: usize = 4096;
 
@@ -938,7 +938,7 @@ pub(crate) fn find_last_xref_pos(data: &[u8]) -> Option<usize> {
 /// own cross-reference section and trailer: the last `startxref` is not near the end of the file
 /// and objects follow it. That section would supersede the older ones (ISO 32000-2 §7.5.6), so
 /// the update's objects are the document; reading the older table the last `startxref` names
-/// shows a revision the document model (`pdfcraft-cos`, which rebuilds such a file from its
+/// shows a revision the document model (`iridium-pdf-cos`, which rebuilds such a file from its
 /// object headers) does not have. A `startxref` near the end, or one followed only by other data
 /// (trailing junk), is no cut-off update.
 pub(crate) fn cut_off_update_follows(data: &[u8]) -> bool {
@@ -1116,7 +1116,7 @@ fn populate_xref_impl<'a>(data: &'a [u8], pos: usize, xref_map: &mut XrefMap) ->
 // PdfCraft patch: (#2366) some writers give `Prev` as a reference `N G R`. When this section's
 // own entries (`own`) place that object and it holds an offset (iText's `indirectPrev.pdf`), that
 // is the offset; otherwise its object number is (tiff2pdf, in JHOVE's PDF-HUL-157 files), as
-// `pdfcraft-cos` and other readers take it.
+// `iridium-pdf-cos` and other readers take it.
 fn prev_offset(data: &[u8], trailer: &Dict<'_>, own: &XrefMap) -> Option<usize> {
     if let Some(prev) = trailer.get::<i32>(PREV) {
         return usize::try_from(prev).ok();

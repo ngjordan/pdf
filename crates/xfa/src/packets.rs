@@ -1,7 +1,7 @@
 //! The XDP packets inside a PDF (`/AcroForm /XFA`, ISO 32000-1 §12.7.8): either one stream
 //! holding the whole XDP, or an array of (name, stream) pairs.
 
-use pdfcraft_cos::{Document, Object};
+use iridium_pdf_cos::{Document, Object};
 
 use crate::XfaError;
 
@@ -121,7 +121,7 @@ pub fn read_packets(doc: &Document) -> Result<Option<Packets>, XfaError> {
     // One decoding allowance for every packet, charged for what each filter stage produced (a
     // stage a later one shrinks included): a fresh MAX_XDP per stream let many packets of
     // compressed bulk that decode to little cost far more than the packets kept.
-    let mut budget = pdfcraft_cos::DecodeBudget::new(MAX_DECODE_WORK, 0);
+    let mut budget = iridium_pdf_cos::DecodeBudget::new(MAX_DECODE_WORK, 0);
     let mut read = |o: &Object| -> Result<Option<String>, XfaError> {
         if o.as_ref().is_some_and(|r| !seen.insert(r)) {
             return Ok(None);

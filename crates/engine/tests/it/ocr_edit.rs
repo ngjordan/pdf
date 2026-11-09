@@ -1,9 +1,9 @@
 //! Edit text on a scanned page: rewriting an OCR word (invisible text over the scan) shows the
 //! new text and hides the scanned word. Synthetic image only.
 
-use pdfcraft_engine::ocr::PlacedWord;
-use pdfcraft_engine::{Edit, Session, export};
-use pdfcraft_render::{PageRenderer, RenderRequest};
+use iridium_pdf_engine::ocr::PlacedWord;
+use iridium_pdf_engine::{Edit, Session, export};
+use iridium_pdf_render::{PageRenderer, RenderRequest};
 
 const PAPER: [u8; 3] = [230, 225, 200];
 const INK: [u8; 3] = [20, 30, 90];
@@ -11,7 +11,7 @@ const INK: [u8; 3] = [20, 30, 90];
 const WORD: [u32; 4] = [40, 40, 100, 60];
 
 /// A 200 × 100 pt "scan" on tinted paper, with OCR text over its word.
-fn scanned() -> (Session, pdfcraft_engine::DocId) {
+fn scanned() -> (Session, iridium_pdf_engine::DocId) {
     scanned_with(vec![PlacedWord {
         text: "John".into(),
         origin: [40.0, 40.0],
@@ -22,7 +22,7 @@ fn scanned() -> (Session, pdfcraft_engine::DocId) {
     }])
 }
 
-fn scanned_with(words: Vec<PlacedWord>) -> (Session, pdfcraft_engine::DocId) {
+fn scanned_with(words: Vec<PlacedWord>) -> (Session, iridium_pdf_engine::DocId) {
     let (w, h) = (200u32, 100u32);
     let mut rgba = Vec::new();
     for y in 0..h {
@@ -40,7 +40,7 @@ fn scanned_with(words: Vec<PlacedWord>) -> (Session, pdfcraft_engine::DocId) {
     (s, id)
 }
 
-fn word_pixels(s: &Session, id: pdfcraft_engine::DocId) -> Vec<[u8; 3]> {
+fn word_pixels(s: &Session, id: iridium_pdf_engine::DocId) -> Vec<[u8; 3]> {
     let doc = s.get(id).unwrap();
     let out = PageRenderer::new(doc.bytes.clone(), Default::default()).render(RenderRequest { page: 0, scale: 1.0, ..Default::default() });
     assert!(out.error.is_none(), "{:?}", out.error);
@@ -82,7 +82,7 @@ fn editing_an_ocr_word_covers_the_scan_and_shows_the_new_text() {
 #[test]
 fn an_explicit_colour_is_kept_for_the_new_text() {
     let (mut s, id) = scanned();
-    let style = pdfcraft_engine::BlockStyle { color: Some([1.0, 0.0, 0.0]), ..Default::default() };
+    let style = iridium_pdf_engine::BlockStyle { color: Some([1.0, 0.0, 0.0]), ..Default::default() };
     s.apply(id, Edit::EditTextBlock { page: 0, block: 0, text: "Jane".into(), style }).unwrap();
     let px = word_pixels(&s, id);
     assert!(px.iter().any(|p| p[0] > 200 && p[1] < 60 && p[2] < 60), "red text");
@@ -166,7 +166,7 @@ fn a_rewritten_ocr_phrase_keeps_its_word_widths() {
 /// Recognize text sizes each word from its box and a guess at how much of the em its letters fill,
 /// so one phrase's words come out several points apart (#3313). Here the first word is the
 /// largest and the middle one the smallest; the phrase is set in 11 pt.
-fn uneven_phrase() -> (Session, pdfcraft_engine::DocId) {
+fn uneven_phrase() -> (Session, iridium_pdf_engine::DocId) {
     scanned_with(vec![
         scanned_word("John", 20.0, 45.0, 70.0, 15.0),
         scanned_word("Smith", 49.0, 78.0, 70.0, 9.0),
@@ -201,10 +201,10 @@ fn only_an_ocr_phrase_with_a_usable_size_is_set_in_one_size() {
     let block = s.get(id).unwrap().text_blocks(0).remove(0);
     assert!(block.invisible);
     assert_eq!(block.phrase_size(), Some(block.size));
-    let visible = pdfcraft_engine::TextBlock { invisible: false, ..block.clone() };
+    let visible = iridium_pdf_engine::TextBlock { invisible: false, ..block.clone() };
     assert_eq!(visible.phrase_size(), None, "visible text keeps its runs' sizes");
     for size in [f64::NAN, 0.0, -3.0, f64::INFINITY] {
-        assert_eq!(pdfcraft_engine::TextBlock { size, ..block.clone() }.phrase_size(), None, "a {size} pt phrase falls back to its words");
+        assert_eq!(iridium_pdf_engine::TextBlock { size, ..block.clone() }.phrase_size(), None, "a {size} pt phrase falls back to its words");
     }
 }
 
@@ -213,7 +213,7 @@ fn only_an_ocr_phrase_with_a_usable_size_is_set_in_one_size() {
 #[test]
 fn a_new_font_for_an_ocr_phrase_keeps_its_one_size() {
     let (mut s, id) = uneven_phrase();
-    let style = pdfcraft_engine::BlockStyle { family: Some((pdfcraft_engine::FontFamily::Times, false, false)), ..Default::default() };
+    let style = iridium_pdf_engine::BlockStyle { family: Some((iridium_pdf_engine::FontFamily::Times, false, false)), ..Default::default() };
     s.apply(id, Edit::EditTextBlock { page: 0, block: 0, text: "John Smith Example".into(), style }).unwrap();
     let lines = s.get(id).unwrap().text_lines(0);
     assert!(!lines.is_empty());
@@ -263,7 +263,7 @@ fn a_new_font_for_an_ocr_phrase_is_as_wide_whatever_its_first_word_was_sized() {
             scanned_word("Smith", 49.0, 78.0, 70.0, 11.0),
             scanned_word("Example", 82.0, 124.0, 70.0, 11.0),
         ]);
-        let style = pdfcraft_engine::BlockStyle { family: Some((pdfcraft_engine::FontFamily::Helvetica, false, false)), ..Default::default() };
+        let style = iridium_pdf_engine::BlockStyle { family: Some((iridium_pdf_engine::FontFamily::Helvetica, false, false)), ..Default::default() };
         // Short enough not to wrap in the phrase's box either way.
         s.apply(id, Edit::EditTextBlock { page: 0, block: 0, text: "John Smith".into(), style }).unwrap();
         let lines = s.get(id).unwrap().text_lines(0);
@@ -275,19 +275,19 @@ fn a_new_font_for_an_ocr_phrase_is_as_wide_whatever_its_first_word_was_sized() {
 }
 
 /// The lines drawn invisibly (still the scan's) and visibly (redrawn), by their text.
-fn scan_and_drawn(s: &Session, id: pdfcraft_engine::DocId) -> (Vec<String>, Vec<String>) {
+fn scan_and_drawn(s: &Session, id: iridium_pdf_engine::DocId) -> (Vec<String>, Vec<String>) {
     let blocks = s.get(id).unwrap().text_blocks(0);
     let of = |invisible: bool| blocks.iter().filter(|b| b.invisible == invisible).map(|b| b.text.clone()).collect::<Vec<_>>();
     (of(true), of(false))
 }
 
 /// A phrase over the scan's block of ink ([`WORD`]): two words side by side.
-fn two_words_on_the_ink() -> (Session, pdfcraft_engine::DocId) {
+fn two_words_on_the_ink() -> (Session, iridium_pdf_engine::DocId) {
     scanned_with(vec![scanned_word("John", 42.0, 66.0, 42.0, 18.0), scanned_word("Smith", 70.0, 98.0, 42.0, 18.0)])
 }
 
 /// The share of paper among the page's pixels from x0 to x1 inside the scanned word's height.
-fn paper_between(s: &Session, id: pdfcraft_engine::DocId, x0: u32, x1: u32) -> f64 {
+fn paper_between(s: &Session, id: iridium_pdf_engine::DocId, x0: u32, x1: u32) -> f64 {
     let doc = s.get(id).unwrap();
     let out = PageRenderer::new(doc.bytes.clone(), Default::default()).render(RenderRequest { page: 0, scale: 1.0, ..Default::default() });
     assert!(out.error.is_none(), "{:?}", out.error);
@@ -412,7 +412,7 @@ fn ocr_words_of_one_size_are_kept_one_by_one() {
 #[test]
 fn a_formatting_change_redraws_the_whole_ocr_phrase() {
     let (mut s, id) = uneven_phrase();
-    let style = pdfcraft_engine::BlockStyle { color: Some([1.0, 0.0, 0.0]), ..Default::default() };
+    let style = iridium_pdf_engine::BlockStyle { color: Some([1.0, 0.0, 0.0]), ..Default::default() };
     s.apply(id, Edit::EditTextBlock { page: 0, block: 0, text: "John Smyth Example".into(), style }).unwrap();
     let (scan, drawn) = scan_and_drawn(&s, id);
     assert!(scan.is_empty(), "nothing is left as the scan: {scan:?}");
@@ -565,7 +565,7 @@ fn a_squeeze_is_relative_to_the_words_own_scale() {
 
 /// Visible text set with a horizontally stretched text matrix (3 × 1), as some generators write.
 fn stretched_visible() -> std::sync::Arc<Vec<u8>> {
-    use pdfcraft_cos::{Dict, Document, Object, SaveOptions, Stream};
+    use iridium_pdf_cos::{Dict, Document, Object, SaveOptions, Stream};
     let mut d = Document::new_empty();
     let pages = d.add(Object::Dict(Dict::new()));
     let contents = d.add(Object::Stream(Stream::flate(Dict::new(), b"BT /F1 12 Tf 3 0 0 1 20 60 Tm (Source) Tj ET")));
@@ -595,7 +595,7 @@ fn stretched_visible() -> std::sync::Arc<Vec<u8>> {
     root.set(b"Pages".to_vec(), Object::Ref(pages));
     let root = d.add(Object::Dict(root));
     d.trailer_mut().set(b"Root".to_vec(), Object::Ref(root));
-    std::sync::Arc::new(pdfcraft_cos::write_full(&d, &SaveOptions::default()).unwrap())
+    std::sync::Arc::new(iridium_pdf_cos::write_full(&d, &SaveOptions::default()).unwrap())
 }
 
 /// Visible text is not OCR: a styled rewrite of stretched text keeps its width, draws no cover
@@ -607,7 +607,7 @@ fn visible_stretched_text_rewrites_unchanged() {
     let before = s.get(id).unwrap().text_blocks(0);
     assert_eq!(before.len(), 1);
     assert!(!before[0].invisible);
-    let style = pdfcraft_engine::BlockStyle { color: Some([1.0, 0.0, 0.0]), ..Default::default() };
+    let style = iridium_pdf_engine::BlockStyle { color: Some([1.0, 0.0, 0.0]), ..Default::default() };
     s.apply(id, Edit::EditTextBlock { page: 0, block: 0, text: "Source".into(), style }).unwrap();
     let after = s.get(id).unwrap().text_blocks(0);
     assert_eq!(after.iter().map(|b| b.text.as_str()).collect::<Vec<_>>(), ["Source"]);
@@ -633,12 +633,12 @@ fn ocr_under_scan(text: &str) -> std::sync::Arc<Vec<u8>> {
 
 /// A page whose `text` content is followed by the opaque 200 × 100 scan image.
 fn under_scan(text: &str) -> std::sync::Arc<Vec<u8>> {
-    under_scan_with(text, |_| pdfcraft_cos::Dict::new())
+    under_scan_with(text, |_| iridium_pdf_cos::Dict::new())
 }
 
 /// As [`under_scan`], with the page's ExtGState resources made by `ext_gstates`.
-fn under_scan_with(text: &str, ext_gstates: impl FnOnce(&mut pdfcraft_cos::Document) -> pdfcraft_cos::Dict) -> std::sync::Arc<Vec<u8>> {
-    use pdfcraft_cos::{Dict, Document, Object, SaveOptions, Stream};
+fn under_scan_with(text: &str, ext_gstates: impl FnOnce(&mut iridium_pdf_cos::Document) -> iridium_pdf_cos::Dict) -> std::sync::Arc<Vec<u8>> {
+    use iridium_pdf_cos::{Dict, Document, Object, SaveOptions, Stream};
     let (w, h) = (200u32, 100u32);
     let mut rgb = Vec::new();
     for y in 0..h {
@@ -689,11 +689,11 @@ fn under_scan_with(text: &str, ext_gstates: impl FnOnce(&mut pdfcraft_cos::Docum
     root.set(b"Pages".to_vec(), Object::Ref(pages));
     let root = d.add(Object::Dict(root));
     d.trailer_mut().set(b"Root".to_vec(), Object::Ref(root));
-    std::sync::Arc::new(pdfcraft_cos::write_full(&d, &SaveOptions::default()).unwrap())
+    std::sync::Arc::new(iridium_pdf_cos::write_full(&d, &SaveOptions::default()).unwrap())
 }
 
 /// The scanned word's box shows the cover and new ink, not the scan.
-fn assert_edit_shows(s: &Session, id: pdfcraft_engine::DocId, label: &str) {
+fn assert_edit_shows(s: &Session, id: iridium_pdf_engine::DocId, label: &str) {
     let px = word_pixels(s, id);
     let paper = px.iter().filter(|p| near(**p, PAPER)).count();
     let ink = px.iter().filter(|p| near(**p, INK)).count();
@@ -701,11 +701,11 @@ fn assert_edit_shows(s: &Session, id: pdfcraft_engine::DocId, label: &str) {
     assert!(ink * 100 > px.len() * 3, "{label}: the new text shows: {ink} of {} ink", px.len());
 }
 
-fn texts(s: &Session, id: pdfcraft_engine::DocId) -> Vec<String> {
+fn texts(s: &Session, id: iridium_pdf_engine::DocId) -> Vec<String> {
     s.get(id).unwrap().text_blocks(0).iter().map(|b| b.text.replace('\n', " ")).collect()
 }
 
-fn edit_block(s: &mut Session, id: pdfcraft_engine::DocId, block: usize, text: &str) {
+fn edit_block(s: &mut Session, id: iridium_pdf_engine::DocId, block: usize, text: &str) {
     s.apply(id, Edit::EditTextBlock { page: 0, block, text: text.into(), style: Default::default() }).unwrap();
 }
 
@@ -769,8 +769,8 @@ fn an_ocr_phrase_split_from_visible_text_under_the_scan_shows_its_edit() {
 
 /// `/SM`: a luminosity soft mask that is white over 30..110 × 30..70 in the space it is selected
 /// in, black elsewhere.
-fn soft_mask_state(d: &mut pdfcraft_cos::Document) -> pdfcraft_cos::Dict {
-    use pdfcraft_cos::{Dict, Object, Stream};
+fn soft_mask_state(d: &mut iridium_pdf_cos::Document) -> iridium_pdf_cos::Dict {
+    use iridium_pdf_cos::{Dict, Object, Stream};
     let mut group = Dict::new();
     group.set(b"S".to_vec(), Object::name("Transparency"));
     group.set(b"CS".to_vec(), Object::name("DeviceRGB"));

@@ -26,7 +26,7 @@ pub(super) const MAX_ANNOTATION_BYTES: usize = 64 << 20;
 /// embedded file whose key does not fit is not listed.
 pub(super) const MAX_LINK_ATTACHMENT_TEXT_BYTES: usize = 16 << 20;
 
-/// A colour array as RGB, read as pdfcraft-annot's appearance builder reads it (`appearance::color`
+/// A colour array as RGB, read as iridium-pdf-annot's appearance builder reads it (`appearance::color`
 /// and `drawn_color`): one entry is grey, three RGB, four CMYK; among four entries a non-number is
 /// 0 but a reference is unreadable, otherwise every entry must be a number. `None` for anything
 /// else, an empty array or a value out of range; each component is clamped to 0..=1.
@@ -47,7 +47,7 @@ fn drawn_color(c: &[Object]) -> Option<[f32; 3]> {
         [c, m, y, k] => [(1.0 - c) * (1.0 - k), (1.0 - m) * (1.0 - k), (1.0 - y) * (1.0 - k)],
         _ => return None,
     };
-    // pdfcraft-annot's `finite`: finite and below 1e7 in magnitude.
+    // iridium-pdf-annot's `finite`: finite and below 1e7 in magnitude.
     rgb.iter().all(|x| x.is_finite() && x.abs() < 1e7).then(|| rgb.map(|x| x.clamp(0.0, 1.0)))
 }
 
@@ -67,7 +67,7 @@ pub(super) fn retained(a: &Annotation) -> usize {
 
 impl<'a> Inspector<'a> {
     /// Whether an annotation is a Fill & Sign mark. Keep in step with
-    /// `pdfcraft_annot::is_fill_sign`, which the engine's comment list uses.
+    /// `iridium_pdf_annot::is_fill_sign`, which the engine's comment list uses.
     fn is_fill_sign(&self, d: &Dictionary, subtype: &str) -> bool {
         let yes = |key: &[u8]| matches!(d.get(key).map(|o| self.resolve(o)), Ok(Object::Boolean(true)));
         if yes(b"PCFillSign") {
@@ -153,7 +153,7 @@ impl<'a> Inspector<'a> {
             }
             // Not comments: form widgets, pop-ups and non-markup annotations such as the
             // Screen annotation that drives a LaTeX `animate` player (keep in step with
-            // `pdfcraft_annot::is_comment_subtype`).
+            // `iridium_pdf_annot::is_comment_subtype`).
             if matches!(subtype.as_str(), "Widget" | "Popup" | "Screen" | "Movie" | "RichMedia" | "3D" | "PrinterMark" | "TrapNet" | "Watermark") {
                 continue;
             }
@@ -170,7 +170,7 @@ impl<'a> Inspector<'a> {
                 let f = |i: usize| c.get(i).map_or(0.0, |o| self.resolve(o).as_float().unwrap_or(0.0));
                 [f(0), f(1), f(2)]
             });
-            // Other comments list the stroke colour as pdfcraft-annot draws it and lists it
+            // Other comments list the stroke colour as iridium-pdf-annot draws it and lists it
             // (`summaries`): grey, CMYK, a non-number among four entries read as 0.
             let mut color = if subtype == "FreeText" { rgb } else { c.and_then(|c| drawn_color(c)).or(rgb) };
             // A text box's /C is its background; its text colour is in /DA.
@@ -186,18 +186,18 @@ impl<'a> Inspector<'a> {
                 }
             }
             // Only usable quads, by the rule redaction apply reads them with (keep in step with
-            // `pdfcraft_annot::summaries`): a malformed one is not drawn as zeros.
+            // `iridium_pdf_annot::summaries`): a malformed one is not drawn as zeros.
             let quads = match d.get(b"QuadPoints").map(|o| self.resolve(o)) {
                 Ok(Object::Array(q)) => {
                     let entries = q.iter().map(|o| self.resolve(o).as_float().ok().map(f64::from));
-                    pdfcraft_geom::quad_points::usable_quads(entries).into_iter().map(|quad| quad.map(|v| v as f32)).collect()
+                    iridium_pdf_geom::quad_points::usable_quads(entries).into_iter().map(|quad| quad.map(|v| v as f32)).collect()
                 }
                 _ => Vec::new(),
             };
             let in_reply_to = d.get(b"IRT").ok().and_then(|o| self.dict(o)).and_then(|p| self.text(p, b"NM"));
             let parent = d.get(b"IRT").ok().and_then(|o| self.resolved_id(o)).and_then(|r| slots.get(&r).copied());
             let fill_sign = self.is_fill_sign(d, &subtype);
-            // Keep in step with `pdfcraft_annot::summaries`.
+            // Keep in step with `iridium_pdf_annot::summaries`.
             let key: &[u8] = if subtype == "Line" { b"L" } else { b"Vertices" };
             let points = match d.get(key).map(|o| self.resolve(o)) {
                 Ok(Object::Array(v)) if matches!(subtype.as_str(), "Line" | "PolyLine" | "Polygon") => {
@@ -212,7 +212,7 @@ impl<'a> Inspector<'a> {
                 subtype,
                 author: self.text(d, b"T"),
                 // Acrobat ends lines with CR, which the interface would draw as nothing (keep
-                // in step with `pdfcraft_annot::summaries`).
+                // in step with `iridium_pdf_annot::summaries`).
                 contents: self.text(d, b"Contents").map(|s| s.replace("\r\n", "\n").replace('\r', "\n")),
                 modified: self.text(d, b"M").map(|m| pretty_date(&m)),
                 name: self.text(d, b"NM"),

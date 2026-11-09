@@ -3,8 +3,8 @@
 
 use std::sync::Arc;
 
-use pdfcraft_cos::{Document, Object};
-use pdfcraft_organize::{add_attachment, attachment_keys, delete_attachment};
+use iridium_pdf_cos::{Document, Object};
+use iridium_pdf_organize::{add_attachment, attachment_keys, delete_attachment};
 
 /// One page, and a catalog whose `/Names` is the indirect (empty) dictionary 4 0 R.
 fn indirect_names_pdf() -> Vec<u8> {

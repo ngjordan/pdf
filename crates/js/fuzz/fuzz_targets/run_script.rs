@@ -4,7 +4,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use pdfcraft_js::{DocInfo, Event, Limits, run};
+use iridium_pdf_js::{DocInfo, Event, Limits, run};
 
 /// The largest script the target runs (64 KiB); larger inputs are skipped.
 const MAX_INPUT: usize = 64 << 10;

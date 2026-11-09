@@ -81,7 +81,7 @@ fn removing_comments_still_takes_them_off_every_page() {
     let (done, work) = passes_of(|| remove_hidden(&mut doc, &[Hidden::Comments]));
     assert_eq!(done.unwrap(), [(Hidden::Comments, 1)]);
     assert_eq!(work, (0, 0));
-    let p = pdfcraft_model::pages(&doc).swap_remove(0);
+    let p = iridium_pdf_model::pages(&doc).swap_remove(0);
     let left: Vec<ObjRef> = annots_of(&doc, &p.dict).iter().filter_map(Object::as_ref).collect();
     // The square and its pop-up go; the widget, the link and the attachment stay.
     assert_eq!(left, [ObjRef::new(17, 0), ObjRef::new(18, 0), ObjRef::new(19, 0)]);

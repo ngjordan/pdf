@@ -4,11 +4,11 @@
 use egui::Pos2;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::{Dialog, PdfCraftApp, SaveTarget};
+use iridium_pdf_ui_egui::{Dialog, PdfApp, SaveTarget};
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("form.pdf", None, include_bytes!("../data/form.pdf").to_vec()).unwrap();
         app.set_option("zoom", "150").unwrap();
@@ -18,13 +18,13 @@ fn harness() -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn at(h: &Harness<'static, PdfCraftApp>, x: f32, y: f32) -> Pos2 {
+fn at(h: &Harness<'static, PdfApp>, x: f32, y: f32) -> Pos2 {
     let r = h.state().views[0].page_screen_rect(0).expect("on screen");
     let k = r.width() / 300.0;
     r.min + egui::vec2(x * k, y * k)
 }
 
-fn marks(h: &Harness<'static, PdfCraftApp>) -> usize {
+fn marks(h: &Harness<'static, PdfApp>) -> usize {
     let s = h.state();
     s.session.get(s.views[0].id).unwrap().redaction_marks()
 }
@@ -79,7 +79,7 @@ fn marking_applying_and_clearing() {
 /// it in place again.
 #[test]
 fn saving_after_applying_redactions_asks_where() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-redacted-save-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-redacted-save-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let original = dir.join("contract.pdf");
@@ -87,7 +87,7 @@ fn saving_after_applying_redactions_asks_where() {
     std::fs::write(&original, &source).unwrap();
     let path = original.to_string_lossy().into_owned();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_path(&path);
         app
@@ -122,14 +122,14 @@ fn saving_after_applying_redactions_asks_where() {
 /// where, so the restored content is not written over the copy. Redo makes Save write in place.
 #[test]
 fn undoing_saved_redactions_does_not_save_over_the_redacted_copy() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-redacted-saved-undo-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-redacted-saved-undo-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let original = dir.join("contract.pdf");
     std::fs::write(&original, include_bytes!("../data/form.pdf")).unwrap();
     let path = original.to_string_lossy().into_owned();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_path(&path);
         app
@@ -179,14 +179,14 @@ fn undoing_saved_redactions_does_not_save_over_the_redacted_copy() {
 /// step do not bring Save in place back over the `_Redacted` copy.
 #[test]
 fn redoing_a_new_apply_after_undoing_saved_redactions_still_asks_where() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-redacted-branch-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-redacted-branch-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let original = dir.join("contract.pdf");
     std::fs::write(&original, include_bytes!("../data/form.pdf")).unwrap();
     let path = original.to_string_lossy().into_owned();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_path(&path);
         app
@@ -234,14 +234,14 @@ fn redoing_a_new_apply_after_undoing_saved_redactions_still_asks_where() {
 /// Save ask where, so a host does not write the restored content over the redacted copy.
 #[test]
 fn undoing_delivered_redactions_asks_where() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-redacted-delivered-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-redacted-delivered-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let original = dir.join("contract.pdf");
     std::fs::write(&original, include_bytes!("../data/form.pdf")).unwrap();
     let path = original.to_string_lossy().into_owned();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_path(&path);
         app
@@ -284,14 +284,14 @@ fn undoing_delivered_redactions_asks_where() {
 /// build keeps the steps counted for the `_Redacted` name.
 #[test]
 fn delivered_redactions_save_in_place() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-redacted-delivered-save-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-redacted-delivered-save-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let original = dir.join("contract.pdf");
     std::fs::write(&original, include_bytes!("../data/form.pdf")).unwrap();
     let path = original.to_string_lossy().into_owned();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_path(&path);
         app
@@ -315,20 +315,20 @@ fn delivered_redactions_save_in_place() {
 /// restored content is not written to the redacted copy the dialog proposed.
 #[test]
 fn undoing_saved_redactions_while_the_save_dialog_is_open_asks_again() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-redacted-dialog-undo-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-redacted-dialog-undo-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let original = dir.join("contract.pdf");
     std::fs::write(&original, include_bytes!("../data/form.pdf")).unwrap();
     let path = original.to_string_lossy().into_owned();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_path(&path);
         app
     });
     crate::support::settle(&mut h);
-    let apply = |h: &mut Harness<'static, PdfCraftApp>| {
+    let apply = |h: &mut Harness<'static, PdfApp>| {
         h.state_mut().execute("redact.pages");
         h.run_steps(2);
         h.get_by_label("OK").click();
@@ -365,14 +365,14 @@ fn undoing_saved_redactions_while_the_save_dialog_is_open_asks_again() {
 /// makes Save ask again, so the unredacted content is not saved under that name.
 #[test]
 fn undoing_apply_redactions_while_the_save_dialog_is_open_asks_again() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-redacted-dialog-unapply-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-redacted-dialog-unapply-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let original = dir.join("contract.pdf");
     std::fs::write(&original, include_bytes!("../data/form.pdf")).unwrap();
     let path = original.to_string_lossy().into_owned();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_path(&path);
         app
@@ -403,14 +403,14 @@ fn undoing_apply_redactions_while_the_save_dialog_is_open_asks_again() {
 /// Undo of Apply redactions brings back Save in place; Redo makes Save ask where again.
 #[test]
 fn undoing_apply_redactions_saves_in_place_again() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-redacted-undo-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-redacted-undo-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let original = dir.join("contract.pdf");
     std::fs::write(&original, include_bytes!("../data/form.pdf")).unwrap();
     let path = original.to_string_lossy().into_owned();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_path(&path);
         app
@@ -451,14 +451,14 @@ fn undoing_apply_redactions_saves_in_place_again() {
 /// File ▸ Revert discards the applied redactions, so Save writes the opened file in place again.
 #[test]
 fn reverting_after_apply_redactions_saves_in_place_again() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-redacted-revert-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-redacted-revert-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let original = dir.join("contract.pdf");
     std::fs::write(&original, include_bytes!("../data/form.pdf")).unwrap();
     let path = original.to_string_lossy().into_owned();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_path(&path);
         app
@@ -504,10 +504,10 @@ fn redaction_codes_become_the_overlay_text() {
     h.run_steps(2);
     let prefs = &h.state().redact_prefs;
     assert_eq!(prefs.overlay_text(), "(b)(6), (b)(7)(C)", "codes in the set's order");
-    let pdfcraft_engine::Edit::AddAnnotation(a) = prefs.mark(0, vec![pdfcraft_engine::rect_quad([10.0, 10.0, 50.0, 30.0])], "T") else {
+    let iridium_pdf_engine::Edit::AddAnnotation(a) = prefs.mark(0, vec![iridium_pdf_engine::rect_quad([10.0, 10.0, 50.0, 30.0])], "T") else {
         panic!("a mark adds an annotation")
     };
-    assert!(matches!(a.shape, pdfcraft_engine::Shape::Redact { ref overlay, .. } if overlay == "(b)(6), (b)(7)(C)"));
+    assert!(matches!(a.shape, iridium_pdf_engine::Shape::Redact { ref overlay, .. } if overlay == "(b)(6), (b)(7)(C)"));
     h.state_mut().redact_prefs.use_code = false;
     assert_eq!(h.state().redact_prefs.overlay_text(), "CONFIDENTIAL", "custom text is kept while codes are used");
 }
@@ -523,10 +523,10 @@ fn redaction_properties_survive_a_restart() {
         p.fill = None;
         p.use_overlay = true;
         p.use_code = true;
-        p.code_set = pdfcraft_engine::REDACTION_CODE_SETS[0];
+        p.code_set = iridium_pdf_engine::REDACTION_CODE_SETS[0];
         p.codes = vec!["(b)(6)", "(b)(7)(C)"];
         p.overlay = "CONFIDENTIAL".into();
-        p.look.font = pdfcraft_engine::OverlayFont::Courier;
+        p.look.font = iridium_pdf_engine::OverlayFont::Courier;
         p.look.size = 12.0;
         p.look.color = [0.0, 0.0, 1.0];
         p.look.align = 2;
@@ -543,29 +543,29 @@ fn redaction_properties_survive_a_restart() {
     h.get_by_label("OK").click();
     h.run_steps(2);
     let json = h.state().persist();
-    let mut fresh = PdfCraftApp::new();
+    let mut fresh = PdfApp::new();
     fresh.restore(&json);
     let p = &fresh.redact_prefs;
     assert_eq!(p.fill, None, "no colour is a saved choice, not a missing one");
     assert_eq!(p.overlay_text(), "(b)(6), (b)(7)(C)");
     assert_eq!(p.overlay, "CONFIDENTIAL");
-    assert_eq!(p.look.font, pdfcraft_engine::OverlayFont::Courier);
+    assert_eq!(p.look.font, iridium_pdf_engine::OverlayFont::Courier);
     assert_eq!((p.look.size, p.look.color, p.look.align, p.look.repeat), (12.0, [0.0, 0.0, 1.0], 2, true));
     assert_eq!((p.outline, p.hover_fill, p.opacity), ([0.0, 0.5, 0.0], [1.0, 1.0, 0.0], 0.4));
     // The next mark takes the outline and opacity.
-    let pdfcraft_engine::Edit::AddAnnotation(a) = p.mark(0, vec![pdfcraft_engine::rect_quad([10.0, 10.0, 50.0, 30.0])], "T") else {
+    let iridium_pdf_engine::Edit::AddAnnotation(a) = p.mark(0, vec![iridium_pdf_engine::rect_quad([10.0, 10.0, 50.0, 30.0])], "T") else {
         panic!("a mark adds an annotation")
     };
     assert_eq!((a.style.color, a.style.opacity, a.style.fill), ([0.0, 0.5, 0.0], 0.4, None));
     // Settings are untrusted: a bad colour, an unknown code set and a code outside the set are
     // dropped, the rest kept.
-    let mut odd = PdfCraftApp::new();
+    let mut odd = PdfApp::new();
     odd.restore(
         r#"{"redact_prefs":{"outline":[2,0,0],"opacity":0.7,"code_set":"nope","codes":["(b)(6)","bogus"],"use_overlay":true,"use_code":true}}"#,
     );
     let p = &odd.redact_prefs;
     assert_eq!((p.outline, p.opacity), ([0.89, 0.13, 0.13], 0.7));
-    assert_eq!(p.code_set.id, pdfcraft_engine::REDACTION_CODE_SETS[0].id);
+    assert_eq!(p.code_set.id, iridium_pdf_engine::REDACTION_CODE_SETS[0].id);
     assert_eq!(p.overlay_text(), "(b)(6)");
 }
 
@@ -588,7 +588,7 @@ fn redaction_properties_for_this_run_only_and_cancel() {
     h.run_steps(2);
     assert_eq!(h.state().redact_prefs.outline, [0.0, 0.0, 1.0], "used for this run");
     assert_eq!(h.state().redact_defaults.outline, [0.89, 0.13, 0.13], "not made the default");
-    let mut fresh = PdfCraftApp::new();
+    let mut fresh = PdfApp::new();
     fresh.restore(&h.state().persist());
     assert_eq!(fresh.redact_prefs.outline, [0.89, 0.13, 0.13], "the next run starts from the saved defaults");
     // Cancel discards the edits made while the dialog was open.
@@ -603,9 +603,9 @@ fn redaction_properties_for_this_run_only_and_cancel() {
 
 #[test]
 fn redacting_an_imported_word_list() {
-    let memo = pdfcraft_engine::Session::new().create_from_text("memo", "Call Ada today\nAda is private\nPublic line").unwrap().to_vec();
+    let memo = iridium_pdf_engine::Session::new().create_from_text("memo", "Call Ada today\nAda is private\nPublic line").unwrap().to_vec();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("memo.pdf", None, memo.clone()).unwrap();
         app
@@ -615,24 +615,24 @@ fn redacting_an_imported_word_list() {
     h.run_steps(2);
     h.get_by_label("Multiple words or phrases");
     let list = b"  Ada \n\nprivate\nAda\nabsent\n".to_vec();
-    h.state_mut().use_files(pdfcraft_ui_egui::FilePurpose::RedactWords, vec![("names.txt".into(), list)]);
+    h.state_mut().use_files(iridium_pdf_ui_egui::FilePurpose::RedactWords, vec![("names.txt".into(), list)]);
     let d = &h.state().redact_search;
-    assert_eq!((d.mode, d.words.as_str()), (pdfcraft_ui_egui::RedactSearchMode::Words, "Ada\nprivate\nabsent"));
+    assert_eq!((d.mode, d.words.as_str()), (iridium_pdf_ui_egui::RedactSearchMode::Words, "Ada\nprivate\nabsent"));
     h.run_steps(2);
     h.get_by_label("3 word(s) or phrase(s)");
     h.get_by_label("Mark all").click();
     h.run_steps(3);
     assert_eq!((marks(&h), h.state().redact_search.found), (3, Some(3)));
     let too_big = vec![b'a'; 2 << 20];
-    h.state_mut().use_files(pdfcraft_ui_egui::FilePurpose::RedactWords, vec![("huge.txt".into(), too_big)]);
+    h.state_mut().use_files(iridium_pdf_ui_egui::FilePurpose::RedactWords, vec![("huge.txt".into(), too_big)]);
     assert_eq!(h.state().redact_search.words, "Ada\nprivate\nabsent", "an oversized list changes nothing");
 }
 
 #[test]
 fn redaction_search_can_match_case_and_whole_words() {
-    let memo = pdfcraft_engine::Session::new().create_from_text("memo", "Ada ada Adaline\nAda beta betamax").unwrap().to_vec();
+    let memo = iridium_pdf_engine::Session::new().create_from_text("memo", "Ada ada Adaline\nAda beta betamax").unwrap().to_vec();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("memo.pdf", None, memo.clone()).unwrap();
         app
@@ -658,7 +658,7 @@ fn removing_hidden_information_and_sanitizing() {
     h.get_by_label("Remove hidden information");
     {
         let d = &h.state().hidden_draft;
-        let fields = d.found.iter().find(|f| f.0 == pdfcraft_engine::Hidden::FormFields).unwrap();
+        let fields = d.found.iter().find(|f| f.0 == iridium_pdf_engine::Hidden::FormFields).unwrap();
         assert_eq!((fields.1, fields.2), (5, true), "five fields, checked");
     }
     h.get_by_label("Remove").click();

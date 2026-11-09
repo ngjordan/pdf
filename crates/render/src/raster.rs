@@ -130,7 +130,7 @@ impl RenderConfig {
 /// A Japanese face from craft-fonts for a CID font of the Adobe-Japan1 collection that the PDF
 /// doesn't embed (`HeiseiMin-W3`, `KozGoPro-Medium`, …). hayro's own substitutes for fonts that
 /// aren't embedded are the Latin standard 14, so such text drew nothing. `None` for every other
-/// font, and when PdfCraft was built without craft-fonts. Only Japanese: no other CJK face is
+/// font, and when PDF was built without craft-fonts. Only Japanese: no other CJK face is
 /// embedded whole.
 fn japanese_fallback(query: &FontQuery) -> Option<(FontData, u32)> {
     let FontQuery::Fallback(f) = query else { return None };
@@ -141,12 +141,12 @@ fn japanese_fallback(query: &FontQuery) -> Option<(FontData, u32)> {
         // BIZ UDMincho before the document face (Shippori Mincho): it covers half-width katakana
         // (U+FF61–U+FF9F), which Shippori Mincho lacks, and a character the substitute lacks is
         // drawn as .notdef.
-        JapaneseFace::Mincho => pdfcraft_fonts::ui_japanese_fonts()
+        JapaneseFace::Mincho => iridium_pdf_fonts::ui_japanese_fonts()
             .into_iter()
             .find(|c| c.family == "BIZ UDMincho" && c.style == "Regular")
-            .or_else(pdfcraft_fonts::document_japanese_font),
+            .or_else(iridium_pdf_fonts::document_japanese_font),
         JapaneseFace::Gothic { bold } => {
-            let faces = pdfcraft_fonts::ui_japanese_fonts();
+            let faces = iridium_pdf_fonts::ui_japanese_fonts();
             let style = if bold { "Bold" } else { "Regular" };
             faces.iter().find(|c| c.family == "BIZ UDPGothic" && c.style == style).or(faces.first()).copied()
         }

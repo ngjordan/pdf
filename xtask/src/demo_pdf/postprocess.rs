@@ -8,14 +8,14 @@ use super::form::{self, FormInputs};
 use super::pdf::{Content, Font, Fonts, Stamp, colors, name, text};
 
 /// Links to this prefix in showcase.html mark where annotations go.
-const MARKER_PREFIX: &str = "https://mark.pdfcraft.invalid/";
+const MARKER_PREFIX: &str = "https://mark.iridium_pdf.invalid/";
 
-const TITLE: &str = "PdfCraft Showcase";
-const AUTHOR: &str = "PdfCraft";
+const TITLE: &str = "PDF Showcase";
+const AUTHOR: &str = "PDF";
 const SUBJECT: &str = "A specimen document exercising typography, world scripts, vector graphics, \
                        MathML, forms, annotations, layers and attachments.";
-const KEYWORDS: &[&str] = &["PDF", "typography", "OpenType", "AcroForm", "annotations", "optional content", "PdfCraft"];
-const CREATOR: &str = "pdfcraft xtask demo-pdf";
+const KEYWORDS: &[&str] = &["PDF", "typography", "OpenType", "AcroForm", "annotations", "optional content", "PDF"];
+const CREATOR: &str = "iridium_pdf xtask demo-pdf";
 
 /// Chrome-printed page indices (0-based) that the post-processor refers to.
 const PAGE_CONTENTS: usize = 1;
@@ -477,7 +477,7 @@ fn producer(doc: &Document) -> String {
         .and_then(Object::as_str)
         .map(|s| String::from_utf8_lossy(s).into_owned())
         .unwrap_or_else(|_| "Chrome".into());
-    format!("{chrome}; lopdf 0.45 via pdfcraft xtask")
+    format!("{chrome}; lopdf 0.45 via iridium_pdf xtask")
 }
 
 fn info_dict(producer: &str, now: &Stamp) -> Dictionary {

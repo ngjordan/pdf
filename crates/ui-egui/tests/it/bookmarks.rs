@@ -3,7 +3,7 @@
 use egui::{Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_ui_egui::PdfApp;
 
 const PAGES: &[u8] = b"%PDF-1.7
 1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
@@ -14,9 +14,9 @@ const PAGES: &[u8] = b"%PDF-1.7
 trailer << /Root 1 0 R >>
 %%EOF";
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("pages.pdf", None, PAGES.to_vec()).expect("opens");
         app.set_option("left", "closed").unwrap();
@@ -27,9 +27,9 @@ fn harness() -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn outline(h: &Harness<'static, PdfCraftApp>) -> Vec<(String, Option<usize>, usize)> {
+fn outline(h: &Harness<'static, PdfApp>) -> Vec<(String, Option<usize>, usize)> {
     let id = h.state().views[0].id;
-    fn flat(items: &[pdfcraft_render::OutlineItem], depth: usize, out: &mut Vec<(String, Option<usize>, usize)>) {
+    fn flat(items: &[iridium_pdf_render::OutlineItem], depth: usize, out: &mut Vec<(String, Option<usize>, usize)>) {
         for i in items {
             out.push((i.title.clone(), i.page, depth));
             flat(&i.children, depth + 1, out);
@@ -41,12 +41,12 @@ fn outline(h: &Harness<'static, PdfCraftApp>) -> Vec<(String, Option<usize>, usi
 }
 
 /// The inline rename editor (the text field, not its inner text run).
-fn field<'a>(h: &'a Harness<'static, PdfCraftApp>, value: &'a str) -> egui_kittest::Node<'a> {
+fn field<'a>(h: &'a Harness<'static, PdfApp>, value: &'a str) -> egui_kittest::Node<'a> {
     h.query_all_by_value(value).next().unwrap_or_else(|| panic!("no editor showing {value:?}"))
 }
 
 /// Add a bookmark with ⌘B at the current page and name it by typing.
-fn add(h: &mut Harness<'static, PdfCraftApp>, title: &str) {
+fn add(h: &mut Harness<'static, PdfApp>, title: &str) {
     h.key_press_modifiers(Modifiers::COMMAND, Key::B);
     h.run_steps(3);
     field(h, "Untitled"); // the inline editor is open and focused
@@ -58,7 +58,7 @@ fn add(h: &mut Harness<'static, PdfCraftApp>, title: &str) {
     h.run_steps(3);
 }
 
-fn menu(h: &mut Harness<'static, PdfCraftApp>, bookmark: &str, item: &str) {
+fn menu(h: &mut Harness<'static, PdfApp>, bookmark: &str, item: &str) {
     h.get_by_label(bookmark).click_secondary();
     h.run_steps(2);
     h.get_by_label(item).click();
@@ -100,8 +100,8 @@ fn new_rename_reorder_indent_delete_and_undo() {
 }
 
 /// The side panel's width as egui keeps it from one frame to the next.
-fn panel_width(h: &Harness<'static, PdfCraftApp>) -> f32 {
-    h.ctx.data(|data| data.get_temp::<egui::Rect>(egui::Id::unique("pdfcraft-inspector-body"))).expect("the inspector body is shown").width()
+fn panel_width(h: &Harness<'static, PdfApp>) -> f32 {
+    h.ctx.data(|data| data.get_temp::<egui::Rect>(egui::Id::unique("iridium-pdf-inspector-body"))).expect("the inspector body is shown").width()
 }
 
 #[test]
@@ -186,7 +186,7 @@ fn number_pages_dialog_labels_the_selected_pages() {
 
 #[test]
 fn search_finds_collapsed_bookmarks_and_keeps_original_paths() {
-    use pdfcraft_engine::Edit;
+    use iridium_pdf_engine::Edit;
     let mut h = harness();
     for (parent, index, title, page) in
         [(vec![], 0, "Unrelated", 0), (vec![], 1, "Reports", 0), (vec![1], 0, "Other chapter", 1), (vec![1], 1, "Résumé results", 2)]
@@ -215,7 +215,7 @@ fn search_finds_collapsed_bookmarks_and_keeps_original_paths() {
     assert!(h.query_by_label("Unrelated").is_none());
     assert!(h.query_by_label("Other chapter").is_none());
     assert_eq!(h.state().session.save_full_bytes(id).unwrap(), before, "search doesn't edit the PDF");
-    if let Ok(dir) = std::env::var("PDFCRAFT_BOOKMARK_SHOTS") {
+    if let Ok(dir) = std::env::var("IRIDIUM_PDF_BOOKMARK_SHOTS") {
         let _gpu = crate::gpu();
         h.render().unwrap().save(std::path::Path::new(&dir).join("filtered-bookmarks.png")).unwrap();
     }
@@ -278,7 +278,7 @@ trailer << /Root 1 0 R >>
     h.get_by_label("Overview");
     h.get_by_label("Method");
     assert_eq!(h.state().session.get(id).unwrap().can_undo(), Some("New bookmarks from structure"));
-    if let Ok(dir) = std::env::var("PDFCRAFT_BOOKMARK_SHOTS") {
+    if let Ok(dir) = std::env::var("IRIDIUM_PDF_BOOKMARK_SHOTS") {
         let _gpu = crate::gpu();
         h.render().unwrap().save(std::path::Path::new(&dir).join("bookmarks-from-structure.png")).unwrap();
     }
@@ -323,14 +323,14 @@ fn new_bookmarks_from_text_styles_from_the_bookmark_options() {
     h.state_mut().open_bytes("styled.pdf", None, styled_pdf()).unwrap();
     h.run_steps(3);
     let id = h.state().active.and_then(|i| h.state().views.get(i)).unwrap().id;
-    let open = |h: &mut Harness<'static, PdfCraftApp>| {
+    let open = |h: &mut Harness<'static, PdfApp>| {
         h.get_by_label("Bookmark options").click();
         h.run_steps(2);
         h.get_by_label("New bookmarks from text styles…").click();
         h.run_steps(3);
     };
     open(&mut h);
-    assert_eq!(h.state().dialog, Some(pdfcraft_ui_egui::Dialog::BookmarksFromTextStyles));
+    assert_eq!(h.state().dialog, Some(iridium_pdf_ui_egui::Dialog::BookmarksFromTextStyles));
     assert_eq!(h.state().text_style_draft.levels, [Some(0), None, None, None], "the largest style is offered for level 1");
     // Cancel: nothing made.
     h.get_by_label("Cancel").click();
@@ -359,7 +359,7 @@ fn new_bookmarks_from_text_styles_from_the_bookmark_options() {
     assert_eq!(titles, [("Introduction", Some(0)), ("Results", Some(1))]);
     assert_eq!(outline[0].children[0].children[0].title, "Background");
     assert_eq!(h.state().session.get(id).unwrap().can_undo(), Some("New bookmarks from text styles"));
-    assert_eq!(h.state().right, Some(pdfcraft_ui_egui::RightPanel::Bookmarks));
+    assert_eq!(h.state().right, Some(iridium_pdf_ui_egui::RightPanel::Bookmarks));
     // A document with no text: nothing to choose from.
     h.state_mut().open_bytes("pages.pdf", None, PAGES.to_vec()).unwrap();
     h.run_steps(3);
@@ -372,18 +372,18 @@ fn new_bookmarks_from_text_styles_from_the_bookmark_options() {
     // The command (Pages menu, command palette) opens it too.
     assert!(h.state_mut().execute("bookmark.from_text_styles"));
     h.run_steps(2);
-    assert_eq!(h.state().dialog, Some(pdfcraft_ui_egui::Dialog::BookmarksFromTextStyles));
+    assert_eq!(h.state().dialog, Some(iridium_pdf_ui_egui::Dialog::BookmarksFromTextStyles));
 }
 
 #[test]
 fn expanding_and_collapsing_all_bookmarks() {
-    use pdfcraft_engine::Edit;
+    use iridium_pdf_engine::Edit;
     let mut h = harness();
     for (parent, title) in [(vec![], "Part"), (vec![0], "Chapter"), (vec![0, 0], "Section")] {
         h.state_mut().apply_edit(Edit::AddBookmark { parent, index: 0, title: title.into(), page: 0, left: None, top: None });
     }
     h.run_steps(3);
-    let shown = |h: &Harness<'static, PdfCraftApp>, t: &str| h.query_by_label(t).is_some();
+    let shown = |h: &Harness<'static, PdfApp>, t: &str| h.query_by_label(t).is_some();
     h.get_by_label("Bookmark options").click();
     h.run_steps(2);
     h.get_by_label("Expand all bookmarks").click();
@@ -407,12 +407,12 @@ fn expanding_and_collapsing_all_bookmarks() {
 fn style_and_colour_from_the_bookmark_menu() {
     let mut h = harness();
     add(&mut h, "Intro");
-    let look = |h: &Harness<'static, PdfCraftApp>| {
+    let look = |h: &Harness<'static, PdfApp>| {
         let id = h.state().views[0].id;
         let b = &h.state().session.get(id).unwrap().info.outline[0];
         (b.bold, b.italic, b.color)
     };
-    let submenu = |h: &mut Harness<'static, PdfCraftApp>, menu: &str, item: &str| {
+    let submenu = |h: &mut Harness<'static, PdfApp>, menu: &str, item: &str| {
         h.get_by_label("Intro").click_secondary();
         h.run_steps(2);
         // The submenu arrow is painted as an atom; the accessible name is the menu title.
@@ -460,14 +460,14 @@ trailer << /Root 1 0 R >>
     let mut h = harness();
     h.state_mut().open_bytes("outlined.pdf", None, OUTLINED.to_vec()).unwrap();
     h.run_steps(4);
-    let shown = |h: &Harness<'static, PdfCraftApp>, t: &str| h.query_by_label(t).is_some();
+    let shown = |h: &Harness<'static, PdfApp>, t: &str| h.query_by_label(t).is_some();
     assert!(shown(&h, "Closed parent") && shown(&h, "Open parent") && shown(&h, "Uncounted parent"));
     assert!(!shown(&h, "Closed child A") && !shown(&h, "Closed child B"), "a negative /Count opens closed");
     assert!(shown(&h, "Open child A") && shown(&h, "Open child B"), "a positive /Count opens open");
     assert!(!shown(&h, "Uncounted child"), "only a positive /Count opens a bookmark");
 
     // The disclosure triangle at the row's left still opens and closes it.
-    let toggle = |h: &mut Harness<'static, PdfCraftApp>, title: &str| {
+    let toggle = |h: &mut Harness<'static, PdfApp>, title: &str| {
         let row = h.get_by_label(title).rect();
         let at = egui::pos2(row.left() + 8.0, row.top() + 14.0);
         h.hover_at(at);
@@ -495,10 +495,10 @@ trailer << /Root 1 0 R >>
 }
 
 /// The active document's outline, flattened like [`outline`].
-fn active_outline(h: &Harness<'static, PdfCraftApp>) -> Vec<(String, Option<usize>, usize)> {
+fn active_outline(h: &Harness<'static, PdfApp>) -> Vec<(String, Option<usize>, usize)> {
     let i = h.state().active.unwrap();
     let id = h.state().views[i].id;
-    fn flat(items: &[pdfcraft_render::OutlineItem], depth: usize, out: &mut Vec<(String, Option<usize>, usize)>) {
+    fn flat(items: &[iridium_pdf_render::OutlineItem], depth: usize, out: &mut Vec<(String, Option<usize>, usize)>) {
         for i in items {
             out.push((i.title.clone(), i.page, depth));
             flat(&i.children, depth + 1, out);

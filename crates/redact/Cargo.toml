@@ -1,5 +1,5 @@
 [package]
-name = "pdfcraft-redact"
+name = "iridium-pdf-redact"
 description = "Redaction (architecture §11.2): marks, apply (glyphs, images, vectors, XObjects, annotations, fields), verification"
 version.workspace = true
 edition.workspace = true
@@ -10,24 +10,24 @@ workspace = true
 
 [dependencies]
 aho-corasick = "1"
-pdfcraft-cos = { workspace = true }
-pdfcraft-content = { workspace = true }
-pdfcraft-fonts = { workspace = true }
+iridium-pdf-cos = { workspace = true }
+iridium-pdf-content = { workspace = true }
+iridium-pdf-fonts = { workspace = true }
 # The usable-quad rule `/QuadPoints` readers share.
-pdfcraft-geom = { workspace = true }
-pdfcraft-model = { workspace = true }
-pdfcraft-forms = { workspace = true }
-pdfcraft-edit = { workspace = true }
-pdfcraft-annot = { workspace = true }
-pdfcraft-xfa = { workspace = true }
+iridium-pdf-geom = { workspace = true }
+iridium-pdf-model = { workspace = true }
+iridium-pdf-forms = { workspace = true }
+iridium-pdf-edit = { workspace = true }
+iridium-pdf-annot = { workspace = true }
+iridium-pdf-xfa = { workspace = true }
 # CCITT Group 4 and JBIG2 encoding for cleared one-bit images.
-pdfcraft-filters = { workspace = true }
+iridium-pdf-filters = { workspace = true }
 regex = { workspace = true }
 thiserror = { workspace = true }
 sha2 = "0.11"
 
 [dev-dependencies]
-pdfcraft-testkit = { workspace = true }
+iridium-pdf-testkit = { workspace = true }
 # The redacted page is rendered in `tests::a_page_whose_pruned_pattern_is_still_selected_renders`:
 # layer 3 from layer 4, a dev dependency only.
-pdfcraft-render = { workspace = true }
+iridium-pdf-render = { workspace = true }

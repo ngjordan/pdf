@@ -98,7 +98,7 @@ pub enum FillMark {
 }
 
 impl FillMark {
-    /// The `/Name` of the stamp PdfCraft draws for it.
+    /// The `/Name` of the stamp PDF draws for it.
     pub fn name(self) -> &'static str {
         match self {
             FillMark::Check => "PCCheck",
@@ -148,7 +148,7 @@ impl FillMark {
     }
 }
 
-/// The stamps of Acrobat's stamp palette (drawn in PdfCraft's own style).
+/// The stamps of Acrobat's stamp palette (drawn in PDF's own style).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StampKind {
     // Standard business.
@@ -642,7 +642,7 @@ impl Default for Style {
     }
 }
 
-/// The shape of a text box's or typewriter text's border (PdfCraft's `/PCBorderShape`, absent for
+/// The shape of a text box's or typewriter text's border (PDF's `/PCBorderShape`, absent for
 /// a rectangle). An oval or a circle goes around the text box, which keeps its place: `/Rect`
 /// grows to hold it, centred on the text box, and `/RD` says where the text box is inside
 /// (§12.5.6.6), as for a callout. Other apps that redraw the comment draw a rectangle.

@@ -26,13 +26,13 @@ const MAX_RUNS: usize = 1 << 20;
 const MAX_SYMBOLS: usize = 1 << 16;
 const MAX_SYMBOL_PIXELS: usize = 1 << 24;
 
-/// The most symbols one plan codes. The decoder PdfCraft renders JBIG2 with (`hayro-jbig2`)
+/// The most symbols one plan codes. The decoder PDF renders JBIG2 with (`hayro-jbig2`)
 /// refuses a dictionary whose new and exported symbols pass 65,535 together, and a plan exports
 /// every symbol it codes, so it refuses 32,768 or more; others may too, so a plan with more isn't
 /// made.
 const MAX_CODED_SYMBOLS: usize = (1 << 15) - 1;
 
-/// The most symbol instances one text region places. The decoder PdfCraft renders JBIG2 with
+/// The most symbol instances one text region places. The decoder PDF renders JBIG2 with
 /// refuses a text region of more than 10,000 (a page it then draws blank), so a page with more is
 /// placed by several regions, each over a band of rows, all referring to the one dictionary.
 const MAX_REGION_INSTANCES: usize = 10_000;
@@ -991,7 +991,7 @@ mod tests {
     }
 
     /// More than 10,000 marks are placed by several text regions, each of at most 10,000 (more
-    /// than the decoder PdfCraft renders with accepts in one), over bands of rows, all referring to
+    /// than the decoder PDF renders with accepts in one), over bands of rows, all referring to
     /// the dictionary, which each region but the last keeps retained; the generic region comes
     /// after them, every segment numbered one more than the one before.
     #[test]

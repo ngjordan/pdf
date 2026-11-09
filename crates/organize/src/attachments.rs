@@ -4,7 +4,7 @@
 //! A FileAttachment annotation (a paper clip on a page) is a comment and lives in the annot
 //! crate; this is the document level only.
 
-use pdfcraft_cos::{Dict, Document, Object, PdfString, Stream};
+use iridium_pdf_cos::{Dict, Document, Object, PdfString, Stream};
 
 use crate::OrganizeError;
 use crate::import::{name_tree_entries, set_attachments};

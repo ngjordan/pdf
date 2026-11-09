@@ -5,13 +5,13 @@
 //! and a reviewer can read a change in the diff. Positions are left out, so moving a widget is not
 //! a change but adding, removing or renaming one is.
 //!
-//! `UPDATE_SNAPSHOTS=1 cargo test -p pdfcraft-ui-egui --test it panel_snapshots` rewrites the files.
+//! `UPDATE_SNAPSHOTS=1 cargo test -p iridium-pdf-ui-egui --test it panel_snapshots` rewrites the files.
 
 use egui::accesskit::{Role, Toggled};
 use egui_kittest::kittest::{NodeT, Queryable};
 use egui_kittest::{Harness, Node};
-use pdfcraft_engine::Session;
-use pdfcraft_ui_egui::{PdfCraftApp, RightPanel};
+use iridium_pdf_engine::Session;
+use iridium_pdf_ui_egui::{PdfApp, RightPanel};
 
 use crate::support;
 
@@ -72,12 +72,12 @@ fn fixture() -> Vec<u8> {
     out
 }
 
-fn harness(panel: &'static str) -> Harness<'static, PdfCraftApp> {
+fn harness(panel: &'static str) -> Harness<'static, PdfApp> {
     let bytes = fixture();
     // Shortcut labels follow the reported OS ("Ctrl+B" against "⌘B"), so pin it rather than rely
     // on kittest's default; the snapshots then match on every host.
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).with_os(egui::os::OperatingSystem::Nix).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("panels.pdf", None, bytes).expect("opens");
         app.set_option("panel", panel).unwrap();
@@ -88,7 +88,7 @@ fn harness(panel: &'static str) -> Harness<'static, PdfCraftApp> {
 }
 
 /// The side panel's contents: the node after the pane's own focus stop, named "Inspector".
-fn panel<'h>(h: &'h Harness<'static, PdfCraftApp>) -> Node<'h> {
+fn panel<'h>(h: &'h Harness<'static, PdfApp>) -> Node<'h> {
     let stop = h.get_by(|n| n.role() != Role::Label && n.label().as_deref() == Some("Inspector"));
     let pane = stop.parent().expect("the side panel's focus stop sits in its pane");
     let mut after = pane.children().skip_while(|n| n.accesskit_node().id() != stop.accesskit_node().id()).skip(1);
@@ -135,7 +135,7 @@ fn describe(node: &Node<'_>, depth: usize, out: &mut String) {
 }
 
 /// Compares the panel with `tests/snapshots/panel_<name>.txt`, or writes it with `UPDATE_SNAPSHOTS`.
-fn check(h: &Harness<'static, PdfCraftApp>, name: &str) -> Result<(), String> {
+fn check(h: &Harness<'static, PdfApp>, name: &str) -> Result<(), String> {
     let mut got = String::new();
     describe(&panel(h), 0, &mut got);
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots").join(format!("panel_{name}.txt"));
@@ -180,7 +180,7 @@ const ALL: [RightPanel; 11] = [
 
 /// Opens `p` with something in it and names its snapshot. No wildcard on purpose: a new
 /// `RightPanel` stops this file compiling until it is set up here (and listed in [`ALL`]).
-fn open(p: RightPanel) -> (Harness<'static, PdfCraftApp>, &'static str) {
+fn open(p: RightPanel) -> (Harness<'static, PdfApp>, &'static str) {
     let name = match p {
         RightPanel::Comments => "comments",
         RightPanel::Bookmarks => "bookmarks",
@@ -216,7 +216,7 @@ fn open(p: RightPanel) -> (Harness<'static, PdfCraftApp>, &'static str) {
             let old = s.create_from_text("t", "Delivery within five days. Returns accepted.").unwrap().to_vec();
             let new = s.create_from_text("t", "Delivery within three days. Returns accepted for a week.").unwrap().to_vec();
             let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-                let mut app = PdfCraftApp::new();
+                let mut app = PdfApp::new();
                 app.set_option("language", "en").unwrap();
                 app.open_bytes("old.pdf", None, old.clone()).unwrap();
                 app.open_bytes("new.pdf", None, new.clone()).unwrap();

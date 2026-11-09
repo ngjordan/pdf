@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::*;
-use pdfcraft_testkit::Pdf;
+use iridium_pdf_testkit::Pdf;
 
 /// A document whose form lists `fields`, with `objects` numbered from 3.
 fn form(fields: &str, objects: &[String]) -> Document {
@@ -432,7 +432,7 @@ fn a_fields_widgets_read_whole_unless_signed_apart() {
 #[test]
 fn a_widget_shows_with_a_box_over_half_a_point_unless_hidden_or_noview() {
     let doc = form("", &[]);
-    let widget = |s: &str| pdfcraft_cos::Lexer::new(s.as_bytes(), 0).object().unwrap().as_dict().unwrap().clone();
+    let widget = |s: &str| iridium_pdf_cos::Lexer::new(s.as_bytes(), 0).object().unwrap().as_dict().unwrap().clone();
     let shown = |s: &str| widget_shown(&doc, &widget(s));
     assert!(shown("<< /Rect [100 100 300 220] >>"));
     assert!(shown("<< /Rect [300 220 100 100] >>"), "corners in either order");

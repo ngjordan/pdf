@@ -25,7 +25,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
 
-use crate::PdfCraftApp;
+use crate::PdfApp;
 
 /// How often unsaved changes are written to the recovery folder.
 pub const AUTOSAVE_SECS: f64 = 60.0;
@@ -168,20 +168,20 @@ impl RecoveryStore {
     }
 
     /// `Recovery` in the portable data folder in portable mode ([`crate::portable`]), otherwise
-    /// the platform's per-user data folder: `~/Library/Application Support/PdfCraft/Recovery`
-    /// (macOS), `%LOCALAPPDATA%\PdfCraft\Recovery` (Windows), or
-    /// `$XDG_DATA_HOME/pdfcraft/recovery` / `~/.local/share/pdfcraft/recovery` (others).
+    /// the platform's per-user data folder: `~/Library/Application Support/PDF/Recovery`
+    /// (macOS), `%LOCALAPPDATA%\PDF\Recovery` (Windows), or
+    /// `$XDG_DATA_HOME/iridium_pdf/recovery` / `~/.local/share/iridium_pdf/recovery` (others).
     pub fn default_dir() -> Option<PathBuf> {
         if let Some(dir) = crate::portable::data_dir() {
             return Some(dir.join("Recovery"));
         }
         let env = |k: &str| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from);
         if cfg!(target_os = "macos") {
-            env("HOME").map(|h| h.join("Library/Application Support/PdfCraft/Recovery"))
+            env("HOME").map(|h| h.join("Library/Application Support/PDF/Recovery"))
         } else if cfg!(windows) {
-            env("LOCALAPPDATA").map(|d| d.join("PdfCraft").join("Recovery"))
+            env("LOCALAPPDATA").map(|d| d.join("PDF").join("Recovery"))
         } else {
-            env("XDG_DATA_HOME").or_else(|| env("HOME").map(|h| h.join(".local/share"))).map(|d| d.join("pdfcraft/recovery"))
+            env("XDG_DATA_HOME").or_else(|| env("HOME").map(|h| h.join(".local/share"))).map(|d| d.join("iridium_pdf/recovery"))
         }
     }
 
@@ -192,7 +192,7 @@ impl RecoveryStore {
 
 /// The OCR Verify screen's per-language user dictionary folder, next to the recovery store:
 /// the portable data folder's `Dictionary` in portable mode ([`crate::portable`]), otherwise
-/// `…/PdfCraft/Dictionary` in the platform's per-user data folder. `None` where files are not
+/// `…/PDF/Dictionary` in the platform's per-user data folder. `None` where files are not
 /// kept (the web build).
 pub fn default_dictionary_dir() -> Option<PathBuf> {
     if let Some(dir) = crate::portable::data_dir() {
@@ -200,11 +200,11 @@ pub fn default_dictionary_dir() -> Option<PathBuf> {
     }
     let env = |k: &str| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from);
     if cfg!(target_os = "macos") {
-        env("HOME").map(|h| h.join("Library/Application Support/PdfCraft/Dictionary"))
+        env("HOME").map(|h| h.join("Library/Application Support/PDF/Dictionary"))
     } else if cfg!(windows) {
-        env("LOCALAPPDATA").map(|d| d.join("PdfCraft").join("Dictionary"))
+        env("LOCALAPPDATA").map(|d| d.join("PDF").join("Dictionary"))
     } else {
-        env("XDG_DATA_HOME").or_else(|| env("HOME").map(|h| h.join(".local/share"))).map(|d| d.join("pdfcraft/dictionary"))
+        env("XDG_DATA_HOME").or_else(|| env("HOME").map(|h| h.join(".local/share"))).map(|d| d.join("iridium_pdf/dictionary"))
     }
 }
 
@@ -316,7 +316,7 @@ impl RecoveryStore {
     }
 }
 
-/// The most a sidecar may hold. One PdfCraft writes is a name, a path and a few fields, well under
+/// The most a sidecar may hold. One PDF writes is a name, a path and a few fields, well under
 /// this; anything longer is not one of ours (#3923).
 const MAX_META_BYTES: u64 = 64 * 1024;
 
@@ -336,7 +336,7 @@ fn now_secs() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Turn on autosave into `store`, and look for documents a previous session left behind.
     pub fn enable_recovery(&mut self, store: RecoveryStore) {
         store.claim();
@@ -364,7 +364,7 @@ impl PdfCraftApp {
     }
 
     /// Drop a document's recovery entry (it was saved, discarded or closed).
-    pub(crate) fn forget_recovery(&mut self, doc: pdfcraft_engine::DocId) {
+    pub(crate) fn forget_recovery(&mut self, doc: iridium_pdf_engine::DocId) {
         // Saved (to a destination the user chose), closed or reloaded from its file: the path is
         // no longer only what the sidecar said.
         self.recovered_paths.remove(&doc);
@@ -376,7 +376,7 @@ impl PdfCraftApp {
     /// Replace a document's recovery snapshot with its current state now. After an edit that takes
     /// content out (Apply Redactions, Sanitize, Remove Hidden Information), the last snapshot still
     /// holds what went, until the next autosave, and for good if the app is killed before then.
-    pub(crate) fn renew_recovery(&mut self, doc: pdfcraft_engine::DocId) {
+    pub(crate) fn renew_recovery(&mut self, doc: iridium_pdf_engine::DocId) {
         self.forget_recovery(doc);
         self.autosave_now();
     }
@@ -514,7 +514,7 @@ mod idle_tests {
             static NEXT: AtomicU64 = AtomicU64::new(0);
             let n = NEXT.fetch_add(1, Ordering::Relaxed);
             let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
-            let path = std::env::temp_dir().join(format!("pdfcraft-idle-recovery-{}-{nonce}-{n}", std::process::id()));
+            let path = std::env::temp_dir().join(format!("iridium-pdf-idle-recovery-{}-{nonce}-{n}", std::process::id()));
             std::fs::create_dir(&path).unwrap();
             Self(path)
         }
@@ -552,7 +552,7 @@ mod idle_tests {
         assert_eq!(distinct.len(), 200);
     }
 
-    fn frame(app: &mut PdfCraftApp, ctx: &egui::Context, now: web_time::Instant) -> Duration {
+    fn frame(app: &mut PdfApp, ctx: &egui::Context, now: web_time::Instant) -> Duration {
         let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
             app.autosave_tick(ui.ctx(), now);
         });
@@ -592,7 +592,7 @@ mod idle_tests {
     fn idle_dirty_document_requests_its_deadline_and_writes_without_input() {
         let dir = TestDir::new();
         let store = RecoveryStore::new(dir.path());
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.enable_recovery(store.clone());
         let bytes = app.session.create_blank(200.0, 300.0, 1).unwrap();
         let id = app.session.open_new("Untitled.pdf", bytes).unwrap();
@@ -621,7 +621,7 @@ mod idle_tests {
     fn second_edit_after_autosave_schedules_next_deadline_and_updates_snapshot() {
         let dir = TestDir::new();
         let store = RecoveryStore::new(dir.path());
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.enable_recovery(store.clone());
         let bytes = app.session.create_blank(200.0, 300.0, 1).unwrap();
         let id = app.session.open_new("Untitled.pdf", bytes).unwrap();
@@ -640,7 +640,7 @@ mod idle_tests {
         }
         assert_eq!(delay, Duration::MAX);
 
-        app.session.apply(id, pdfcraft_engine::Edit::SetInfo { key: "Title".into(), value: "Second edit".into() }).unwrap();
+        app.session.apply(id, iridium_pdf_engine::Edit::SetInfo { key: "Title".into(), value: "Second edit".into() }).unwrap();
         assert!(app.session.has_pending_autosave());
         for _ in 0..4 {
             delay = frame(&mut app, &ctx, base + Duration::from_secs(75));
@@ -655,7 +655,7 @@ mod idle_tests {
         assert_eq!(entries[0].key, key);
         let second = store.read(&key).unwrap();
         assert_ne!(second, first);
-        let mut recovered = pdfcraft_engine::Session::new();
+        let mut recovered = iridium_pdf_engine::Session::new();
         let restored = recovered.open("Snapshot.pdf", None, second.into(), None).unwrap();
         assert_eq!(recovered.get(restored).unwrap().info_value("Title"), Some("Second edit".into()));
         assert!(app.session.get(id).unwrap().dirty);
@@ -671,7 +671,7 @@ mod idle_tests {
     fn clean_documents_and_disabled_recovery_do_not_schedule_autosave() {
         for recovery_enabled in [false, true] {
             let dir = TestDir::new();
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             if recovery_enabled {
                 app.enable_recovery(RecoveryStore::new(dir.path()));
             }
@@ -708,15 +708,15 @@ mod sidecar_tests {
         let named = dir.path().join("named.pdf");
         std::fs::write(&named, b"someone else's file").unwrap();
         {
-            let mut crashed = PdfCraftApp::new();
+            let mut crashed = PdfApp::new();
             crashed.enable_recovery(store.clone());
             let bytes = crashed.session.create_blank(200.0, 300.0, 1).unwrap();
             crashed.open_bytes("work.pdf", Some(named.to_string_lossy().into_owned()), bytes.to_vec()).unwrap();
-            assert!(crashed.apply_edit(pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }));
+            assert!(crashed.apply_edit(iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }));
             crashed.autosave_now();
         }
 
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.enable_recovery(store.clone());
         let keys: Vec<String> = app.recoverable.iter().map(|m| m.key.clone()).collect();
@@ -733,11 +733,11 @@ mod sidecar_tests {
 
         // The chosen file is the document's file now: the next Save writes it without asking.
         app.pick_override = None;
-        assert!(app.apply_edit(pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }));
+        assert!(app.apply_edit(iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 }));
         assert!(app.save_active(SaveTarget::InPlace));
     }
 
-    /// #3923: a sidecar longer than any PdfCraft writes is not read whole; its snapshot is
+    /// #3923: a sidecar longer than any PDF writes is not read whole; its snapshot is
     /// offered without metadata, so it has no path to save to.
     #[test]
     fn an_oversized_sidecar_is_not_read() {

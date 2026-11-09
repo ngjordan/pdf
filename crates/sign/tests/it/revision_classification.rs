@@ -4,8 +4,8 @@
 
 use std::sync::Arc;
 
-use pdfcraft_cos::{Document, Object};
-use pdfcraft_sign::{Modification, SignOptions, Status, TrustStore, pkcs12, signatures};
+use iridium_pdf_cos::{Document, Object};
+use iridium_pdf_sign::{Modification, SignOptions, Status, TrustStore, pkcs12, signatures};
 
 fn data(name: &str) -> Vec<u8> {
     std::fs::read(format!("{}/tests/data/{name}", env!("CARGO_MANIFEST_DIR"))).unwrap()
@@ -85,7 +85,7 @@ fn assert_refused(bytes: &[u8]) {
 
 fn certify(unsigned: &[u8], p: u8) -> Vec<u8> {
     let id = pkcs12::open(&data("rsa-aes.p12"), "test").unwrap();
-    pdfcraft_sign::sign(&open(unsigned), &id, &opts(p)).unwrap()
+    iridium_pdf_sign::sign(&open(unsigned), &id, &opts(p)).unwrap()
 }
 
 const PAGE2: &str = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] /Contents 7 0 R /Resources << /Font << /F1 6 0 R >> >> >>";
@@ -109,7 +109,7 @@ fn intermediate_generation_cover(p: u8) {
     let doc = open(&three);
     assert!(doc.xref_oddities().is_empty());
     assert_eq!(doc.revisions().len(), open(&signed).revisions().len() + 2);
-    assert_eq!(doc.get(pdfcraft_cos::ObjRef { num: 4, generation: 1 }), open(&signed).get(pdfcraft_cos::ObjRef { num: 4, generation: 0 }));
+    assert_eq!(doc.get(iridium_pdf_cos::ObjRef { num: 4, generation: 1 }), open(&signed).get(iridium_pdf_cos::ObjRef { num: 4, generation: 0 }));
     assert_refused(&three);
 }
 

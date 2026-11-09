@@ -3,7 +3,7 @@
 //! nothing of its own stream to restore is ignored and cannot pop the states of the page that
 //! drew the form (vendored hayro-interpret patch 68). Each case is paired with the same page
 //! drawing a balanced form, which must come out the same.
-use pdfcraft_render::{PageRenderer, PageText, RenderConfig, RenderRequest, RequestKind};
+use iridium_pdf_render::{PageRenderer, PageText, RenderConfig, RenderRequest, RequestKind};
 use std::sync::Arc;
 
 /// Forms /B (balanced), /S2 (two stray `Q`s) and /S3 (three), each moving its own pen.

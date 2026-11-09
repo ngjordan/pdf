@@ -20,7 +20,7 @@ pub(super) fn page_tools(ui: &mut egui::Ui, enabled: bool) -> Option<&'static st
         egui::Popup::menu(&more).show(|ui| {
             ui.set_min_width(260.0);
             for (id, label) in tools {
-                let Some(spec) = pdfcraft_engine::commands::command(id) else { continue };
+                let Some(spec) = iridium_pdf_engine::commands::command(id) else { continue };
                 let item = egui::Button::image_and_text(icons::image(spec.icon, 16.0, ui.visuals().text_color()), label);
                 if ui.add(item).clicked() {
                     picked = Some(id);
@@ -269,7 +269,7 @@ fn delete_pages(view: &mut crate::DocView, n: usize) {
     let before = pages.iter().filter(|p| **p < view.current).count();
     view.current = view.current.saturating_sub(before).min(n.saturating_sub(pages.len() + 1));
     view.clear_page_selection(None);
-    view.pending_edit = Some(pdfcraft_engine::Edit::DeletePages { pages });
+    view.pending_edit = Some(iridium_pdf_engine::Edit::DeletePages { pages });
 }
 
 /// The gap (0 = before the first page, n = after the last) the pointer points at in the Pages
@@ -334,7 +334,7 @@ fn page_drag(ui: &mut egui::Ui, t: &Tokens, view: &mut crate::DocView, rows: &[R
     }
     view.current = moved_index(view.current, &moving, to);
     view.selected = (to..to + moving.len()).collect();
-    view.pending_edit = Some(pdfcraft_engine::Edit::MovePages { pages: moving, to });
+    view.pending_edit = Some(iridium_pdf_engine::Edit::MovePages { pages: moving, to });
 }
 
 #[cfg(test)]

@@ -4,8 +4,8 @@ use egui_kittest::{
     Harness,
     kittest::{NodeT, Queryable},
 };
-use pdfcraft_engine::{AddedContent, AddedImage, Edit};
-use pdfcraft_ui_egui::{Clip, PdfCraftApp};
+use iridium_pdf_engine::{AddedContent, AddedImage, Edit};
+use iridium_pdf_ui_egui::{Clip, PdfApp};
 
 fn fixture(rotation: u16, cropped: bool, shared: bool) -> Vec<u8> {
     fixture_at(rotation, cropped, shared, false)
@@ -39,9 +39,9 @@ fn fixture_at(rotation: u16, cropped: bool, shared: bool, collision: bool) -> Ve
     out
 }
 
-fn harness(bytes: Vec<u8>) -> Harness<'static, PdfCraftApp> {
+fn harness(bytes: Vec<u8>) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.system_clipboard = false;
         app.open_bytes("ownership.pdf", None, bytes.clone()).unwrap();
@@ -52,14 +52,14 @@ fn harness(bytes: Vec<u8>) -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn point(h: &Harness<'static, PdfCraftApp>, user: [f64; 2]) -> Pos2 {
+fn point(h: &Harness<'static, PdfApp>, user: [f64; 2]) -> Pos2 {
     let app = h.state();
     let info = &app.session.get(app.views[0].id).unwrap().info.pages[0];
     let v = info.user_to_view(user[0] as f32, user[1] as f32);
     app.views[0].page_xform(0).unwrap().norm_to_screen(v[0] / info.width, v[1] / info.height)
 }
 
-fn right_click(h: &mut Harness<'static, PdfCraftApp>, user: [f64; 2]) {
+fn right_click(h: &mut Harness<'static, PdfApp>, user: [f64; 2]) {
     let p = point(h, user);
     h.hover_at(p);
     h.run_steps(1);
@@ -69,10 +69,10 @@ fn right_click(h: &mut Harness<'static, PdfCraftApp>, user: [f64; 2]) {
     h.run_steps(2);
 }
 
-fn reopened(app: &mut PdfCraftApp) -> PdfCraftApp {
+fn reopened(app: &mut PdfApp) -> PdfApp {
     let id = app.views[0].id;
     let bytes = app.session.save_bytes(id).unwrap();
-    let mut saved = PdfCraftApp::new();
+    let mut saved = PdfApp::new();
     saved.open_bytes("saved.pdf", None, bytes.as_ref().clone()).unwrap();
     saved
 }
@@ -84,7 +84,7 @@ fn check_placement(rotation: u16, cropped: bool, view_rotation: u16, shared: boo
         image::RgbImage::from_pixel(40, 40, image::Rgb([0, 0, 255])).write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
         h.state_mut().add_image("existing.png".into(), png);
         assert_eq!(h.state().session.get(h.state().views[0].id).unwrap().added().len(), 1);
-        h.state_mut().quick_tool = pdfcraft_ui_egui::QuickTool::Select;
+        h.state_mut().quick_tool = iridium_pdf_ui_egui::QuickTool::Select;
         h.state_mut().views[0].image_selection = None;
         h.state_mut().views[0].content.selected = None;
     }
@@ -240,9 +240,9 @@ fn whole_page_actions_do_not_require_a_selection() {
 
 #[test]
 fn whole_page_actions_still_require_copy_permission() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.open_bytes("source.pdf", None, fixture(0, false, false)).unwrap();
-    assert!(app.apply_edit(Edit::Protect(pdfcraft_engine::Protection { permissions_password: Some("owner".into()), ..Default::default() })));
+    assert!(app.apply_edit(Edit::Protect(iridium_pdf_engine::Protection { permissions_password: Some("owner".into()), ..Default::default() })));
     let bytes = app.session.save_bytes(app.views[0].id).unwrap();
     let mut h = harness(bytes.as_ref().clone());
     right_click(&mut h, [210.0, 80.0]);
@@ -260,11 +260,11 @@ fn legacy_text_delete_survives_switching_out_of_the_image_tool() {
     assert!(h.state().views[0].image_selection.is_some());
     assert!(h.state_mut().apply_edit(Edit::AddText {
         page: 0,
-        text: pdfcraft_engine::AddedText { text: "note".into(), rect: [100.0, 100.0, 180.0, 130.0], ..Default::default() }
+        text: iridium_pdf_engine::AddedText { text: "note".into(), rect: [100.0, 100.0, 180.0, 130.0], ..Default::default() }
     }));
     assert_eq!(h.state().session.get(h.state().views[0].id).unwrap().added().len(), 1);
     h.state_mut().views[0].content.selected = Some((0, 0));
-    h.state_mut().quick_tool = pdfcraft_ui_egui::QuickTool::Select;
+    h.state_mut().quick_tool = iridium_pdf_ui_egui::QuickTool::Select;
     h.key_press(Key::Delete);
     h.run_steps(3);
     let saved = reopened(h.state_mut());
@@ -293,7 +293,7 @@ fn leaving_image_controller_cannot_leave_hidden_image_owning_delete() {
     assert!(h.state().views[0].image_selection.is_some());
     h.key_press(Key::V);
     h.run_steps(2);
-    assert_eq!(h.state().quick_tool, pdfcraft_ui_egui::QuickTool::Select);
+    assert_eq!(h.state().quick_tool, iridium_pdf_ui_egui::QuickTool::Select);
     assert!(h.state().views[0].image_selection.is_none());
     h.key_press(Key::Delete);
     h.run_steps(3);

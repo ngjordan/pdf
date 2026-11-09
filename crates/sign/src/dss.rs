@@ -7,7 +7,7 @@
 //! incremental update, which the change classifier treats as a permitted "document security
 //! store" change.
 
-use pdfcraft_cos::{Dict, Document, Object, SaveOptions, Stream};
+use iridium_pdf_cos::{Dict, Document, Object, SaveOptions, Stream};
 
 use crate::SignError;
 
@@ -98,11 +98,11 @@ pub fn embed(doc: &Document, evidence: &Evidence) -> Result<Vec<u8>, SignError> 
     doc.update_dict(root, |c| c.set(b"DSS".to_vec(), Object::Ref(dss_ref)))?;
     // What the user removed again before this (a cleared redaction mark) stays out of the file,
     // as in a save; the store and everything in it are reachable from the catalog.
-    Ok(pdfcraft_cos::write_incremental(&doc, &SaveOptions { drop_unlinked: true, ..SaveOptions::default() })?)
+    Ok(iridium_pdf_cos::write_incremental(&doc, &SaveOptions { drop_unlinked: true, ..SaveOptions::default() })?)
 }
 
 /// Store one DER blob as a `/Type /Embed` stream.
-fn embed_stream(doc: &mut Document, blob: &[u8]) -> pdfcraft_cos::ObjRef {
+fn embed_stream(doc: &mut Document, blob: &[u8]) -> iridium_pdf_cos::ObjRef {
     let mut d = Dict::new();
     d.set(b"Type".to_vec(), Object::name("Embed"));
     doc.add(Object::Stream(Stream::from_raw(d, blob.to_vec())))
@@ -121,7 +121,7 @@ fn pull(
     key: &[u8],
     into: &mut Vec<Vec<u8>>,
     budget: &mut usize,
-    decoded: &mut std::collections::HashMap<pdfcraft_cos::ObjRef, Vec<u8>>,
+    decoded: &mut std::collections::HashMap<iridium_pdf_cos::ObjRef, Vec<u8>>,
 ) -> Result<(), SignError> {
     let Some(a) = dss.get(key).map(|o| doc.resolve(o)).and_then(|o| o.as_array().cloned()) else {
         return Ok(());

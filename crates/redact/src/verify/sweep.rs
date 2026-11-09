@@ -4,7 +4,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::Arc;
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, PdfString};
 
 use super::extract::extract_page;
 use super::util::{Ctx, decode_text, find, image_codec, spellings, squash, survivor_encodings, xml_unescape};
@@ -681,7 +681,7 @@ pub(super) fn sweep_payload(needles: &[Needle], payload: &[u8], depth: usize, lo
 
 pub(super) fn sweep_pages(needles: &[Needle], doc: &Document, depth: usize, tag: &str, acc: &mut Acc) {
     let mut shown = Tally::default();
-    'pages: for (i, p) in pdfcraft_model::pages(doc).iter().enumerate() {
+    'pages: for (i, p) in iridium_pdf_model::pages(doc).iter().enumerate() {
         acc.scanned(Surface::ExtractedText);
         let loc = format!("{tag}page {}", i + 1);
         let Ok(e) = extract_page(doc, &p.dict, &acc.ctx, &[]) else {

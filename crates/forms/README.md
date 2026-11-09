@@ -1,7 +1,7 @@
-# pdfcraft-forms
+# iridium-pdf-forms
 
-Interactive forms (AcroForm, ISO 32000-2 §12.7). Layer L3; depends on `pdfcraft-cos` and
-`pdfcraft-fonts`.
+Interactive forms (AcroForm, ISO 32000-2 §12.7). Layer L3; depends on `iridium-pdf-cos` and
+`iridium-pdf-fonts`.
 
 ## API
 
@@ -47,11 +47,11 @@ let cells: Vec<table::Cell> = grid.cells_for(names)?;      // "Table1_1", "Table
   The `/DA` font is used when `/DR` has it as a simple font or a composite font with a predefined
   Unicode CMap; otherwise Helvetica (WinAnsi). Thai in a text field or combo box that the font
   can't hold is drawn from the craft-fonts Thai face with Add text's writer
-  (`pdfcraft_fonts::shaped_text`), beside the field's font, keeping `/DA`; a build without a Thai
+  (`iridium_pdf_fonts::shaped_text`), beside the field's font, keeping `/DA`; a build without a Thai
   face refuses it. Any other value or button caption the font can't hold
   (Chinese in a Helvetica field, a character beyond U+FFFF in a UCS-2 CMap) is kept, as Acrobat
   keeps it: `/V` is stored as typed, the appearance draws `?` for those characters, the widget is
-  marked with the first one (`pdfcraft_fonts::UNDRAWN_MARK`, cleared once all of it can be drawn)
+  marked with the first one (`iridium_pdf_fonts::UNDRAWN_MARK`, cleared once all of it can be drawn)
   and the form sets `/NeedAppearances`, so other viewers draw the field from its value with fonts
   that have them. Not in a document that declares PDF/A, which forbids that flag (`declares_pdfa`:
   the bytes `pdfaid:part` in XMP metadata each filter stage of which decodes within 8 MiB, the cap
@@ -70,7 +70,7 @@ let cells: Vec<table::Cell> = grid.cells_for(names)?;      // "Table1_1", "Table
   over the appearance the file carries; push buttons with none are drawn from `/MK`, `/BS` and
   their caption.
 - Check boxes and radio buttons switch `/V` and each widget's `/AS`. Widgets with no appearances
-  get PdfCraft's own (a drawn check mark or dot; no symbol font needed).
+  get PDF's own (a drawn check mark or dot; no symbol font needed).
 - Imported `/MaxLen 0` is treated as unlimited (also clearing an inherited limit), while the
   original entry is preserved. Positive limits still apply.
 - Values are validated (options, `MaxLen`, single vs multi-select, NoToggleToOff, read-only) and a

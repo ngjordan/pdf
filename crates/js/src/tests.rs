@@ -427,7 +427,7 @@ fn document_level_functions_are_available() {
 }
 
 /// #3940: a document script that throws after defining a helper (here calling an Acrobat method
-/// PdfCraft lacks) still leaves the helper, and the later scripts, to the field script.
+/// PDF lacks) still leaves the helper, and the later scripts, to the field script.
 #[test]
 fn a_failing_document_script_does_not_stop_the_field_script() {
     let docs = [

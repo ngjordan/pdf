@@ -3,11 +3,11 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::{Dialog, LeftPanel, PdfCraftApp};
+use iridium_pdf_ui_egui::{Dialog, LeftPanel, PdfApp};
 
-fn harness(setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, PdfCraftApp> {
+fn harness(setup: impl FnOnce(&mut PdfApp) + 'static) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.run_inline = true;
         setup(&mut app);
@@ -19,7 +19,7 @@ fn harness(setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, P
 
 #[test]
 fn state_operations_and_validation() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     assert!(!app.is_tool_pinned("redact"));
 
     // Pinning a valid tool
@@ -61,14 +61,14 @@ fn state_operations_and_validation() {
 
 #[test]
 fn persistence_round_trip_and_sanitization() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.pin_tool("protect");
     app.pin_tool("redact");
 
     let saved = app.persist();
     assert!(saved.contains("\"pinned_tools\""));
 
-    let mut restored = PdfCraftApp::new();
+    let mut restored = PdfApp::new();
     restored.restore(&saved);
     assert_eq!(restored.pinned_tools, vec!["protect", "redact"]);
 

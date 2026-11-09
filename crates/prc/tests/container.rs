@@ -4,7 +4,7 @@
 
 use std::io::Write;
 
-use pdfcraft_prc::{MAX_FILE_STRUCTURES, PrcError, PrcFile, SectionKind, UniqueId};
+use iridium_pdf_prc::{MAX_FILE_STRUCTURES, PrcError, PrcFile, SectionKind, UniqueId};
 
 fn zlib(data: &[u8]) -> Vec<u8> {
     let mut e = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());

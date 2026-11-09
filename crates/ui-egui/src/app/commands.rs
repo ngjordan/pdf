@@ -1,14 +1,14 @@
 use super::*;
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Run a catalogue command. Commands that aren't implemented yet say which milestone ships them.
     pub fn run_command(&mut self, command: &str) {
-        if let Some(spec) = pdfcraft_engine::commands::command(command) {
-            use pdfcraft_engine::commands::Needs;
+        if let Some(spec) = iridium_pdf_engine::commands::command(command) {
+            use iridium_pdf_engine::commands::Needs;
             // A tool that needs a document, chosen with none open, asks for the file and then
             // runs on it, instead of only saying to open one first.
             let needs_document = !matches!(spec.needs, Needs::Nothing | Needs::Undo | Needs::Redo);
-            let is_tool = pdfcraft_engine::catalog::TOOL_GROUPS
+            let is_tool = iridium_pdf_engine::catalog::TOOL_GROUPS
                 .iter()
                 .flat_map(|g| g.sections.iter().flat_map(|s| s.items.iter()))
                 .any(|i| i.command == spec.id);
@@ -20,14 +20,14 @@ impl PdfCraftApp {
             return;
         }
         // Not implemented yet: say which milestone ships it.
-        let when = pdfcraft_engine::catalog::TOOL_GROUPS
+        let when = iridium_pdf_engine::catalog::TOOL_GROUPS
             .iter()
             .flat_map(|g| g.sections.iter().flat_map(|s| s.items.iter()))
             .find(|i| i.command == command)
             .map(|i| match i.availability {
-                pdfcraft_engine::catalog::Availability::Planned(m) => crate::i18n::fmt(tl!("ships in milestone {m}"), &[("m", m)]),
-                pdfcraft_engine::catalog::Availability::Provider => tl!("needs an AI provider (off by default)").to_string(),
-                pdfcraft_engine::catalog::Availability::Ready => tl!("is available").to_string(),
+                iridium_pdf_engine::catalog::Availability::Planned(m) => crate::i18n::fmt(tl!("ships in milestone {m}"), &[("m", m)]),
+                iridium_pdf_engine::catalog::Availability::Provider => tl!("needs an AI provider (off by default)").to_string(),
+                iridium_pdf_engine::catalog::Availability::Ready => tl!("is available").to_string(),
             })
             .unwrap_or_else(|| tl!("is not available yet").to_string());
         self.notify_fmt("`{command}` {when}", &[("command", command), ("when", &when)]);
@@ -36,7 +36,7 @@ impl PdfCraftApp {
     /// Ask for a file to open, then run `spec` on it once it is open (or unlocked). Nothing runs
     /// when the picker is cancelled or the file doesn't open.
     #[cfg(not(target_arch = "wasm32"))]
-    fn open_then_run(&mut self, spec: &'static pdfcraft_engine::commands::CommandSpec) {
+    fn open_then_run(&mut self, spec: &'static iridium_pdf_engine::commands::CommandSpec) {
         self.startup_superseded = true;
         let dialog = Self::open_picker().set_title(tl!(spec.label).trim_end_matches('…'));
         let command = spec.id;
@@ -48,7 +48,7 @@ impl PdfCraftApp {
 
     /// Browsers read the picked file asynchronously; it opens, and the tool can be chosen again.
     #[cfg(target_arch = "wasm32")]
-    fn open_then_run(&mut self, _spec: &'static pdfcraft_engine::commands::CommandSpec) {
+    fn open_then_run(&mut self, _spec: &'static iridium_pdf_engine::commands::CommandSpec) {
         self.open_dialog();
     }
 

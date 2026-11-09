@@ -1,74 +1,74 @@
 [
   {
-    "crate": "pdfcraft-cli",
+    "crate": "iridium-pdf-cli",
     "name": "hyper",
     "reachable": true,
-    "path": "pdfcraft-cli -> pdfcraft-engine -> pdfcraft-print -> craft-print -> winprint -> reqwest -> hyper"
+    "path": "iridium-pdf-cli -> iridium-pdf-engine -> iridium-pdf-print -> craft-print -> winprint -> reqwest -> hyper"
   },
   {
-    "crate": "pdfcraft-cli",
+    "crate": "iridium-pdf-cli",
     "name": "reqwest",
     "reachable": true,
-    "path": "pdfcraft-cli -> pdfcraft-engine -> pdfcraft-print -> craft-print -> winprint -> reqwest"
+    "path": "iridium-pdf-cli -> iridium-pdf-engine -> iridium-pdf-print -> craft-print -> winprint -> reqwest"
   },
   {
-    "crate": "pdfcraft-cli",
+    "crate": "iridium-pdf-cli",
     "name": "socket2",
     "reachable": true,
-    "path": "pdfcraft-cli -> pdfcraft-engine -> pdfcraft-print -> craft-print -> winprint -> reqwest -> hyper-util -> socket2"
+    "path": "iridium-pdf-cli -> iridium-pdf-engine -> iridium-pdf-print -> craft-print -> winprint -> reqwest -> hyper-util -> socket2"
   },
   {
-    "crate": "pdfcraft-cli",
+    "crate": "iridium-pdf-cli",
     "name": "tokio",
     "reachable": true,
-    "path": "pdfcraft-cli -> pdfcraft-engine -> pdfcraft-print -> craft-print -> winprint -> reqwest -> tokio"
+    "path": "iridium-pdf-cli -> iridium-pdf-engine -> iridium-pdf-print -> craft-print -> winprint -> reqwest -> tokio"
   },
   {
-    "crate": "pdfcraft-automation",
+    "crate": "iridium-pdf-automation",
     "name": "hyper",
     "reachable": true,
-    "path": "pdfcraft-automation -> pdfcraft-engine -> pdfcraft-print -> craft-print -> winprint -> reqwest -> hyper"
+    "path": "iridium-pdf-automation -> iridium-pdf-engine -> iridium-pdf-print -> craft-print -> winprint -> reqwest -> hyper"
   },
   {
-    "crate": "pdfcraft-automation",
+    "crate": "iridium-pdf-automation",
     "name": "reqwest",
     "reachable": true,
-    "path": "pdfcraft-automation -> pdfcraft-engine -> pdfcraft-print -> craft-print -> winprint -> reqwest"
+    "path": "iridium-pdf-automation -> iridium-pdf-engine -> iridium-pdf-print -> craft-print -> winprint -> reqwest"
   },
   {
-    "crate": "pdfcraft-automation",
+    "crate": "iridium-pdf-automation",
     "name": "socket2",
     "reachable": true,
-    "path": "pdfcraft-automation -> pdfcraft-engine -> pdfcraft-print -> craft-print -> winprint -> reqwest -> hyper-util -> socket2"
+    "path": "iridium-pdf-automation -> iridium-pdf-engine -> iridium-pdf-print -> craft-print -> winprint -> reqwest -> hyper-util -> socket2"
   },
   {
-    "crate": "pdfcraft-automation",
+    "crate": "iridium-pdf-automation",
     "name": "tokio",
     "reachable": true,
-    "path": "pdfcraft-automation -> pdfcraft-engine -> pdfcraft-print -> craft-print -> winprint -> reqwest -> tokio"
+    "path": "iridium-pdf-automation -> iridium-pdf-engine -> iridium-pdf-print -> craft-print -> winprint -> reqwest -> tokio"
   },
   {
-    "crate": "pdfcraft-engine",
+    "crate": "iridium-pdf-engine",
     "name": "hyper",
     "reachable": true,
-    "path": "pdfcraft-engine -> pdfcraft-print -> craft-print -> winprint -> reqwest -> hyper"
+    "path": "iridium-pdf-engine -> iridium-pdf-print -> craft-print -> winprint -> reqwest -> hyper"
   },
   {
-    "crate": "pdfcraft-engine",
+    "crate": "iridium-pdf-engine",
     "name": "reqwest",
     "reachable": true,
-    "path": "pdfcraft-engine -> pdfcraft-print -> craft-print -> winprint -> reqwest"
+    "path": "iridium-pdf-engine -> iridium-pdf-print -> craft-print -> winprint -> reqwest"
   },
   {
-    "crate": "pdfcraft-engine",
+    "crate": "iridium-pdf-engine",
     "name": "socket2",
     "reachable": true,
-    "path": "pdfcraft-engine -> pdfcraft-print -> craft-print -> winprint -> reqwest -> hyper-util -> socket2"
+    "path": "iridium-pdf-engine -> iridium-pdf-print -> craft-print -> winprint -> reqwest -> hyper-util -> socket2"
   },
   {
-    "crate": "pdfcraft-engine",
+    "crate": "iridium-pdf-engine",
     "name": "tokio",
     "reachable": true,
-    "path": "pdfcraft-engine -> pdfcraft-print -> craft-print -> winprint -> reqwest -> tokio"
+    "path": "iridium-pdf-engine -> iridium-pdf-print -> craft-print -> winprint -> reqwest -> tokio"
   }
 ]

@@ -2,8 +2,8 @@
 //! code per distinct glyph and cluster text, in fonts of `GLYPHS_PER_FONT` codes each. The
 //! outline checks need the craft-fonts Thai face; the budget check runs without it.
 
-use pdfcraft_cos::{Dict, Document};
-use pdfcraft_fonts::source_shaping::{ShapedGlyph, ShapedRun};
+use iridium_pdf_cos::{Dict, Document};
+use iridium_pdf_fonts::source_shaping::{ShapedGlyph, ShapedRun};
 
 use super::*;
 
@@ -27,13 +27,13 @@ fn thai_glyph_resources_refuse_a_row_past_the_glyph_budget() {
 /// cluster texts takes two codes, since each code's ToUnicode gives its own text.
 #[test]
 fn thai_glyph_resources_shard_distinct_clusters_at_the_font_boundary() {
-    let Some(face) = pdfcraft_fonts::document_thai_font() else {
+    let Some(face) = iridium_pdf_fonts::document_thai_font() else {
         eprintln!(
             "skipping thai_glyph_resources_shard_distinct_clusters_at_the_font_boundary: built without craft-fonts (set CRAFT_FONTS_DIR to run it)"
         );
         return;
     };
-    let ko = pdfcraft_fonts::source_shaping::shape(face.bytes, "ก").unwrap().glyphs.remove(0);
+    let ko = iridium_pdf_fonts::source_shaping::shape(face.bytes, "ก").unwrap().glyphs.remove(0);
     for (clusters, fonts_used) in [(GLYPHS_PER_FONT - 1, 1), (GLYPHS_PER_FONT, 1), (GLYPHS_PER_FONT + 1, 2)] {
         let mut shaped = distinct(&ko, clusters);
         shaped.glyphs.push(shaped.glyphs[0].clone());

@@ -4,12 +4,12 @@ impl Automation {
     pub(crate) fn doc_export_office(&self, a: &Args) -> Result<Value> {
         let path = self.resolve(a.str("path")?, true)?;
         let ext = path.extension().map(|e| e.to_string_lossy().into_owned()).unwrap_or_default();
-        let format = pdfcraft_engine::compare::OfficeFormat::from_extension(&ext)
+        let format = iridium_pdf_engine::compare::OfficeFormat::from_extension(&ext)
             .ok_or_else(|| ToolError::InvalidArgs(format!("unsupported extension {ext:?} (docx, pptx, html, rtf or md)")))?;
         let html_mode = a.opt_str("html_mode")?.unwrap_or("rich");
         let format = match (format, html_mode) {
-            (pdfcraft_engine::compare::OfficeFormat::Html, "rich") => pdfcraft_engine::compare::OfficeFormat::Html,
-            (pdfcraft_engine::compare::OfficeFormat::Html, "simple") => pdfcraft_engine::compare::OfficeFormat::HtmlSimple,
+            (iridium_pdf_engine::compare::OfficeFormat::Html, "rich") => iridium_pdf_engine::compare::OfficeFormat::Html,
+            (iridium_pdf_engine::compare::OfficeFormat::Html, "simple") => iridium_pdf_engine::compare::OfficeFormat::HtmlSimple,
             (_, "rich") => format,
             (_, _) => return Err(ToolError::InvalidArgs("html_mode is only available for HTML exports (rich or simple)".into())),
         };
@@ -20,7 +20,7 @@ impl Automation {
         let mut out = json!({ "path": path.to_string_lossy(), "bytes": export.bytes.len(), "format": format.extension(),
             "truncated": !truncated.is_empty(), "truncated_pages": truncated });
         if !export.truncated_pages.is_empty() {
-            use pdfcraft_engine::compare::{MAX_FORM_DEPTH, MAX_FORM_VISITS};
+            use iridium_pdf_engine::compare::{MAX_FORM_DEPTH, MAX_FORM_VISITS};
             out["warnings"] = json!([format!(
                 "pictures past what one export may hold or decode, or forms nested more than {MAX_FORM_DEPTH} deep, or past the first {MAX_FORM_VISITS} forms of a page (forms the page draws itself count too), were left out on the pages in truncated_pages: their text and images are missing from the export, although the viewer may still show them"
             )]);
@@ -28,9 +28,9 @@ impl Automation {
         Ok(out)
     }
 
-    fn pdfa_level(&self, a: &Args) -> Result<pdfcraft_engine::pdfa::Level> {
+    fn pdfa_level(&self, a: &Args) -> Result<iridium_pdf_engine::pdfa::Level> {
         let l = a.opt_str("level")?.unwrap_or("2b");
-        pdfcraft_engine::pdfa::Level::from_id(l).ok_or_else(|| ToolError::InvalidArgs(format!("unknown PDF/A level {l:?} (2b or 3b)")))
+        iridium_pdf_engine::pdfa::Level::from_id(l).ok_or_else(|| ToolError::InvalidArgs(format!("unknown PDF/A level {l:?} (2b or 3b)")))
     }
 
     pub(crate) fn pdfa_verify(&self, a: &Args) -> Result<Value> {
@@ -103,12 +103,12 @@ impl Automation {
     pub(crate) fn pdfa_convert(&mut self, a: &Args) -> Result<Value> {
         let level = self.pdfa_level(a)?;
         let id = self.doc(a)?.id;
-        let warnings = self.apply_with_warnings(id, pdfcraft_engine::Edit::ConvertPdfA { level })?;
+        let warnings = self.apply_with_warnings(id, iridium_pdf_engine::Edit::ConvertPdfA { level })?;
         Ok(with_warnings(self.pdfa_verify(a)?, warnings))
     }
 
     pub(crate) fn action_list(&self) -> Result<Value> {
-        use pdfcraft_engine::actions::{Step, builtin};
+        use iridium_pdf_engine::actions::{Step, builtin};
         let step_json = |s: &Step| json!({ "step": s.id(), "arg": s.arg() });
         let actions: Vec<Value> = builtin()
             .iter()
@@ -119,7 +119,7 @@ impl Automation {
     }
 
     pub(crate) fn action_run(&mut self, a: &Args) -> Result<Value> {
-        use pdfcraft_engine::actions::{Action, Step, builtin, run_on};
+        use iridium_pdf_engine::actions::{Action, Step, builtin, run_on};
         let action = if let Some(name) = a.opt_str("action")? {
             builtin()
                 .into_iter()
@@ -157,25 +157,24 @@ impl Automation {
         Ok(json!({ "action": action.name, "files": out }))
     }
 
-    fn compare_ids(&self, a: &Args) -> Result<(pdfcraft_engine::DocId, pdfcraft_engine::DocId)> {
+    fn compare_ids(&self, a: &Args) -> Result<(iridium_pdf_engine::DocId, iridium_pdf_engine::DocId)> {
         let new = self.doc(a)?.id;
         let other = a.int("other")?;
         let old = u64::try_from(other)
             .ok()
-            .and_then(|o| self.session.get(pdfcraft_engine::DocId(o)))
+            .and_then(|o| self.session.get(iridium_pdf_engine::DocId(o)))
             .map(|d| d.id)
             .ok_or_else(|| ToolError::InvalidArgs(format!("no open document {other}")))?;
         Ok((old, new))
     }
 
     pub(crate) fn doc_compare(&self, a: &Args) -> Result<Value> {
-        use pdfcraft_engine::compare::Kind;
+        use iridium_pdf_engine::compare::Kind;
         let (old, new) = self.compare_ids(a)?;
         let c = self.session.compare(old, new).map_err(failed)?;
         let limit = a.opt_int("limit")?.unwrap_or(500).max(1) as usize;
         let r2 = |r: &[f64; 4]| r.map(|v| (v * 100.0).round() / 100.0);
-        let side =
-            |s: &pdfcraft_engine::compare::Side| json!({ "text": s.text, "page": s.page + 1, "rects": s.rects.iter().map(r2).collect::<Vec<_>>() });
+        let side = |s: &iridium_pdf_engine::compare::Side| json!({ "text": s.text, "page": s.page + 1, "rects": s.rects.iter().map(r2).collect::<Vec<_>>() });
         let list: Vec<Value> = c
             .changes
             .iter()

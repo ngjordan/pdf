@@ -1187,17 +1187,17 @@ dependencies = [
 [[package]]
 name = "craft-docpath"
 version = "0.1.0"
-source = "git+https://github.com/storytold/craft-libs?rev=787a7a0f972fd1d7a7618fdbeca3a5267a0407ff#787a7a0f972fd1d7a7618fdbeca3a5267a0407ff"
+source = "git+https://github.com/ngjordan/craft-libs?rev=95cee510eb4dd48e8cb76b9fa71a45df57fb89ad#95cee510eb4dd48e8cb76b9fa71a45df57fb89ad"
 
 [[package]]
 name = "craft-fonts-build"
 version = "0.1.0"
-source = "git+https://github.com/storytold/craft-libs?rev=787a7a0f972fd1d7a7618fdbeca3a5267a0407ff#787a7a0f972fd1d7a7618fdbeca3a5267a0407ff"
+source = "git+https://github.com/ngjordan/craft-libs?rev=95cee510eb4dd48e8cb76b9fa71a45df57fb89ad#95cee510eb4dd48e8cb76b9fa71a45df57fb89ad"
 
 [[package]]
 name = "craft-i18n"
 version = "0.1.0"
-source = "git+https://github.com/storytold/craft-libs?rev=787a7a0f972fd1d7a7618fdbeca3a5267a0407ff#787a7a0f972fd1d7a7618fdbeca3a5267a0407ff"
+source = "git+https://github.com/ngjordan/craft-libs?rev=95cee510eb4dd48e8cb76b9fa71a45df57fb89ad#95cee510eb4dd48e8cb76b9fa71a45df57fb89ad"
 dependencies = [
  "fixed_decimal",
  "icu_decimal",
@@ -1220,7 +1220,7 @@ dependencies = [
 [[package]]
 name = "craft-keymap"
 version = "0.1.0"
-source = "git+https://github.com/storytold/craft-libs?rev=787a7a0f972fd1d7a7618fdbeca3a5267a0407ff#787a7a0f972fd1d7a7618fdbeca3a5267a0407ff"
+source = "git+https://github.com/ngjordan/craft-libs?rev=95cee510eb4dd48e8cb76b9fa71a45df57fb89ad#95cee510eb4dd48e8cb76b9fa71a45df57fb89ad"
 dependencies = [
  "egui",
  "serde",
@@ -1230,7 +1230,7 @@ dependencies = [
 [[package]]
 name = "craft-menu"
 version = "0.1.0"
-source = "git+https://github.com/storytold/craft-libs?rev=787a7a0f972fd1d7a7618fdbeca3a5267a0407ff#787a7a0f972fd1d7a7618fdbeca3a5267a0407ff"
+source = "git+https://github.com/ngjordan/craft-libs?rev=95cee510eb4dd48e8cb76b9fa71a45df57fb89ad#95cee510eb4dd48e8cb76b9fa71a45df57fb89ad"
 dependencies = [
  "craft-keymap",
  "craft-quit",
@@ -1243,7 +1243,7 @@ dependencies = [
 [[package]]
 name = "craft-print"
 version = "0.1.0"
-source = "git+https://github.com/storytold/craft-libs?rev=7ee35a9fbd47af572d55fd63dbf0333d1f00da17#7ee35a9fbd47af572d55fd63dbf0333d1f00da17"
+source = "git+https://github.com/ngjordan/craft-libs?rev=7ee35a9fbd47af572d55fd63dbf0333d1f00da17#7ee35a9fbd47af572d55fd63dbf0333d1f00da17"
 dependencies = [
  "craft-winprint-gdi",
  "log",
@@ -1257,7 +1257,7 @@ dependencies = [
 [[package]]
 name = "craft-quit"
 version = "0.1.0"
-source = "git+https://github.com/storytold/craft-libs?rev=787a7a0f972fd1d7a7618fdbeca3a5267a0407ff#787a7a0f972fd1d7a7618fdbeca3a5267a0407ff"
+source = "git+https://github.com/ngjordan/craft-libs?rev=95cee510eb4dd48e8cb76b9fa71a45df57fb89ad#95cee510eb4dd48e8cb76b9fa71a45df57fb89ad"
 dependencies = [
  "dispatch2",
  "egui",
@@ -1268,7 +1268,7 @@ dependencies = [
 [[package]]
 name = "craft-ui"
 version = "0.1.0"
-source = "git+https://github.com/storytold/craft-libs?rev=787a7a0f972fd1d7a7618fdbeca3a5267a0407ff#787a7a0f972fd1d7a7618fdbeca3a5267a0407ff"
+source = "git+https://github.com/ngjordan/craft-libs?rev=95cee510eb4dd48e8cb76b9fa71a45df57fb89ad#95cee510eb4dd48e8cb76b9fa71a45df57fb89ad"
 dependencies = [
  "craft-fonts-build",
  "craft-i18n",
@@ -1289,7 +1289,7 @@ dependencies = [
 [[package]]
 name = "craft-update"
 version = "0.1.0"
-source = "git+https://github.com/storytold/craft-libs?rev=1b34eba41e62138fc2438d2734523b302840b45d#1b34eba41e62138fc2438d2734523b302840b45d"
+source = "git+https://github.com/ngjordan/craft-libs?rev=1b34eba41e62138fc2438d2734523b302840b45d#1b34eba41e62138fc2438d2734523b302840b45d"
 dependencies = [
  "chrono",
  "dunce",
@@ -1315,7 +1315,7 @@ dependencies = [
 [[package]]
 name = "craft-web-api"
 version = "0.1.0"
-source = "git+https://github.com/storytold/craft-libs?rev=fd5e2feff6ea25bed371a99cc732b3968d621505#fd5e2feff6ea25bed371a99cc732b3968d621505"
+source = "git+https://github.com/ngjordan/craft-libs?rev=fd5e2feff6ea25bed371a99cc732b3968d621505#fd5e2feff6ea25bed371a99cc732b3968d621505"
 dependencies = [
  "js-sys",
  "serde_json",
@@ -1326,7 +1326,7 @@ dependencies = [
 [[package]]
 name = "craft-web-host"
 version = "0.1.0"
-source = "git+https://github.com/storytold/craft-libs?rev=fd5e2feff6ea25bed371a99cc732b3968d621505#fd5e2feff6ea25bed371a99cc732b3968d621505"
+source = "git+https://github.com/ngjordan/craft-libs?rev=fd5e2feff6ea25bed371a99cc732b3968d621505#fd5e2feff6ea25bed371a99cc732b3968d621505"
 dependencies = [
  "wasm-bindgen",
  "web-sys",
@@ -1696,7 +1696,7 @@ dependencies = [
 [[package]]
 name = "ecolor"
 version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+source = "git+https://github.com/ngjordan/egui.git?rev=faf1ced22250c509636bff2578731a0be86a69ac#faf1ced22250c509636bff2578731a0be86a69ac"
 dependencies = [
  "bytemuck",
  "emath",
@@ -1728,7 +1728,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+source = "git+https://github.com/ngjordan/egui.git?rev=faf1ced22250c509636bff2578731a0be86a69ac#faf1ced22250c509636bff2578731a0be86a69ac"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1766,7 +1766,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+source = "git+https://github.com/ngjordan/egui.git?rev=faf1ced22250c509636bff2578731a0be86a69ac#faf1ced22250c509636bff2578731a0be86a69ac"
 dependencies = [
  "accesskit",
  "ahash",
@@ -1787,7 +1787,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+source = "git+https://github.com/ngjordan/egui.git?rev=faf1ced22250c509636bff2578731a0be86a69ac#faf1ced22250c509636bff2578731a0be86a69ac"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1806,7 +1806,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+source = "git+https://github.com/ngjordan/egui.git?rev=faf1ced22250c509636bff2578731a0be86a69ac#faf1ced22250c509636bff2578731a0be86a69ac"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -1833,7 +1833,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+source = "git+https://github.com/ngjordan/egui.git?rev=faf1ced22250c509636bff2578731a0be86a69ac#faf1ced22250c509636bff2578731a0be86a69ac"
 dependencies = [
  "ahash",
  "egui",
@@ -1847,7 +1847,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+source = "git+https://github.com/ngjordan/egui.git?rev=faf1ced22250c509636bff2578731a0be86a69ac#faf1ced22250c509636bff2578731a0be86a69ac"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1860,7 +1860,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+source = "git+https://github.com/ngjordan/egui.git?rev=faf1ced22250c509636bff2578731a0be86a69ac#faf1ced22250c509636bff2578731a0be86a69ac"
 dependencies = [
  "eframe",
  "egui",
@@ -1903,7 +1903,7 @@ dependencies = [
 [[package]]
 name = "emath"
 version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+source = "git+https://github.com/ngjordan/egui.git?rev=faf1ced22250c509636bff2578731a0be86a69ac#faf1ced22250c509636bff2578731a0be86a69ac"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1984,7 +1984,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+source = "git+https://github.com/ngjordan/egui.git?rev=faf1ced22250c509636bff2578731a0be86a69ac#faf1ced22250c509636bff2578731a0be86a69ac"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2011,7 +2011,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+source = "git+https://github.com/ngjordan/egui.git?rev=faf1ced22250c509636bff2578731a0be86a69ac#faf1ced22250c509636bff2578731a0be86a69ac"
 
 [[package]]
 name = "equator"
@@ -3233,6 +3233,600 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "791930b43c0d5973160d90a8f3894509f2b273430f5c5c73b668636d0287c5c0"
 
 [[package]]
+name = "iridium-pdf"
+version = "0.18.1"
+dependencies = [
+ "chrono",
+ "craft-update",
+ "eframe",
+ "egui",
+ "fmv-macos-events",
+ "iridium-pdf-engine",
+ "iridium-pdf-platform",
+ "iridium-pdf-ui-egui",
+ "log",
+ "pollster 1.0.1",
+ "raw-window-handle",
+ "serde_json",
+ "uds_windows",
+ "wayland-client",
+ "wayland-protocols",
+ "windows",
+ "winit",
+ "winresource",
+ "winsafe",
+]
+
+[[package]]
+name = "iridium-pdf-a11y"
+version = "0.18.1"
+dependencies = [
+ "iridium-pdf-content",
+ "iridium-pdf-cos",
+ "iridium-pdf-fonts",
+ "iridium-pdf-model",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "iridium-pdf-annot"
+version = "0.18.1"
+dependencies = [
+ "hayro-syntax",
+ "iridium-pdf-cos",
+ "iridium-pdf-fonts",
+ "iridium-pdf-geom",
+ "iridium-pdf-model",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "iridium-pdf-audit"
+version = "0.18.1"
+dependencies = [
+ "iridium-pdf-content",
+ "iridium-pdf-cos",
+ "iridium-pdf-edit",
+ "iridium-pdf-model",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "iridium-pdf-automation"
+version = "0.18.1"
+dependencies = [
+ "base64 0.23.1",
+ "flate2",
+ "image",
+ "iridium-pdf-cos",
+ "iridium-pdf-engine",
+ "iridium-pdf-fonts",
+ "iridium-pdf-model",
+ "iridium-pdf-organize",
+ "iridium-pdf-platform",
+ "iridium-pdf-prc",
+ "iridium-pdf-prc-render",
+ "iridium-pdf-render",
+ "iridium-pdf-xfa",
+ "png 0.18.1",
+ "rustix 1.1.5",
+ "serde_json",
+ "sha2 0.11.1",
+ "tempfile",
+]
+
+[[package]]
+name = "iridium-pdf-cli"
+version = "0.18.1"
+dependencies = [
+ "base64 0.23.1",
+ "iridium-pdf-audit",
+ "iridium-pdf-automation",
+ "iridium-pdf-cos",
+ "iridium-pdf-engine",
+ "iridium-pdf-platform",
+ "iridium-pdf-preflight",
+ "iridium-pdf-render",
+ "png 0.18.1",
+ "rustix 1.1.5",
+ "serde_json",
+ "winresource",
+]
+
+[[package]]
+name = "iridium-pdf-compare"
+version = "0.18.1"
+
+[[package]]
+name = "iridium-pdf-content"
+version = "0.18.1"
+dependencies = [
+ "hayro-syntax",
+ "iridium-pdf-cos",
+]
+
+[[package]]
+name = "iridium-pdf-cos"
+version = "0.18.1"
+dependencies = [
+ "chrono",
+ "hayro-syntax",
+ "iridium-pdf-crypt",
+ "iridium-pdf-filters",
+ "iridium-pdf-oracle",
+ "iridium-pdf-testkit",
+ "js-sys",
+ "proptest",
+ "serde_json",
+ "thiserror 2.0.21",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "iridium-pdf-create"
+version = "0.18.1"
+dependencies = [
+ "encoding_rs",
+ "hayro-ccitt",
+ "hayro-syntax",
+ "image",
+ "iridium-pdf-cos",
+ "iridium-pdf-filters",
+ "iridium-pdf-fonts",
+ "iridium-pdf-model",
+ "iridium-pdf-xfa",
+ "png 0.18.1",
+ "thiserror 2.0.21",
+ "tiff",
+ "zune-jpeg",
+]
+
+[[package]]
+name = "iridium-pdf-crypt"
+version = "0.18.1"
+dependencies = [
+ "aes",
+ "md-5",
+ "proptest",
+ "sha2 0.11.1",
+ "stringprep",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "iridium-pdf-edit"
+version = "0.18.1"
+dependencies = [
+ "hayro-syntax",
+ "icu_segmenter",
+ "iridium-pdf-annot",
+ "iridium-pdf-content",
+ "iridium-pdf-cos",
+ "iridium-pdf-fonts",
+ "iridium-pdf-model",
+ "iridium-pdf-render",
+ "kurbo 0.13.1",
+ "proptest",
+ "sha2 0.11.1",
+ "thiserror 2.0.21",
+ "unicode-bidi",
+]
+
+[[package]]
+name = "iridium-pdf-engine"
+version = "0.18.1"
+dependencies = [
+ "chrono",
+ "craft-docpath",
+ "getrandom 0.4.3",
+ "icu_properties",
+ "idna",
+ "image",
+ "iridium-pdf-a11y",
+ "iridium-pdf-annot",
+ "iridium-pdf-audit",
+ "iridium-pdf-compare",
+ "iridium-pdf-content",
+ "iridium-pdf-cos",
+ "iridium-pdf-create",
+ "iridium-pdf-edit",
+ "iridium-pdf-export",
+ "iridium-pdf-filters",
+ "iridium-pdf-fonts",
+ "iridium-pdf-forms",
+ "iridium-pdf-geom",
+ "iridium-pdf-js",
+ "iridium-pdf-measure",
+ "iridium-pdf-model",
+ "iridium-pdf-ocr",
+ "iridium-pdf-optimize",
+ "iridium-pdf-organize",
+ "iridium-pdf-preflight",
+ "iridium-pdf-print",
+ "iridium-pdf-redact",
+ "iridium-pdf-render",
+ "iridium-pdf-sign",
+ "iridium-pdf-testkit",
+ "iridium-pdf-xfa",
+ "iridium-pdf-xfdf",
+ "png 0.18.1",
+ "thiserror 2.0.21",
+ "tiff",
+ "unicode-segmentation",
+ "url",
+]
+
+[[package]]
+name = "iridium-pdf-export"
+version = "0.18.1"
+dependencies = [
+ "flate2",
+]
+
+[[package]]
+name = "iridium-pdf-filters"
+version = "0.18.1"
+dependencies = [
+ "fax",
+ "flate2",
+ "hayro-ccitt",
+ "hayro-jbig2",
+ "proptest",
+ "thiserror 2.0.21",
+ "weezl 0.2.1",
+]
+
+[[package]]
+name = "iridium-pdf-fonts"
+version = "0.18.1"
+dependencies = [
+ "harfrust",
+ "iridium-pdf-cos",
+ "skrifa 0.44.0",
+ "unicode-bidi",
+]
+
+[[package]]
+name = "iridium-pdf-forms"
+version = "0.18.1"
+dependencies = [
+ "hayro-syntax",
+ "iridium-pdf-content",
+ "iridium-pdf-cos",
+ "iridium-pdf-fonts",
+ "iridium-pdf-model",
+ "proptest",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "iridium-pdf-geom"
+version = "0.18.1"
+
+[[package]]
+name = "iridium-pdf-js"
+version = "0.18.1"
+dependencies = [
+ "boa_engine",
+ "chrono",
+]
+
+[[package]]
+name = "iridium-pdf-measure"
+version = "0.18.1"
+dependencies = [
+ "iridium-pdf-annot",
+ "iridium-pdf-content",
+ "iridium-pdf-cos",
+ "iridium-pdf-model",
+ "iridium-pdf-testkit",
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "iridium-pdf-model"
+version = "0.18.1"
+dependencies = [
+ "iridium-pdf-cos",
+]
+
+[[package]]
+name = "iridium-pdf-ocr"
+version = "0.18.1"
+dependencies = [
+ "iridium-pdf-fonts",
+ "ocrs",
+ "png 0.18.1",
+ "rten",
+ "serde_json",
+ "sha2 0.11.1",
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "iridium-pdf-ocr-worker"
+version = "0.18.1"
+dependencies = [
+ "iridium-pdf-ocr",
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "iridium-pdf-optimize"
+version = "0.18.1"
+dependencies = [
+ "image",
+ "iridium-pdf-annot",
+ "iridium-pdf-content",
+ "iridium-pdf-cos",
+ "iridium-pdf-filters",
+ "iridium-pdf-model",
+ "iridium-pdf-render",
+ "proptest",
+ "thiserror 2.0.21",
+ "thread-priority",
+ "zune-jpeg",
+]
+
+[[package]]
+name = "iridium-pdf-oracle"
+version = "0.18.1"
+
+[[package]]
+name = "iridium-pdf-organize"
+version = "0.18.1"
+dependencies = [
+ "hayro-syntax",
+ "iridium-pdf-content",
+ "iridium-pdf-cos",
+ "iridium-pdf-oracle",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "iridium-pdf-platform"
+version = "0.18.1"
+dependencies = [
+ "async-channel",
+ "futures-lite",
+ "rustix 1.1.5",
+ "zbus",
+]
+
+[[package]]
+name = "iridium-pdf-prc"
+version = "0.18.1"
+dependencies = [
+ "flate2",
+ "proptest",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "iridium-pdf-prc-render"
+version = "0.18.1"
+dependencies = [
+ "flate2",
+ "iridium-pdf-prc",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "iridium-pdf-preflight"
+version = "0.18.1"
+dependencies = [
+ "flate2",
+ "iridium-pdf-content",
+ "iridium-pdf-cos",
+ "iridium-pdf-model",
+ "roxmltree 0.21.2",
+]
+
+[[package]]
+name = "iridium-pdf-print"
+version = "0.18.1"
+dependencies = [
+ "craft-print",
+ "iridium-pdf-content",
+ "iridium-pdf-cos",
+ "iridium-pdf-model",
+ "iridium-pdf-render",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "iridium-pdf-redact"
+version = "0.18.1"
+dependencies = [
+ "aho-corasick",
+ "iridium-pdf-annot",
+ "iridium-pdf-content",
+ "iridium-pdf-cos",
+ "iridium-pdf-edit",
+ "iridium-pdf-filters",
+ "iridium-pdf-fonts",
+ "iridium-pdf-forms",
+ "iridium-pdf-geom",
+ "iridium-pdf-model",
+ "iridium-pdf-render",
+ "iridium-pdf-testkit",
+ "iridium-pdf-xfa",
+ "regex",
+ "sha2 0.11.1",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "iridium-pdf-render"
+version = "0.18.1"
+dependencies = [
+ "bytemuck",
+ "flate2",
+ "getrandom 0.4.3",
+ "hayro",
+ "hayro-syntax",
+ "iridium-pdf-content",
+ "iridium-pdf-cos",
+ "iridium-pdf-fonts",
+ "iridium-pdf-geom",
+ "iridium-pdf-testkit",
+ "kurbo 0.13.1",
+ "log",
+ "lopdf",
+ "serde",
+ "skrifa 0.44.0",
+ "thiserror 2.0.21",
+ "unicode-bidi",
+ "url",
+]
+
+[[package]]
+name = "iridium-pdf-sign"
+version = "0.18.1"
+dependencies = [
+ "aes",
+ "aws-lc-rs",
+ "base64 0.23.1",
+ "bp256",
+ "bp384",
+ "cbc",
+ "chrono",
+ "crypto-bigint",
+ "des",
+ "ecdsa",
+ "ed25519-dalek",
+ "getrandom 0.4.3",
+ "hmac",
+ "iridium-pdf-annot",
+ "iridium-pdf-content",
+ "iridium-pdf-cos",
+ "iridium-pdf-fonts",
+ "iridium-pdf-model",
+ "iridium-pdf-testkit",
+ "p256",
+ "p384",
+ "p521",
+ "pbkdf2",
+ "rc2",
+ "ripemd",
+ "rsa",
+ "rustls-cng",
+ "security-framework",
+ "sha1 0.11.0",
+ "sha2 0.11.1",
+ "sha3",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "iridium-pdf-testkit"
+version = "0.18.1"
+
+[[package]]
+name = "iridium-pdf-ui-egui"
+version = "0.18.1"
+dependencies = [
+ "arboard",
+ "base64 0.23.1",
+ "block2 0.6.2",
+ "bytemuck",
+ "chrono",
+ "craft-i18n",
+ "craft-keymap",
+ "craft-menu",
+ "craft-quit",
+ "craft-ui",
+ "craft-update",
+ "eframe",
+ "egui",
+ "egui_extras",
+ "egui_kittest",
+ "flate2",
+ "fontconfig-parser",
+ "getrandom 0.4.3",
+ "image",
+ "iridium-pdf-content",
+ "iridium-pdf-cos",
+ "iridium-pdf-engine",
+ "iridium-pdf-fonts",
+ "iridium-pdf-model",
+ "iridium-pdf-ocr",
+ "iridium-pdf-platform",
+ "iridium-pdf-render",
+ "iridium-pdf-xfa",
+ "js-sys",
+ "log",
+ "objc2 0.6.5",
+ "objc2-app-kit 0.3.2",
+ "objc2-foundation 0.3.2",
+ "plist",
+ "png 0.18.1",
+ "pollster 1.0.1",
+ "proptest",
+ "rfd",
+ "rustix 1.1.5",
+ "serde",
+ "serde_json",
+ "skrifa 0.44.0",
+ "sys-locale",
+ "toml",
+ "unicode-bidi",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "web-time",
+ "winsafe",
+ "xattr",
+]
+
+[[package]]
+name = "iridium-pdf-web"
+version = "0.18.1"
+dependencies = [
+ "craft-web-api",
+ "craft-web-host",
+ "eframe",
+ "egui",
+ "iridium-pdf-ui-egui",
+ "js-sys",
+ "serde_json",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
+name = "iridium-pdf-xfa"
+version = "0.18.1"
+dependencies = [
+ "base64 0.23.1",
+ "image",
+ "iridium-pdf-cos",
+ "iridium-pdf-fonts",
+ "png 0.18.1",
+ "roxmltree 0.21.2",
+ "sha2 0.11.1",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "iridium-pdf-xfdf"
+version = "0.18.1"
+dependencies = [
+ "base64 0.23.1",
+ "iridium-pdf-annot",
+ "iridium-pdf-cos",
+ "iridium-pdf-forms",
+ "iridium-pdf-model",
+ "proptest",
+ "roxmltree 0.21.2",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "itertools"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4255,600 +4849,6 @@ checksum = "112d82ceb8c5bf524d9af484d4e4970c9fd5a0cc15ba14ad93dccd28873b0629"
 dependencies = [
  "digest 0.11.3",
  "hmac",
-]
-
-[[package]]
-name = "pdfcraft"
-version = "0.18.1"
-dependencies = [
- "chrono",
- "craft-update",
- "eframe",
- "egui",
- "fmv-macos-events",
- "log",
- "pdfcraft-engine",
- "pdfcraft-platform",
- "pdfcraft-ui-egui",
- "pollster 1.0.1",
- "raw-window-handle",
- "serde_json",
- "uds_windows",
- "wayland-client",
- "wayland-protocols",
- "windows",
- "winit",
- "winresource",
- "winsafe",
-]
-
-[[package]]
-name = "pdfcraft-a11y"
-version = "0.18.1"
-dependencies = [
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-fonts",
- "pdfcraft-model",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "pdfcraft-annot"
-version = "0.18.1"
-dependencies = [
- "hayro-syntax",
- "pdfcraft-cos",
- "pdfcraft-fonts",
- "pdfcraft-geom",
- "pdfcraft-model",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "pdfcraft-audit"
-version = "0.18.1"
-dependencies = [
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-edit",
- "pdfcraft-model",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "pdfcraft-automation"
-version = "0.18.1"
-dependencies = [
- "base64 0.23.1",
- "flate2",
- "image",
- "pdfcraft-cos",
- "pdfcraft-engine",
- "pdfcraft-fonts",
- "pdfcraft-model",
- "pdfcraft-organize",
- "pdfcraft-platform",
- "pdfcraft-prc",
- "pdfcraft-prc-render",
- "pdfcraft-render",
- "pdfcraft-xfa",
- "png 0.18.1",
- "rustix 1.1.5",
- "serde_json",
- "sha2 0.11.1",
- "tempfile",
-]
-
-[[package]]
-name = "pdfcraft-cli"
-version = "0.18.1"
-dependencies = [
- "base64 0.23.1",
- "pdfcraft-audit",
- "pdfcraft-automation",
- "pdfcraft-cos",
- "pdfcraft-engine",
- "pdfcraft-platform",
- "pdfcraft-preflight",
- "pdfcraft-render",
- "png 0.18.1",
- "rustix 1.1.5",
- "serde_json",
- "winresource",
-]
-
-[[package]]
-name = "pdfcraft-compare"
-version = "0.18.1"
-
-[[package]]
-name = "pdfcraft-content"
-version = "0.18.1"
-dependencies = [
- "hayro-syntax",
- "pdfcraft-cos",
-]
-
-[[package]]
-name = "pdfcraft-cos"
-version = "0.18.1"
-dependencies = [
- "chrono",
- "hayro-syntax",
- "js-sys",
- "pdfcraft-crypt",
- "pdfcraft-filters",
- "pdfcraft-oracle",
- "pdfcraft-testkit",
- "proptest",
- "serde_json",
- "thiserror 2.0.21",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "pdfcraft-create"
-version = "0.18.1"
-dependencies = [
- "encoding_rs",
- "hayro-ccitt",
- "hayro-syntax",
- "image",
- "pdfcraft-cos",
- "pdfcraft-filters",
- "pdfcraft-fonts",
- "pdfcraft-model",
- "pdfcraft-xfa",
- "png 0.18.1",
- "thiserror 2.0.21",
- "tiff",
- "zune-jpeg",
-]
-
-[[package]]
-name = "pdfcraft-crypt"
-version = "0.18.1"
-dependencies = [
- "aes",
- "md-5",
- "proptest",
- "sha2 0.11.1",
- "stringprep",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "pdfcraft-edit"
-version = "0.18.1"
-dependencies = [
- "hayro-syntax",
- "icu_segmenter",
- "kurbo 0.13.1",
- "pdfcraft-annot",
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-fonts",
- "pdfcraft-model",
- "pdfcraft-render",
- "proptest",
- "sha2 0.11.1",
- "thiserror 2.0.21",
- "unicode-bidi",
-]
-
-[[package]]
-name = "pdfcraft-engine"
-version = "0.18.1"
-dependencies = [
- "chrono",
- "craft-docpath",
- "getrandom 0.4.3",
- "icu_properties",
- "idna",
- "image",
- "pdfcraft-a11y",
- "pdfcraft-annot",
- "pdfcraft-audit",
- "pdfcraft-compare",
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-create",
- "pdfcraft-edit",
- "pdfcraft-export",
- "pdfcraft-filters",
- "pdfcraft-fonts",
- "pdfcraft-forms",
- "pdfcraft-geom",
- "pdfcraft-js",
- "pdfcraft-measure",
- "pdfcraft-model",
- "pdfcraft-ocr",
- "pdfcraft-optimize",
- "pdfcraft-organize",
- "pdfcraft-preflight",
- "pdfcraft-print",
- "pdfcraft-redact",
- "pdfcraft-render",
- "pdfcraft-sign",
- "pdfcraft-testkit",
- "pdfcraft-xfa",
- "pdfcraft-xfdf",
- "png 0.18.1",
- "thiserror 2.0.21",
- "tiff",
- "unicode-segmentation",
- "url",
-]
-
-[[package]]
-name = "pdfcraft-export"
-version = "0.18.1"
-dependencies = [
- "flate2",
-]
-
-[[package]]
-name = "pdfcraft-filters"
-version = "0.18.1"
-dependencies = [
- "fax",
- "flate2",
- "hayro-ccitt",
- "hayro-jbig2",
- "proptest",
- "thiserror 2.0.21",
- "weezl 0.2.1",
-]
-
-[[package]]
-name = "pdfcraft-fonts"
-version = "0.18.1"
-dependencies = [
- "harfrust",
- "pdfcraft-cos",
- "skrifa 0.44.0",
- "unicode-bidi",
-]
-
-[[package]]
-name = "pdfcraft-forms"
-version = "0.18.1"
-dependencies = [
- "hayro-syntax",
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-fonts",
- "pdfcraft-model",
- "proptest",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "pdfcraft-geom"
-version = "0.18.1"
-
-[[package]]
-name = "pdfcraft-js"
-version = "0.18.1"
-dependencies = [
- "boa_engine",
- "chrono",
-]
-
-[[package]]
-name = "pdfcraft-measure"
-version = "0.18.1"
-dependencies = [
- "pdfcraft-annot",
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-model",
- "pdfcraft-testkit",
- "serde",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "pdfcraft-model"
-version = "0.18.1"
-dependencies = [
- "pdfcraft-cos",
-]
-
-[[package]]
-name = "pdfcraft-ocr"
-version = "0.18.1"
-dependencies = [
- "ocrs",
- "pdfcraft-fonts",
- "png 0.18.1",
- "rten",
- "serde_json",
- "sha2 0.11.1",
- "tempfile",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "pdfcraft-ocr-worker"
-version = "0.18.1"
-dependencies = [
- "js-sys",
- "pdfcraft-ocr",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
-name = "pdfcraft-optimize"
-version = "0.18.1"
-dependencies = [
- "image",
- "pdfcraft-annot",
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-filters",
- "pdfcraft-model",
- "pdfcraft-render",
- "proptest",
- "thiserror 2.0.21",
- "thread-priority",
- "zune-jpeg",
-]
-
-[[package]]
-name = "pdfcraft-oracle"
-version = "0.18.1"
-
-[[package]]
-name = "pdfcraft-organize"
-version = "0.18.1"
-dependencies = [
- "hayro-syntax",
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-oracle",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "pdfcraft-platform"
-version = "0.18.1"
-dependencies = [
- "async-channel",
- "futures-lite",
- "rustix 1.1.5",
- "zbus",
-]
-
-[[package]]
-name = "pdfcraft-prc"
-version = "0.18.1"
-dependencies = [
- "flate2",
- "proptest",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "pdfcraft-prc-render"
-version = "0.18.1"
-dependencies = [
- "flate2",
- "pdfcraft-prc",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "pdfcraft-preflight"
-version = "0.18.1"
-dependencies = [
- "flate2",
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-model",
- "roxmltree 0.21.2",
-]
-
-[[package]]
-name = "pdfcraft-print"
-version = "0.18.1"
-dependencies = [
- "craft-print",
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-model",
- "pdfcraft-render",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "pdfcraft-redact"
-version = "0.18.1"
-dependencies = [
- "aho-corasick",
- "pdfcraft-annot",
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-edit",
- "pdfcraft-filters",
- "pdfcraft-fonts",
- "pdfcraft-forms",
- "pdfcraft-geom",
- "pdfcraft-model",
- "pdfcraft-render",
- "pdfcraft-testkit",
- "pdfcraft-xfa",
- "regex",
- "sha2 0.11.1",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "pdfcraft-render"
-version = "0.18.1"
-dependencies = [
- "bytemuck",
- "flate2",
- "getrandom 0.4.3",
- "hayro",
- "hayro-syntax",
- "kurbo 0.13.1",
- "log",
- "lopdf",
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-fonts",
- "pdfcraft-geom",
- "pdfcraft-testkit",
- "serde",
- "skrifa 0.44.0",
- "thiserror 2.0.21",
- "unicode-bidi",
- "url",
-]
-
-[[package]]
-name = "pdfcraft-sign"
-version = "0.18.1"
-dependencies = [
- "aes",
- "aws-lc-rs",
- "base64 0.23.1",
- "bp256",
- "bp384",
- "cbc",
- "chrono",
- "crypto-bigint",
- "des",
- "ecdsa",
- "ed25519-dalek",
- "getrandom 0.4.3",
- "hmac",
- "p256",
- "p384",
- "p521",
- "pbkdf2",
- "pdfcraft-annot",
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-fonts",
- "pdfcraft-model",
- "pdfcraft-testkit",
- "rc2",
- "ripemd",
- "rsa",
- "rustls-cng",
- "security-framework",
- "sha1 0.11.0",
- "sha2 0.11.1",
- "sha3",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "pdfcraft-testkit"
-version = "0.18.1"
-
-[[package]]
-name = "pdfcraft-ui-egui"
-version = "0.18.1"
-dependencies = [
- "arboard",
- "base64 0.23.1",
- "block2 0.6.2",
- "bytemuck",
- "chrono",
- "craft-i18n",
- "craft-keymap",
- "craft-menu",
- "craft-quit",
- "craft-ui",
- "craft-update",
- "eframe",
- "egui",
- "egui_extras",
- "egui_kittest",
- "flate2",
- "fontconfig-parser",
- "getrandom 0.4.3",
- "image",
- "js-sys",
- "log",
- "objc2 0.6.5",
- "objc2-app-kit 0.3.2",
- "objc2-foundation 0.3.2",
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-engine",
- "pdfcraft-fonts",
- "pdfcraft-model",
- "pdfcraft-ocr",
- "pdfcraft-platform",
- "pdfcraft-render",
- "pdfcraft-xfa",
- "plist",
- "png 0.18.1",
- "pollster 1.0.1",
- "proptest",
- "rfd",
- "rustix 1.1.5",
- "serde",
- "serde_json",
- "skrifa 0.44.0",
- "sys-locale",
- "toml",
- "unicode-bidi",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "web-time",
- "winsafe",
- "xattr",
-]
-
-[[package]]
-name = "pdfcraft-web"
-version = "0.18.1"
-dependencies = [
- "craft-web-api",
- "craft-web-host",
- "eframe",
- "egui",
- "js-sys",
- "pdfcraft-ui-egui",
- "serde_json",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
-name = "pdfcraft-xfa"
-version = "0.18.1"
-dependencies = [
- "base64 0.23.1",
- "image",
- "pdfcraft-cos",
- "pdfcraft-fonts",
- "png 0.18.1",
- "roxmltree 0.21.2",
- "sha2 0.11.1",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "pdfcraft-xfdf"
-version = "0.18.1"
-dependencies = [
- "base64 0.23.1",
- "pdfcraft-annot",
- "pdfcraft-cos",
- "pdfcraft-forms",
- "pdfcraft-model",
- "proptest",
- "roxmltree 0.21.2",
- "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -8249,7 +8249,7 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 [[package]]
 name = "winit"
 version = "0.30.13"
-source = "git+https://github.com/storytold/winit.git?rev=a517b3846ee8457d84ee4975110bfda6797c44dc#a517b3846ee8457d84ee4975110bfda6797c44dc"
+source = "git+https://github.com/ngjordan/winit.git?rev=a517b3846ee8457d84ee4975110bfda6797c44dc#a517b3846ee8457d84ee4975110bfda6797c44dc"
 dependencies = [
  "ahash",
  "android-activity",
@@ -8519,9 +8519,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "iridium-pdf-cos",
+ "iridium-pdf-oracle",
  "lopdf",
- "pdfcraft-cos",
- "pdfcraft-oracle",
  "png 0.18.1",
  "serde",
  "serde_json",
@@ -8843,14 +8843,14 @@ dependencies = [
 [[patch.unused]]
 name = "egui_demo_lib"
 version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+source = "git+https://github.com/ngjordan/egui.git?rev=faf1ced22250c509636bff2578731a0be86a69ac#faf1ced22250c509636bff2578731a0be86a69ac"
 
 [[patch.unused]]
 name = "egui_inspection"
 version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+source = "git+https://github.com/ngjordan/egui.git?rev=faf1ced22250c509636bff2578731a0be86a69ac#faf1ced22250c509636bff2578731a0be86a69ac"
 
 [[patch.unused]]
 name = "egui_system_font_provider"
 version = "0.37.0"
-source = "git+https://github.com/storytold/egui.git?rev=6d518fc799681571963842f95b55a6b68431b15a#6d518fc799681571963842f95b55a6b68431b15a"
+source = "git+https://github.com/ngjordan/egui.git?rev=faf1ced22250c509636bff2578731a0be86a69ac#faf1ced22250c509636bff2578731a0be86a69ac"

@@ -4,9 +4,9 @@
 
 use egui::{Key, Modifiers};
 use egui_kittest::Harness;
-use pdfcraft_render::DestView;
-use pdfcraft_ui_egui::canvas::Fit;
-use pdfcraft_ui_egui::{PdfCraftApp, RightPanel};
+use iridium_pdf_render::DestView;
+use iridium_pdf_ui_egui::canvas::Fit;
+use iridium_pdf_ui_egui::{PdfApp, RightPanel};
 
 /// Six Letter (612×792) pages, objects 3 to 8; `catalog` is added to the catalog dictionary.
 /// Object 9 is an outline (one bookmark, object 10) that `/Outlines 9 0 R` can use.
@@ -34,10 +34,10 @@ fn fixture(catalog: &str) -> Vec<u8> {
     out
 }
 
-fn harness(catalog: &str) -> Harness<'static, PdfCraftApp> {
+fn harness(catalog: &str) -> Harness<'static, PdfApp> {
     let bytes = fixture(catalog);
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.set_option("left", "closed").unwrap();
         app.open_bytes("open.pdf", None, bytes).expect("opens");
@@ -49,7 +49,7 @@ fn harness(catalog: &str) -> Harness<'static, PdfCraftApp> {
 }
 
 /// Run frames until rendering has finished and the layout holds still.
-fn settle(h: &mut Harness<'static, PdfCraftApp>) {
+fn settle(h: &mut Harness<'static, PdfApp>) {
     for _ in 0..200 {
         h.run_steps(2);
         if !h.state().render_pending() {
@@ -61,7 +61,7 @@ fn settle(h: &mut Harness<'static, PdfCraftApp>) {
 
 /// The page at the top of the window and the user-space height there: where a bookmark made now
 /// (⌘B) goes.
-fn window_top(h: &mut Harness<'static, PdfCraftApp>) -> (usize, f32) {
+fn window_top(h: &mut Harness<'static, PdfApp>) -> (usize, f32) {
     h.key_press_modifiers(Modifiers::COMMAND, Key::B);
     h.run_steps(3);
     let id = h.state().views[0].id;
@@ -74,7 +74,7 @@ fn window_top(h: &mut Harness<'static, PdfCraftApp>) -> (usize, f32) {
 }
 
 /// The left edge of `page` on screen and its scale (screen points per user-space point).
-fn page_left(h: &Harness<'static, PdfCraftApp>, page: usize) -> (f32, f32) {
+fn page_left(h: &Harness<'static, PdfApp>, page: usize) -> (f32, f32) {
     let rects = h.state().views[0].visible_page_rects();
     let (_, r) = rects.iter().find(|(p, _)| *p == page).expect("the page is shown");
     (r.left(), r.width() / 612.0)
@@ -135,7 +135,7 @@ fn a_named_open_destination_opens_its_page() {
 fn always_my_default_view_keeps_the_zoom_and_goes_to_the_page_top() {
     let bytes = fixture("/OpenAction [5 0 R /XYZ 100 500 2]");
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.set_option("left", "closed").unwrap();
         app.always_default_view = true;

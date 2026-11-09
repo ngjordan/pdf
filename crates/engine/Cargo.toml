@@ -1,6 +1,6 @@
 [package]
-name = "pdfcraft-engine"
-description = "PdfCraft engine façade: session, documents, command/tool catalogue"
+name = "iridium-pdf-engine"
+description = "PDF engine façade: session, documents, command/tool catalogue"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,35 +10,35 @@ workspace = true
 
 [dependencies]
 craft-docpath = { workspace = true }
-pdfcraft-measure = { workspace = true }
+iridium-pdf-measure = { workspace = true }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "tiff"] }
-pdfcraft-render = { workspace = true }
-pdfcraft-cos = { workspace = true }
-pdfcraft-organize = { workspace = true }
-pdfcraft-annot = { workspace = true }
-pdfcraft-forms = { workspace = true }
-pdfcraft-xfa = { workspace = true }
-pdfcraft-edit = { workspace = true }
-pdfcraft-content = { workspace = true }
-pdfcraft-audit = { workspace = true }
-pdfcraft-redact = { workspace = true }
-pdfcraft-print = { workspace = true }
-pdfcraft-xfdf = { workspace = true }
-pdfcraft-sign = { workspace = true }
-pdfcraft-optimize = { workspace = true }
-pdfcraft-a11y = { workspace = true }
-pdfcraft-ocr = { workspace = true }
-pdfcraft-js = { workspace = true }
-pdfcraft-compare = { workspace = true }
-pdfcraft-preflight = { workspace = true }
-pdfcraft-export = { workspace = true }
-pdfcraft-fonts = { workspace = true }
-pdfcraft-create = { workspace = true }
-pdfcraft-model = { workspace = true }
-pdfcraft-geom = { workspace = true }
+iridium-pdf-render = { workspace = true }
+iridium-pdf-cos = { workspace = true }
+iridium-pdf-organize = { workspace = true }
+iridium-pdf-annot = { workspace = true }
+iridium-pdf-forms = { workspace = true }
+iridium-pdf-xfa = { workspace = true }
+iridium-pdf-edit = { workspace = true }
+iridium-pdf-content = { workspace = true }
+iridium-pdf-audit = { workspace = true }
+iridium-pdf-redact = { workspace = true }
+iridium-pdf-print = { workspace = true }
+iridium-pdf-xfdf = { workspace = true }
+iridium-pdf-sign = { workspace = true }
+iridium-pdf-optimize = { workspace = true }
+iridium-pdf-a11y = { workspace = true }
+iridium-pdf-ocr = { workspace = true }
+iridium-pdf-js = { workspace = true }
+iridium-pdf-compare = { workspace = true }
+iridium-pdf-preflight = { workspace = true }
+iridium-pdf-export = { workspace = true }
+iridium-pdf-fonts = { workspace = true }
+iridium-pdf-create = { workspace = true }
+iridium-pdf-model = { workspace = true }
+iridium-pdf-geom = { workspace = true }
 thiserror = { workspace = true }
 png = "0.18"
-# Already in the graph (through image and pdfcraft-create): image's TiffEncoder can't set the
+# Already in the graph (through image and iridium-pdf-create): image's TiffEncoder can't set the
 # resolution or the compression of an exported page.
 tiff = "0.11"
 # Already in the graph (url and idna through webbrowser, icu_properties through boa): they show
@@ -58,6 +58,6 @@ getrandom = "0.4"
 getrandom = { version = "0.4", features = ["wasm_js"] }
 
 [dev-dependencies]
-pdfcraft-testkit = { workspace = true }
+iridium-pdf-testkit = { workspace = true }
 # JBIG2 fixtures (`encode_jbig2_generic`).
-pdfcraft-filters = { workspace = true }
+iridium-pdf-filters = { workspace = true }

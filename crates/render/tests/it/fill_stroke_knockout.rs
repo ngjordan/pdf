@@ -2,7 +2,7 @@
 //! `b*`) and text rendering modes 2 and 6 (`FillStroke`, `FillAndStrokeAndClip`) under
 //! transparency, blend modes, and soft masks (ISO 32000-2 §11.7.4.4).
 
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
 use std::sync::Arc;
 
 fn pdf_with_content(content: &str) -> Vec<u8> {

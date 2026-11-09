@@ -27,7 +27,7 @@ const MAX_STDERR: u64 = 256 * 1024;
 /// is truncated at the cap — corrupt or runaway output must not become unbounded memory in
 /// the word list, the text layer and the review UI.
 pub const MAX_WORDS: usize = 50_000;
-/// Tesseract's code for each language PdfCraft offers (ISO 639-1 → tessdata name). Only these
+/// Tesseract's code for each language PDF offers (ISO 639-1 → tessdata name). Only these
 /// codes ever reach the process, whatever the settings say.
 pub const LANGUAGE_CODES: &[(&str, &str)] = &[
     ("en", "eng"),
@@ -67,18 +67,18 @@ pub fn language_code(code: &str) -> &'static str {
     LANGUAGE_CODES.iter().find(|(k, _)| *k == c).map(|(_, v)| *v).unwrap_or("eng")
 }
 
-/// The user-configured program location, when valid: `$PDFCRAFT_TESSERACT` (a user
+/// The user-configured program location, when valid: `$IRIDIUM_PDF_TESSERACT` (a user
 /// preference, never taken from document data). An invalid value — relative, missing, a
 /// directory, not executable — means unavailable: an explicit setting is never silently
 /// replaced by a PATH search.
 pub fn configured_path() -> Option<PathBuf> {
-    let value = std::env::var_os("PDFCRAFT_TESSERACT")?;
+    let value = std::env::var_os("IRIDIUM_PDF_TESSERACT")?;
     let program = PathBuf::from(value);
     program_is_executable(&program).then_some(program)
 }
 
 /// The program [`TesseractCli::find`] would run: a set `configured` location (the value of
-/// `PDFCRAFT_TESSERACT`) decides alone, so an invalid one yields `None` and `search` (the PATH)
+/// `IRIDIUM_PDF_TESSERACT`) decides alone, so an invalid one yields `None` and `search` (the PATH)
 /// is not even consulted; only when nothing is configured does `search` decide.
 fn locate(configured: Option<std::ffi::OsString>, search: impl FnOnce() -> Option<PathBuf>) -> Option<PathBuf> {
     match configured {
@@ -280,7 +280,7 @@ impl TesseractCli {
     }
 
     /// The program this machine offers, if it answers `--list-langs`: the user-configured
-    /// location ([`configured_path`] / `$PDFCRAFT_TESSERACT`) when valid, else the first
+    /// location ([`configured_path`] / `$IRIDIUM_PDF_TESSERACT`) when valid, else the first
     /// absolute PATH entry that holds an executable `tesseract`.
     ///
     /// # The PATH-lookup risk
@@ -289,13 +289,13 @@ impl TesseractCli {
     /// the PATH runs as a subprocess with this application's privileges — it sees the page
     /// image and anything the process can reach. The language code and the page image still
     /// never come from document data, but a user who handles untrusted documents should pin
-    /// the exact program with `PDFCRAFT_TESSERACT`, which is validated (absolute, existing,
+    /// the exact program with `IRIDIUM_PDF_TESSERACT`, which is validated (absolute, existing,
     /// executable file) before any process starts.
     ///
-    /// A `PDFCRAFT_TESSERACT` that is set but invalid fails closed: it is never replaced by
+    /// A `IRIDIUM_PDF_TESSERACT` that is set but invalid fails closed: it is never replaced by
     /// the PATH search.
     pub fn find() -> Option<TesseractCli> {
-        TesseractCli::at(locate(std::env::var_os("PDFCRAFT_TESSERACT"), path_search)?)
+        TesseractCli::at(locate(std::env::var_os("IRIDIUM_PDF_TESSERACT"), path_search)?)
     }
 
     /// Run `tesseract --list-langs` and parse it; also decides [`TesseractCli::available`].
@@ -533,7 +533,7 @@ impl TempDir {
         // that one collision is retried with the next counter value, anything else is fatal.
         for _ in 0..4 {
             let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            let path = std::env::temp_dir().join(format!("pdfcraft-ocr-{}-{nanos}-{seq}", std::process::id()));
+            let path = std::env::temp_dir().join(format!("iridium-pdf-ocr-{}-{nanos}-{seq}", std::process::id()));
             match builder.create(&path) {
                 Ok(()) => return Ok(TempDir { path }),
                 Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
@@ -710,7 +710,7 @@ mod tests {
         assert!(!path.exists());
     }
 
-    /// A set `PDFCRAFT_TESSERACT` decides alone: when it is invalid, [`TesseractCli::find`] does
+    /// A set `IRIDIUM_PDF_TESSERACT` decides alone: when it is invalid, [`TesseractCli::find`] does
     /// not fall back to a PATH copy (which would run a program the user did not name); the PATH
     /// search only runs when nothing is configured.
     #[test]
@@ -812,7 +812,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn a_hung_program_is_killed_at_the_timeout() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-ocr-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-ocr-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let script = dir.join("tesseract-hang");
@@ -833,7 +833,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn flooding_output_is_capped_and_killed_early() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-ocr-test-cap-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-ocr-test-cap-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let script = dir.join("tesseract-flood");
@@ -855,7 +855,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn an_stderr_flood_does_not_cause_a_false_timeout() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-ocr-test-err-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-ocr-test-err-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let script = dir.join("tesseract-err-flood");
@@ -875,7 +875,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn the_child_gets_a_minimal_environment() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-ocr-test-env-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-ocr-test-env-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let script = dir.join("tesseract-env");
@@ -921,7 +921,7 @@ mod tests {
         assert!(!program_is_executable(Path::new("definitely/missing/tesseract")), "missing");
         let temp = std::env::temp_dir();
         assert!(!program_is_executable(&temp), "a directory is not a program");
-        let file = temp.join(format!("pdfcraft-ocr-not-a-program-{}", std::process::id()));
+        let file = temp.join(format!("iridium-pdf-ocr-not-a-program-{}", std::process::id()));
         std::fs::write(&file, b"").unwrap();
         #[cfg(unix)]
         {
@@ -942,7 +942,7 @@ mod tests {
     /// relative PATH entry would resolve against the caller's working directory.
     #[test]
     fn path_search_skips_relative_entries() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-ocr-path-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-ocr-path-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let program = dir.join(program_file_names()[0]);
@@ -1004,7 +1004,7 @@ mod process_tests {
     /// The fixture needs a Unix shell, like the other process fixtures.
     #[test]
     fn a_stderr_flood_is_killed_while_the_child_runs() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-tesseract-flood-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-tesseract-flood-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let program = dir.join("flood-tesseract");
         std::fs::write(&program, "#!/bin/sh\nwhile true; do echo aaaaaaaaaaaaaaaaaaaaaaaa >&2; done\n").unwrap();

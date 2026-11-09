@@ -3,7 +3,7 @@
 use egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_ui_egui::PdfApp;
 
 fn fixture() -> Vec<u8> {
     fixture_with_info(None)
@@ -34,14 +34,14 @@ fn fixture_with_info(info: Option<&str>) -> Vec<u8> {
 }
 
 /// Return the rectangle recorded for a dialog card, failing the test when the card is missing.
-fn card(h: &Harness<'_, PdfCraftApp>, id: &str) -> egui::Rect {
+fn card(h: &Harness<'_, PdfApp>, id: &str) -> egui::Rect {
     h.ctx.data(|d| d.get_temp(egui::Id::unique(id).with("card"))).unwrap_or_else(|| panic!("missing dialog card {id}"))
 }
 
 fn protected() -> Vec<u8> {
-    let mut doc = pdfcraft_cos::Document::open(std::sync::Arc::new(fixture())).unwrap();
-    doc.set_encryption(&pdfcraft_cos::NewEncryption {
-        algorithm: pdfcraft_cos::Algorithm::Aes256,
+    let mut doc = iridium_pdf_cos::Document::open(std::sync::Arc::new(fixture())).unwrap();
+    doc.set_encryption(&iridium_pdf_cos::NewEncryption {
+        algorithm: iridium_pdf_cos::Algorithm::Aes256,
         user_password: "pw",
         owner_password: "owner",
         permissions: -1,
@@ -49,13 +49,13 @@ fn protected() -> Vec<u8> {
         seed: [4; 32],
     })
     .unwrap();
-    pdfcraft_cos::write_full(&doc, &Default::default()).unwrap()
+    iridium_pdf_cos::write_full(&doc, &Default::default()).unwrap()
 }
 
 #[test]
 fn document_properties_fields_are_tall_and_inset() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, fixture()).unwrap();
         app.set_option("dialog", "properties").unwrap();
@@ -75,7 +75,7 @@ fn document_properties_fields_are_tall_and_inset() {
 #[test]
 fn password_prompt_field_is_tall_and_inset() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("secret.pdf", None, protected()).unwrap();
         app
@@ -94,7 +94,7 @@ fn password_prompt_field_is_tall_and_inset() {
 fn document_properties_long_filename_does_not_overflow_card() {
     let long_name = "Global_sociology_introducing_five_contemporary_societies_Schneider_Linda_Silverman_Arnold_2000_Boston_isbn13_9780072294309_hash_3d2960a9212a8573bba2536e91f36e59_archive_copy.pdf";
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes(long_name, None, fixture()).unwrap();
         app.set_option("dialog", "properties").unwrap();
@@ -109,7 +109,7 @@ fn document_properties_long_filename_does_not_overflow_card() {
 fn document_properties_values_line_up_and_long_fields_wrap() {
     let info = "<< /Title (Showcase) /Subject (A specimen document exercising typography, world scripts, vector art, forms and annotations) /Creator (demo-pdf) >>";
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, fixture_with_info(Some(info))).unwrap();
         app.set_option("dialog", "properties").unwrap();
@@ -133,10 +133,10 @@ fn document_properties_values_line_up_and_long_fields_wrap() {
 
 #[test]
 fn space_audit_tab_measures_the_file_and_stays_in_the_card() {
-    use pdfcraft_ui_egui::{Dialog, PropsTab};
+    use iridium_pdf_ui_egui::{Dialog, PropsTab};
     let open = |dialog: Dialog| {
         let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_bytes("doc.pdf", None, fixture()).unwrap();
             app.dialog = Some(dialog);
@@ -148,7 +148,7 @@ fn space_audit_tab_measures_the_file_and_stays_in_the_card() {
     let fonts = card(&open(Dialog::Properties(PropsTab::Fonts)), "dialog");
     // The tab is reachable by name, like the other Properties tabs.
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, fixture()).unwrap();
         app.set_option("dialog", "space-audit").unwrap();
@@ -171,9 +171,9 @@ fn space_audit_tab_measures_the_file_and_stays_in_the_card() {
 
 #[test]
 fn space_audit_tab_measures_again_after_an_edit() {
-    use pdfcraft_engine::optimize::SpaceCategory;
+    use iridium_pdf_engine::optimize::SpaceCategory;
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, fixture()).unwrap();
         app.set_option("dialog", "space-audit").unwrap();
@@ -181,14 +181,14 @@ fn space_audit_tab_measures_again_after_an_edit() {
     });
     h.run_steps(4);
     let bookmarks =
-        |h: &Harness<'_, PdfCraftApp>| h.state().space_audit.iter().filter(|r| r.category == SpaceCategory::Bookmarks).map(|r| r.bytes).sum::<u64>();
+        |h: &Harness<'_, PdfApp>| h.state().space_audit.iter().filter(|r| r.category == SpaceCategory::Bookmarks).map(|r| r.bytes).sum::<u64>();
     let before = h.state().space_audit.clone();
     assert_eq!(bookmarks(&h), 0, "the fixture has no outline: {before:?}");
     // Further frames with the file unchanged keep the same measurement.
     h.run_steps(2);
     assert_eq!(h.state().space_audit, before);
     // An edit while the tab is open is measured on the next frame.
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::AddBookmark {
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddBookmark {
         parent: vec![],
         index: 0,
         title: "Chapter".into(),
@@ -206,9 +206,9 @@ fn space_audit_tab_measures_again_after_an_edit() {
 /// Check that a dialog's Close button follows the content when switching from a taller tab to a shorter one.
 #[test]
 fn dialog_buttons_follow_the_content_after_a_taller_tab() {
-    use pdfcraft_ui_egui::{Dialog, PropsTab};
+    use iridium_pdf_ui_egui::{Dialog, PropsTab};
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, fixture()).unwrap();
         app.dialog = Some(Dialog::Properties(PropsTab::InitialView));
@@ -233,7 +233,7 @@ fn dialog_buttons_follow_the_content_after_a_taller_tab() {
 #[test]
 fn page_hover_cursors_stay_off_while_a_dialog_is_open() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("form.pdf", None, include_bytes!("../data/form.pdf").to_vec()).unwrap();
         // Large enough that the drop-down sits below the dialog card.
@@ -263,15 +263,15 @@ fn page_hover_cursors_stay_off_while_a_dialog_is_open() {
 fn a_dialog_keeps_its_own_height_after_a_taller_one() {
     // #5118: Print opened after Preferences was as tall as Preferences, with blank space below
     // its buttons. Every dialog shares one modal, which kept the last dialog's size.
-    use pdfcraft_ui_egui::Dialog;
+    use iridium_pdf_ui_egui::Dialog;
     for dialog in [Dialog::Print, Dialog::RotatePages] {
         let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_bytes("doc.pdf", None, fixture()).unwrap();
             app
         });
-        let show = |h: &mut Harness<'_, PdfCraftApp>, d: Dialog| {
+        let show = |h: &mut Harness<'_, PdfApp>, d: Dialog| {
             h.state_mut().dialog = None;
             h.run_steps(2);
             h.state_mut().dialog = Some(d);
@@ -291,12 +291,12 @@ fn each_kind_of_marks_dialog_keeps_its_own_height() {
     // #5118: Header & Footer, Watermark and Background are one `Dialog::Marks` with different
     // contents. Background opened after Header & Footer kept the taller dialog's height.
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, fixture()).unwrap();
         app
     });
-    let show = |h: &mut Harness<'_, PdfCraftApp>, d: &str| {
+    let show = |h: &mut Harness<'_, PdfApp>, d: &str| {
         h.state_mut().dialog = None;
         h.run_steps(2);
         h.state_mut().set_option("dialog", d).unwrap();

@@ -1,4 +1,4 @@
-use super::{PdfCraftApp, StagingName, staging_suffixes};
+use super::{PdfApp, StagingName, staging_suffixes};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::file_filter::AddFilterAnyCase as _;
 
@@ -6,11 +6,11 @@ use crate::file_filter::AddFilterAnyCase as _;
 /// on disk is another version than the document came from (#2166).
 #[cfg(not(target_arch = "wasm32"))]
 pub struct PendingOverwrite {
-    pub id: pdfcraft_engine::DocId,
+    pub id: iridium_pdf_engine::DocId,
     pub dest: String,
     target: SaveTarget,
     /// What was to run once the document is written (close its tab, quit).
-    after: Box<dyn FnOnce(&mut PdfCraftApp) + Send>,
+    after: Box<dyn FnOnce(&mut PdfApp) + Send>,
 }
 
 /// Where Save writes.
@@ -22,7 +22,7 @@ pub enum SaveTarget {
     As,
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Save the active document. Returns `true` if it was written.
     pub fn save_active(&mut self, target: SaveTarget) -> bool {
         match self.active {
@@ -55,7 +55,7 @@ impl PdfCraftApp {
         // last delivery make Save ask where.
         let redacted = self.views.get(index).is_some_and(|v| v.redactions_applied > 0);
         let not_delivered = self.views.get(index).is_some_and(|v| v.redactions_applied > v.redactions_downloaded);
-        let name = if redacted { pdfcraft_engine::redacted_file_name(&name) } else { name };
+        let name = if redacted { iridium_pdf_engine::redacted_file_name(&name) } else { name };
         // Undo past a saved Apply redactions brings back content that the file on disk has
         // redacted: ask where instead of writing it over that file. In the web build a delivered
         // step stays counted in `redactions_applied`, so fewer steps than were delivered means one
@@ -152,7 +152,7 @@ impl PdfCraftApp {
     /// `pending_overwrite` behind [`Dialog::OverwriteChanged`](crate::Dialog::OverwriteChanged).
     /// Returns `true` if written now.
     #[cfg(not(target_arch = "wasm32"))]
-    fn save_doc_to_then(&mut self, id: pdfcraft_engine::DocId, dest: &str, target: SaveTarget, after: Box<dyn FnOnce(&mut Self) + Send>) -> bool {
+    fn save_doc_to_then(&mut self, id: iridium_pdf_engine::DocId, dest: &str, target: SaveTarget, after: Box<dyn FnOnce(&mut Self) + Send>) -> bool {
         let own = self.session.get(id).and_then(|d| d.path.as_deref()).is_some_and(|p| crate::same_file(p, dest));
         if own && self.watch.disk_differs(id, dest, self.session.get(id).map(|d| d.saved_bytes())) {
             self.pending_overwrite = Some(PendingOverwrite { id, dest: dest.to_string(), target, after });
@@ -186,7 +186,7 @@ impl PdfCraftApp {
 
     /// Write document `id` to `dest` and make it the document's file. Returns `true` if written.
     #[cfg(not(target_arch = "wasm32"))]
-    fn save_doc_to(&mut self, id: pdfcraft_engine::DocId, dest: &str, target: SaveTarget) -> bool {
+    fn save_doc_to(&mut self, id: iridium_pdf_engine::DocId, dest: &str, target: SaveTarget) -> bool {
         // Save As answers on a later frame: commit what was typed meanwhile, too (#166), even
         // if another tab is active by then.
         if !self.commit_typing_in(id) || !self.flatten_fill_sign_for_save(id) {
@@ -280,7 +280,7 @@ fn restores_saved_redactions(view: &crate::DocView) -> bool {
     view.redactions_undone_after_save > 0 || view.saved_redactions_cut_off || view.redactions_applied < view.redactions_downloaded
 }
 
-/// `name` without the `_Redacted` that [`pdfcraft_engine::redacted_file_name`] adds before the
+/// `name` without the `_Redacted` that [`iridium_pdf_engine::redacted_file_name`] adds before the
 /// extension ("contract_Redacted.pdf" gives "contract.pdf"). Any other name is returned as it is.
 pub(crate) fn unredacted_file_name(name: &str) -> String {
     let cut = name.len().saturating_sub(4);
@@ -333,7 +333,7 @@ pub(super) fn write_atomically_syncing(
     suffixes: impl IntoIterator<Item = u64>,
     sync_all: impl FnOnce(&std::fs::File) -> std::io::Result<()>,
 ) -> std::io::Result<()> {
-    pdfcraft_platform::staging::write_atomically_with(std::path::Path::new(path), bytes, StagingName::TagThenSuffix, suffixes, sync_all)
+    iridium_pdf_platform::staging::write_atomically_with(std::path::Path::new(path), bytes, StagingName::TagThenSuffix, suffixes, sync_all)
 }
 
 #[cfg(not(target_arch = "wasm32"))]

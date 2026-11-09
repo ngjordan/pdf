@@ -569,7 +569,7 @@ fn pdf_doc_byte(c: char) -> Option<u8> {
 /// `PdfCraft` patch: the byte strings to try as a revision 5–6 password. Revisions 5–6 take the
 /// password processed with `SASLprep` (RFC 4013) and in UTF-8, at most 127 bytes (ISO 32000-2
 /// §7.6.4.3.3, Algorithm 2.A a–b), but the password arrives as typed: first its `SASLprep`
-/// form, as pdfcraft-crypt writes it (a decomposed "café" composed, a fullwidth "ａｂ" narrowed,
+/// form, as iridium-pdf-crypt writes it (a decomposed "café" composed, a fullwidth "ａｂ" narrowed,
 /// a no-break space made a space), then, when that differs, the bytes as given (what earlier
 /// versions used, and what writers that skip `SASLprep` store), each at most 127 bytes.
 fn aes256_passwords(password: &[u8]) -> Vec<Vec<u8>> {
@@ -581,7 +581,7 @@ fn aes256_passwords(password: &[u8]) -> Vec<Vec<u8>> {
 }
 
 /// `PdfCraft` patch: `password` processed with `SASLprep`, in UTF-8 and truncated to 127 bytes,
-/// as pdfcraft-crypt does it: a password `SASLprep` refuses (one with prohibited or unassigned
+/// as iridium-pdf-crypt does it: a password `SASLprep` refuses (one with prohibited or unassigned
 /// characters) is taken as given. `None` when `password` isn't UTF-8.
 #[cfg(feature = "std")]
 fn sasl_prepared(password: &[u8]) -> Option<Vec<u8>> {
@@ -824,7 +824,7 @@ fn decryption_key_rev56(
 }
 
 #[cfg(test)]
-mod pdfcraft_password_tests {
+mod iridium_pdf_password_tests {
     use super::*;
 
     #[test]
@@ -933,7 +933,7 @@ mod pdfcraft_password_tests {
     #[cfg(feature = "std")]
     fn aes256_passwords_open_as_typed_and_in_their_saslprep_form() {
         let key = [9; 32];
-        // As typed, and the SASLprep form that ISO 32000-2 keys the file on (and pdfcraft-crypt
+        // As typed, and the SASLprep form that ISO 32000-2 keys the file on (and iridium-pdf-crypt
         // writes): a decomposed é (NFKC composes it), a no-break space (mapped to a space) and
         // fullwidth letters (what a Japanese IME types in full-width mode; NFKC narrows them).
         // Precomposed "café" is the control: SASLprep leaves it as it is.

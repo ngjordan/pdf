@@ -3,7 +3,7 @@
 //! landing in whichever document is active by then.
 
 use egui_kittest::Harness;
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_ui_egui::PdfApp;
 
 /// A one-page document with a proper xref table.
 fn fixture() -> Vec<u8> {
@@ -27,9 +27,9 @@ fn fixture() -> Vec<u8> {
     out
 }
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("a.pdf", None, fixture()).unwrap();
         app.open_bytes("b.pdf", None, fixture()).unwrap();
@@ -39,13 +39,13 @@ fn harness() -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn dirty(app: &PdfCraftApp, view: usize) -> bool {
+fn dirty(app: &PdfApp, view: usize) -> bool {
     app.session.get(app.views[view].id).is_some_and(|d| d.dirty)
 }
 
 #[test]
 fn an_attachment_pick_is_dropped_when_the_user_switches_tabs() {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-attach-target-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-attach-target-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("note.txt");

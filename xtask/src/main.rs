@@ -1,4 +1,4 @@
-//! Project automation for PdfCraft, run via `cargo xtask <command>`.
+//! Project automation for PDF, run via `cargo xtask <command>`.
 
 use std::process::ExitCode;
 
@@ -34,7 +34,7 @@ const COMMANDS: &[(&str, &str, Command)] = &[
     ("license-check", "Offline source licence documents, attribution and metadata", license_check::run),
     ("assets", "Enforce the asset policy (AGENTS.md §1) against ATTRIBUTION.toml; --write regenerates ATTRIBUTION.md", assets::run),
     ("corpus", "Fetch the pinned pdf.js test corpus into corpus/ (git-ignored) and verify it; --update-pin re-records the pin", gates::corpus),
-    ("check", "Robustness sweep over corpus/ with pdfcraft-cli; fails on crashes or regressions vs xtask/baselines", gates::check),
+    ("check", "Robustness sweep over corpus/ with iridium-pdf-cli; fails on crashes or regressions vs xtask/baselines", gates::check),
     ("fuzz", "Mutation fuzzing of open/render/edit/save in child processes; findings in fuzz-out/ (--time 300)", fuzz::run),
     ("parity", "Validate parity/acrobat-features.toml against the registry, tools and tests; report progress (--json, --partial)", parity::run),
     (
@@ -55,7 +55,7 @@ const COMMANDS: &[(&str, &str, Command)] = &[
     ),
     ("screenshots", "Regenerate the README screenshots in docs/images/ and their ATTRIBUTION entries", screenshots::run),
     ("models", "Fetch the OCR models (ATTRIBUTION.toml kind = \"model\") into assets/models/, verified by SHA-256", assets::models),
-    ("demo-pdf", "Build dist/demo/pdfcraft-showcase.pdf (needs Google Chrome or Chromium)", demo_pdf::run),
+    ("demo-pdf", "Build dist/demo/iridium-pdf-showcase.pdf (needs Google Chrome or Chromium)", demo_pdf::run),
     (
         "web-worker-link",
         "Hash the web build's OCR worker files and name the worker in index.html (a Trunk post-build hook runs it)",

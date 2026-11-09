@@ -1,6 +1,6 @@
 //! XFA scripting in the engine: a form's scripted events (initialize and calculate on open,
 //! exit, validate and calculate after a field changes, click for buttons) run through
-//! [`pdfcraft_js::xfa`] over the live form tree [`pdfcraft_xfa::form_tree`] builds, and what
+//! [`iridium_pdf_js::xfa`] over the live form tree [`iridium_pdf_xfa::form_tree`] builds, and what
 //! they change or ask for is applied here: values go to the fields (and so to the datasets),
 //! presence and access changes become overrides kept in the PDF, added or removed rows change
 //! the datasets, and any of those lays the form out again.
@@ -8,10 +8,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use pdfcraft_js::xfa::{XfaDoc, XfaEffect, XfaEvent, XfaKind, XfaNode};
-use pdfcraft_js::xfa_session::{Script, XfaSession};
-use pdfcraft_xfa::model::Template;
-use pdfcraft_xfa::{FormNode, LiveForm, NodeKind, ScriptEvent};
+use iridium_pdf_js::xfa::{XfaDoc, XfaEffect, XfaEvent, XfaKind, XfaNode};
+use iridium_pdf_js::xfa_session::{Script, XfaSession};
+use iridium_pdf_xfa::model::Template;
+use iridium_pdf_xfa::{FormNode, LiveForm, NodeKind, ScriptEvent};
 
 use crate::js::JsOutput;
 use crate::js::Request;
@@ -31,10 +31,10 @@ const EVENT_BUDGET_MS: u64 = 5_000;
 
 /// Engine limits for one script: initialize, calculate and validate scripts run without the
 /// user asking (on open, on every change), so they get fewer loop iterations than a click.
-fn limits_for(activity: &str) -> pdfcraft_js::Limits {
+fn limits_for(activity: &str) -> iridium_pdf_js::Limits {
     match activity {
-        "click" | "change" | "exit" | "enter" => pdfcraft_js::Limits::default(),
-        _ => pdfcraft_js::Limits { loop_iterations: 100_000, recursion: 64 },
+        "click" | "change" | "exit" | "enter" => iridium_pdf_js::Limits::default(),
+        _ => iridium_pdf_js::Limits { loop_iterations: 100_000, recursion: 64 },
     }
 }
 
@@ -125,7 +125,7 @@ pub(crate) struct XfaRun<'a> {
     pub page_count: usize,
     pub out: &'a mut JsOutput,
     /// The datasets stream this edit already wrote, replaced in place by later writes.
-    pub datasets: Option<pdfcraft_cos::ObjRef>,
+    pub datasets: Option<iridium_pdf_cos::ObjRef>,
     /// A script ran past its time limit and was abandoned: the form's scripts should stay off.
     pub ran_away: bool,
     /// What every time limit of the scripts is multiplied by (the event's budget, the engine's
@@ -155,7 +155,7 @@ fn to_js(n: &FormNode) -> XfaNode {
         occur_max: n.occur_max,
         index: n.index,
         children: n.children.iter().map(to_js).collect(),
-        formatted: n.display_picture.as_deref().and_then(|p| pdfcraft_xfa::formatted_value(p, &n.value)),
+        formatted: n.display_picture.as_deref().and_then(|p| iridium_pdf_xfa::formatted_value(p, &n.value)),
     }
 }
 
@@ -175,9 +175,9 @@ fn count_instances(root: &FormNode, parent_som: &str, name: &str) -> usize {
 }
 
 /// An instance SOM (`…table[0].row[2]`) split into its parent's data path (areas left out,
-/// see [`pdfcraft_xfa::data_path`]) and SOM, its name and its index.
-fn split_instance(tpl: &Template, som: &str) -> Option<(pdfcraft_xfa::DataPath, String, String, usize)> {
-    let mut path = pdfcraft_xfa::data_path(tpl, som);
+/// see [`iridium_pdf_xfa::data_path`]) and SOM, its name and its index.
+fn split_instance(tpl: &Template, som: &str) -> Option<(iridium_pdf_xfa::DataPath, String, String, usize)> {
+    let mut path = iridium_pdf_xfa::data_path(tpl, som);
     let (name, index) = path.pop()?;
     let parent_som = som.rsplit_once('.').map(|(p, _)| p).unwrap_or("").to_string();
     Some((path, parent_som, name, index))
@@ -212,19 +212,19 @@ fn som_matches(som: &str, name: &str) -> bool {
 /// A generated field as the runner tracks it: kind, value and on state.
 #[derive(Clone)]
 struct FieldInfo {
-    kind: pdfcraft_forms::FieldKind,
+    kind: iridium_pdf_forms::FieldKind,
     value: Vec<String>,
     on_state: String,
     /// List boxes that take several values (one per line in the data).
     multi: bool,
 }
 
-fn field_infos(doc: &pdfcraft_cos::Document) -> HashMap<String, FieldInfo> {
-    pdfcraft_forms::fields(doc)
+fn field_infos(doc: &iridium_pdf_cos::Document) -> HashMap<String, FieldInfo> {
+    iridium_pdf_forms::fields(doc)
         .into_iter()
         .map(|f| {
             let on_state = f.widgets.first().and_then(|w| w.on_state.clone()).unwrap_or_else(|| "1".into());
-            let multi = f.kind == pdfcraft_forms::FieldKind::List && f.has(pdfcraft_forms::flags::MULTI_SELECT);
+            let multi = f.kind == iridium_pdf_forms::FieldKind::List && f.has(iridium_pdf_forms::flags::MULTI_SELECT);
             (f.name, FieldInfo { kind: f.kind, value: f.value, on_state, multi })
         })
         .collect()
@@ -233,7 +233,7 @@ fn field_infos(doc: &pdfcraft_cos::Document) -> HashMap<String, FieldInfo> {
 /// The data text of a field's value.
 fn data_text(info: &FieldInfo) -> String {
     match info.kind {
-        pdfcraft_forms::FieldKind::CheckBox => {
+        iridium_pdf_forms::FieldKind::CheckBox => {
             if info.value.is_empty() {
                 String::new()
             } else {
@@ -248,7 +248,7 @@ fn data_text(info: &FieldInfo) -> String {
 /// they change is kept in memory (data, field values, overrides) and written once, when the
 /// event ends or the form has to be laid out again.
 struct Runner<'a, 'b> {
-    doc: &'a mut pdfcraft_cos::Document,
+    doc: &'a mut iridium_pdf_cos::Document,
     tpl: &'a Template,
     run: &'a mut XfaRun<'b>,
     clock: Clock,
@@ -258,15 +258,15 @@ struct Runner<'a, 'b> {
     relayouts_skipped: bool,
     dropped_output: usize,
     truncated_warned: bool,
-    data: Option<pdfcraft_xfa::DataNode>,
-    ov: pdfcraft_xfa::Overrides,
+    data: Option<iridium_pdf_xfa::DataNode>,
+    ov: iridium_pdf_xfa::Overrides,
     ov_dirty: bool,
-    pending: Vec<pdfcraft_xfa::DataOp>,
+    pending: Vec<iridium_pdf_xfa::DataOp>,
     /// Field values to write, by name (the last wins).
     field_changes: std::collections::BTreeMap<String, Vec<String>>,
     by_som: Option<HashMap<String, String>>,
     /// Widget names by the data node they bind to (built with `by_som`).
-    by_path: Option<HashMap<pdfcraft_xfa::DataPath, Vec<String>>>,
+    by_path: Option<HashMap<iridium_pdf_xfa::DataPath, Vec<String>>>,
     fields: Option<HashMap<String, FieldInfo>>,
     /// The live form as last built; dropped when a script changed the form.
     cached: Option<LiveForm>,
@@ -281,9 +281,9 @@ struct Runner<'a, 'b> {
 }
 
 impl<'a, 'b> Runner<'a, 'b> {
-    fn new(doc: &'a mut pdfcraft_cos::Document, tpl: &'a Template, run: &'a mut XfaRun<'b>, budget_ms: u64) -> Self {
-        let data = pdfcraft_xfa::data_of(doc);
-        let ov = pdfcraft_xfa::overrides(doc);
+    fn new(doc: &'a mut iridium_pdf_cos::Document, tpl: &'a Template, run: &'a mut XfaRun<'b>, budget_ms: u64) -> Self {
+        let data = iridium_pdf_xfa::data_of(doc);
+        let ov = iridium_pdf_xfa::overrides(doc);
         let budget_ms = budget_ms.saturating_mul(u64::from(run.time_scale));
         Runner {
             doc,
@@ -327,12 +327,12 @@ impl<'a, 'b> Runner<'a, 'b> {
     /// Give the object at `som` the value `text` in the data and in the live form (refreshed
     /// in place, as the tree builder would set it; a value changes nothing else, so the tree
     /// is not rebuilt for it).
-    fn value_op(&mut self, som: &str, path: pdfcraft_xfa::DataPath, text: String) {
-        let op = pdfcraft_xfa::DataOp::Value { path, text };
+    fn value_op(&mut self, som: &str, path: iridium_pdf_xfa::DataPath, text: String) {
+        let op = iridium_pdf_xfa::DataOp::Value { path, text };
         self.data.get_or_insert_with(Default::default).apply(&op);
         self.pending.push(op);
         let refreshed = match self.cached.as_mut() {
-            Some(live) => pdfcraft_xfa::refresh_value(&mut live.root, self.tpl, self.data.as_ref(), som).is_some(),
+            Some(live) => iridium_pdf_xfa::refresh_value(&mut live.root, self.tpl, self.data.as_ref(), som).is_some(),
             None => true,
         };
         if !refreshed {
@@ -342,12 +342,12 @@ impl<'a, 'b> Runner<'a, 'b> {
 
     fn live(&mut self) -> &LiveForm {
         if self.cached.is_none() {
-            let live = pdfcraft_xfa::form_tree(self.tpl, self.data.as_ref(), &self.ov);
+            let live = iridium_pdf_xfa::form_tree(self.tpl, self.data.as_ref(), &self.ov);
             if live.truncated && !self.truncated_warned {
                 self.truncated_warned = true;
                 self.error(format!(
                     "The form has more than {} objects or 20000 scripted events; its scripts see only the first ones",
-                    pdfcraft_xfa::MAX_FORM_NODES
+                    iridium_pdf_xfa::MAX_FORM_NODES
                 ));
             }
             self.cached = Some(live);
@@ -357,10 +357,10 @@ impl<'a, 'b> Runner<'a, 'b> {
 
     fn by_som(&mut self) -> &HashMap<String, String> {
         if self.by_som.is_none() {
-            let by_som = pdfcraft_xfa::fields_by_som(self.doc);
-            let mut by_path: HashMap<pdfcraft_xfa::DataPath, Vec<String>> = HashMap::new();
+            let by_som = iridium_pdf_xfa::fields_by_som(self.doc);
+            let mut by_path: HashMap<iridium_pdf_xfa::DataPath, Vec<String>> = HashMap::new();
             for (som, name) in &by_som {
-                by_path.entry(pdfcraft_xfa::data_path(self.tpl, som)).or_default().push(name.clone());
+                by_path.entry(iridium_pdf_xfa::data_path(self.tpl, som)).or_default().push(name.clone());
             }
             for names in by_path.values_mut() {
                 names.sort();
@@ -372,7 +372,7 @@ impl<'a, 'b> Runner<'a, 'b> {
     }
 
     /// The widgets bound to the data node at `path`, in name order.
-    fn widgets_at(&mut self, path: &pdfcraft_xfa::DataPath) -> Vec<String> {
+    fn widgets_at(&mut self, path: &iridium_pdf_xfa::DataPath) -> Vec<String> {
         self.by_som();
         self.by_path.as_ref().and_then(|m| m.get(path)).cloned().unwrap_or_default()
     }
@@ -414,7 +414,7 @@ impl<'a, 'b> Runner<'a, 'b> {
 
     /// Change the data's structure (and the in-memory copy scripts read): the form is rebuilt
     /// for the next script.
-    fn data_op(&mut self, op: pdfcraft_xfa::DataOp) {
+    fn data_op(&mut self, op: iridium_pdf_xfa::DataOp) {
         self.data.get_or_insert_with(Default::default).apply(&op);
         self.pending.push(op);
         self.invalidate();
@@ -424,11 +424,11 @@ impl<'a, 'b> Runner<'a, 'b> {
     /// that data node (each valued by its own kind: a check box by its on state, a list box by
     /// lines). Returns whether anything changed.
     fn set_value(&mut self, som: &str, value: &str) -> bool {
-        use pdfcraft_forms::FieldKind as K;
-        let path = pdfcraft_xfa::data_path(self.tpl, som);
+        use iridium_pdf_forms::FieldKind as K;
+        let path = iridium_pdf_xfa::data_path(self.tpl, som);
         // A floating field shows the value of its data node in the text that embeds it (XFA 3.3
         // pp. 221–222): a page area's, or one another field shares, as well.
-        let embedded = pdfcraft_xfa::path_is_embedded(self.tpl, &path);
+        let embedded = iridium_pdf_xfa::path_is_embedded(self.tpl, &path);
         let names = self.widgets_at(&path);
         // The data text: the widget at `som` says how its kind writes the value; without one,
         // the first widget bound to the node, else the value itself.
@@ -439,7 +439,7 @@ impl<'a, 'b> Runner<'a, 'b> {
             let Some(info) = self.fields().get(name).cloned() else { continue };
             let new_value: Vec<String> = match info.kind {
                 K::CheckBox => {
-                    if pdfcraft_xfa::data::is_on(value, &info.on_state) || value == info.on_state {
+                    if iridium_pdf_xfa::data::is_on(value, &info.on_state) || value == info.on_state {
                         vec![info.on_state.clone()]
                     } else {
                         Vec::new()
@@ -489,7 +489,7 @@ impl<'a, 'b> Runner<'a, 'b> {
         let mut wrote = false;
         if !self.pending.is_empty() {
             let ops = std::mem::take(&mut self.pending);
-            let r = pdfcraft_xfa::write_data_ops(self.doc, &ops, self.run.datasets).map_err(|e| e.to_string())?;
+            let r = iridium_pdf_xfa::write_data_ops(self.doc, &ops, self.run.datasets).map_err(|e| e.to_string())?;
             if r.stream.is_some() {
                 self.run.datasets = r.stream;
             }
@@ -497,20 +497,20 @@ impl<'a, 'b> Runner<'a, 'b> {
             wrote = true;
         }
         if !self.field_changes.is_empty() {
-            let changes: Vec<pdfcraft_forms::FieldChange> = std::mem::take(&mut self.field_changes)
+            let changes: Vec<iridium_pdf_forms::FieldChange> = std::mem::take(&mut self.field_changes)
                 .into_iter()
-                .map(|(name, value)| pdfcraft_forms::FieldChange { name, value: Some(value), ..Default::default() })
+                .map(|(name, value)| iridium_pdf_forms::FieldChange { name, value: Some(value), ..Default::default() })
                 .collect();
-            pdfcraft_forms::apply_script_changes(self.doc, &changes, &mut pdfcraft_forms::NoScripts).map_err(|e| e.to_string())?;
+            iridium_pdf_forms::apply_script_changes(self.doc, &changes, &mut iridium_pdf_forms::NoScripts).map_err(|e| e.to_string())?;
             self.fields = None;
         }
         if self.ov_dirty {
-            pdfcraft_xfa::set_overrides(self.doc, &self.ov).map_err(|e| e.to_string())?;
+            iridium_pdf_xfa::set_overrides(self.doc, &self.ov).map_err(|e| e.to_string())?;
             self.ov_dirty = false;
         }
         if wrote {
             // What the packet now holds (a value it could not take is reported above).
-            self.data = pdfcraft_xfa::data_of(self.doc);
+            self.data = iridium_pdf_xfa::data_of(self.doc);
             self.invalidate();
         }
         Ok(())
@@ -530,7 +530,7 @@ impl<'a, 'b> Runner<'a, 'b> {
         self.relayouts += 1;
         self.flush()?;
         self.embedded_changed = false;
-        let report = pdfcraft_xfa::rerender(self.doc, self.tpl).map_err(|e| e.to_string())?;
+        let report = iridium_pdf_xfa::rerender(self.doc, self.tpl).map_err(|e| e.to_string())?;
         self.console(report.warnings);
         crate::xfa_redraw(self.doc)?;
         self.console(crate::undrawn_field_warnings(self.doc));
@@ -553,7 +553,7 @@ impl<'a, 'b> Runner<'a, 'b> {
         // Names no widget answers to may still name a floating field (below).
         let widgets = !listed.as_ref().is_some_and(Vec::is_empty);
         if widgets {
-            pdfcraft_forms::reset(self.doc, listed.as_deref()).map_err(|e| e.to_string())?;
+            iridium_pdf_forms::reset(self.doc, listed.as_deref()).map_err(|e| e.to_string())?;
         }
         self.fields = None;
         let infos = self.fields().clone();
@@ -562,30 +562,30 @@ impl<'a, 'b> Runner<'a, 'b> {
                 continue;
             }
             let Some(info) = infos.get(name) else { continue };
-            if matches!(info.kind, pdfcraft_forms::FieldKind::PushButton | pdfcraft_forms::FieldKind::Signature) {
+            if matches!(info.kind, iridium_pdf_forms::FieldKind::PushButton | iridium_pdf_forms::FieldKind::Signature) {
                 continue;
             }
-            let path = pdfcraft_xfa::data_path(self.tpl, som);
+            let path = iridium_pdf_xfa::data_path(self.tpl, som);
             let text = data_text(info);
             if self.data.as_ref().and_then(|d| d.text_at(&path)).unwrap_or("") != text {
-                self.embedded_changed |= pdfcraft_xfa::path_is_embedded(self.tpl, &path);
-                self.data_op(pdfcraft_xfa::DataOp::Value { path, text });
+                self.embedded_changed |= iridium_pdf_xfa::path_is_embedded(self.tpl, &path);
+                self.data_op(iridium_pdf_xfa::DataOp::Value { path, text });
                 self.changes.values += 1;
             }
         }
         // A floating field without a widget (a hidden one, as forms place them) goes back to
         // its default too, and the text that embeds it shows that.
-        for (som, default) in pdfcraft_xfa::embedded_fields(self.tpl) {
+        for (som, default) in iridium_pdf_xfa::embedded_fields(self.tpl) {
             if by_som.contains_key(&som) || (!names.is_empty() && !names.iter().any(|n| som_matches(&som, n))) {
                 continue;
             }
             // Every row that holds it, not only the first.
-            let names: Vec<String> = pdfcraft_xfa::data_path(self.tpl, &som).into_iter().map(|(name, _)| name).collect();
-            let paths = self.data.as_ref().map(|d| d.paths_named(&names, pdfcraft_xfa::MAX_FORM_NODES)).unwrap_or_default();
+            let names: Vec<String> = iridium_pdf_xfa::data_path(self.tpl, &som).into_iter().map(|(name, _)| name).collect();
+            let paths = self.data.as_ref().map(|d| d.paths_named(&names, iridium_pdf_xfa::MAX_FORM_NODES)).unwrap_or_default();
             for path in paths {
                 if self.data.as_ref().and_then(|d| d.text_at(&path)).unwrap_or("") != default {
                     self.embedded_changed = true;
-                    self.data_op(pdfcraft_xfa::DataOp::Value { path, text: default.clone() });
+                    self.data_op(iridium_pdf_xfa::DataOp::Value { path, text: default.clone() });
                     self.changes.values += 1;
                 }
             }
@@ -648,14 +648,14 @@ impl<'a, 'b> Runner<'a, 'b> {
                     let have = counts.get(&key).copied().unwrap_or(0);
                     if matches!(e, XfaEffect::AddInstance { .. }) {
                         counts.insert(key, have + 1);
-                        self.data_op(pdfcraft_xfa::DataOp::Instances { parent, name, count: (index + 1).max(have + 1) });
+                        self.data_op(iridium_pdf_xfa::DataOp::Instances { parent, name, count: (index + 1).max(have + 1) });
                     } else {
                         // The data holds every shown instance before one is taken out.
                         counts.insert(key, have.saturating_sub(1));
-                        self.data_op(pdfcraft_xfa::DataOp::Instances { parent: parent.clone(), name: name.clone(), count: have });
+                        self.data_op(iridium_pdf_xfa::DataOp::Instances { parent: parent.clone(), name: name.clone(), count: have });
                         let mut path = parent;
                         path.push((name, index));
-                        self.data_op(pdfcraft_xfa::DataOp::Remove(path));
+                        self.data_op(iridium_pdf_xfa::DataOp::Remove(path));
                     }
                     self.changes.rows += 1;
                     relayout = true;
@@ -681,7 +681,7 @@ impl<'a, 'b> Runner<'a, 'b> {
 
     /// Run one event script against the form as it is now. `None`: it was skipped (the
     /// event's budget is spent).
-    fn run(&mut self, ev: &ScriptEvent, new_text: &str) -> Result<Option<pdfcraft_js::xfa::XfaOutcome>, String> {
+    fn run(&mut self, ev: &ScriptEvent, new_text: &str) -> Result<Option<iridium_pdf_js::xfa::XfaOutcome>, String> {
         if self.runs >= MAX_SCRIPTS_PER_EVENT || self.clock.spent() || self.run.ran_away {
             self.skipped += 1;
             return Ok(None);
@@ -780,7 +780,7 @@ impl Runner<'_, '_> {
     #[cfg(test)]
     fn check_live(&mut self) {
         let Some(live) = self.cached.as_ref() else { return };
-        let fresh = pdfcraft_xfa::form_tree(self.tpl, self.data.as_ref(), &self.ov);
+        let fresh = iridium_pdf_xfa::form_tree(self.tpl, self.data.as_ref(), &self.ov);
         let (mut have, mut want) = (Vec::new(), Vec::new());
         collect_fields(&live.root, &mut have, 0);
         collect_fields(&fresh.root, &mut want, 0);
@@ -814,18 +814,18 @@ fn collect_fields(n: &FormNode, out: &mut Vec<(String, String, String, String)>,
 /// their existing geometry; forms without scripts parse their template only when needed.
 /// `Some` means pages/widgets were rebuilt and the caller must fully refresh its snapshot.
 pub(crate) fn relayout_changed_text(
-    doc: &mut pdfcraft_cos::Document,
+    doc: &mut iridium_pdf_cos::Document,
     cached: Option<&Template>,
-    before: &[pdfcraft_forms::Field],
+    before: &[iridium_pdf_forms::Field],
 ) -> Result<Option<Vec<String>>, String> {
-    if pdfcraft_xfa::existing_layout(doc).is_none() {
+    if iridium_pdf_xfa::existing_layout(doc).is_none() {
         return Ok(None);
     }
     let current = &*doc;
     let mut changed = before
         .iter()
         .filter(|f| {
-            use pdfcraft_forms::FieldKind as K;
+            use iridium_pdf_forms::FieldKind as K;
             matches!(f.kind, K::Text | K::Combo | K::List | K::CheckBox)
         })
         .filter_map(|f| {
@@ -834,7 +834,7 @@ pub(crate) fn relayout_changed_text(
             if value_unchanged(current, f, dict.get(b"V")) {
                 return None;
             }
-            dict.get(pdfcraft_xfa::SOM_KEY).and_then(|s| current.resolve(s).as_string().map(|s| s.to_text()))
+            dict.get(iridium_pdf_xfa::SOM_KEY).and_then(|s| current.resolve(s).as_string().map(|s| s.to_text()))
         })
         .peekable();
     if changed.peek().is_none() {
@@ -842,14 +842,14 @@ pub(crate) fn relayout_changed_text(
     }
     let template = match cached {
         Some(tpl) => std::borrow::Cow::Borrowed(tpl),
-        None => std::borrow::Cow::Owned(pdfcraft_xfa::template_of(current).map_err(|e| e.to_string())?),
+        None => std::borrow::Cow::Owned(iridium_pdf_xfa::template_of(current).map_err(|e| e.to_string())?),
     };
-    let reflow = changed.any(|som| pdfcraft_xfa::field_grows_with_text(&template, &som) || pdfcraft_xfa::field_is_embedded(&template, &som));
+    let reflow = changed.any(|som| iridium_pdf_xfa::field_grows_with_text(&template, &som) || iridium_pdf_xfa::field_is_embedded(&template, &som));
     drop(changed);
     if !reflow {
         return Ok(None);
     }
-    let report = pdfcraft_xfa::rerender(doc, &template).map_err(|e| e.to_string())?;
+    let report = iridium_pdf_xfa::rerender(doc, &template).map_err(|e| e.to_string())?;
     crate::xfa_redraw(doc)?;
     Ok(Some(report.warnings))
 }
@@ -858,9 +858,9 @@ pub(crate) fn relayout_changed_text(
 /// picks are an array, a check box's state a name (Off for none, as the field's value has
 /// none), and of a text field only the first value counts. Compared in place, so an edit costs
 /// no copy of every field's value.
-fn value_unchanged(doc: &pdfcraft_cos::Document, f: &pdfcraft_forms::Field, v: Option<&pdfcraft_cos::Object>) -> bool {
-    use pdfcraft_cos::Object as O;
-    let text = f.kind == pdfcraft_forms::FieldKind::Text;
+fn value_unchanged(doc: &iridium_pdf_cos::Document, f: &iridium_pdf_forms::Field, v: Option<&iridium_pdf_cos::Object>) -> bool {
+    use iridium_pdf_cos::Object as O;
+    let text = f.kind == iridium_pdf_forms::FieldKind::Text;
     let first = f.value.first().map_or("", String::as_str);
     // The value is the one string `is` accepts.
     let one = |is: &dyn Fn(&str) -> bool| if text { is(first) } else { matches!(f.value.as_slice(), [old] if is(old)) };
@@ -909,7 +909,7 @@ fn value_unchanged(doc: &pdfcraft_cos::Document, f: &pdfcraft_forms::Field, v: O
 }
 
 /// On open: initialize scripts, then calculations. Returns what they changed.
-pub(crate) fn on_open(doc: &mut pdfcraft_cos::Document, tpl: &Template, run: &mut XfaRun) -> Result<Changes, String> {
+pub(crate) fn on_open(doc: &mut iridium_pdf_cos::Document, tpl: &Template, run: &mut XfaRun) -> Result<Changes, String> {
     let mut r = Runner::new(doc, tpl, run, OPEN_BUDGET_MS);
     let events: Vec<ScriptEvent> = r.live().events.iter().filter(|e| e.activity == "initialize" || e.activity == "docReady").cloned().collect();
     for ev in &events {
@@ -923,7 +923,7 @@ pub(crate) fn on_open(doc: &mut pdfcraft_cos::Document, tpl: &Template, run: &mu
 /// the calculations once (or only those, after a reset). A validate script that answers false,
 /// or fails, shows its message; the value stays, as Acrobat marks the field invalid rather
 /// than reverting it.
-pub(crate) fn on_changes(doc: &mut pdfcraft_cos::Document, tpl: &Template, names: &[String], run: &mut XfaRun) -> Result<(), String> {
+pub(crate) fn on_changes(doc: &mut iridium_pdf_cos::Document, tpl: &Template, names: &[String], run: &mut XfaRun) -> Result<(), String> {
     let mut r = Runner::new(doc, tpl, run, OPEN_BUDGET_MS);
     for name in names {
         let som = r.by_som().iter().find(|(_, f)| *f == name).map(|(s, _)| s.clone());
@@ -945,7 +945,7 @@ pub(crate) fn on_changes(doc: &mut pdfcraft_cos::Document, tpl: &Template, names
 
 /// The form's data changed outside its scripts (a data file imported, a picture chosen): lay
 /// the form out again from the data, then, when `calculate`, run every calculation.
-pub(crate) fn on_data_replaced(doc: &mut pdfcraft_cos::Document, tpl: &Template, calculate: bool, run: &mut XfaRun) -> Result<(), String> {
+pub(crate) fn on_data_replaced(doc: &mut iridium_pdf_cos::Document, tpl: &Template, calculate: bool, run: &mut XfaRun) -> Result<(), String> {
     let mut r = Runner::new(doc, tpl, run, OPEN_BUDGET_MS);
     r.relayout()?;
     if calculate {
@@ -955,29 +955,29 @@ pub(crate) fn on_data_replaced(doc: &mut pdfcraft_cos::Document, tpl: &Template,
 }
 
 /// A text value typed into the laid-out XFA date field `name` by another of its edit picture's
-/// patterns, written in the first ([`pdfcraft_xfa::typed_date`]); `None` for anything else.
+/// patterns, written in the first ([`iridium_pdf_xfa::typed_date`]); `None` for anything else.
 /// `tpl` is the template the scripts use, when they run; otherwise it is read from `doc`.
 pub(crate) fn typed_date(
-    doc: &pdfcraft_cos::Document,
+    doc: &iridium_pdf_cos::Document,
     tpl: Option<&Template>,
     name: &str,
-    value: &pdfcraft_forms::FieldValue,
-) -> Option<pdfcraft_forms::FieldValue> {
-    let pdfcraft_forms::FieldValue::Text(text) = value else { return None };
-    let som = pdfcraft_xfa::fields_by_som(doc).into_iter().find_map(|(som, n)| (n == name).then_some(som))?;
+    value: &iridium_pdf_forms::FieldValue,
+) -> Option<iridium_pdf_forms::FieldValue> {
+    let iridium_pdf_forms::FieldValue::Text(text) = value else { return None };
+    let som = iridium_pdf_xfa::fields_by_som(doc).into_iter().find_map(|(som, n)| (n == name).then_some(som))?;
     let read;
     let tpl = match tpl {
         Some(t) => t,
         None => {
-            read = pdfcraft_xfa::template_of(doc).ok()?;
+            read = iridium_pdf_xfa::template_of(doc).ok()?;
             &read
         }
     };
-    pdfcraft_xfa::typed_date(tpl, &som, text).map(pdfcraft_forms::FieldValue::Text)
+    iridium_pdf_xfa::typed_date(tpl, &som, text).map(iridium_pdf_forms::FieldValue::Text)
 }
 
 /// A button's click script (or any event, by SOM path and activity), then calculations.
-pub(crate) fn on_event(doc: &mut pdfcraft_cos::Document, tpl: &Template, som: &str, activity: &str, run: &mut XfaRun) -> Result<(), String> {
+pub(crate) fn on_event(doc: &mut iridium_pdf_cos::Document, tpl: &Template, som: &str, activity: &str, run: &mut XfaRun) -> Result<(), String> {
     let mut r = Runner::new(doc, tpl, run, EVENT_BUDGET_MS);
     let events = r.events_of(som, activity);
     if events.is_empty() {
@@ -993,32 +993,32 @@ pub(crate) fn on_event(doc: &mut pdfcraft_cos::Document, tpl: &Template, som: &s
 }
 
 /// The SOM path of a generated field whose template has a click script.
-pub(crate) fn clickable_som(doc: &pdfcraft_cos::Document, tpl: &Template, field: &pdfcraft_forms::Field) -> Option<String> {
+pub(crate) fn clickable_som(doc: &iridium_pdf_cos::Document, tpl: &Template, field: &iridium_pdf_forms::Field) -> Option<String> {
     // Page-master copies have distinct PDF field names but share a SOM path. Reversing
     // fields_by_som would lose every copy except the last: use the clicked field itself.
     let object = doc.get(field.obj);
-    let som = object.as_dict()?.get(pdfcraft_xfa::SOM_KEY).map(|s| doc.resolve(s))?.as_string()?.to_text();
-    let live = pdfcraft_xfa::form_tree(tpl, pdfcraft_xfa::data_of(doc).as_ref(), &pdfcraft_xfa::overrides(doc));
+    let som = object.as_dict()?.get(iridium_pdf_xfa::SOM_KEY).map(|s| doc.resolve(s))?.as_string()?.to_text();
+    let live = iridium_pdf_xfa::form_tree(tpl, iridium_pdf_xfa::data_of(doc).as_ref(), &iridium_pdf_xfa::overrides(doc));
     live.events.iter().any(|e| e.som == som && e.activity == "click").then_some(som)
 }
 
 /// The parsed template of a laid-out XFA form, kept for the document's life, when it has
 /// scripts to run (`None` otherwise: nothing about the form is scripted).
-pub(crate) fn template(doc: &pdfcraft_cos::Document) -> Option<Arc<Template>> {
-    pdfcraft_xfa::template_of(doc).ok().filter(pdfcraft_xfa::has_scripts).map(Arc::new)
+pub(crate) fn template(doc: &iridium_pdf_cos::Document) -> Option<Arc<Template>> {
+    iridium_pdf_xfa::template_of(doc).ok().filter(iridium_pdf_xfa::has_scripts).map(Arc::new)
 }
 
-/// Push buttons PdfCraft generated for XFA click scripts carry no PDF action (the script is
+/// Push buttons PDF generated for XFA click scripts carry no PDF action (the script is
 /// XFA's, not Acrobat JavaScript): give them one that runs the script by the field's SOM path.
-pub(crate) fn mark_script_buttons(doc: &pdfcraft_cos::Document, fields: &mut [pdfcraft_forms::Field]) {
+pub(crate) fn mark_script_buttons(doc: &iridium_pdf_cos::Document, fields: &mut [iridium_pdf_forms::Field]) {
     for f in fields.iter_mut() {
-        if f.kind == pdfcraft_forms::FieldKind::PushButton
+        if f.kind == iridium_pdf_forms::FieldKind::PushButton
             && f.button.is_none()
             && std::iter::once(f.obj)
                 .chain(f.widgets.iter().map(|w| w.obj))
-                .any(|r| doc.get(r).as_dict().is_some_and(|d| d.contains(pdfcraft_xfa::CLICK_KEY)))
+                .any(|r| doc.get(r).as_dict().is_some_and(|d| d.contains(iridium_pdf_xfa::CLICK_KEY)))
         {
-            f.button = Some(pdfcraft_forms::af::ButtonAction::Script(String::new()));
+            f.button = Some(iridium_pdf_forms::af::ButtonAction::Script(String::new()));
         }
     }
 }
@@ -1041,8 +1041,8 @@ mod tests {
         );
     }
 
-    fn field(obj: pdfcraft_cos::ObjRef, kind: pdfcraft_forms::FieldKind, value: &[&str]) -> pdfcraft_forms::Field {
-        pdfcraft_forms::Field {
+    fn field(obj: iridium_pdf_cos::ObjRef, kind: iridium_pdf_forms::FieldKind, value: &[&str]) -> iridium_pdf_forms::Field {
+        iridium_pdf_forms::Field {
             name: "f".into(),
             obj,
             kind,
@@ -1057,28 +1057,28 @@ mod tests {
             quadding: 0,
             tooltip: None,
             widgets: Vec::new(),
-            actions: pdfcraft_forms::af::Actions::default(),
+            actions: iridium_pdf_forms::af::Actions::default(),
             button: None,
         }
     }
 
     /// A field dictionary whose `/V` is `v`, with a SOM path.
-    fn field_dict(doc: &mut pdfcraft_cos::Document, v: Option<pdfcraft_cos::Object>) -> pdfcraft_cos::ObjRef {
-        let mut d = pdfcraft_cos::Dict::new();
+    fn field_dict(doc: &mut iridium_pdf_cos::Document, v: Option<iridium_pdf_cos::Object>) -> iridium_pdf_cos::ObjRef {
+        let mut d = iridium_pdf_cos::Dict::new();
         if let Some(v) = v {
             d.set(b"V".to_vec(), v);
         }
-        d.set(pdfcraft_xfa::SOM_KEY.to_vec(), pdfcraft_cos::Object::String(pdfcraft_cos::PdfString::text("form[0].f[0]")));
+        d.set(iridium_pdf_xfa::SOM_KEY.to_vec(), iridium_pdf_cos::Object::String(iridium_pdf_cos::PdfString::text("form[0].f[0]")));
         doc.add(d)
     }
 
     #[test]
     fn changed_values_are_found_in_place() {
-        use pdfcraft_cos::{Object as O, PdfString};
-        use pdfcraft_forms::FieldKind as K;
+        use iridium_pdf_cos::{Object as O, PdfString};
+        use iridium_pdf_forms::FieldKind as K;
         let s = |t: &str| O::String(PdfString::text(t));
-        let mut doc = pdfcraft_cos::Document::new_empty();
-        let same = |doc: &mut pdfcraft_cos::Document, kind, old: &[&str], v: Option<O>| {
+        let mut doc = iridium_pdf_cos::Document::new_empty();
+        let same = |doc: &mut iridium_pdf_cos::Document, kind, old: &[&str], v: Option<O>| {
             let r = field_dict(doc, v);
             let dict = doc.get(r);
             value_unchanged(doc, &field(r, kind, old), dict.as_dict().and_then(|d| d.get(b"V")))
@@ -1119,18 +1119,18 @@ mod tests {
 
     #[test]
     fn unchanged_values_return_before_the_template_is_read() {
-        use pdfcraft_cos::{Object as O, PdfString};
-        use pdfcraft_forms::FieldKind as K;
+        use iridium_pdf_cos::{Object as O, PdfString};
+        use iridium_pdf_forms::FieldKind as K;
         // Laid out, but with no XFA packets: reading the template fails.
-        let mut doc = pdfcraft_cos::Document::new_empty();
-        let mut acro = pdfcraft_cos::Dict::new();
-        acro.set(pdfcraft_xfa::LAYOUT_KEY.to_vec(), pdfcraft_cos::Dict::new());
+        let mut doc = iridium_pdf_cos::Document::new_empty();
+        let mut acro = iridium_pdf_cos::Dict::new();
+        acro.set(iridium_pdf_xfa::LAYOUT_KEY.to_vec(), iridium_pdf_cos::Dict::new());
         let acro = doc.add(acro);
         let root = doc.root().unwrap_or_else(|| panic!("no catalog"));
         let mut catalog = doc.get(root).as_dict().cloned().unwrap_or_default();
         catalog.set(b"AcroForm".to_vec(), O::Ref(acro));
         doc.set(root, catalog);
-        assert!(pdfcraft_xfa::existing_layout(&doc).is_some());
+        assert!(iridium_pdf_xfa::existing_layout(&doc).is_some());
         let text = field_dict(&mut doc, Some(O::String(PdfString::text("same"))));
         let list = field_dict(&mut doc, Some(O::Array(vec![O::String(PdfString::text("a")), O::String(PdfString::text("b"))])));
         let check = field_dict(&mut doc, Some(O::name("Yes")));

@@ -4,10 +4,10 @@
 
 use std::sync::Arc;
 
-use pdfcraft_annot::{Meta, NewAnnotation, Shape, Style, add_annotation, rect_quad};
-use pdfcraft_cos::{Document, Object, SaveOptions, write_full, write_incremental};
-use pdfcraft_redact::{RedactError, apply, marks};
-use pdfcraft_testkit::{Pdf, stream_obj};
+use iridium_pdf_annot::{Meta, NewAnnotation, Shape, Style, add_annotation, rect_quad};
+use iridium_pdf_cos::{Document, Object, SaveOptions, write_full, write_incremental};
+use iridium_pdf_redact::{RedactError, apply, marks};
+use iridium_pdf_testkit::{Pdf, stream_obj};
 
 const SECRET: &[u8] = b"ADV2CELLSECRET";
 const TEXT_CELL: &[u8] = b"BT /F1 20 Tf 40 120 Td (ADV2CELLSECRET) Tj ET\n";
@@ -70,8 +70,8 @@ fn catalog() -> Vec<u8> {
 
 fn glyph_pixel(doc: &Document, x: u32, row: u32) -> Vec<u8> {
     let bytes = write_full(doc, &SaveOptions::default()).unwrap();
-    let mut r = pdfcraft_render::PageRenderer::new(Arc::new(bytes), pdfcraft_render::RenderConfig::default());
-    let out = r.render(pdfcraft_render::RenderRequest { page: 0, scale: 1.0, ..Default::default() });
+    let mut r = iridium_pdf_render::PageRenderer::new(Arc::new(bytes), iridium_pdf_render::RenderConfig::default());
+    let out = r.render(iridium_pdf_render::RenderRequest { page: 0, scale: 1.0, ..Default::default() });
     let i = ((row * out.width + x) * 4) as usize;
     out.rgba[i..i + 3].to_vec()
 }
@@ -210,7 +210,7 @@ fn hostile_wide_tree_probe() {
 #[test]
 fn a_type3_font_with_null_resources_keeps_the_page_pattern() {
     let mut doc = type3_page("", b"BT /T3 1 Tf 300 230 Td (a) Tj ET\n/Pattern cs /P0 scn 35 110 170 35 re f\n", vec![]);
-    doc.update_dict(pdfcraft_cos::ObjRef::new(7, 0), |d| d.set(b"Resources".to_vec(), Object::Null)).unwrap();
+    doc.update_dict(iridium_pdf_cos::ObjRef::new(7, 0), |d| d.set(b"Resources".to_vec(), Object::Null)).unwrap();
     assert_glyph_kept(doc);
 }
 /// Known limit (fidelity only, never a leak: a missed use can only prune more). Kept annotation
@@ -219,7 +219,7 @@ fn a_type3_font_with_null_resources_keeps_the_page_pattern() {
 /// appearance's own resources, where `/P0` does not exist, so only a lenient renderer draws it.
 /// The Type 3 font is shown by a kept annotation's appearance stream (outside the mark).
 #[test]
-#[ignore = "known limit: kept annotation appearances are not interpreted, so a resourceless Type 3 glyph in one does not keep the page pattern; ISO 32000 resolves it in the appearance's own resources, which pdfcraft's renderer does not"]
+#[ignore = "known limit: kept annotation appearances are not interpreted, so a resourceless Type 3 glyph in one does not keep the page pattern; ISO 32000 resolves it in the appearance's own resources, which iridium_pdf's renderer does not"]
 fn a_type3_glyph_in_an_annotation_appearance_renders_the_same() {
     let mut doc = type3_page(
         "",
@@ -229,8 +229,8 @@ fn a_type3_glyph_in_an_annotation_appearance_renders_the_same() {
             b"<< /Type /Annot /Subtype /Stamp /Rect [300 230 340 270] /F 4 /AP << /N 9 0 R >> >>".to_vec(),
         ],
     );
-    doc.update_dict(pdfcraft_cos::ObjRef::new(3, 0), |d| {
-        d.set(b"Annots".to_vec(), Object::Array(vec![Object::Ref(pdfcraft_cos::ObjRef::new(10, 0))]))
+    doc.update_dict(iridium_pdf_cos::ObjRef::new(3, 0), |d| {
+        d.set(b"Annots".to_vec(), Object::Array(vec![Object::Ref(iridium_pdf_cos::ObjRef::new(10, 0))]))
     })
     .unwrap();
     let before = glyph_pixel(&doc, 320, 50);

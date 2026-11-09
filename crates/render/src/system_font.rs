@@ -8,7 +8,7 @@
 //! already installed on this machine, used for the viewer only (`RenderConfig::system_fonts`, off
 //! for exports, printing and OCR). It is read at runtime and never embedded or shipped
 //! (AGENTS.md §1.4), Noto CJK and Source Han are left out on purpose (§1.1), and
-//! `PDFCRAFT_SYSTEM_FONTS=0` turns it off, as for the interface font.
+//! `IRIDIUM_PDF_SYSTEM_FONTS=0` turns it off, as for the interface font.
 
 use std::collections::HashMap;
 use std::io::Read as _;
@@ -114,7 +114,7 @@ impl ChineseFamily {
 /// The installed face to draw a CID font of `query`'s collection with, as `(data, face index)`.
 /// `None` when it is turned off, the collection isn't one of the four, or nothing fits.
 pub(crate) fn fallback(query: &FallbackFontQuery) -> Option<(FontData, u32)> {
-    if cfg!(target_arch = "wasm32") || std::env::var_os("PDFCRAFT_SYSTEM_FONTS").is_some_and(|v| v == "0") {
+    if cfg!(target_arch = "wasm32") || std::env::var_os("IRIDIUM_PDF_SYSTEM_FONTS").is_some_and(|v| v == "0") {
         return None;
     }
     let script = Script::of(&query.character_collection.as_ref()?.family)?;

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use pdfcraft_cos::{SaveOptions, write_full};
+use iridium_pdf_cos::{SaveOptions, write_full};
 
 use super::*;
 
@@ -158,7 +158,7 @@ fn text_keeps_leading_spaces_and_tabs() {
 }
 
 /// Text Helvetica can't draw is refused with its line and character, never set as `?`; text
-/// PdfCraft generates writes such characters as [U+XXXX] and says so.
+/// PDF generates writes such characters as [U+XXXX] and says so.
 #[test]
 fn text_helvetica_cannot_draw_is_refused_or_escaped() {
     let err = from_text("notes", "Café —\tok\r\n\u{c}第二页 notes", LETTER, 11.0).unwrap_err();
@@ -199,7 +199,7 @@ fn page_text(doc: &Document, page: &Dict) -> Vec<String> {
     let res = doc.resolve(page.get(b"Resources").unwrap()).as_dict().cloned().unwrap();
     let fonts = doc.resolve(res.get(b"Font").unwrap()).as_dict().cloned().unwrap();
     let font = doc.resolve(fonts.get(b"F1").unwrap()).as_dict().cloned().unwrap();
-    let metrics = pdfcraft_fonts::pdf::Metrics::from_dict(doc, &font);
+    let metrics = iridium_pdf_fonts::pdf::Metrics::from_dict(doc, &font);
     let Object::Stream(s) = &*doc.resolve(page.get(b"Contents").unwrap()) else { panic!("no content stream") };
     let content = String::from_utf8_lossy(&s.decoded().unwrap()).into_owned();
     content
@@ -236,7 +236,7 @@ fn text_with_cyrillic_is_set_in_the_bundled_face() {
     // Each line fits between the margins in Inter's widths, and long lines wrap.
     let lines: Vec<String> = p.iter().flat_map(|page| page_text(&doc, page)).collect();
     assert!(lines.len() > 120, "{} lines", lines.len());
-    assert!(lines.iter().all(|l| pdfcraft_fonts::inter_width(l, 11.0) <= 612.0 - 144.0 + 1e-6), "{lines:?}");
+    assert!(lines.iter().all(|l| iridium_pdf_fonts::inter_width(l, 11.0) <= 612.0 - 144.0 + 1e-6), "{lines:?}");
     let joined = lines.join(" ");
     assert!(joined.contains("Ред 0: Жълтата дюля") && joined.contains("Ред 119:"), "{joined}");
     assert!(joined.contains("    Таб, „кавички“, № 5 и Ελληνικά"), "a tab is four spaces: {joined}");
@@ -250,7 +250,7 @@ fn text_with_cyrillic_is_set_in_the_bundled_face() {
 }
 
 /// Text the bundled face can't draw all of keeps the Helvetica way: refused, naming the first
-/// character neither face draws, or, for text PdfCraft generates, escaped as before. Text it draws
+/// character neither face draws, or, for text PDF generates, escaped as before. Text it draws
 /// all of is set in it with nothing escaped, and Western European text stays in Helvetica.
 #[test]
 fn text_the_bundled_face_cannot_draw_is_refused_or_escaped_as_before() {
@@ -461,7 +461,7 @@ fn images_export_as_jpeg_unchanged_and_others_as_png() {
 fn indexed_and_one_bit_images_decode() {
     let mut doc = from_images(&[("flat.png".into(), png_bytes(false))]).unwrap();
     // Replace the page's image with a 4×1 indexed image (two colours) and add a 1-bit mask.
-    let page = pdfcraft_model::pages(&doc)[0].clone();
+    let page = iridium_pdf_model::pages(&doc)[0].clone();
     let res = doc.resolve(page.dict.get(b"Resources").unwrap()).as_dict().cloned().unwrap();
     let xo = doc.resolve(res.get(b"XObject").unwrap()).as_dict().cloned().unwrap();
     let (_, r) = xo.iter().next().map(|(k, v)| (k.clone(), v.as_ref().unwrap())).unwrap();
@@ -821,7 +821,7 @@ fn embedded_icc_profiles_tag_the_image_colour_space() {
 
 /// Replaces page 0's image with the stream `image` builds (it can add objects, e.g. a mask).
 fn with_image(doc: &mut Document, image: impl FnOnce(&mut Document) -> Stream) {
-    let page = pdfcraft_model::pages(doc)[0].clone();
+    let page = iridium_pdf_model::pages(doc)[0].clone();
     let res = doc.resolve(page.dict.get(b"Resources").unwrap()).as_dict().cloned().unwrap();
     let xo = doc.resolve(res.get(b"XObject").unwrap()).as_dict().cloned().unwrap();
     let r = xo.iter().next().map(|(_, v)| v.as_ref().unwrap()).unwrap();
@@ -1032,7 +1032,7 @@ fn damaged_masks_and_sizes_never_panic() {
             d.set(b"Mask".to_vec(), Object::Array(vec![Object::Real(f64::NAN), Object::Int(-5)]));
             Stream::from_raw(d, vec![10; 24])
         });
-        let page = pdfcraft_model::pages(&doc)[0].clone();
+        let page = iridium_pdf_model::pages(&doc)[0].clone();
         let res = doc.resolve(page.dict.get(b"Resources").unwrap()).as_dict().cloned().unwrap();
         let xo = doc.resolve(res.get(b"XObject").unwrap()).as_dict().cloned().unwrap();
         let r = xo.iter().next().map(|(_, v)| v.as_ref().unwrap()).unwrap();
@@ -1082,7 +1082,7 @@ fn a_jpeg_with_thousands_of_extended_xmp_chunks_keeps_its_mask() {
 fn indexed_image_export_clamps_samples_to_hival() {
     for palette in [vec![255, 0, 0, 0, 0, 255], vec![255, 0, 0, 0, 0, 255, 0, 255, 0, 255, 255, 255]] {
         let mut doc = from_images(&[("flat.png".into(), png_bytes(false))]).unwrap();
-        let page = pdfcraft_model::pages(&doc)[0].clone();
+        let page = iridium_pdf_model::pages(&doc)[0].clone();
         let res = doc.resolve(page.dict.get(b"Resources").unwrap()).as_dict().cloned().unwrap();
         let xo = doc.resolve(res.get(b"XObject").unwrap()).as_dict().cloned().unwrap();
         let image = xo.iter().next().unwrap().1.as_ref().unwrap();
@@ -1121,9 +1121,9 @@ fn indexed_export_fixture(
     indirect_hival: bool,
     bpc: i64,
     samples: Vec<u8>,
-) -> (Document, pdfcraft_cos::ObjRef) {
+) -> (Document, iridium_pdf_cos::ObjRef) {
     let mut doc = from_images(&[("flat.png".into(), png_bytes(false))]).unwrap();
-    let page = pdfcraft_model::pages(&doc)[0].clone();
+    let page = iridium_pdf_model::pages(&doc)[0].clone();
     let res = doc.resolve(page.dict.get(b"Resources").unwrap()).as_dict().cloned().unwrap();
     let xo = doc.resolve(res.get(b"XObject").unwrap()).as_dict().cloned().unwrap();
     let image = xo.iter().next().unwrap().1.as_ref().unwrap();
@@ -1219,11 +1219,11 @@ fn indexed_hival_keeps_existing_short_palette_fallback() {
 }
 
 /// Save and reopen a synthetic image before checking both export entry points.
-fn decode_fixture(dict: Dict, samples: Vec<u8>) -> (Document, pdfcraft_cos::ObjRef) {
+fn decode_fixture(dict: Dict, samples: Vec<u8>) -> (Document, iridium_pdf_cos::ObjRef) {
     let mut doc = from_images(&[("flat.png".into(), png_bytes(false))]).unwrap();
     with_image(&mut doc, |_| Stream::from_raw(dict, samples));
     let doc = reopen(&doc);
-    let page = pdfcraft_model::pages(&doc)[0].clone();
+    let page = iridium_pdf_model::pages(&doc)[0].clone();
     let res = doc.resolve(page.dict.get(b"Resources").unwrap());
     let xo = doc.resolve(res.as_dict().unwrap().get(b"XObject").unwrap());
     let image = xo.as_dict().unwrap().iter().next().unwrap().1.as_ref().unwrap();
@@ -1813,7 +1813,7 @@ fn ccitt_fax_images_export_as_their_picture() {
 
     // The same picture coded with 1 for black, which /BlackIs1 says.
     let r = {
-        let page = pdfcraft_model::pages(&doc)[0].clone();
+        let page = iridium_pdf_model::pages(&doc)[0].clone();
         let res = doc.resolve(page.dict.get(b"Resources").unwrap()).as_dict().cloned().unwrap();
         let xo = doc.resolve(res.get(b"XObject").unwrap()).as_dict().cloned().unwrap();
         xo.get(b"Im0").and_then(Object::as_ref).unwrap()
@@ -1831,12 +1831,12 @@ fn ccitt_fax_images_export_as_their_picture() {
         Stream::from_raw(d, data)
     };
     let inverted: Vec<u8> = bits.iter().map(|b| !b).collect();
-    let stream = with(true, i64::from(w), pdfcraft_filters::encode_g4(&inverted, w, h).unwrap());
+    let stream = with(true, i64::from(w), iridium_pdf_filters::encode_g4(&inverted, w, h).unwrap());
     doc.set(r, Object::Stream(stream));
     let out = extract_images(&doc, &[0], 0);
     assert_eq!(exported_white(&out.images[0].data), picture, "BlackIs1");
 
-    let mut stream = with(false, i64::from(w), pdfcraft_filters::encode_g4(&bits, w, h).unwrap());
+    let mut stream = with(false, i64::from(w), iridium_pdf_filters::encode_g4(&bits, w, h).unwrap());
     let parms = stream.dict.get(b"DecodeParms").cloned().unwrap();
     stream.dict.set(b"DecodeParms".to_vec(), Object::Array(vec![parms]));
     stream.dict.set(b"Filter".to_vec(), Object::Array(vec![Object::name("CCITTFaxDecode")]));
@@ -1845,7 +1845,7 @@ fn ccitt_fax_images_export_as_their_picture() {
     assert!(out.skipped.is_empty(), "{:?}", out.skipped);
     assert_eq!(exported_white(&out.images[0].data), picture, "in arrays");
 
-    let mut stream = with(false, i64::from(w), pdfcraft_filters::encode_g4(&bits, w, h).unwrap());
+    let mut stream = with(false, i64::from(w), iridium_pdf_filters::encode_g4(&bits, w, h).unwrap());
     let mut parms = stream.dict.get(b"DecodeParms").and_then(Object::as_dict).cloned().unwrap();
     parms.set(b"K".to_vec(), Object::Ref(doc.add(Object::Int(-1))));
     parms.set(b"Columns".to_vec(), Object::Ref(doc.add(Object::Int(i64::from(w)))));
@@ -1857,9 +1857,9 @@ fn ccitt_fax_images_export_as_their_picture() {
     assert_eq!(exported_white(&out.images[0].data), picture, "/K and /Columns by reference, /Rows 1");
 
     // Behind another filter, with its parameters second in the array, as 7.4.1 pairs them.
-    let g4 = pdfcraft_filters::encode_g4(&bits, w, h).unwrap();
+    let g4 = iridium_pdf_filters::encode_g4(&bits, w, h).unwrap();
     let hex = g4.iter().map(|b| format!("{b:02x}")).chain([">".to_string()]).collect::<String>().into_bytes();
-    for (outer, data) in [("ASCIIHexDecode", hex), ("FlateDecode", pdfcraft_filters::encode_flate(&g4))] {
+    for (outer, data) in [("ASCIIHexDecode", hex), ("FlateDecode", iridium_pdf_filters::encode_flate(&g4))] {
         let mut stream = with(false, i64::from(w), data);
         let parms = stream.dict.get(b"DecodeParms").cloned().unwrap();
         stream.dict.set(b"DecodeParms".to_vec(), Object::Array(vec![Object::Null, parms]));
@@ -1871,8 +1871,8 @@ fn ccitt_fax_images_export_as_their_picture() {
     }
     // Behind Flate with a PNG predictor, whose parameters are given by reference.
     let padded: Vec<u8> = g4.iter().copied().chain(std::iter::repeat_n(0, 16 - g4.len() % 16)).collect();
-    let params = pdfcraft_filters::Params { predictor: 12, colors: 1, bits_per_component: 8, columns: 16, early_change: 1 };
-    let predicted = pdfcraft_filters::encode(&pdfcraft_filters::Filter::Flate, &params, &padded).unwrap();
+    let params = iridium_pdf_filters::Params { predictor: 12, colors: 1, bits_per_component: 8, columns: 16, early_change: 1 };
+    let predicted = iridium_pdf_filters::encode(&iridium_pdf_filters::Filter::Flate, &params, &padded).unwrap();
     let mut flate_parms = Dict::new();
     flate_parms.set(b"Predictor".to_vec(), Object::Int(12));
     flate_parms.set(b"Columns".to_vec(), Object::Int(16));
@@ -1886,13 +1886,13 @@ fn ccitt_fax_images_export_as_their_picture() {
     assert!(out.skipped.is_empty(), "{:?}", out.skipped);
     assert_eq!(exported_white(&out.images[0].data), picture, "behind Flate with a predictor given by reference");
     // CCITT before another filter isn't a picture yet.
-    let mut stream = with(false, i64::from(w), pdfcraft_filters::encode_flate(&g4));
+    let mut stream = with(false, i64::from(w), iridium_pdf_filters::encode_flate(&g4));
     stream.dict.set(b"Filter".to_vec(), Object::Array(vec![Object::name("CCITTFaxDecode"), Object::name("FlateDecode")]));
     doc.set(r, Object::Stream(stream));
     let out = extract_images(&doc, &[0], 0);
     assert!(out.images.is_empty() && out.skipped.len() == 1, "CCITT, then Flate: skipped");
 
-    let stream = with(false, i64::from(w) + 8, pdfcraft_filters::encode_g4(&bits, w, h).unwrap());
+    let stream = with(false, i64::from(w) + 8, iridium_pdf_filters::encode_g4(&bits, w, h).unwrap());
     doc.set(r, Object::Stream(stream));
     let out = extract_images(&doc, &[0], 0);
     assert!(out.images.is_empty() && out.skipped.len() == 1, "columns other than the width: skipped");
@@ -2010,7 +2010,7 @@ fn group_3_ccitt_masks_and_parameters_by_reference_export_as_their_picture() {
     let picture: Vec<bool> = (0..(w * h) as usize).map(|i| bits[i / 8] & (0x80 >> (i % 8)) != 0).collect();
     let mut doc = from_images(&[("scan.png".into(), png_of(w, h, ColorType::Grayscale, BitDepth::One, &bits, None, None))]).unwrap();
     let r = {
-        let page = pdfcraft_model::pages(&doc)[0].clone();
+        let page = iridium_pdf_model::pages(&doc)[0].clone();
         let res = doc.resolve(page.dict.get(b"Resources").unwrap()).as_dict().cloned().unwrap();
         let xo = doc.resolve(res.get(b"XObject").unwrap()).as_dict().cloned().unwrap();
         xo.get(b"Im0").and_then(Object::as_ref).unwrap()
@@ -2121,7 +2121,7 @@ fn group_3_ccitt_masks_and_parameters_by_reference_export_as_their_picture() {
     }
 
     // A grey picture under the same bits as a soft mask, then as a stencil mask: CCITT against Flate.
-    let g4 = pdfcraft_filters::encode_g4(&bits, w, h).unwrap();
+    let g4 = iridium_pdf_filters::encode_g4(&bits, w, h).unwrap();
     for (key, mask) in [("SMask", grey(1).to_vec()), ("Mask", vec![("ImageMask", Object::Bool(true))])] {
         let mut exported = Vec::new();
         for coded in [true, false] {
@@ -2137,11 +2137,11 @@ fn group_3_ccitt_masks_and_parameters_by_reference_export_as_their_picture() {
 
     // A PNG predictor given by reference, for the samples and for a lookup table.
     let predicted = |rows: &[u8], columns: i64| {
-        let params = pdfcraft_filters::Params { predictor: 12, colors: 1, bits_per_component: 8, columns, early_change: 1 };
+        let params = iridium_pdf_filters::Params { predictor: 12, colors: 1, bits_per_component: 8, columns, early_change: 1 };
         let mut parms = Dict::new();
         parms.set(b"Predictor".to_vec(), Object::Int(12));
         parms.set(b"Columns".to_vec(), Object::Int(columns));
-        (pdfcraft_filters::encode(&pdfcraft_filters::Filter::Flate, &params, rows).unwrap(), parms)
+        (iridium_pdf_filters::encode(&iridium_pdf_filters::Filter::Flate, &params, rows).unwrap(), parms)
     };
     let shades: Vec<u8> = (0..w * h).map(|i| (i * 7 % 256) as u8).collect();
     let (table, table_parms) = predicted(&[255, 0, 0, 0, 0, 255], 3);
@@ -2187,7 +2187,7 @@ fn images_whose_predictor_is_given_by_reference_export_as_their_picture() {
         p
     };
     // Two rows of four grey samples, each behind a PNG "None" row tag.
-    let predicted = pdfcraft_filters::encode_flate(&[0, 10, 20, 30, 40, 0, 50, 60, 70, 80]);
+    let predicted = iridium_pdf_filters::encode_flate(&[0, 10, 20, 30, 40, 0, 50, 60, 70, 80]);
     let grey: Vec<u8> = [10u8, 20, 30, 40, 50, 60, 70, 80].iter().flat_map(|v| [*v, *v, *v, 255]).collect();
     for form in ["a reference", "an array of a reference", "numbers by reference"] {
         let mut doc = from_images(&[("flat.png".into(), png_bytes(false))]).unwrap();
@@ -2217,7 +2217,7 @@ fn images_whose_predictor_is_given_by_reference_export_as_their_picture() {
         let mut t = Dict::new();
         t.set(b"Filter".to_vec(), Object::name("FlateDecode"));
         t.set(b"DecodeParms".to_vec(), Object::Ref(doc.add(Object::Dict(parms(6)))));
-        let table = doc.add(Object::Stream(Stream::from_raw(t, pdfcraft_filters::encode_flate(&[0, 255, 0, 0, 0, 0, 255]))));
+        let table = doc.add(Object::Stream(Stream::from_raw(t, iridium_pdf_filters::encode_flate(&[0, 255, 0, 0, 0, 0, 255]))));
         let mut d = image_dict(4, 1, "DeviceGray", 8);
         d.set(b"ColorSpace".to_vec(), Object::Array(vec![Object::name("Indexed"), Object::name("DeviceRGB"), Object::Int(1), Object::Ref(table)]));
         Stream::from_raw(d, vec![0, 1, 0, 1])
@@ -2235,13 +2235,13 @@ fn images_whose_predictor_is_given_by_reference_export_as_their_picture() {
         g.set(b"Filter".to_vec(), Object::name("FlateDecode"));
         g.set(b"DecodeParms".to_vec(), Object::Ref(doc.add(Object::Dict(parms(segment.len() as i64)))));
         let tagged: Vec<u8> = [0].iter().chain(&segment).copied().collect();
-        let globals = doc.add(Object::Stream(Stream::from_raw(g, pdfcraft_filters::encode_flate(&tagged))));
+        let globals = doc.add(Object::Stream(Stream::from_raw(g, iridium_pdf_filters::encode_flate(&tagged))));
         let mut decode_parms = Dict::new();
         decode_parms.set(b"JBIG2Globals".to_vec(), Object::Ref(globals));
         let mut d = image_dict(16, 2, "DeviceGray", 1);
         d.set(b"Filter".to_vec(), Object::name("JBIG2Decode"));
         d.set(b"DecodeParms".to_vec(), Object::Dict(decode_parms));
-        Stream::from_raw(d, pdfcraft_filters::encode_jbig2_generic(&bits, 16, 2).unwrap())
+        Stream::from_raw(d, iridium_pdf_filters::encode_jbig2_generic(&bits, 16, 2).unwrap())
     });
     let picture: Vec<u8> = (0..32).flat_map(|i| if bits[i / 8] & (0x80 >> (i % 8)) != 0 { [255, 255, 255, 255] } else { [0, 0, 0, 255] }).collect();
     assert_eq!(exported_rgba(&doc), ("png", picture), "the JBIG2 globals' /DecodeParms by reference");
@@ -2271,8 +2271,8 @@ fn symbol_coded_jbig2_images_export_as_their_picture() {
             }
         }
     }
-    let jbig2 = pdfcraft_filters::encode_jbig2(&bits, w as u32, h as u32).unwrap();
-    let generic = pdfcraft_filters::encode_jbig2_generic(&bits, w as u32, h as u32).unwrap();
+    let jbig2 = iridium_pdf_filters::encode_jbig2(&bits, w as u32, h as u32).unwrap();
+    let generic = iridium_pdf_filters::encode_jbig2_generic(&bits, w as u32, h as u32).unwrap();
     assert!(jbig2.len() < generic.len(), "symbol coded: {} bytes, generic {}", jbig2.len(), generic.len());
     let mut doc = from_images(&[("flat.png".into(), png_bytes(false))]).unwrap();
     with_image(&mut doc, |_| {
@@ -2289,7 +2289,7 @@ fn symbol_coded_jbig2_images_export_as_their_picture() {
 /// Export ▸ Images reads JBIG2 images (ISO 32000-2 §7.4.7), JBIG2 black as 0: as the image, and as
 /// a stencil `/Mask` of another. Their `/JBIG2Globals` are read, from a dictionary or the one in
 /// an array, so globals that can't be read skip the image rather than being ignored. A JBIG2 page
-/// of another size than the image (a taller one too: PdfCraft's renderer draws the whole page into
+/// of another size than the image (a taller one too: PDF's renderer draws the whole page into
 /// the image), refused before it is decoded however large, or data that isn't JBIG2, skips the
 /// image.
 #[test]
@@ -2315,7 +2315,7 @@ fn jbig2_images_export_as_their_picture() {
             })
             .collect()
     };
-    let jbig2 = pdfcraft_filters::encode_jbig2_generic(&bits, w as u32, h as u32).unwrap();
+    let jbig2 = iridium_pdf_filters::encode_jbig2_generic(&bits, w as u32, h as u32).unwrap();
     // A page whose image is `data` as JBIG2, `width` × `height`. With `globals`, its /DecodeParms
     // (an array when `.1`) name a globals stream; with `mask`, it is the stencil /Mask of a grey
     // image.
@@ -2386,7 +2386,7 @@ fn jbig2_images_export_as_their_picture() {
 #[test]
 fn jbig2_images_behind_another_filter_export_as_their_picture() {
     let bits = [0xF0u8, 0x0F, 0xAA, 0x55];
-    let jbig2 = pdfcraft_filters::encode_jbig2_generic(&bits, 16, 2).unwrap();
+    let jbig2 = iridium_pdf_filters::encode_jbig2_generic(&bits, 16, 2).unwrap();
     let hex: Vec<u8> = jbig2.iter().flat_map(|b| format!("{b:02x}").into_bytes()).chain(*b">").collect();
     let picture: Vec<u8> = (0..32).flat_map(|i| if bits[i / 8] & (0x80 >> (i % 8)) != 0 { [255; 4] } else { [0, 0, 0, 255] }).collect();
     // With unreadable globals at place `at` of its /DecodeParms.
@@ -2419,10 +2419,10 @@ fn jbig2_images_behind_another_filter_export_as_their_picture() {
 /// indirect `/DecodeParms`, in an array or not.
 #[test]
 fn jbig2_globals_are_decoded_within_a_limit_of_their_own() {
-    const LIMIT: usize = pdfcraft_cos::MAX_JBIG2_GLOBALS;
+    const LIMIT: usize = iridium_pdf_cos::MAX_JBIG2_GLOBALS;
     assert_eq!(LIMIT, 32 << 20);
     let bits = [0xF0u8, 0x0F, 0xAA, 0x55];
-    let jbig2 = pdfcraft_filters::encode_jbig2_generic(&bits, 16, 2).unwrap();
+    let jbig2 = iridium_pdf_filters::encode_jbig2_generic(&bits, 16, 2).unwrap();
     let picture: Vec<u8> = (0..32).flat_map(|i| if bits[i / 8] & (0x80 >> (i % 8)) != 0 { [255; 4] } else { [0, 0, 0, 255] }).collect();
     // Globals of `len` bytes, Flate-encoded: one extension segment (ISO/IEC 14492 7.4.14), which a
     // decoder skips; its 11-byte header gives the length of the data after it.
@@ -2431,7 +2431,7 @@ fn jbig2_globals_are_decoded_within_a_limit_of_their_own() {
         g.extend_from_slice(&u32::try_from(len - 11).unwrap().to_be_bytes());
         g.extend_from_slice(&[0, 0, 0, 1]);
         g.resize(len, 0);
-        pdfcraft_filters::encode_flate(&g)
+        iridium_pdf_filters::encode_flate(&g)
     };
     // The image, its /DecodeParms naming `flated` as its globals: direct (0), by reference (1), or
     // by reference in an array (2).
@@ -2471,7 +2471,7 @@ fn jbig2_globals_are_decoded_within_a_limit_of_their_own() {
 /// One allowance for all the images of an export: an image past it is left out, saying so.
 #[test]
 fn jbig2_images_past_the_exports_allowance_are_left_out_with_the_reason() {
-    use pdfcraft_cos::{Dict, Document, ImageBudget, Object, Stream};
+    use iridium_pdf_cos::{Dict, Document, ImageBudget, Object, Stream};
     let mut dict = Dict::new();
     dict.set(b"Subtype".to_vec(), Object::name("Image"));
     dict.set(b"Width".to_vec(), Object::Int(16));
@@ -2479,7 +2479,7 @@ fn jbig2_images_past_the_exports_allowance_are_left_out_with_the_reason() {
     dict.set(b"BitsPerComponent".to_vec(), Object::Int(1));
     dict.set(b"ColorSpace".to_vec(), Object::name("DeviceGray"));
     dict.set(b"Filter".to_vec(), Object::name("JBIG2Decode"));
-    let image = Stream::from_raw(dict, pdfcraft_filters::encode_jbig2_generic(&[0xFF; 4], 16, 2).unwrap());
+    let image = Stream::from_raw(dict, iridium_pdf_filters::encode_jbig2_generic(&[0xFF; 4], 16, 2).unwrap());
     let mut cost = ImageBudget::with_work(u64::MAX);
     cost.decode(&Document::new_empty(), &image, 1 << 20).unwrap();
     let cost = u64::MAX - cost.work_left();
@@ -2492,7 +2492,7 @@ fn jbig2_images_past_the_exports_allowance_are_left_out_with_the_reason() {
     xobjects.set(b"B".to_vec(), Object::Ref(b));
     let mut resources = Dict::new();
     resources.set(b"XObject".to_vec(), Object::Dict(xobjects));
-    let page = pdfcraft_model::pages(&doc).swap_remove(0).obj;
+    let page = iridium_pdf_model::pages(&doc).swap_remove(0).obj;
     doc.update_dict(page, |p| p.set(b"Resources".to_vec(), Object::Dict(resources))).unwrap();
 
     let export = crate::extract::extract_images_within(&doc, &[0], 1, &mut ImageBudget::with_work(cost), usize::MAX);
@@ -2514,7 +2514,7 @@ fn jbig2_images_past_the_exports_allowance_are_left_out_with_the_reason() {
 /// as long as one of JBIG2. What isn't decoded here, a JPEG, is still exported.
 #[test]
 fn flate_images_past_the_exports_allowance_are_left_out_with_the_reason() {
-    use pdfcraft_cos::{Dict, Document, ImageBudget, Object, Stream};
+    use iridium_pdf_cos::{Dict, Document, ImageBudget, Object, Stream};
     let image = |filter: &str, raw: Vec<u8>| {
         let mut dict = Dict::new();
         dict.set(b"Subtype".to_vec(), Object::name("Image"));
@@ -2525,7 +2525,7 @@ fn flate_images_past_the_exports_allowance_are_left_out_with_the_reason() {
         dict.set(b"Filter".to_vec(), Object::name(filter));
         Stream::from_raw(dict, raw)
     };
-    let flate = image("FlateDecode", pdfcraft_filters::encode_flate(&[0x80; 4]));
+    let flate = image("FlateDecode", iridium_pdf_filters::encode_flate(&[0x80; 4]));
     let mut cost = ImageBudget::with_work(u64::MAX);
     cost.decode(&Document::new_empty(), &flate, 1 << 20).unwrap();
     let cost = u64::MAX - cost.work_left();
@@ -2551,7 +2551,7 @@ fn flate_images_past_the_exports_allowance_are_left_out_with_the_reason() {
 /// nothing (Flate over empty blocks). Past the allowance the image is left out with the reason.
 #[test]
 fn a_lookup_table_is_read_within_the_exports_allowance() {
-    use pdfcraft_cos::{Dict, Document, ImageBudget, Object, PdfString, Stream};
+    use iridium_pdf_cos::{Dict, Document, ImageBudget, Object, PdfString, Stream};
     let table = [255, 0, 0, 0, 0, 255];
     let lookup = Stream::flate(Dict::new(), &table);
     let exported = |as_stream: bool, work: u64| {
@@ -2571,7 +2571,7 @@ fn a_lookup_table_is_read_within_the_exports_allowance() {
     let (direct, image_alone, _) = exported(false, u64::MAX);
     let (streamed, both, _) = exported(true, u64::MAX);
     assert_eq!(streamed.unwrap(), direct.unwrap(), "the same picture");
-    let read = (lookup.raw.len() + table.len()) as u64 + pdfcraft_filters::FLATE_READ_WORK * lookup.raw.len() as u64;
+    let read = (lookup.raw.len() + table.len()) as u64 + iridium_pdf_filters::FLATE_READ_WORK * lookup.raw.len() as u64;
     assert_eq!(both, image_alone + read, "the table is paid for as it is read");
     let (refused, _, count) = exported(true, image_alone);
     assert!(refused.unwrap_err().contains("more image decoding than"));
@@ -2584,7 +2584,7 @@ fn a_lookup_table_is_read_within_the_exports_allowance() {
 /// mask, a table the allowance can't pay for leaves the image out, with the reason.
 #[test]
 fn a_jpegs_lookup_table_is_paid_for_once() {
-    use pdfcraft_cos::{Dict, Document, ImageBudget, Object, PdfString, Stream};
+    use iridium_pdf_cos::{Dict, Document, ImageBudget, Object, PdfString, Stream};
     let table = [255, 0, 0, 0, 0, 255];
     let lookup = Stream::flate(Dict::new(), &table);
     let mut jpeg = Vec::new();
@@ -2623,7 +2623,7 @@ fn a_jpegs_lookup_table_is_paid_for_once() {
     let (streamed, streamed_cost, _) = exported(Some(true), u64::MAX);
     assert_eq!(direct, Ok(("jpg", jpeg.clone())), "written as it is");
     assert_eq!(streamed, direct);
-    let read = (lookup.raw.len() + table.len()) as u64 + pdfcraft_filters::FLATE_READ_WORK * lookup.raw.len() as u64;
+    let read = (lookup.raw.len() + table.len()) as u64 + iridium_pdf_filters::FLATE_READ_WORK * lookup.raw.len() as u64;
     assert_eq!(streamed_cost, direct_cost + read, "one reading of the table");
 
     // Without a colour space nothing is read after the soft mask, so this is what the mask costs.
@@ -2643,7 +2643,7 @@ fn a_jpegs_lookup_table_is_paid_for_once() {
 /// its transparency otherwise.
 #[test]
 fn a_jpeg_that_has_to_be_decoded_shares_the_allowance() {
-    use pdfcraft_cos::{Dict, Document, ImageBudget, Object, Stream};
+    use iridium_pdf_cos::{Dict, Document, ImageBudget, Object, Stream};
     let mut jpeg = Vec::new();
     image::RgbImage::from_pixel(4, 4, image::Rgb([9, 9, 9])).write_to(&mut std::io::Cursor::new(&mut jpeg), image::ImageFormat::Jpeg).unwrap();
     let image_dict = |extra: Option<(&[u8], Object)>| {
@@ -2689,7 +2689,7 @@ fn a_jpeg_that_has_to_be_decoded_shares_the_allowance() {
 /// share one, and only the images are ever seen once.
 #[test]
 fn a_jpeg_mask_pays_for_its_samples() {
-    use pdfcraft_cos::{Dict, Document, ImageBudget, Object, Stream};
+    use iridium_pdf_cos::{Dict, Document, ImageBudget, Object, Stream};
     let mut jpeg = Vec::new();
     image::GrayImage::from_pixel(4, 4, image::Luma([90])).write_to(&mut std::io::Cursor::new(&mut jpeg), image::ImageFormat::Jpeg).unwrap();
     let mut mask = Dict::new();
@@ -2725,7 +2725,7 @@ fn a_jpeg_mask_pays_for_its_samples() {
 /// file comes out as it is either way, so what shows is whether it was decoded.
 #[test]
 fn a_jpeg_larger_than_its_dictionary_says_isnt_decoded() {
-    use pdfcraft_cos::{Dict, Document, ImageBudget, Object, Stream};
+    use iridium_pdf_cos::{Dict, Document, ImageBudget, Object, Stream};
     let mut jpeg = Vec::new();
     image::RgbImage::from_pixel(4, 4, image::Rgb([9, 9, 9])).write_to(&mut std::io::Cursor::new(&mut jpeg), image::ImageFormat::Jpeg).unwrap();
     // A colour key means decoding it, to find the pixels it hides.
@@ -2740,7 +2740,7 @@ fn a_jpeg_larger_than_its_dictionary_says_isnt_decoded() {
         d.set(b"Mask".to_vec(), Object::Array(vec![Object::Int(0); 6]));
         Stream::from_raw(d, jpeg.clone())
     };
-    let decodes = |doc: &Document, image: pdfcraft_cos::ObjRef| {
+    let decodes = |doc: &Document, image: iridium_pdf_cos::ObjRef| {
         crate::extract::JPEGS_DECODED.with(|n| n.set(0));
         assert!(crate::extract::image_file_within(doc, image, &mut ImageBudget::with_work(u64::MAX)).is_ok());
         crate::extract::JPEGS_DECODED.with(std::cell::Cell::get)
@@ -2776,7 +2776,7 @@ fn a_jpeg_larger_than_its_dictionary_says_isnt_decoded() {
 /// opaque, showing what the mask hides: the image goes, with the reason.
 #[test]
 fn an_image_whose_jbig2_mask_is_past_the_allowance_is_left_out() {
-    use pdfcraft_cos::{Dict, Document, ImageBudget, Object, Stream};
+    use iridium_pdf_cos::{Dict, Document, ImageBudget, Object, Stream};
     let mut mask = Dict::new();
     mask.set(b"Subtype".to_vec(), Object::name("Image"));
     mask.set(b"Width".to_vec(), Object::Int(16));
@@ -2785,7 +2785,7 @@ fn an_image_whose_jbig2_mask_is_past_the_allowance_is_left_out() {
     mask.set(b"ColorSpace".to_vec(), Object::name("DeviceGray"));
     mask.set(b"Filter".to_vec(), Object::name("JBIG2Decode"));
     let mut doc = Document::new_empty();
-    let mask = doc.add(Object::Stream(Stream::from_raw(mask, pdfcraft_filters::encode_jbig2_generic(&[0xFF; 4], 16, 2).unwrap())));
+    let mask = doc.add(Object::Stream(Stream::from_raw(mask, iridium_pdf_filters::encode_jbig2_generic(&[0xFF; 4], 16, 2).unwrap())));
     // A JPEG, read for nothing until its mask is, so only the mask can be what stops it.
     let mut jpeg = Vec::new();
     image::RgbImage::from_pixel(1, 1, image::Rgb([9, 9, 9])).write_to(&mut std::io::Cursor::new(&mut jpeg), image::ImageFormat::Jpeg).unwrap();
@@ -2818,7 +2818,7 @@ fn an_export_may_hold_twice_a_large_file() {
 /// as absent, they gave the wrong answer, so the file came out a negative of what the page draws.
 #[test]
 fn a_stencil_masks_decode_array_can_hold_references() {
-    use pdfcraft_cos::Document;
+    use iridium_pdf_cos::Document;
     let export = |decode: &str| {
         let pdf = format!(
             "%PDF-1.7\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n\
@@ -2858,7 +2858,7 @@ fn a_stencil_masks_decode_array_can_hold_references() {
 /// image's size and larger than it, are scaled as they always were.
 #[test]
 fn a_mask_of_other_proportions_than_its_image_is_scaled_without_the_memory_of_both() {
-    use pdfcraft_cos::{Dict, Document, Object, Stream};
+    use iridium_pdf_cos::{Dict, Document, Object, Stream};
     let gray = |w: i64, h: i64, data: &[u8]| {
         let mut d = Dict::new();
         d.set(b"Subtype".to_vec(), Object::name("Image"));
@@ -2867,7 +2867,7 @@ fn a_mask_of_other_proportions_than_its_image_is_scaled_without_the_memory_of_bo
         d.set(b"BitsPerComponent".to_vec(), Object::Int(8));
         d.set(b"ColorSpace".to_vec(), Object::name("DeviceGray"));
         d.set(b"Filter".to_vec(), Object::name("FlateDecode"));
-        Stream::from_raw(d, pdfcraft_filters::encode_flate(data))
+        Stream::from_raw(d, iridium_pdf_filters::encode_flate(data))
     };
     let shapes = [
         (100_000usize, 1usize, 1usize, 100_000usize),

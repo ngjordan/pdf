@@ -32,7 +32,7 @@ pub enum Gesture {
     /// Copied comments hanging on the pointer as one bundle (their box `bounds` in user space,
     /// `count` of them, their `outlines` drawn along so the drop can be aimed): a click puts
     /// their centre there, on the page clicked; Escape or a right-click lets them go.
-    Place { xfdf: String, bounds: [f64; 4], count: usize, outlines: Vec<pdfcraft_engine::CommentOutline> },
+    Place { xfdf: String, bounds: [f64; 4], count: usize, outlines: Vec<iridium_pdf_engine::CommentOutline> },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -312,7 +312,7 @@ impl CommentView {
 
 /// Where the annotation at `keep` is once the one at `gone` was deleted, or `None` when it went
 /// with it. Deleting takes the annotation's replies (at any depth) and pop-ups out of its page's
-/// `/Annots` (`pdfcraft_annot::delete_annotation`), and everything after them moves up, so `keep`
+/// `/Annots` (`iridium_pdf_annot::delete_annotation`), and everything after them moves up, so `keep`
 /// is found by its place among the page's annotations that stay. When the page lost other
 /// annotations than those, or the one in that place reads differently, it is not guessed at.
 pub(super) fn after_delete(before: &[Annotation], after: &[Annotation], gone: (usize, usize), keep: (usize, usize)) -> Option<(usize, usize)> {
@@ -336,7 +336,7 @@ pub(super) fn after_delete(before: &[Annotation], after: &[Annotation], gone: (u
 
 /// Whether the annotation at an index on `top`'s page is `top` or a reply to it at any depth:
 /// what deleting `top` takes along. `page` is that page's listed annotations. Only replies on the
-/// page go with it (`pdfcraft_annot::delete_annotation` follows `/IRT` through the page's
+/// page go with it (`iridium_pdf_annot::delete_annotation` follows `/IRT` through the page's
 /// `/Annots`).
 fn in_thread(page: &[&Annotation], top: (usize, usize)) -> impl Fn(usize) -> bool {
     let parents: HashMap<usize, usize> = page.iter().filter_map(|a| a.parent.filter(|p| p.0 == top.0).map(|p| (a.index, p.1))).collect();

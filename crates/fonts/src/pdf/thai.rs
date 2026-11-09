@@ -8,7 +8,7 @@
 //! artwork is bundled.
 
 use super::{Dict, Document, Metrics, dict, only_char, unicode_map};
-use pdfcraft_cos::{DecodeBudget, Object};
+use iridium_pdf_cos::{DecodeBudget, Object};
 use std::collections::BTreeMap;
 
 /// Recover the nominal Thai codes and the presentation marks of this damaged legacy export.
@@ -442,7 +442,7 @@ fn require_pua(cmap: &skrifa::charmap::Charmap<'_>, text: &str) -> Result<(), St
 #[cfg(test)]
 mod tests {
     use super::{LegacyThaiFont, Metrics, composite_glyph_maps, is_thai_mark, recovered_thai_map};
-    use pdfcraft_cos::{DecodeBudget, Dict, Document, Object, Stream};
+    use iridium_pdf_cos::{DecodeBudget, Dict, Document, Object, Stream};
     use std::collections::HashMap;
 
     /// Where table `tag` starts in an sfnt.
@@ -717,7 +717,7 @@ mod tests {
         let data = String::from_utf8_lossy(data)
             .replace("18 beginbfrange", "1 beginbfrange <00ff><01ff><0032> endbfrange 17 beginbfrange")
             .replace(" <00ff><01ff><0032> endbfrange endcmap", " endbfrange endcmap");
-        doc.set(tu, Object::Stream(pdfcraft_cos::Stream::flate(Dict::new(), data.as_bytes())));
+        doc.set(tu, Object::Stream(iridium_pdf_cos::Stream::flate(Dict::new(), data.as_bytes())));
         let recovered: HashMap<_, _> = recovered_thai_map(&doc, &font).unwrap().into_iter().collect();
         let title: String = [240, 248, 261, 214, 263, 253].into_iter().map(|code| recovered[&code]).collect();
         assert_eq!(title, "ประกาศ");
@@ -728,7 +728,7 @@ mod tests {
         font.set(b"BaseFont".to_vec(), Object::name("ABCDEF+Unrelated"));
         assert!(recovered_thai_map(&doc, &font).is_none());
         font.set(b"BaseFont".to_vec(), Object::name("ABCDEF+THSarabunPSK"));
-        doc.set(tu, Object::Stream(pdfcraft_cos::Stream::flate(Dict::new(), b"1 beginbfchar <00d9><0e04> endbfchar")));
+        doc.set(tu, Object::Stream(iridium_pdf_cos::Stream::flate(Dict::new(), b"1 beginbfchar <00d9><0e04> endbfchar")));
         assert!(recovered_thai_map(&doc, &font).is_none(), "one plausible anchor cannot authorize guessing a map");
     }
 }

@@ -1,6 +1,6 @@
 use super::*;
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Draw the running job's progress card and pass a Cancel click on to the job.
     pub(super) fn show_progress(&mut self, ctx: &egui::Context) {
         if widgets::progress_notice(self, ctx) {
@@ -17,13 +17,13 @@ impl PdfCraftApp {
             let active = self.theme_preference == ThemePreference::System;
             if self.desktop_theme_enabled && active && self.desktop_theme.is_none() {
                 let ctx = ctx.clone();
-                self.desktop_theme = Some(pdfcraft_platform::desktop_theme::DesktopTheme::start(move || ctx.request_repaint()));
+                self.desktop_theme = Some(iridium_pdf_platform::desktop_theme::DesktopTheme::start(move || ctx.request_repaint()));
             }
             if let Some(desktop) = &self.desktop_theme {
                 desktop.set_active(active);
                 // The standard portal supplies Linux desktop appearance. No preference
                 // must clear an earlier answer rather than retaining stale dark chrome.
-                system = desktop.get().map(|appearance| appearance == pdfcraft_platform::desktop_theme::DesktopAppearance::Dark);
+                system = desktop.get().map(|appearance| appearance == iridium_pdf_platform::desktop_theme::DesktopAppearance::Dark);
             }
         }
         let kind = self.theme_preference.resolve(system, ThemeKind::Light);
@@ -70,7 +70,7 @@ pub(crate) fn migrate_panel_state_from(ui: &egui::Ui, salt: &str) {
     }
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// The parts of [`eframe::App::raw_input_hook`] that must run before egui's input hooks:
     /// publish this pass's input-target generation to the control plugin, and hand the wheel
     /// input to the reduced-motion reader.
@@ -92,7 +92,7 @@ impl PdfCraftApp {
     }
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     pub(crate) fn finish_render_frame(&mut self, ctx: &egui::Context) {
         self.finish_document_copy(ctx);
         // The Combine grid's thumbnails, whichever tab shows (renders under way still finish).

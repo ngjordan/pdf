@@ -212,7 +212,7 @@ pub(super) fn validate_tab(ui: &mut egui::Ui, d: &mut FieldDraft) {
 }
 
 pub(super) fn actions_tab(ui: &mut egui::Ui, d: &mut FieldDraft, t: &crate::theme::Tokens) {
-    use pdfcraft_engine::FieldTrigger as T;
+    use iridium_pdf_engine::FieldTrigger as T;
     let editing = d.editing.is_some();
     ui.label(egui::RichText::new(if editing { tl!("Edit Action") } else { tl!("Add an Action") }).font(theme::semibold(13.0)));
     let a = &mut d.new_action;
@@ -302,7 +302,7 @@ pub(super) fn actions_tab(ui: &mut egui::Ui, d: &mut FieldDraft, t: &crate::them
                         if ui.button(tl!("Delete")).clicked() {
                             remove = Some(i);
                         }
-                        if let pdfcraft_engine::FieldAction::JavaScript(js) = act
+                        if let iridium_pdf_engine::FieldAction::JavaScript(js) = act
                             && ui.add_enabled(d.editing.is_none(), egui::Button::new(tl!("Edit"))).clicked()
                         {
                             edit = Some((*tr, js.clone()));

@@ -365,7 +365,7 @@ impl Time {
     /// is anywhere near that range, and this preserves byte-for-byte the old output everywhere.
     pub fn from_unix(t: i64) -> Time {
         let (days, secs) = (t.div_euclid(86_400), t.rem_euclid(86_400));
-        let (year, month, day) = pdfcraft_cos::civil_from_days(days);
+        let (year, month, day) = iridium_pdf_cos::civil_from_days(days);
         Time { year: year as u32, month, day, hour: (secs / 3600) as u32, minute: (secs % 3600 / 60) as u32, second: (secs % 60) as u32 }
     }
 

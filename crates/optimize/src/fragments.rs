@@ -8,7 +8,7 @@
 //! - consecutive `q … cm /Name Do Q` groups in a page's content stream, with nothing else
 //!   between them, each drawing an image upright (no rotation, skew or flip);
 //! - the images are 8-bit grey or RGB in the same colour space, without masks or a decode array
-//!   that changes anything, in a codec PdfCraft decodes;
+//!   that changes anything, in a codec PDF decodes;
 //! - they tile one rectangle edge to edge with no gap or overlap — stacked top to bottom, placed
 //!   side by side, or arranged in a grid of rows and columns (in any drawing order), at least
 //!   [`MIN_FRAGMENTS`] of them.
@@ -18,8 +18,8 @@
 //! stream can't be read back exactly is left alone. The fragments are then unused, and Clean Up
 //! drops them.
 
-use pdfcraft_content::{Matrix, Op, parse, serialize_ops};
-use pdfcraft_cos::{DecodeBudget, Dict, Document, ImageBudget, ObjRef, Object, Stream};
+use iridium_pdf_content::{Matrix, Op, parse, serialize_ops};
+use iridium_pdf_cos::{DecodeBudget, Dict, Document, ImageBudget, ObjRef, Object, Stream};
 
 use crate::images::{components, content_bytes, decodable, page_resources, pixels, resample};
 use crate::{OptimizeError, Report, Stage};
@@ -483,7 +483,7 @@ pub(crate) fn run(
 
 #[cfg(test)]
 mod tests {
-    use pdfcraft_cos::{Dict, Document, Object, Stream};
+    use iridium_pdf_cos::{Dict, Document, Object, Stream};
 
     use super::*;
 
@@ -560,7 +560,7 @@ mod tests {
         assert_eq!(merge_page(&mut doc.clone(), page, &mut Report::default(), &mut |_| true, &mut budget).unwrap(), 0);
         assert_eq!(budget.refused(), 1);
         // Reading each strip, inflating it, and building the picture of 8 rows of 8 they make.
-        let cost = (1 + pdfcraft_filters::FLATE_READ_WORK) * raw + 8 * (8 + 8) + 8 * 8;
+        let cost = (1 + iridium_pdf_filters::FLATE_READ_WORK) * raw + 8 * (8 + 8) + 8 * 8;
         let mut budget = ImageBudget::with_work(u64::MAX);
         assert_eq!(merge_page(&mut doc.clone(), page, &mut Report::default(), &mut |_| true, &mut budget).unwrap(), 8);
         assert_eq!(u64::MAX - budget.work_left(), cost);

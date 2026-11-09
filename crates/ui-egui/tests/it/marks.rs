@@ -3,8 +3,8 @@
 use crate::support;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_engine::MarkKind;
-use pdfcraft_ui_egui::{Dialog, PdfCraftApp};
+use iridium_pdf_engine::MarkKind;
+use iridium_pdf_ui_egui::{Dialog, PdfApp};
 
 const FIXTURE: &[u8] = b"%PDF-1.7
 1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
@@ -15,13 +15,13 @@ const FIXTURE: &[u8] = b"%PDF-1.7
 trailer << /Root 1 0 R >>
 %%EOF";
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     harness_with(FIXTURE.to_vec())
 }
 
-fn harness_with(pdf: Vec<u8>) -> Harness<'static, PdfCraftApp> {
+fn harness_with(pdf: Vec<u8>) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, pdf.clone()).unwrap();
         app
@@ -30,7 +30,7 @@ fn harness_with(pdf: Vec<u8>) -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn marks(h: &Harness<'static, PdfCraftApp>) -> Vec<MarkKind> {
+fn marks(h: &Harness<'static, PdfApp>) -> Vec<MarkKind> {
     let s = h.state();
     s.session.get(s.views[0].id).unwrap().marks().to_vec()
 }
@@ -47,7 +47,7 @@ fn header_and_footer_dialog_inserts_tokens_and_applies_to_a_subset() {
     h.get_by_label("Insert Page Number").click();
     h.run_steps(2);
     assert_eq!(h.state().marks_draft.hf.text[4], "<<1>>");
-    h.state_mut().marks_draft.range.subset = pdfcraft_ui_egui::marks::Subset::Odd;
+    h.state_mut().marks_draft.range.subset = iridium_pdf_ui_egui::marks::Subset::Odd;
     h.run_steps(2);
     h.get_by_label("OK").click();
     h.run_steps(4);
@@ -75,15 +75,15 @@ fn header_and_footer_dialog_draws_in_the_chosen_face() {
     h.run_steps(2);
     h.get_by_label("Times").click();
     h.run_steps(2);
-    assert_eq!(h.state().marks_draft.hf.font, pdfcraft_engine::FontFamily::Times);
+    assert_eq!(h.state().marks_draft.hf.font, iridium_pdf_engine::FontFamily::Times);
     h.state_mut().marks_draft.hf.text[0] = "Serif".into();
     h.run_steps(2);
     h.get_by_label("OK").click();
     h.run_steps(4);
     assert_eq!(marks(&h), [MarkKind::HeaderFooter]);
     let s = h.state();
-    let doc = pdfcraft_cos::Document::open(s.session.get(s.views[0].id).unwrap().bytes.clone()).unwrap();
-    let page = &pdfcraft_model::pages(&doc)[0];
+    let doc = iridium_pdf_cos::Document::open(s.session.get(s.views[0].id).unwrap().bytes.clone()).unwrap();
+    let page = &iridium_pdf_model::pages(&doc)[0];
     let res = doc.resolve(page.dict.get(b"Resources").unwrap());
     let fonts = doc.resolve(res.as_dict().unwrap().get(b"Font").unwrap()).as_dict().cloned().unwrap();
     let face = doc.resolve(fonts.get(b"PCTimes").expect("Times is added")).as_dict().cloned().unwrap();
@@ -171,17 +171,17 @@ fn backdrop_fixture() -> Vec<u8> {
 #[test]
 fn the_background_dialog_offers_to_replace_a_white_backdrop_and_warns_about_scans() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, backdrop_fixture()).unwrap();
         app
     });
     h.run_steps(4);
-    let backdrop = |h: &Harness<'static, PdfCraftApp>, page| {
+    let backdrop = |h: &Harness<'static, PdfApp>, page| {
         let s = h.state();
         s.session.get(s.views[0].id).unwrap().page_backdrop(page)
     };
-    assert_eq!(backdrop(&h, 0), Some(pdfcraft_engine::Backdrop::Fill));
+    assert_eq!(backdrop(&h, 0), Some(iridium_pdf_engine::Backdrop::Fill));
     h.state_mut().execute("edit.background");
     h.run_steps(3);
     let replace = "Page 1 paints its own white backdrop, which would hide the background. Replace it";
@@ -192,7 +192,7 @@ fn the_background_dialog_offers_to_replace_a_white_backdrop_and_warns_about_scan
     h.run_steps(2);
     h.get_by_label("OK").click();
     h.run_steps(3);
-    assert_eq!(backdrop(&h, 0), Some(pdfcraft_engine::Backdrop::Fill));
+    assert_eq!(backdrop(&h, 0), Some(iridium_pdf_engine::Backdrop::Fill));
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
     // Reopened, the choice starts on again; ticked, the backdrop is replaced and the scan is
@@ -204,7 +204,7 @@ fn the_background_dialog_offers_to_replace_a_white_backdrop_and_warns_about_scan
     h.get_by_label("OK").click();
     h.run_steps(3);
     assert_eq!(backdrop(&h, 0), None);
-    assert_eq!(backdrop(&h, 1), Some(pdfcraft_engine::Backdrop::Image));
+    assert_eq!(backdrop(&h, 1), Some(iridium_pdf_engine::Backdrop::Image));
     // Nothing left to replace: the offer is gone. A choice left off from an earlier dialog
     // doesn't carry into Update, which restores the backdrop first and would otherwise keep it
     // with no checkbox shown.
@@ -222,7 +222,7 @@ fn the_background_dialog_offers_to_replace_a_white_backdrop_and_warns_about_scan
 #[test]
 fn the_background_preview_follows_the_replace_checkbox() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, backdrop_fixture()).unwrap();
         app
@@ -232,9 +232,9 @@ fn the_background_preview_follows_the_replace_checkbox() {
     h.run_steps(3);
     let replace = "Page 1 paints its own white backdrop, which would hide the background. Replace it";
     h.get_by_label(replace);
-    let [red, green, blue] = pdfcraft_engine::Background::default().color.map(|c| (c * 255.0).round() as u8);
+    let [red, green, blue] = iridium_pdf_engine::Background::default().color.map(|c| (c * 255.0).round() as u8);
     let colour = egui::Color32::from_rgb(red, green, blue);
-    let tint = |h: &mut Harness<'static, PdfCraftApp>, page: usize| {
+    let tint = |h: &mut Harness<'static, PdfApp>, page: usize| {
         h.state_mut().marks_draft.preview = Some(page);
         h.run_steps(2);
         wait_for_picture(h, page).2
@@ -268,7 +268,7 @@ fn remove_background_says_which_pages_keep_their_own_backdrop_off() {
         copy.len()
     );
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, fixture.into_bytes()).unwrap();
         app
@@ -305,7 +305,7 @@ trailer << /Root 1 0 R >>
 }
 
 /// The pictures of page `page` (its thumbnail) painted last frame: paint order, bounds, tint.
-fn page_pictures(h: &Harness<'static, PdfCraftApp>, page: usize) -> Vec<(usize, egui::Rect, egui::Color32)> {
+fn page_pictures(h: &Harness<'static, PdfApp>, page: usize) -> Vec<(usize, egui::Rect, egui::Color32)> {
     let Some(tex) = h.state().views[0].thumb(page).map(|t| t.id()) else { return Vec::new() };
     h.output()
         .shapes
@@ -319,7 +319,7 @@ fn page_pictures(h: &Harness<'static, PdfCraftApp>, page: usize) -> Vec<(usize, 
 }
 
 /// The preview's picture of `page`, once its thumbnail has arrived (it renders off the UI thread).
-fn wait_for_picture(h: &mut Harness<'static, PdfCraftApp>, page: usize) -> (usize, egui::Rect, egui::Color32) {
+fn wait_for_picture(h: &mut Harness<'static, PdfApp>, page: usize) -> (usize, egui::Rect, egui::Color32) {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
     loop {
         h.step();
@@ -333,7 +333,7 @@ fn wait_for_picture(h: &mut Harness<'static, PdfCraftApp>, page: usize) -> (usiz
 
 /// A text painted on the page last frame (the dialog's text boxes show it too): its paint order
 /// and its laid-out rectangle.
-fn painted(h: &Harness<'static, PdfCraftApp>, text: &str, page: egui::Rect) -> (usize, egui::Rect) {
+fn painted(h: &Harness<'static, PdfApp>, text: &str, page: egui::Rect) -> (usize, egui::Rect) {
     h.output()
         .shapes
         .iter()
@@ -353,7 +353,7 @@ fn near(a: f32, b: f32, what: &str) {
 
 #[test]
 fn the_preview_shows_the_page_the_range_selects_under_the_marks() {
-    use pdfcraft_ui_egui::marks::{PageRange, Subset};
+    use iridium_pdf_ui_egui::marks::{PageRange, Subset};
     let mut h = harness_with(content_fixture());
     assert!(h.state_mut().execute("edit.header_footer"));
     h.run_steps(2);
@@ -401,13 +401,13 @@ fn the_preview_shows_the_page_the_range_selects_under_the_marks() {
     assert!(h.state_mut().execute("edit.background"));
     h.run_steps(2);
     let (_, _, tint) = wait_for_picture(&mut h, 1);
-    let [red, green, blue] = pdfcraft_engine::Background::default().color.map(|c| (c * 255.0).round() as u8);
+    let [red, green, blue] = iridium_pdf_engine::Background::default().color.map(|c| (c * 255.0).round() as u8);
     assert_eq!(tint, egui::Color32::from_rgb(red, green, blue), "the default background colour, opaque");
 }
 
 /// The preview's page stepper, beside its "page N of M" label: the dialog's own button, not the
 /// page navigation's of the same name.
-fn preview_step(h: &mut Harness<'static, PdfCraftApp>, label: &str, now: &str) {
+fn preview_step(h: &mut Harness<'static, PdfApp>, label: &str, now: &str) {
     let row = h.get_by_label(now).rect().center().y;
     h.query_all_by_label(label).find(|n| (n.rect().center().y - row).abs() < 15.0).unwrap_or_else(|| panic!("{label} beside {now:?}")).click();
     h.run_steps(2);
@@ -458,7 +458,7 @@ impl egui_kittest::TestRenderer for Uploads {
 
 /// The page picture the dialog's preview painted last frame, left of its "Preview: page …" label,
 /// once its texture is in: its tint and its image.
-fn preview_picture(h: &Harness<'static, PdfCraftApp>, uploads: &Uploads) -> Option<(egui::Color32, std::sync::Arc<egui::ColorImage>)> {
+fn preview_picture(h: &Harness<'static, PdfApp>, uploads: &Uploads) -> Option<(egui::Color32, std::sync::Arc<egui::ColorImage>)> {
     let label = h.query_by_label_contains("Preview: page")?.rect();
     h.output().shapes.iter().find_map(|s| {
         let egui::Shape::Mesh(m) = &s.shape else { return None };
@@ -481,7 +481,7 @@ fn preview_picture(h: &Harness<'static, PdfCraftApp>, uploads: &Uploads) -> Opti
 
 /// [`preview_picture`], waiting until `ready` accepts it (the page renders off the UI thread).
 fn wait_for_preview(
-    h: &mut Harness<'static, PdfCraftApp>,
+    h: &mut Harness<'static, PdfApp>,
     uploads: &Uploads,
     what: &str,
     ready: impl Fn(&egui::ColorImage) -> bool,
@@ -522,7 +522,7 @@ fn update_previews_the_page_without_the_marks_it_replaces() {
     let uploads = Uploads::default();
     let pdf = content_fixture();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).renderer(uploads.clone()).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, pdf.clone()).unwrap();
         app
@@ -532,7 +532,7 @@ fn update_previews_the_page_without_the_marks_it_replaces() {
     let red = |c: egui::Color32| c.r() > 200 && c.g() < 80 && c.b() < 80;
     let blue = |c: egui::Color32| c.b() > 150 && c.r() < 100 && c.g() < 100;
     let dark = |c: egui::Color32| c.r() < 60 && c.g() < 60 && c.b() < 60;
-    let apply = |h: &mut Harness<'static, PdfCraftApp>, command: &str, draft: &dyn Fn(&mut pdfcraft_ui_egui::marks::MarksDraft)| {
+    let apply = |h: &mut Harness<'static, PdfApp>, command: &str, draft: &dyn Fn(&mut iridium_pdf_ui_egui::marks::MarksDraft)| {
         assert!(h.state_mut().execute(command));
         h.run_steps(2);
         draft(&mut h.state_mut().marks_draft);
@@ -567,7 +567,7 @@ fn update_previews_the_page_without_the_marks_it_replaces() {
     h.step();
     // Update shows the page without the marks from the frame it opens: neither a blank sheet nor
     // the old marks while it renders.
-    let shown = |h: &Harness<'static, PdfCraftApp>| preview_picture(h, &uploads).expect("a page is previewed");
+    let shown = |h: &Harness<'static, PdfApp>| preview_picture(h, &uploads).expect("a page is previewed");
     let (tint, page) = shown(&h);
     assert_eq!(tint, egui::Color32::from_rgb(153, 204, 255), "the new colour tints the page");
     assert_eq!(at(&page, 0.5, 0.75), egui::Color32::WHITE, "the page is previewed without the yellow background");
@@ -620,13 +620,13 @@ fn page_range_from_one_to_one_selects_only_the_first_page() {
     let doc = s.session.get(s.views[0].id).unwrap();
     assert_eq!(doc.marks(), [MarkKind::Background]);
     // Rendered: page 1 has the default background colour, page 2 is still blank.
-    let mut r = pdfcraft_render::PageRenderer::new(doc.bytes.clone(), pdfcraft_render::RenderConfig::default());
-    let corner = |r: &mut pdfcraft_render::PageRenderer, page: usize| {
-        let p = r.render(pdfcraft_render::RenderRequest { page, scale: 1.0, ..Default::default() });
+    let mut r = iridium_pdf_render::PageRenderer::new(doc.bytes.clone(), iridium_pdf_render::RenderConfig::default());
+    let corner = |r: &mut iridium_pdf_render::PageRenderer, page: usize| {
+        let p = r.render(iridium_pdf_render::RenderRequest { page, scale: 1.0, ..Default::default() });
         assert!(p.error.is_none(), "{:?}", p.error);
         p.rgba[..4].to_vec()
     };
-    let [red, green, blue] = pdfcraft_engine::Background::default().color.map(|c| (c * 255.0).round() as u8);
+    let [red, green, blue] = iridium_pdf_engine::Background::default().color.map(|c| (c * 255.0).round() as u8);
     assert_eq!(corner(&mut r, 0), vec![red, green, blue, 255], "page 1 has the background");
     assert_eq!(corner(&mut r, 1), vec![255, 255, 255, 255], "page 2 does not");
 }

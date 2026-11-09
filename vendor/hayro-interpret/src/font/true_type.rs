@@ -349,7 +349,7 @@ impl EmbeddedKind {
     /// own `cmap`, so its codes need not mean anything in WinAnsi. FrameMaker files distilled
     /// with Distiller 3 number them in the Macintosh glyph order, 29 below ASCII, and read as
     /// WinAnsi `Solid` came out as `6ROLG` (#3962). The name the `post` table gives the glyph the
-    /// code selects says what it is, as MuPDF reads it, and as pdfcraft-fonts reads it for the
+    /// code selects says what it is, as MuPDF reads it, and as iridium-pdf-fonts reads it for the
     /// editor. `None` when the font is non-symbolic, has an encoding or a `/Differences` entry
     /// for the code, selects no glyph for it, or names it with no text: the code is then read as
     /// before.

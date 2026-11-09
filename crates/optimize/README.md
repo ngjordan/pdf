@@ -1,4 +1,4 @@
-# pdfcraft-optimize
+# iridium-pdf-optimize
 
 Layer L4: the PDF Optimizer (execution plan M11.1; Acrobat's Reduce File Size and Optimize PDF ▸
 Advanced optimization).
@@ -48,7 +48,7 @@ let report = optimize_with_progress(&mut doc, &settings, &mut |stage| keep_going
   (grey, indexed, a separation) or an image mask, stored with no filter, with general-purpose ones
   or with CCITT fax or JBIG2 after any of those (decoded by `Document::decoded_image_within`, no further
   than its rows can need; byte-aligned Group 3 with end-of-line codes but none before the first
-  row, not as T.4 sends them, is read as PdfCraft draws it, which at `/K 0` may be other rows than
+  row, not as T.4 sends them, is read as PDF draws it, which at `/K 0` may be other rows than
   were coded, and an image stored again keeps them). Packed to one bit first, unless a colour-key `/Mask` is in the image's
   own values: eight-bit grey of only 0 and 255; eight-bit `DeviceRGB` of only black and white,
   which becomes `DeviceGray` (not calibrated RGB or RGB with a profile, nor one drawn or listed
@@ -80,9 +80,9 @@ let report = optimize_with_progress(&mut doc, &settings, &mut |stage| keep_going
     one white), nor one with a square of four new pixels that each would, as a small screened
     picture on a white page has: ragged scanned text has such squares along its strokes too, and
     is then left at its resolution. And not one wider than a fax row
-    (`pdfcraft_filters::MAX_CCITT_COLUMNS`), as the averaging keeps a counter for each column. On a
+    (`iridium_pdf_filters::MAX_CCITT_COLUMNS`), as the averaging keeps a counter for each column. On a
     600 ppi page of text that is averaged, Group 4 at 300 ppi is about half the size.
-  - **Compression:** CCITT Group 4 (`pdfcraft_filters::encode_g4`), or 1-bit Flate when that is
+  - **Compression:** CCITT Group 4 (`iridium_pdf_filters::encode_g4`), or 1-bit Flate when that is
     smaller, which only a resampled image or one packed from more bits may be: a 1-bit image that
     is only stored again becomes Group 4 or stays. Group 4 alone is only decoded to be resampled, and so is JBIG2 alone when Group 4 is asked for;
     Group 3, or Group 4 inside another filter such as `ASCII85Decode`, is stored again as Group 4
@@ -97,10 +97,10 @@ let report = optimize_with_progress(&mut doc, &settings, &mut |stage| keep_going
     in more than one of them: those that come out smaller that way, when together they save more
     than it takes. Only images that redaction can store again without it share one: image masks
     and DeviceGray images named directly, of at most 64 Mi pixels (redaction's limit,
-    `pdfcraft_cos::MAX_REDACTED_IMAGE_PIXELS`); others are coded alone.
+    `iridium_pdf_cos::MAX_REDACTED_IMAGE_PIXELS`); others are coded alone.
     Redacting one of them stores the others of its group again without it, so the group keeps that
     to 15 images, and each image's decode reads the dictionary of 16 at most. A
-    JBIG2 image whose page isn't its size (PdfCraft's
+    JBIG2 image whose page isn't its size (PDF's
     renderer draws the whole page into the image) is left alone. With Retain, a resampled image
     keeps its kind of compression (CCITT, JBIG2, or Flate) and nothing else changes; an image of
     more bits is then left to the grey or colour settings. Every change is kept only when it is
@@ -116,7 +116,7 @@ let report = optimize_with_progress(&mut doc, &settings, &mut |stage| keep_going
   - Lossless JBIG2 uses bounded generic-region encoding or exact-copy symbol dictionaries when
     smaller, a dictionary shared by up to 16 images when that is smaller still. No lossy symbol substitution is used. Export, redaction and this step read JBIG2
     images, with bounded shared globals. All of a run's images share one allowance of decoding
-    (`pdfcraft_cos::ImageBudget`), filters, decoders and pixels alike, JPEG samples and merged
+    (`iridium_pdf_cos::ImageBudget`), filters, decoders and pixels alike, JPEG samples and merged
     pictures too: about
     1,000 scanned pages' worth, plus more for each byte of the file, enough to decode a stream
     about 8 times at Flate's best. Images past it stay as they are, and `Report::images_refused`
@@ -140,9 +140,9 @@ let report = optimize_with_progress(&mut doc, &settings, &mut |stage| keep_going
   `EarlyChange`, filters applied before the LZW one go with it and those after it keep their
   bytes. A stream whose LZW data doesn't decode cleanly is left as it is. Not yet: inline images.
 
-The engine runs Remove Hidden Information (`pdfcraft-redact`) for the user-data categories,
+The engine runs Remove Hidden Information (`iridium-pdf-redact`) for the user-data categories,
 then this, then merges identical objects and writes a full, compressed save
-(`pdfcraft_engine::optimizer::OptimizeJob`, which the UI runs on a worker thread with a
+(`iridium_pdf_engine::optimizer::OptimizeJob`, which the UI runs on a worker thread with a
 progress bar). JPEG decoding comes from `zune-jpeg` (the decoder behind `image` and the
 renderer), JPEG encoding and resampling from the `image` crate.
 

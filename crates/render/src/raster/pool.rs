@@ -299,7 +299,10 @@ impl RenderPool {
             };
             let (wtx, wrx) = sync_channel::<()>(1);
             let (shared, out, bytes, config) = (self.shared.clone(), self.results_tx.clone(), self.bytes.clone(), self.config.clone());
-            match std::thread::Builder::new().name(format!("pdfcraft-render-{id}")).spawn(move || worker(id, bytes, config, shared, wrx, out, stop)) {
+            match std::thread::Builder::new()
+                .name(format!("iridium-pdf-render-{id}"))
+                .spawn(move || worker(id, bytes, config, shared, wrx, out, stop))
+            {
                 Ok(h) => {
                     lock(&self.wake).push(wtx);
                     lock(&self._workers).push(h);

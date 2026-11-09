@@ -143,7 +143,7 @@ fn hinting_test_fonts(platform: FontPolicyPlatform) -> Fonts {
 /// the top of the row.
 fn baselines(fallback: FontData, size: f32, text: &str) -> Vec<f32> {
     let mut defs = FontDefinitions::empty();
-    defs.font_data.insert("Inter".into(), Arc::new(FontData::from_static(pdfcraft_fonts::INTER_REGULAR)));
+    defs.font_data.insert("Inter".into(), Arc::new(FontData::from_static(iridium_pdf_fonts::INTER_REGULAR)));
     defs.font_data.insert("fallback".into(), Arc::new(fallback));
     defs.families.insert(FontFamily::Proportional, vec!["Inter".into(), "fallback".into()]);
     let mut fonts = Fonts::new(TextOptions::default(), defs);

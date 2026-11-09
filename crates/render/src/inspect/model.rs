@@ -228,7 +228,7 @@ pub enum LinkTarget {
     Page(usize, DestView),
     /// A URI action's address, resolved against the catalog's `/URI /Base` when it is a relative
     /// reference ([`crate::resolve_uri`]); not yet checked, as the opener must
-    /// (`pdfcraft_engine::links::document_url`).
+    /// (`iridium_pdf_engine::links::document_url`).
     Uri(String),
     /// A set-layer-visibility action (`SetOCGState`, ISO 32000-2 §12.6.4.13): each change in
     /// order, naming the layer by its optional content group. With `preserve_rb`, a layer turned
@@ -239,7 +239,7 @@ pub enum LinkTarget {
     },
     /// A local-file remote Go-To action. The caller resolves `file` relative to the source path.
     /// `launch` marks a Launch action that names a PDF file (see `launch_pdf`), opened the same
-    /// way: as a document in PdfCraft, never by the operating system.
+    /// way: as a document in PDF, never by the operating system.
     RemoteGoTo {
         launch: bool,
         file: String,
@@ -363,7 +363,7 @@ pub struct Annotation {
     /// `/IT`, the intent: `FreeTextCallout`, `PolygonCloud`, `FreeTextTypeWriter`…
     pub intent: Option<String>,
     /// A Fill & Sign mark: typed text, a check, cross, dot or line, or a typed, drawn or picture
-    /// signature or initials (the rules of `pdfcraft_annot::is_fill_sign`).
+    /// signature or initials (the rules of `iridium_pdf_annot::is_fill_sign`).
     pub fill_sign: bool,
     /// The NoRotate flag (`/F` bit 5), set on sticky notes and attachments: on a turned page the
     /// appearance stays upright, turned about the upper-left corner of `rect`
@@ -459,7 +459,7 @@ fn rect_from_upright(shown: [f64; 4], rotation: u16) -> [f64; 4] {
 /// the engine's list after an edit) run this.
 ///
 /// Only comments can be parents: both readers leave links, form widgets, pop-ups and other
-/// non-markup annotations out of `annotations` (`pdfcraft_annot::is_comment_subtype`), so an
+/// non-markup annotations out of `annotations` (`iridium_pdf_annot::is_comment_subtype`), so an
 /// `/IRT` to one of those finds no parent here. Pop-ups are skipped again in case a caller's list
 /// has them.
 pub fn link_replies(annotations: &mut [Annotation]) {
@@ -793,7 +793,7 @@ mod review_state_tests {
             ("m3", Some("c"), "Carol", Some("Marked")),
             ("n", None, "Alice", None),
             ("n1", Some("n"), "Bob", Some("Completed")),
-            ("n2", Some("n"), "Bob", Some("None")), // unchained, as PdfCraft wrote it before
+            ("n2", Some("n"), "Bob", Some("None")), // unchained, as PDF wrote it before
             // A loop of state replies belongs to nothing.
             ("x", Some("y"), "Eve", Some("Accepted")),
             ("y", Some("x"), "Eve", Some("Accepted")),

@@ -5,7 +5,7 @@ use crate::support;
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::{LinkOrigin, PdfCraftApp, PendingLink};
+use iridium_pdf_ui_egui::{LinkOrigin, PdfApp, PendingLink};
 
 use crate::gpu;
 
@@ -71,9 +71,9 @@ fn remote_fixture(file: &str, destination: &str) -> Vec<u8> {
     out
 }
 
-fn remote_harness(source_path: Option<String>, file: &str, destination: &str) -> Harness<'static, PdfCraftApp> {
+fn remote_harness(source_path: Option<String>, file: &str, destination: &str) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("source.pdf", source_path, remote_fixture(file, destination)).unwrap();
         app.set_option("left", "closed").unwrap();
@@ -86,7 +86,7 @@ fn remote_harness(source_path: Option<String>, file: &str, destination: &str) ->
 }
 
 fn linked_pages(count: usize, password: Option<&str>) -> Vec<u8> {
-    use pdfcraft_engine::{Edit, Protection, Session};
+    use iridium_pdf_engine::{Edit, Protection, Session};
     let mut session = Session::new();
     let id = session.open("target.pdf", None, std::sync::Arc::new(fixture()), None).unwrap();
     for page in 1..count {
@@ -98,9 +98,9 @@ fn linked_pages(count: usize, password: Option<&str>) -> Vec<u8> {
     session.save_bytes(id).unwrap().as_ref().clone()
 }
 
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("links.pdf", None, fixture()).unwrap();
         app.set_option("left", "closed").unwrap();
@@ -112,7 +112,7 @@ fn harness() -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn click_at(h: &mut Harness<'static, PdfCraftApp>, at: egui::Pos2) {
+fn click_at(h: &mut Harness<'static, PdfApp>, at: egui::Pos2) {
     h.hover_at(at);
     h.run_steps(2);
     h.drag_at(at);
@@ -121,26 +121,26 @@ fn click_at(h: &mut Harness<'static, PdfCraftApp>, at: egui::Pos2) {
 }
 
 /// Click the link on page 1, at the middle of its rectangle.
-fn click_link_at(h: &mut Harness<'static, PdfCraftApp>, y: f32) {
+fn click_link_at(h: &mut Harness<'static, PdfApp>, y: f32) {
     let r = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
     let at = egui::pos2(r.min.x + r.width() * (150.0 / 300.0), r.min.y + r.height() * (1.0 - y / 400.0));
     click_at(h, at);
 }
 
-fn click_remote_link(h: &mut Harness<'static, PdfCraftApp>) {
+fn click_remote_link(h: &mut Harness<'static, PdfApp>) {
     click_link(h);
 }
 
-fn click_link(h: &mut Harness<'static, PdfCraftApp>) {
+fn click_link(h: &mut Harness<'static, PdfApp>) {
     click_link_at(h, 325.0);
 }
 
-fn click_field(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
+fn click_field(h: &mut Harness<'static, PdfApp>, name: &str) {
     let at = {
         let s = h.state();
         let doc = s.session.get(s.views[0].id).unwrap();
         let f = doc.form.iter().find(|f| f.name == name).unwrap();
-        pdfcraft_ui_egui::forms_ui::field_screen_rect(&s.views[0], &doc.info, f, 0).expect("on screen").center()
+        iridium_pdf_ui_egui::forms_ui::field_screen_rect(&s.views[0], &doc.info, f, 0).expect("on screen").center()
     };
     click_at(h, at);
 }
@@ -195,15 +195,15 @@ fn outline_pdf(bookmarks: &[(&str, String)]) -> Vec<u8> {
 
 /// The app with [`bookmark_fixture`] open from `source_path` (in memory when `None`) and the
 /// Bookmarks panel showing.
-fn bookmark_harness(source_path: Option<String>) -> Harness<'static, PdfCraftApp> {
+fn bookmark_harness(source_path: Option<String>) -> Harness<'static, PdfApp> {
     bookmark_harness_with(source_path, bookmark_fixture())
 }
 
 /// The app with `pdf` open from `source_path` (in memory when `None`) and the Bookmarks panel
 /// showing.
-fn bookmark_harness_with(source_path: Option<String>, pdf: Vec<u8>) -> Harness<'static, PdfCraftApp> {
+fn bookmark_harness_with(source_path: Option<String>, pdf: Vec<u8>) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("source.pdf", source_path, pdf).unwrap();
         app.set_option("left", "closed").unwrap();
@@ -215,7 +215,7 @@ fn bookmark_harness_with(source_path: Option<String>, pdf: Vec<u8>) -> Harness<'
 }
 
 /// Click the Bookmarks panel row titled `title`.
-fn click_bookmark(h: &mut Harness<'static, PdfCraftApp>, title: &str) {
+fn click_bookmark(h: &mut Harness<'static, PdfApp>, title: &str) {
     h.get_by_label(title).click();
     h.run_steps(4);
 }
@@ -244,7 +244,7 @@ fn a_web_bookmark_asks_first_like_a_link() {
 #[test]
 fn a_bookmark_to_another_pdf_opens_it_instead_of_moving_here() {
     let _gpu = gpu();
-    let dir = std::env::temp_dir().join(format!("pdfcraft-ui-bookmark-gotor-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-ui-bookmark-gotor-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("target.pdf"), linked_pages(2, None)).unwrap();
     let mut h = bookmark_harness(Some(dir.join("source.pdf").to_string_lossy().into_owned()));
@@ -263,7 +263,7 @@ fn a_bookmark_to_another_pdf_opens_it_instead_of_moving_here() {
 #[test]
 fn bookmarks_go_through_the_link_policy() {
     let _gpu = gpu();
-    let dir = std::env::temp_dir().join(format!("pdfcraft-ui-bookmark-policy-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-ui-bookmark-policy-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let target = dir.join("absent.pdf");
@@ -311,7 +311,7 @@ fn a_link_asks_first_and_opens_when_allowed() {
 #[test]
 fn a_local_gotor_link_opens_in_a_tab_and_applies_its_destination() {
     let _gpu = gpu();
-    let dir = std::env::temp_dir().join(format!("pdfcraft-ui-gotor-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-ui-gotor-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("target.pdf"), linked_pages(2, None)).unwrap();
     let mut h = remote_harness(Some(dir.join("source.pdf").to_string_lossy().into_owned()), "target.pdf", "[1 /FitH 200]");
@@ -327,7 +327,7 @@ fn a_local_gotor_link_opens_in_a_tab_and_applies_its_destination() {
 #[test]
 fn a_remote_destination_survives_password_retries_and_cancel_opens_no_tab() {
     let _gpu = gpu();
-    let dir = std::env::temp_dir().join(format!("pdfcraft-ui-gotor-password-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-ui-gotor-password-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("target.pdf"), linked_pages(2, Some("test-password"))).unwrap();
 
@@ -359,7 +359,7 @@ fn a_remote_destination_survives_password_retries_and_cancel_opens_no_tab() {
 #[test]
 fn a_gotor_link_to_a_directory_or_device_is_refused_without_reading_it() {
     let _gpu = gpu();
-    let dir = std::env::temp_dir().join(format!("pdfcraft-ui-gotor-not-a-file-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-ui-gotor-not-a-file-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("folder.pdf")).unwrap();
     // Only Unix adds a target (a device), so elsewhere the list is never changed.
@@ -504,7 +504,7 @@ fn an_email_link_cannot_attach_a_local_file() {
 }
 
 /// Ask to open `url` from a script and return the harness with the prompt showing.
-fn prompt_for(url: &str) -> Harness<'static, PdfCraftApp> {
+fn prompt_for(url: &str) -> Harness<'static, PdfApp> {
     let mut h = harness();
     let id = h.state().views[0].id;
     let script = format!("app.launchURL({});", serde_json::to_string(url).unwrap());
@@ -546,7 +546,7 @@ fn a_numeric_host_is_shown_as_the_address_it_goes_to() {
 #[test]
 fn an_absolute_gotor_waits_for_consent_and_keeps_its_destination_across_tabs() {
     let _gpu = gpu();
-    let dir = std::env::temp_dir().join(format!("pdfcraft-ui-gotor-consent-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-ui-gotor-consent-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let target = dir.join("target with spaces.pdf");
@@ -574,7 +574,7 @@ fn an_absolute_gotor_waits_for_consent_and_keeps_its_destination_across_tabs() {
     assert!(h.state().pending_remote_link.is_none());
     assert_eq!(h.state().views.len(), 3);
     assert_eq!(h.state().views[2].current, 1);
-    assert_eq!(h.state().views[2].fit, pdfcraft_ui_egui::canvas::Fit::Width);
+    assert_eq!(h.state().views[2].fit, iridium_pdf_ui_egui::canvas::Fit::Width);
     assert_eq!(h.state().active, Some(2));
     let target_doc = h.state().session.get(h.state().views[2].id).unwrap();
     assert_eq!(target_doc.path.as_deref(), Some(file));
@@ -588,7 +588,7 @@ fn an_absolute_gotor_waits_for_consent_and_keeps_its_destination_across_tabs() {
 #[test]
 fn cancelling_an_absolute_gotor_by_button_escape_or_dismissal_changes_nothing() {
     let _gpu = gpu();
-    let target = std::env::temp_dir().join(format!("pdfcraft-ui-gotor-cancel-{}.pdf", std::process::id()));
+    let target = std::env::temp_dir().join(format!("iridium-pdf-ui-gotor-cancel-{}.pdf", std::process::id()));
     for answer in ["button", "escape", "outside"] {
         let mut h = remote_harness(None, target.to_str().unwrap(), "[1 /Fit]");
         let source = h.state().views[0].id;
@@ -619,7 +619,7 @@ fn cancelling_an_absolute_gotor_by_button_escape_or_dismissal_changes_nothing() 
 #[test]
 fn consenting_to_absolute_gotor_still_validates_the_target() {
     let _gpu = gpu();
-    let dir = std::env::temp_dir().join(format!("pdfcraft-ui-gotor-consent-invalid-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-ui-gotor-consent-invalid-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("folder.pdf")).unwrap();
     std::fs::write(dir.join("notes.txt"), b"text").unwrap();
@@ -635,7 +635,7 @@ fn consenting_to_absolute_gotor_still_validates_the_target() {
     {
         std::os::unix::fs::symlink("/dev/zero", dir.join("zero.pdf")).unwrap();
         cases.push(("zero.pdf", "Couldn't follow linked PDF: the linked path is not a regular file"));
-        std::fs::File::create(dir.join("large.pdf")).unwrap().set_len(pdfcraft_engine::MAX_REMOTE_DOCUMENT_BYTES + 1).unwrap();
+        std::fs::File::create(dir.join("large.pdf")).unwrap().set_len(iridium_pdf_engine::MAX_REMOTE_DOCUMENT_BYTES + 1).unwrap();
         cases.push(("large.pdf", "Couldn't follow linked PDF: the linked file is too large to open"));
     }
     for (name, expected_error) in cases {
@@ -670,7 +670,7 @@ fn consenting_to_absolute_gotor_still_validates_the_target() {
 #[test]
 fn an_approved_absolute_gotor_preserves_password_retries_and_cancellation() {
     let _gpu = gpu();
-    let dir = std::env::temp_dir().join(format!("pdfcraft-ui-gotor-consent-password-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-ui-gotor-consent-password-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let target = dir.join("encrypted.pdf");
     std::fs::write(&target, linked_pages(2, Some("test-password"))).unwrap();
@@ -708,7 +708,7 @@ fn an_approved_absolute_gotor_preserves_password_retries_and_cancellation() {
 #[test]
 fn closing_the_source_invalidates_pending_absolute_gotor_consent() {
     let _gpu = gpu();
-    let target = std::env::temp_dir().join(format!("pdfcraft-ui-gotor-closed-source-{}.pdf", std::process::id()));
+    let target = std::env::temp_dir().join(format!("iridium-pdf-ui-gotor-closed-source-{}.pdf", std::process::id()));
     let mut h = remote_harness(None, target.to_str().unwrap(), "[0 /Fit]");
     click_remote_link(&mut h);
     h.state_mut().close_tab(0);
@@ -761,9 +761,9 @@ fn overlapping_annotation_fixture_with_form(subtype: &str, internal: bool, with_
     out
 }
 
-fn overlapping_annotation_harness(bytes: Vec<u8>) -> Harness<'static, PdfCraftApp> {
+fn overlapping_annotation_harness(bytes: Vec<u8>) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("highlighted-link.pdf", None, bytes).unwrap();
         app.set_option("left", "closed").unwrap();
@@ -813,7 +813,7 @@ fn highlighted_link_cancel_and_escape_do_not_open_url() {
 fn highlighted_internal_link_navigates_after_save_and_reopen() {
     let _gpu = gpu();
     let bytes = overlapping_annotation_fixture("Highlight", true);
-    let mut session = pdfcraft_engine::Session::new();
+    let mut session = iridium_pdf_engine::Session::new();
     let id = session.open("highlighted-link.pdf", None, std::sync::Arc::new(bytes), None).unwrap();
     let saved = session.save_bytes(id).unwrap().as_ref().clone();
     let mut h = overlapping_annotation_harness(saved);
@@ -874,7 +874,7 @@ fn active_comment_gesture_keeps_highlighted_link_click() {
     h.run_steps(2);
     h.drag_at(at);
     h.run_steps(1);
-    h.state_mut().views[0].comments.gesture = Some(pdfcraft_ui_egui::comments::Gesture::Move { page: 0, index: 1, from: at });
+    h.state_mut().views[0].comments.gesture = Some(iridium_pdf_ui_egui::comments::Gesture::Move { page: 0, index: 1, from: at });
     h.drop_at(at);
     h.run_steps(4);
     assert_eq!(h.state().pending_link, None);
@@ -952,7 +952,7 @@ fn text_links_fixture() -> Vec<u8> {
 
 /// Click the text line whose baseline is at `y` until the page's text has arrived and the click
 /// asks to open something, or 30 seconds pass.
-fn click_text_until_pending(h: &mut Harness<'static, PdfCraftApp>, y: f32) -> bool {
+fn click_text_until_pending(h: &mut Harness<'static, PdfApp>, y: f32) -> bool {
     support::step_until(h, |h| {
         click_link_at(h, y + 4.0);
         h.state().pending_link.is_some()
@@ -966,7 +966,7 @@ fn click_text_until_pending(h: &mut Harness<'static, PdfCraftApp>, y: f32) -> bo
 fn addresses_written_in_the_page_text_open_like_links() {
     let _gpu = gpu();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("text-links.pdf", None, text_links_fixture()).unwrap();
         app.set_option("left", "closed").unwrap();
@@ -1006,7 +1006,7 @@ fn addresses_written_in_the_page_text_open_like_links() {
 fn a_drag_from_an_address_in_the_page_text_selects_it() {
     let _gpu = gpu();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("text-links.pdf", None, text_links_fixture()).unwrap();
         app.set_option("left", "closed").unwrap();
@@ -1071,7 +1071,7 @@ fn base_and_quads_fixture() -> Vec<u8> {
 fn relative_links_use_the_base_and_quad_points_limit_where_a_link_is_active() {
     let _gpu = gpu();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("base.pdf", None, base_and_quads_fixture()).unwrap();
         app.set_option("left", "closed").unwrap();
@@ -1084,7 +1084,7 @@ fn relative_links_use_the_base_and_quad_points_limit_where_a_link_is_active() {
     assert_eq!(h.state().pending_link, pending("https://example.org/base/page.html", LinkOrigin::Link));
     h.get_by_label("Cancel").click();
     h.run_steps(4);
-    let point = |h: &Harness<'static, PdfCraftApp>, x: f32, y: f32| {
+    let point = |h: &Harness<'static, PdfApp>, x: f32, y: f32| {
         let r = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
         egui::pos2(r.min.x + r.width() * (x / 300.0), r.min.y + r.height() * (1.0 - y / 400.0))
     };

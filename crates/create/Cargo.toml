@@ -1,5 +1,5 @@
 [package]
-name = "pdfcraft-create"
+name = "iridium-pdf-create"
 description = "Create PDFs: blank documents, from images (PNG, JPEG) and from plain text"
 version.workspace = true
 edition.workspace = true
@@ -9,12 +9,12 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-pdfcraft-cos = { workspace = true }
-pdfcraft-filters = { workspace = true }
-pdfcraft-model = { workspace = true }
-pdfcraft-fonts = { workspace = true }
+iridium-pdf-cos = { workspace = true }
+iridium-pdf-filters = { workspace = true }
+iridium-pdf-model = { workspace = true }
+iridium-pdf-fonts = { workspace = true }
 # For `image::bmp_with_pixel_offset`, shared with XFA pictures.
-pdfcraft-xfa = { workspace = true }
+iridium-pdf-xfa = { workspace = true }
 png = "0.18"
 tiff = "0.11"
 image = { version = "0.25", default-features = false, features = ["bmp", "gif", "jpeg"] }
@@ -29,4 +29,4 @@ encoding_rs = "0.8"
 hayro-ccitt.workspace = true
 image = { version = "0.25", default-features = false, features = ["bmp", "gif", "jpeg"] }
 hayro-syntax = { workspace = true }
-pdfcraft-filters = { workspace = true }
+iridium-pdf-filters = { workspace = true }

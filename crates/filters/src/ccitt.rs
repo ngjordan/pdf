@@ -125,7 +125,7 @@ const CODE_WORK: u64 = 4;
 /// whether the fill starts each code on a byte or ends it on one, when `data` starts with one (T.4
 /// sends one before the first row when it sends them at all), and on bytes otherwise, whatever
 /// `end_of_line` says. Group 4 is read as its parameters say. Data with codes but none before the
-/// first row is read on bytes, as PdfCraft's renderer draws it; with `k` 0 and the fill ending each
+/// first row is read on bytes, as PDF's renderer draws it; with `k` 0 and the fill ending each
 /// code on a byte, that may be other rows than were coded.
 ///
 /// Errors: `columns` that aren't from 1 to [`MAX_CCITT_COLUMNS`] ([`FilterError::Unsupported`]).

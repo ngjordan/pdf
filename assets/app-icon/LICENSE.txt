@@ -1,8 +1,8 @@
-PdfCraft app icon (pdfcraft.svg, pdfcraft-small.svg and every file derived from them in this
-directory: pdfcraft-1024.png, pdfcraft.icns, pdfcraft.ico, hicolor/).
+PDF app icon (iridium-pdf.svg, iridium-pdf-small.svg and every file derived from them in this
+directory: iridium-pdf-1024.png, iridium-pdf.icns, iridium-pdf.ico, hicolor/).
 
-Original artwork made for this project by the project owner, drawn in ArtCraft and vectorised for
-PdfCraft (no third-party material). Licensed like the rest of PdfCraft, under either of
+Original artwork made for this project by the project owner, drawn in the upstream project and vectorised for
+PDF (no third-party material). Licensed like the rest of PDF, under either of
 
   * Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
   * MIT license (https://opensource.org/licenses/MIT)

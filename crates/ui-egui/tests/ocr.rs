@@ -3,9 +3,9 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_engine::ocr::{OcrPage, OcrSettings, PlacedWord};
-use pdfcraft_engine::{AddedText, Edit, Session, export};
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_engine::ocr::{OcrPage, OcrSettings, PlacedWord};
+use iridium_pdf_engine::{AddedText, Edit, Session, export};
+use iridium_pdf_ui_egui::PdfApp;
 
 /// A one-page PDF that is only a picture of a sentence.
 fn scan() -> Vec<u8> {
@@ -19,7 +19,7 @@ fn scan() -> Vec<u8> {
 #[test]
 fn recognize_text_dialog_adds_searchable_text() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("scan.pdf", None, scan()).unwrap();
         app.run_inline = true;
@@ -30,7 +30,7 @@ fn recognize_text_dialog_adds_searchable_text() {
     h.run_steps(2);
     h.get_by_label("Document language");
     h.get_by_label("Output");
-    if !pdfcraft_engine::ocr::available() {
+    if !iridium_pdf_engine::ocr::available() {
         eprintln!("skipped: OCR models not installed");
         return;
     }
@@ -46,18 +46,18 @@ fn recognize_text_dialog_adds_searchable_text() {
 
 #[test]
 fn recognize_text_in_multiple_files_writes_searchable_copies() {
-    if !pdfcraft_engine::ocr::available() {
+    if !iridium_pdf_engine::ocr::available() {
         eprintln!("skipped: OCR models not installed");
         return;
     }
-    let dir = std::env::temp_dir().join(format!("pdfcraft-ocr-ui-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-ocr-ui-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("language", "en").unwrap();
     app.run_inline = true;
     app.export_dir_override = Some(dir.to_string_lossy().into_owned());
-    app.use_files(pdfcraft_ui_egui::FilePurpose::Ocr, vec![("one.pdf".into(), scan()), ("two.pdf".into(), scan())]);
+    app.use_files(iridium_pdf_ui_egui::FilePurpose::Ocr, vec![("one.pdf".into(), scan()), ("two.pdf".into(), scan())]);
     assert!(app.ocr_batch.is_none(), "finished");
     let toast = app.toast.clone().unwrap().0;
     assert!(toast.starts_with("Recognized ") && toast.ends_with("in 2 files"), "{toast}");
@@ -79,7 +79,7 @@ fn placed(text: &str, confidence: f32) -> PlacedWord {
 #[test]
 fn ocr_verify_screen_controls_keyboard_and_accept() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.open_bytes("scan.pdf", None, scan()).unwrap();
         app.run_inline = true;
         app
@@ -94,7 +94,7 @@ fn ocr_verify_screen_controls_keyboard_and_accept() {
     h.get_by_label("Previous uncertain");
     h.get_by_label("Page verified");
     h.get_by_label("Exit");
-    use pdfcraft_ui_egui::Phase;
+    use iridium_pdf_ui_egui::Phase;
     assert_eq!(h.state().ocr_verify.phase, Phase::Idle);
     // The guards hold in the real UI: Reject outside ReviewReady is ignored, not acted on.
     h.get_by_label("Reject").click();
@@ -144,7 +144,7 @@ fn ocr_verify_screen_controls_keyboard_and_accept() {
 #[test]
 fn ocr_verify_screen_focus_ring_and_empty_walk() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.open_bytes("scan.pdf", None, scan()).unwrap();
         app.run_inline = true;
         app
@@ -193,7 +193,7 @@ fn recognize_text_can_read_pictures_on_pages_with_text() {
         s.save_bytes(id).unwrap().to_vec()
     };
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("hybrid.pdf", None, hybrid).unwrap();
         app.run_inline = true;
@@ -206,7 +206,7 @@ fn recognize_text_can_read_pictures_on_pages_with_text() {
     h.get_by_label("Also recognize pages that already have text").click();
     h.run_steps(2);
     assert!(!h.state().ocr_draft.settings().skip_text_pages);
-    if !pdfcraft_engine::ocr::available() {
+    if !iridium_pdf_engine::ocr::available() {
         eprintln!("skipped: OCR models not installed");
         return;
     }
@@ -219,8 +219,8 @@ fn recognize_text_can_read_pictures_on_pages_with_text() {
     let id = app.active_ids().unwrap().1;
     let doc = app.session.get(id).unwrap();
     assert_eq!(doc.can_undo(), Some("Recognize text"));
-    let mut r = pdfcraft_render::PageRenderer::new(doc.bytes.clone(), Default::default());
-    let text = r.render(pdfcraft_render::RenderRequest { page: 0, kind: pdfcraft_render::RequestKind::Text, scale: 1.0, ..Default::default() });
+    let mut r = iridium_pdf_render::PageRenderer::new(doc.bytes.clone(), Default::default());
+    let text = r.render(iridium_pdf_render::RenderRequest { page: 0, kind: iridium_pdf_render::RequestKind::Text, scale: 1.0, ..Default::default() });
     let text = text.text.unwrap().plain_text().to_lowercase();
     assert_eq!((text.matches("invoice").count(), text.matches("scanned").count()), (1, 1), "{text}");
 }
@@ -230,9 +230,9 @@ fn recognize_text_can_read_pictures_on_pages_with_text() {
 /// word instead of showing it through.
 #[test]
 fn an_ocr_word_opens_for_editing_and_stays_open() {
-    use pdfcraft_engine::ocr::PlacedWord;
+    use iridium_pdf_engine::ocr::PlacedWord;
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("scan.pdf", None, scan()).unwrap();
         let id = app.views[0].id;
@@ -272,7 +272,7 @@ fn an_ocr_word_opens_for_editing_and_stays_open() {
         h.event(egui::Event::PointerButton { pos: p, button: egui::PointerButton::Primary, pressed, modifiers: Default::default() });
     }
     h.run_steps(4);
-    let opened = |h: &Harness<'_, PdfCraftApp>| h.state().views[0].line_editor.as_ref().map(|e| e.text.clone());
+    let opened = |h: &Harness<'_, PdfApp>| h.state().views[0].line_editor.as_ref().map(|e| e.text.clone());
     assert_eq!(opened(&h).as_deref(), Some("Recognize"));
     assert!(h.state().views[0].image_selection.is_none(), "the scan under the word isn't selected");
     h.hover_at(r.min + egui::vec2(300.0, 400.0) * k);

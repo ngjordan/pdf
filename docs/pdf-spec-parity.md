@@ -4,8 +4,8 @@
 
 > **Last reviewed:** 2026-10-10 · **Last updated:** 2026-11-05 · **Change:** minor (subset standards: the PDF/A rows name 2b and 3b only, and the PDF/X row says what is there — the identification is carried through Combine and can be removed; no verifier, no converter) · **Target:** Adobe Acrobat Pro (Acrobat DC, continuous track 26.002.21931, macOS)
 
-How much of ISO 32000-2 (PDF 2.0) and the PDF subset standards PdfCraft implements, set against
-what Acrobat Pro implements. This is PdfCraft's equivalent of a "geometry" or "codec" checklist:
+How much of ISO 32000-2 (PDF 2.0) and the PDF subset standards PDF implements, set against
+what Acrobat Pro implements. This is PDF's equivalent of a "geometry" or "codec" checklist:
 the parts of the format users never see named but always feel. Feature-level detail is in
 `parity/acrobat-features.toml`; the gaps are ranked in [gaps.md](gaps.md).
 
@@ -19,11 +19,11 @@ are borrowed; PDF 2.0 additions and most subset standards are missing. **150–2
 
 ## ISO 32000-2 by clause
 
-| Clause | Topic | Acrobat | PdfCraft | Evidence / what's missing |
+| Clause | Topic | Acrobat | PDF | Evidence / what's missing |
 |---|---|---|---|---|
 | §7.2–7.5 | Syntax, objects, file structure, xref tables and streams, object streams, hybrid files, incremental updates | full | **own**, tolerant, repairs damaged files | `crates/cos`; corpus 958 files; fuzzed nightly |
 | §7.4 | Stream filters: Flate, LZW, ASCII85, ASCIIHex, RunLength, predictors | full | **own** | `crates/filters` |
-| §7.4 | Image filters: DCT, JPX, JBIG2, CCITTFax | full | **borrowed** (decode); CCITT Group 4 and lossless JBIG2 encoding | `core.image-filters` partial; own codecs M1.1/M1.2; CCITT decoding in `pdfcraft-filters` (`decode_ccitt`, through `hayro-ccitt`) for export, redaction and the Optimizer, which encodes Group 4 (`optimize.mono-compression`); JBIG2 decoding there too (`decode_jbig2`, through `hayro-jbig2`) for export and redaction; lossless JBIG2 generic-region or exact-copy symbol encoding; no lossy substitution |
+| §7.4 | Image filters: DCT, JPX, JBIG2, CCITTFax | full | **borrowed** (decode); CCITT Group 4 and lossless JBIG2 encoding | `core.image-filters` partial; own codecs M1.1/M1.2; CCITT decoding in `iridium-pdf-filters` (`decode_ccitt`, through `hayro-ccitt`) for export, redaction and the Optimizer, which encodes Group 4 (`optimize.mono-compression`); JBIG2 decoding there too (`decode_jbig2`, through `hayro-jbig2`) for export and redaction; lossless JBIG2 generic-region or exact-copy symbol encoding; no lossy substitution |
 | §7.5.8 | Linearization | R W | R only | `core.linearization` planned |
 | §7.6.4 | Standard security handler R2–R6 (RC4 40/128, AES-128, AES-256), crypt filters, `/EncryptMetadata`, SASLprep | full | **own**, read and write | `crates/crypt`; written files open in Acrobat DC since #836 (#774: Acrobat needs the catalog outside object streams) |
 | §7.6.5 | Public-key security handler | full | none | `core.open-public-key`, `protect.certificate-encryption` planned |
@@ -59,7 +59,7 @@ are borrowed; PDF 2.0 additions and most subset standards are missing. **150–2
 
 ## Annotations (§12.5.6)
 
-| Type | Acrobat | PdfCraft | Notes |
+| Type | Acrobat | PDF | Notes |
 |---|---|---|---|
 | Text (note), Popup | create, edit | create, edit; pop-ups not movable windows | `comment.popups` planned |
 | Link | create, edit | create, edit, from URLs | `edit.link-*` |
@@ -80,10 +80,10 @@ are borrowed; PDF 2.0 additions and most subset standards are missing. **150–2
 
 ## Actions (§12.6.4)
 
-| Action | Acrobat | PdfCraft |
+| Action | Acrobat | PDF |
 |---|---|---|
 | GoTo | yes | yes (page with Fit; named destinations and zoom partial) |
-| GoToR | yes | partial: local PDF paths open in a PdfCraft tab; `/F` strings and file-spec dictionaries (`/UF`, then `/F`), source-relative paths, and explicit numeric-page destinations are supported. Automation uses the same resolver and `--root` confinement. Named destinations open at the target's default view with a warning; `/NewWindow` is a tab hint. Network/URL file systems are refused. |
+| GoToR | yes | partial: local PDF paths open in a PDF tab; `/F` strings and file-spec dictionaries (`/UF`, then `/F`), source-relative paths, and explicit numeric-page destinations are supported. Automation uses the same resolver and `--root` confinement. Named destinations open at the target's default view with a warning; `/NewWindow` is a tab hint. Network/URL file systems are refused. |
 | GoToE | yes | none (preserved; the Optimizer can remove invalid ones) |
 | Launch | yes (restricted) | none |
 | Thread | yes | none |
@@ -100,7 +100,7 @@ are borrowed; PDF 2.0 additions and most subset standards are missing. **150–2
 
 ## Digital signatures (§12.8, ETSI EN 319 142 PAdES)
 
-| Capability | Acrobat | PdfCraft |
+| Capability | Acrobat | PDF |
 |---|---|---|
 | Sub-filters `adbe.pkcs7.detached`, `ETSI.CAdES.detached`; read `adbe.pkcs7.sha1`, `adbe.x509.rsa_sha1` | yes | yes |
 | PAdES B-B | yes | yes (PKCS #12, macOS Keychain, Windows store with PIN) |
@@ -116,7 +116,7 @@ are borrowed; PDF 2.0 additions and most subset standards are missing. **150–2
 
 ## Subset standards
 
-| Standard | Acrobat | PdfCraft | Hours |
+| Standard | Acrobat | PDF | Hours |
 |---|---|---|---|
 | PDF/A-1a/b (ISO 19005-1) | verify, convert | none | |
 | PDF/A-2a/b/u, PDF/A-3a/b/u | verify, convert | **partial**: 2b and 3b structural rules and conversion (sRGB intent; not CMYK) | |
@@ -133,9 +133,9 @@ are borrowed; PDF 2.0 additions and most subset standards are missing. **150–2
 | Date | Change | Summary |
 |---|---|---|
 | 2026-11-05 | minor | Subset standards: the PDF/A rows name 2b and 3b only, and the PDF/X row says what is there — the identification is carried through Combine and can be removed; no verifier, no converter. No feature status changed |
-| 2026-10-30 | minor | §7.4: JBIG2 decoding (`hayro-jbig2`) in `pdfcraft-filters`, which `Document::decoded_image` uses with the image's `/JBIG2Globals`: export reads JBIG2 behind other filters too, and redaction clears pixels in JBIG2 images instead of removing them whole (one whose page isn't its size still is) |
+| 2026-10-30 | minor | §7.4: JBIG2 decoding (`hayro-jbig2`) in `iridium-pdf-filters`, which `Document::decoded_image` uses with the image's `/JBIG2Globals`: export reads JBIG2 behind other filters too, and redaction clears pixels in JBIG2 images instead of removing them whole (one whose page isn't its size still is) |
 | 2026-10-26 | minor | §7.4: redaction clears pixels in CCITT fax images through the CCITT decoder, instead of removing them whole (Group 4 and Group 3 off bytes; Group 3 on bytes is still removed whole, as the bootstrap renderer may draw it as other rows than the decoder reads) |
-| 2026-10-26 | minor | §7.4: CCITT decoding (`hayro-ccitt`) in `pdfcraft-filters`, for export and the Optimizer |
+| 2026-10-26 | minor | §7.4: CCITT decoding (`hayro-ccitt`) in `iridium-pdf-filters`, for export and the Optimizer |
 | 2026-10-26 | minor | §7.4: CCITT Group 4 encoding (`fax`) in the Optimizer |
 | 2026-10-14 | minor | §12.4.4: `/Trans` and `/Dur` read into `DocInfo::transitions` and reported by `doc_info` |
 | 2026-10-11 | minor | §7.6.4: encrypted files we write open in Acrobat (#774, fixed by #836) |

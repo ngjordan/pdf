@@ -5,8 +5,8 @@
 
 use std::sync::Arc;
 
-use pdfcraft_cos::{Algorithm, Document, NewEncryption, Object, PdfString, SaveOptions, write_full, write_incremental};
-use pdfcraft_testkit::Pdf;
+use iridium_pdf_cos::{Algorithm, Document, NewEncryption, Object, PdfString, SaveOptions, write_full, write_incremental};
+use iridium_pdf_testkit::Pdf;
 
 const ID_HEX: &str = "/ID [<00112233445566778899AABBCCDDEEFF> <00112233445566778899AABBCCDDEEFF>]";
 const ID_BYTES: [u8; 16] = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
@@ -235,7 +235,7 @@ fn the_identifier_depends_on_the_whole_rewritten_file() {
 }
 
 /// Where [`stand_in_for_a_fresh_process`] writes its rewrite.
-const ID_PROBE: &str = "PDFCRAFT_TEST_ID_PROBE";
+const ID_PROBE: &str = "IRIDIUM_PDF_TEST_ID_PROBE";
 
 /// The child half of [`separate_fresh_processes_get_different_identifiers`]: it runs alone, in its
 /// own process, and writes a default-path rewrite of the standard fixture to the file the parent
@@ -257,7 +257,7 @@ fn separate_fresh_processes_get_different_identifiers() {
     // browser's `crypto.getRandomValues` stands in for this seeding, and this test cannot see it.
     let exe = std::env::current_exe().unwrap();
     let probe = |name: &str| {
-        let path = std::env::temp_dir().join(format!("pdfcraft-id-probe-{}-{name}.pdf", std::process::id()));
+        let path = std::env::temp_dir().join(format!("iridium-pdf-id-probe-{}-{name}.pdf", std::process::id()));
         let out = std::process::Command::new(&exe)
             .args(["--exact", "stand_in_for_a_fresh_process", "--nocapture", "--"])
             .env(ID_PROBE, &path)

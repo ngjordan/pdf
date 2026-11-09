@@ -1,7 +1,7 @@
 //! Optional-content regression fixtures for issue #3213.
 use std::sync::Arc;
 
-use pdfcraft_cos::{Document, ObjRef, Object, SaveOptions, write_incremental};
+use iridium_pdf_cos::{Document, ObjRef, Object, SaveOptions, write_incremental};
 
 /// Build a single-page PDF fixture with a hidden OCG (`4 0 R`), a shown OCG (`5 0 R`),
 /// a form appearance (`7 0 R`), an annotation (`8 0 R`), and an OCMD (`9 0 R`).
@@ -38,9 +38,9 @@ fn saved(doc: &Document) -> Vec<u8> {
     write_incremental(doc, &SaveOptions::default()).unwrap()
 }
 
-/// Optionally export test PDF bytes when `PDFCRAFT_3213_ARTIFACTS` is set.
+/// Optionally export test PDF bytes when `IRIDIUM_PDF_3213_ARTIFACTS` is set.
 fn export(name: &str, stage: &str, bytes: &[u8]) {
-    if let Some(directory) = std::env::var_os("PDFCRAFT_3213_ARTIFACTS") {
+    if let Some(directory) = std::env::var_os("IRIDIUM_PDF_3213_ARTIFACTS") {
         std::fs::write(std::path::Path::new(&directory).join(format!("{name}-{stage}.pdf")), bytes).unwrap();
     }
 }
@@ -62,9 +62,9 @@ fn flatten_keeps_annotation_optional_content_after_save_and_reopen() {
     ] {
         let mut doc = fixture(membership, flags, ap_oc);
         let original_appearance = (*doc.get(ObjRef::new(7, 0))).clone();
-        let expected_membership = doc.get(pdfcraft_cos::ObjRef::new(8, 0)).as_dict().unwrap().get(b"OC").cloned();
+        let expected_membership = doc.get(iridium_pdf_cos::ObjRef::new(8, 0)).as_dict().unwrap().get(b"OC").cloned();
         export(name, "before", &saved(&doc));
-        let count = pdfcraft_edit::flatten(&mut doc, &[0], true, false).unwrap();
+        let count = iridium_pdf_edit::flatten(&mut doc, &[0], true, false).unwrap();
         let bytes = saved(&doc);
         export(name, "flat", &bytes);
         let reopened = Document::open(Arc::new(bytes)).unwrap();
@@ -99,7 +99,7 @@ fn flatten_shared_appearance_keeps_separate_memberships_and_original_stream() {
     })
     .unwrap();
     export("shared", "before", &saved(&doc));
-    assert_eq!(pdfcraft_edit::flatten(&mut doc, &[0], true, false).unwrap(), 3);
+    assert_eq!(iridium_pdf_edit::flatten(&mut doc, &[0], true, false).unwrap(), 3);
     let bytes = saved(&doc);
     export("shared", "flat", &bytes);
     let doc = Document::open(Arc::new(bytes)).unwrap();
@@ -109,7 +109,7 @@ fn flatten_shared_appearance_keeps_separate_memberships_and_original_stream() {
 
 /// Associate each `Do` invocation with its active `/OC` marked-content block.
 fn paint_memberships(doc: &Document) -> Vec<(ObjRef, Option<Object>)> {
-    let page = pdfcraft_model::pages(doc).remove(0);
+    let page = iridium_pdf_model::pages(doc).remove(0);
     let resources = doc.resolve(page.dict.get(b"Resources").unwrap());
     let resources = resources.as_dict().unwrap();
     let properties = resources.get(b"Properties").map(|p| doc.resolve(p));
@@ -124,7 +124,7 @@ fn paint_memberships(doc: &Document) -> Vec<(ObjRef, Option<Object>)> {
     for stream in streams {
         let resolved = doc.resolve(&stream);
         let Object::Stream(stream) = &*resolved else { panic!("content stream") };
-        let parsed = pdfcraft_content::parse(&stream.decoded().unwrap());
+        let parsed = iridium_pdf_content::parse(&stream.decoded().unwrap());
         assert_eq!(parsed.skipped, 0);
         for op in parsed.ops {
             if op.is("BDC") {
@@ -152,14 +152,14 @@ fn paint_memberships(doc: &Document) -> Vec<(ObjRef, Option<Object>)> {
 /// replies and pop-ups, and its AcroForm field links.
 #[test]
 fn unsupported_membership_keeps_annotations_replies_and_field_links() {
-    use pdfcraft_cos::Stream;
+    use iridium_pdf_cos::Stream;
     let direct_ocg = Object::Dict({
-        let mut d = pdfcraft_cos::Dict::new();
+        let mut d = iridium_pdf_cos::Dict::new();
         d.set(b"Type".to_vec(), Object::Name(b"OCG".to_vec()));
         d
     });
     let wrong_type = Object::Dict({
-        let mut d = pdfcraft_cos::Dict::new();
+        let mut d = iridium_pdf_cos::Dict::new();
         d.set(b"Type".to_vec(), Object::Name(b"Other".to_vec()));
         d
     });
@@ -174,7 +174,7 @@ fn unsupported_membership_keeps_annotations_replies_and_field_links() {
                 let mut empty = doc.get(ObjRef::new(7, 0)).as_dict().unwrap().clone();
                 empty.set(b"BBox".to_vec(), Object::Array(vec![Object::Int(0); 4]));
                 let reference = doc.add(Object::Stream(Stream::from_raw(empty, Vec::new())));
-                let mut ap = pdfcraft_cos::Dict::new();
+                let mut ap = iridium_pdf_cos::Dict::new();
                 ap.set(b"N".to_vec(), Object::Ref(reference));
                 Some(Object::Dict(ap))
             } else {
@@ -201,7 +201,7 @@ fn unsupported_membership_keeps_annotations_replies_and_field_links() {
             grandchild.set(b"IRT".to_vec(), Object::Ref(reply));
             let grandchild = doc.add(Object::Dict(grandchild));
             let popup = doc.add(Object::Dict({
-                let mut d = pdfcraft_cos::Dict::new();
+                let mut d = iridium_pdf_cos::Dict::new();
                 d.set(b"Subtype".to_vec(), Object::Name(b"Popup".to_vec()));
                 d.set(b"Parent".to_vec(), Object::Ref(retained));
                 d
@@ -221,7 +221,7 @@ fn unsupported_membership_keeps_annotations_replies_and_field_links() {
             .unwrap();
             if widget {
                 let fields = doc.add(Object::Dict({
-                    let mut d = pdfcraft_cos::Dict::new();
+                    let mut d = iridium_pdf_cos::Dict::new();
                     d.set(b"Fields".to_vec(), Object::Array(vec![Object::Ref(retained)]));
                     d
                 }));
@@ -229,12 +229,12 @@ fn unsupported_membership_keeps_annotations_replies_and_field_links() {
             }
             let originals = [retained, reply, grandchild, popup].map(|r| (*doc.get(r)).clone());
             let original_fields = doc.get(ObjRef::new(1, 0)).as_dict().unwrap().get(b"AcroForm").map(|o| (*doc.resolve(o)).clone());
-            assert_eq!(pdfcraft_edit::flatten(&mut doc, &[0], true, true).unwrap(), 1, "{membership:?}");
+            assert_eq!(iridium_pdf_edit::flatten(&mut doc, &[0], true, true).unwrap(), 1, "{membership:?}");
             let doc = Document::open(Arc::new(saved(&doc))).unwrap();
             for (reference, original) in [retained, reply, grandchild, popup].into_iter().zip(originals) {
                 assert_eq!(*doc.get(reference), original);
             }
-            let page = pdfcraft_model::pages(&doc).remove(0);
+            let page = iridium_pdf_model::pages(&doc).remove(0);
             assert_eq!(
                 doc.resolve(page.dict.get(b"Annots").unwrap()).as_array().unwrap(),
                 &vec![Object::Ref(retained), Object::Ref(reply), Object::Ref(grandchild), Object::Ref(popup)]
@@ -244,11 +244,11 @@ fn unsupported_membership_keeps_annotations_replies_and_field_links() {
     }
     // A stream that claims Type OCG must not qualify through Object::as_dict().
     let mut doc = fixture("/OC 4 0 R", 4, "");
-    let mut d = pdfcraft_cos::Dict::new();
+    let mut d = iridium_pdf_cos::Dict::new();
     d.set(b"Type".to_vec(), Object::Name(b"OCG".to_vec()));
     doc.set(ObjRef::new(4, 0), Object::Stream(Stream::from_raw(d, Vec::new())));
     let before = saved(&doc);
-    assert_eq!(pdfcraft_edit::flatten(&mut doc, &[0], true, false).unwrap(), 0);
+    assert_eq!(iridium_pdf_edit::flatten(&mut doc, &[0], true, false).unwrap(), 0);
     assert_eq!(saved(&doc), before);
 
     // Shared-subexpression /VE fan-out (10^16 paths within depth 16) stops at the node budget
@@ -266,7 +266,7 @@ fn unsupported_membership_keeps_annotations_replies_and_field_links() {
     })
     .unwrap();
     let before = saved(&doc);
-    assert_eq!(pdfcraft_edit::flatten(&mut doc, &[0], true, false).unwrap(), 0);
+    assert_eq!(iridium_pdf_edit::flatten(&mut doc, &[0], true, false).unwrap(), 0);
     assert_eq!(saved(&doc), before);
 }
 
@@ -276,10 +276,10 @@ fn unsupported_membership_keeps_popup_replies_after_save_and_reopen() {
     let mut doc = fixture("/OC null", 4, "");
     let root = ObjRef::new(8, 0);
     let popup = doc.add(Object::Dict({
-        let mut d = pdfcraft_cos::Dict::new();
+        let mut d = iridium_pdf_cos::Dict::new();
         d.set(b"Subtype".to_vec(), Object::Name(b"Popup".to_vec()));
         d.set(b"Parent".to_vec(), Object::Ref(root));
-        d.set(b"Private".to_vec(), Object::String(pdfcraft_cos::PdfString::text("keep popup")));
+        d.set(b"Private".to_vec(), Object::String(iridium_pdf_cos::PdfString::text("keep popup")));
         d
     }));
     let mut reply = doc.get(root).as_dict().unwrap().clone();
@@ -294,12 +294,12 @@ fn unsupported_membership_keeps_popup_replies_after_save_and_reopen() {
     })
     .unwrap();
     let originals = [root, popup, reply].map(|r| (*doc.get(r)).clone());
-    assert_eq!(pdfcraft_edit::flatten(&mut doc, &[0], true, false).unwrap(), 1, "only the unrelated annotation can flatten");
+    assert_eq!(iridium_pdf_edit::flatten(&mut doc, &[0], true, false).unwrap(), 1, "only the unrelated annotation can flatten");
     let doc = Document::open(Arc::new(saved(&doc))).unwrap();
     for (reference, original) in [root, popup, reply].into_iter().zip(originals) {
         assert_eq!(*doc.get(reference), original, "the retained popup graph stays unchanged");
     }
-    let page = pdfcraft_model::pages(&doc).remove(0);
+    let page = iridium_pdf_model::pages(&doc).remove(0);
     assert_eq!(doc.resolve(page.dict.get(b"Annots").unwrap()).as_array().unwrap(), &[root, popup, reply].map(Object::Ref));
     assert_eq!(paint_memberships(&doc), vec![(ObjRef::new(7, 0), None)]);
 }
@@ -314,13 +314,13 @@ fn unsupported_membership_keeps_undrawable_reply_without_refusing_flatten() {
         reply.remove(b"OC");
         reply.set(b"Subtype".to_vec(), Object::Name(b"FreeText".to_vec()));
         reply.set(b"IRT".to_vec(), Object::Ref(root));
-        reply.set(b"Contents".to_vec(), Object::String(pdfcraft_cos::PdfString::text("漢")));
+        reply.set(b"Contents".to_vec(), Object::String(iridium_pdf_cos::PdfString::text("漢")));
         if marked_appearance {
-            pdfcraft_fonts::set_undrawn_mark(&mut reply, Some('漢'));
+            iridium_pdf_fonts::set_undrawn_mark(&mut reply, Some('漢'));
         } else {
             reply.remove(b"AP");
         }
-        assert_eq!(pdfcraft_annot::appearance::undrawable_text(&reply).map(|(_, c)| c), Some('漢'));
+        assert_eq!(iridium_pdf_annot::appearance::undrawable_text(&reply).map(|(_, c)| c), Some('漢'));
         let reply = doc.add(Object::Dict(reply));
         let mut drawable = doc.get(root).as_dict().unwrap().clone();
         drawable.remove(b"OC");
@@ -332,12 +332,12 @@ fn unsupported_membership_keeps_undrawable_reply_without_refusing_flatten() {
         // Compare serialized dictionaries before and after flatten, including PDF string syntax.
         let mut doc = Document::open(Arc::new(saved(&doc))).unwrap();
         let originals = [root, reply].map(|r| (*doc.get(r)).clone());
-        assert_eq!(pdfcraft_edit::flatten(&mut doc, &[0], true, false).unwrap(), 1, "retained text is not baked into page content");
+        assert_eq!(iridium_pdf_edit::flatten(&mut doc, &[0], true, false).unwrap(), 1, "retained text is not baked into page content");
         let doc = Document::open(Arc::new(saved(&doc))).unwrap();
         for (reference, original) in [root, reply].into_iter().zip(originals) {
             assert_eq!(*doc.get(reference), original);
         }
-        let page = pdfcraft_model::pages(&doc).remove(0);
+        let page = iridium_pdf_model::pages(&doc).remove(0);
         assert_eq!(doc.resolve(page.dict.get(b"Annots").unwrap()).as_array().unwrap(), &[root, reply].map(Object::Ref));
         assert_eq!(paint_memberships(&doc), vec![(ObjRef::new(7, 0), None)]);
     }
@@ -366,12 +366,12 @@ fn flatten_preserves_shared_resources_and_uses_new_names_on_each_call() {
             }
             doc.update_dict(owner, |d| d.set(b"Resources".to_vec(), resources.clone())).unwrap();
             let original_resource_object = (*doc.resolve(&resources)).clone();
-            assert_eq!(pdfcraft_edit::flatten(&mut doc, &[0], true, false).unwrap(), 1);
+            assert_eq!(iridium_pdf_edit::flatten(&mut doc, &[0], true, false).unwrap(), 1);
             doc.update_dict(ObjRef::new(3, 0), |d| d.set(b"Annots".to_vec(), Object::Array(vec![Object::Ref(ObjRef::new(8, 0))]))).unwrap();
-            assert_eq!(pdfcraft_edit::flatten(&mut doc, &[0], true, false).unwrap(), 1);
+            assert_eq!(iridium_pdf_edit::flatten(&mut doc, &[0], true, false).unwrap(), 1);
             let doc = Document::open(Arc::new(saved(&doc))).unwrap();
             assert_eq!(paint_memberships(&doc), vec![(ObjRef::new(7, 0), Some(Object::Ref(ObjRef::new(4, 0)))); 2]);
-            let page = pdfcraft_model::pages(&doc).remove(0);
+            let page = iridium_pdf_model::pages(&doc).remove(0);
             let effective = doc.resolve(page.dict.get(b"Resources").unwrap());
             let properties = doc.resolve(effective.as_dict().unwrap().get(b"Properties").unwrap());
             let properties = properties.as_dict().unwrap();
@@ -404,13 +404,13 @@ fn malformed_resources_and_direct_ocg_stay_unchanged_before_appearance_generatio
         })
         .unwrap();
         let before = saved(&doc);
-        assert_eq!(pdfcraft_edit::flatten(&mut doc, &[0], true, false).unwrap(), 0);
+        assert_eq!(iridium_pdf_edit::flatten(&mut doc, &[0], true, false).unwrap(), 0);
         assert_eq!(saved(&doc), before);
     }
     let mut doc = fixture("/OC 4 0 R", 4, "");
     let annotation = doc.get(ObjRef::new(8, 0)).as_dict().unwrap().clone();
     doc.update_dict(ObjRef::new(3, 0), |d| d.set(b"Annots".to_vec(), Object::Array(vec![Object::Dict(annotation)]))).unwrap();
-    assert_eq!(pdfcraft_edit::flatten(&mut doc, &[0], true, false).unwrap(), 1);
+    assert_eq!(iridium_pdf_edit::flatten(&mut doc, &[0], true, false).unwrap(), 1);
     let doc = Document::open(Arc::new(saved(&doc))).unwrap();
     assert_eq!(paint_memberships(&doc), vec![(ObjRef::new(7, 0), Some(Object::Ref(ObjRef::new(4, 0))))]);
 }
@@ -434,7 +434,7 @@ fn unsupported_membership_keeps_inline_replies_and_popups_after_save_and_reopen(
     inline_grandchild.remove(b"OC");
     inline_grandchild.set(b"IRT".to_vec(), Object::Ref(indirect_reply));
 
-    let mut inline_popup = pdfcraft_cos::Dict::new();
+    let mut inline_popup = iridium_pdf_cos::Dict::new();
     inline_popup.set(b"Subtype".to_vec(), Object::Name(b"Popup".to_vec()));
     inline_popup.set(b"Parent".to_vec(), Object::Ref(root));
 
@@ -457,10 +457,10 @@ fn unsupported_membership_keeps_inline_replies_and_popups_after_save_and_reopen(
     })
     .unwrap();
 
-    assert_eq!(pdfcraft_edit::flatten(&mut doc, &[0], true, false).unwrap(), 1);
+    assert_eq!(iridium_pdf_edit::flatten(&mut doc, &[0], true, false).unwrap(), 1);
 
     let doc = Document::open(Arc::new(saved(&doc))).unwrap();
-    let page = pdfcraft_model::pages(&doc).remove(0);
+    let page = iridium_pdf_model::pages(&doc).remove(0);
     let annots = doc.resolve(page.dict.get(b"Annots").unwrap()).as_array().unwrap().clone();
 
     assert_eq!(annots.len(), 5);

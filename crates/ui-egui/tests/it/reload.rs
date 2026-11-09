@@ -7,7 +7,7 @@ use std::time::{Duration, SystemTime};
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::{By, Queryable};
-use pdfcraft_ui_egui::{PdfCraftApp, SaveTarget};
+use iridium_pdf_ui_egui::{PdfApp, SaveTarget};
 
 /// An `n`-page document with a proper xref table; page `i` shows "Page i+1", and with `notes`
 /// each page has a sticky note.
@@ -50,7 +50,7 @@ struct TempPdf {
 
 impl TempPdf {
     fn new(test: &str, bytes: &[u8]) -> Self {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-reload-{test}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("iridium-pdf-reload-{test}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("thesis.pdf").to_string_lossy().into_owned();
@@ -73,10 +73,10 @@ impl Drop for TempPdf {
     }
 }
 
-fn harness(path: &str) -> Harness<'static, PdfCraftApp> {
+fn harness(path: &str) -> Harness<'static, PdfApp> {
     let path = path.to_owned();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         // The labels looked for are English, whatever the machine's language.
         app.set_option("language", "en").unwrap();
@@ -90,19 +90,19 @@ fn harness(path: &str) -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn pages(h: &Harness<'static, PdfCraftApp>) -> usize {
+fn pages(h: &Harness<'static, PdfApp>) -> usize {
     let app = h.state();
     app.session.get(app.views[0].id).unwrap().info.pages.len()
 }
 
-fn dirty(h: &Harness<'static, PdfCraftApp>) -> bool {
+fn dirty(h: &Harness<'static, PdfApp>) -> bool {
     let app = h.state();
     app.session.get(app.views[0].id).unwrap().dirty
 }
 
-fn rotate_first_page(h: &mut Harness<'static, PdfCraftApp>) {
+fn rotate_first_page(h: &mut Harness<'static, PdfApp>) {
     h.state_mut().views[0].select_pages(&[0]);
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
 }
 
 #[test]
@@ -110,7 +110,7 @@ fn a_rebuilt_file_reloads_in_place_keeping_the_page_and_zoom() {
     let file = TempPdf::new("rebuild", &fixture(3));
     let mut h = harness(&file.path);
     let id = h.state().views[0].id;
-    h.state_mut().views[0].fit = pdfcraft_ui_egui::canvas::Fit::None;
+    h.state_mut().views[0].fit = iridium_pdf_ui_egui::canvas::Fit::None;
     h.state_mut().views[0].zoom = 1.5;
     h.state_mut().views[0].go_to_page(2);
     h.run_steps(4);
@@ -125,8 +125,8 @@ fn a_rebuilt_file_reloads_in_place_keeping_the_page_and_zoom() {
 
 #[test]
 fn a_watched_label_replacement_keeps_the_display_mode_and_focused_page() {
-    use pdfcraft_engine::{Edit, LabelStyle, Session};
-    use pdfcraft_ui_egui::canvas::display_token;
+    use iridium_pdf_engine::{Edit, LabelStyle, Session};
+    use iridium_pdf_ui_egui::canvas::display_token;
     use std::sync::Arc;
 
     let labelled = |ranges: &[(usize, usize, LabelStyle)]| {
@@ -267,7 +267,7 @@ fn a_deleted_file_leaves_the_document_open() {
 
 #[test]
 fn nothing_reloads_with_the_preference_off() {
-    assert!(PdfCraftApp::new().reload_changed_files, "on by default");
+    assert!(PdfApp::new().reload_changed_files, "on by default");
     let file = TempPdf::new("off", &fixture(2));
     let mut h = harness(&file.path);
     h.state_mut().reload_changed_files = false;
@@ -275,7 +275,7 @@ fn nothing_reloads_with_the_preference_off() {
     file.rebuild(&fixture(3));
     h.run_steps(4);
     assert_eq!(pages(&h), 2);
-    let mut restarted = PdfCraftApp::new();
+    let mut restarted = PdfApp::new();
     restarted.restore(&h.state().persist());
     assert!(!restarted.reload_changed_files, "the choice is kept");
 }
@@ -332,7 +332,7 @@ fn saving_checks_the_file_with_the_watcher_off_too() {
     let file = TempPdf::new("overwrite-unwatched", &fixture(2));
     let path = file.path.clone();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.run_inline = true;
         app.reload_changed_files = false;
@@ -373,7 +373,7 @@ fn a_file_rebuilt_under_an_open_dialog_reloads_when_the_dialog_closes() {
     // open would apply the dialog (Rotate, Protect, Comment Properties…) to the new version.
     let file = TempPdf::new("under-dialog", &fixture(2));
     let mut h = harness(&file.path);
-    h.state_mut().dialog = Some(pdfcraft_ui_egui::Dialog::RotatePages);
+    h.state_mut().dialog = Some(iridium_pdf_ui_egui::Dialog::RotatePages);
     h.run_steps(2);
     file.rebuild(&fixture(4));
     h.run_steps(4);
@@ -392,7 +392,7 @@ fn a_version_held_under_preferences_is_dropped_when_reloading_is_turned_off_ther
     // change on disk" must not still apply the version found while it was open.
     let file = TempPdf::new("held-pref-off", &fixture(2));
     let mut h = harness(&file.path);
-    h.state_mut().dialog = Some(pdfcraft_ui_egui::Dialog::RotatePages);
+    h.state_mut().dialog = Some(iridium_pdf_ui_egui::Dialog::RotatePages);
     h.run_steps(2);
     file.rebuild(&fixture(4));
     h.run_steps(4);
@@ -409,7 +409,7 @@ fn a_newer_version_found_as_the_dialog_closes_replaces_the_held_one() {
     // edit generation: one is expected.
     let file = TempPdf::new("held-coalesced", &fixture(2));
     let mut h = harness(&file.path);
-    h.state_mut().dialog = Some(pdfcraft_ui_egui::Dialog::RotatePages);
+    h.state_mut().dialog = Some(iridium_pdf_ui_egui::Dialog::RotatePages);
     h.run_steps(2);
     file.rebuild(&fixture(4));
     h.run_steps(4);
@@ -417,7 +417,7 @@ fn a_newer_version_found_as_the_dialog_closes_replaces_the_held_one() {
     // frame that closes the dialog reads it, together with the held version.
     file.rebuild(&fixture(5));
     h.step();
-    let generation = |h: &Harness<'static, PdfCraftApp>| h.state().session.get(h.state().views[0].id).unwrap().edit_generation();
+    let generation = |h: &Harness<'static, PdfApp>| h.state().session.get(h.state().views[0].id).unwrap().edit_generation();
     let before = generation(&h);
     h.state_mut().dialog = None;
     h.step();

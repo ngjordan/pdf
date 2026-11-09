@@ -13,11 +13,11 @@ pub fn text_reads_up(doc: &Document, index: usize) -> bool {
 /// [`text_reads_up`] for each of `indices`, reading the page tree once: once per page, the
 /// whole tree would be walked for every page asked about.
 pub fn texts_read_up(doc: &Document, indices: &[usize]) -> Vec<bool> {
-    let pages = pdfcraft_model::pages(doc);
+    let pages = iridium_pdf_model::pages(doc);
     indices.iter().map(|&i| pages.get(i).is_some_and(|page| page_reads_up(doc, page))).collect()
 }
 
-fn page_reads_up(doc: &Document, page: &pdfcraft_model::Page) -> bool {
+fn page_reads_up(doc: &Document, page: &iridium_pdf_model::Page) -> bool {
     let to_display = Matrix(page.view_matrix(doc)).invert().unwrap_or_default();
     let res = page.dict.get(b"Resources").and_then(|r| doc.resolve(r).as_dict().cloned()).unwrap_or_default();
     let mut score = 0i64;
@@ -31,7 +31,7 @@ fn page_reads_up(doc: &Document, page: &pdfcraft_model::Page) -> bool {
 pub(crate) fn text_direction(doc: &Document, data: &[u8], res: &Dict, base: Matrix, depth: usize, score: &mut i64, budget: &mut DecodeBudget) {
     let (mut ctm, mut tm, mut stack) = (base, Matrix::IDENTITY, Vec::new());
     // One operator at a time: only the running score is kept, never the stream's operators.
-    for op in pdfcraft_content::ops(data) {
+    for op in iridium_pdf_content::ops(data) {
         match op.op.as_slice() {
             // Bounded like the renderer's graphics-state stack: deeper saves are ignored.
             b"q" if stack.len() < 256 => stack.push(ctm),

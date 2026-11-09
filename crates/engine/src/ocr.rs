@@ -11,10 +11,10 @@ use std::sync::{Arc, Mutex};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
 
-use pdfcraft_render::text::TextFilter;
-use pdfcraft_render::{PageInfo, PageRenderer, RenderConfig, RenderRequest, RequestKind};
+use iridium_pdf_render::text::TextFilter;
+use iridium_pdf_render::{PageInfo, PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
-pub use pdfcraft_ocr::{
+pub use iridium_pdf_ocr::{
     ConfidenceBand, DETECTION_MODEL, LANGUAGES, Line, MergeStrategy, Models, Ocr, OcrError, OcrImage, PlacedWord, RECOGNITION_MODEL, Recognizer,
     StrategyOutcome, Word, band_for, is_suspect, lines_from_json, low_confidence,
 };
@@ -148,7 +148,7 @@ pub struct OcrSettings {
     /// to the review overlay's bands, which use [`band_for`]).
     pub low_confidence_threshold: f32,
     /// Where the Tesseract program lives, when the user configured it (a preference — the
-    /// `PDFCRAFT_TESSERACT` environment variable is the fallback in the engine; never taken
+    /// `IRIDIUM_PDF_TESSERACT` environment variable is the fallback in the engine; never taken
     /// from document data). A configured path must be absolute to an existing, executable
     /// file; an invalid configuration makes the engine unavailable rather than silently
     /// searching the PATH. `None` means the PATH search decides.
@@ -165,7 +165,7 @@ const SHEET: f32 = 842.0;
 
 /// The text of `page`'s own: its glyphs, without the words drawn as outlines or pictures that only
 /// `/ActualText` names.
-pub(crate) fn own_text(r: &mut PageRenderer, page: usize) -> Result<pdfcraft_render::PageText, String> {
+pub(crate) fn own_text(r: &mut PageRenderer, page: usize) -> Result<iridium_pdf_render::PageText, String> {
     r.filtered_text(page, TextFilter { painted: true, ..Default::default() })
 }
 
@@ -243,7 +243,7 @@ impl OcrPage {
     /// skipped words — which is review state, so this reports the indices and the reviewer
     /// filters them.
     pub fn suspects(&self) -> Vec<usize> {
-        self.words.iter().enumerate().filter(|(_, w)| pdfcraft_ocr::is_suspect(w.confidence)).map(|(i, _)| i).collect()
+        self.words.iter().enumerate().filter(|(_, w)| iridium_pdf_ocr::is_suspect(w.confidence)).map(|(i, _)| i).collect()
     }
 }
 
@@ -265,7 +265,7 @@ static ENGINES: Mutex<Option<EngineCache>> = Mutex::new(None);
 /// looks for: the web build downloads the models and loads them with [`Ocr::from_bytes`]. From
 /// then on [`recognizers`] hands it out and the engine counts as available.
 pub fn install(ocr: Ocr) -> Arc<dyn Recognizer> {
-    let ocrs: Arc<dyn Recognizer> = Arc::new(pdfcraft_ocr::OcrsRecognizer::from_ocr(ocr));
+    let ocrs: Arc<dyn Recognizer> = Arc::new(iridium_pdf_ocr::OcrsRecognizer::from_ocr(ocr));
     ENGINES.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(|| EngineCache { ocrs: None }).ocrs = Some(ocrs.clone());
     ocrs
 }
@@ -311,7 +311,7 @@ static PROBING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::n
 /// static mutex is held while the discovery process runs: the cache is read under the lock,
 /// released for the probe, and the result is written back when it arrives (concurrent probes
 /// of the same location may both run; the last write wins and both answers are valid). A
-/// user-configured path (`settings.tesseract_path`, else the `PDFCRAFT_TESSERACT`
+/// user-configured path (`settings.tesseract_path`, else the `IRIDIUM_PDF_TESSERACT`
 /// environment variable) is validated before any process starts; an invalid configuration is
 /// unavailable rather than a PATH fallback. This waits for the probe: the UI thread uses
 /// [`tesseract_engine_now`].
@@ -323,8 +323,8 @@ fn tesseract_engine(configured: Option<&str>) -> Option<Arc<dyn Recognizer>> {
     let key = configured.map(str::to_string);
     // The probe (a `--list-langs` process, up to the timeout) runs outside every static mutex.
     let found = match configured {
-        Some(path) => pdfcraft_ocr::tesseract::TesseractCli::at(std::path::PathBuf::from(path)).map(|t| Arc::new(t) as Arc<dyn Recognizer>),
-        None => pdfcraft_ocr::tesseract::TesseractCli::find().map(|t| Arc::new(t) as Arc<dyn Recognizer>),
+        Some(path) => iridium_pdf_ocr::tesseract::TesseractCli::at(std::path::PathBuf::from(path)).map(|t| Arc::new(t) as Arc<dyn Recognizer>),
+        None => iridium_pdf_ocr::tesseract::TesseractCli::find().map(|t| Arc::new(t) as Arc<dyn Recognizer>),
     };
     *TESSERACT_PROBE.lock().unwrap_or_else(|e| e.into_inner()) = Some(CachedTesseract { key, found: found.clone(), at: Instant::now() });
     found
@@ -364,7 +364,7 @@ fn tesseract_engine_now(configured: Option<&str>) -> Probe {
     };
     if !PROBING.swap(true, std::sync::atomic::Ordering::AcqRel) {
         let configured = configured.map(str::to_string);
-        let started = std::thread::Builder::new().name("pdfcraft-tesseract-probe".into()).spawn(move || {
+        let started = std::thread::Builder::new().name("iridium-pdf-tesseract-probe".into()).spawn(move || {
             let _ = tesseract_engine(configured.as_deref());
             PROBING.store(false, std::sync::atomic::Ordering::Release);
         });
@@ -444,7 +444,8 @@ fn tesseract_version(program: &str) -> Option<String> {
     }
     // Validated (absolute, existing, executable) before the process starts; run outside the lock.
     let path = std::path::PathBuf::from(program);
-    let version = pdfcraft_ocr::tesseract::program_is_usable(&path).then(|| pdfcraft_ocr::tesseract::TesseractCli::new(path).version()).flatten();
+    let version =
+        iridium_pdf_ocr::tesseract::program_is_usable(&path).then(|| iridium_pdf_ocr::tesseract::TesseractCli::new(path).version()).flatten();
     let mut cache = VERSIONS.lock().unwrap_or_else(|e| e.into_inner());
     if cache.len() < 16 && !cache.iter().any(|(p, _)| p == program) {
         cache.push((program.to_string(), version.clone()));
@@ -463,7 +464,7 @@ fn tesseract_version(program: &str) -> Option<String> {
 pub fn tesseract_program_path(configured: Option<&str>) -> Option<String> {
     match configured {
         Some(p) => Some(p.to_string()),
-        None => pdfcraft_ocr::tesseract::path_search().map(|p| p.to_string_lossy().into_owned()),
+        None => iridium_pdf_ocr::tesseract::path_search().map(|p| p.to_string_lossy().into_owned()),
     }
 }
 
@@ -480,7 +481,7 @@ pub struct EngineStatus {
 
 /// The engines' status, in the order the Engine dropdown lists them: ocrs (built in), then
 /// tesseract (the external program). Tesseract's availability is judged the same way
-/// [`recognizers`] judges it under the default settings: the `PDFCRAFT_TESSERACT` environment
+/// [`recognizers`] judges it under the default settings: the `IRIDIUM_PDF_TESSERACT` environment
 /// variable when set, else the PATH. This waits for the (cached) Tesseract probe; the tools
 /// and tests call it, never the UI thread.
 pub fn engines_status() -> Vec<EngineStatus> {
@@ -529,7 +530,7 @@ fn tesseract_engine(configured: Option<&str>) -> Option<Arc<dyn Recognizer>> {
 /// the fallback (a preference file rarely survives onto another machine). Both are user
 /// choices — this is never taken from document data.
 fn configured_tesseract(settings: &OcrSettings) -> Option<String> {
-    settings.tesseract_path.clone().or_else(|| std::env::var_os("PDFCRAFT_TESSERACT").map(|v| v.to_string_lossy().into_owned()))
+    settings.tesseract_path.clone().or_else(|| std::env::var_os("IRIDIUM_PDF_TESSERACT").map(|v| v.to_string_lossy().into_owned()))
 }
 
 /// The engine selector: builds each engine once and hands out the pair `settings.engine`
@@ -547,7 +548,7 @@ pub fn recognizers(settings: &OcrSettings) -> Result<Recognizers, String> {
     let cache = slot.get_or_insert_with(|| EngineCache { ocrs: None });
     if cache.ocrs.is_none() {
         // Cheap to re-attempt while the models are missing; expensive work is cached forever.
-        cache.ocrs = pdfcraft_ocr::OcrsRecognizer::find().ok().map(|r| Arc::new(r) as Arc<dyn Recognizer>);
+        cache.ocrs = iridium_pdf_ocr::OcrsRecognizer::find().ok().map(|r| Arc::new(r) as Arc<dyn Recognizer>);
     }
     let ocrs = cache.ocrs.clone();
     match settings.engine {
@@ -574,9 +575,9 @@ fn tesseract_unavailable() -> String {
 }
 
 /// Why the ocrs engine cannot run, in the end-user wording the UI catalogs translate (the
-/// same text as [`pdfcraft_ocr::OcrError::NoModels`]: no developer commands in front of users).
+/// same text as [`iridium_pdf_ocr::OcrError::NoModels`]: no developer commands in front of users).
 fn models_missing() -> String {
-    pdfcraft_ocr::OcrError::NoModels.to_string()
+    iridium_pdf_ocr::OcrError::NoModels.to_string()
 }
 
 /// Whether recognition can run at all: the ocrs models are installed, or (off the web) a
@@ -584,7 +585,7 @@ fn models_missing() -> String {
 /// waits for it: tools and tests call it; the UI asks [`engine_unavailable_reason`], which
 /// never waits.
 pub fn available() -> bool {
-    let configured = std::env::var_os("PDFCRAFT_TESSERACT").map(|v| v.to_string_lossy().into_owned());
+    let configured = std::env::var_os("IRIDIUM_PDF_TESSERACT").map(|v| v.to_string_lossy().into_owned());
     ocrs_loaded() || Models::find().is_some() || tesseract_engine(configured.as_deref()).is_some()
 }
 
@@ -602,7 +603,7 @@ pub fn engine_unavailable_reason(engine: EngineChoice) -> Option<String> {
     let ocrs = models_installed_cached();
     #[cfg(not(target_arch = "wasm32"))]
     let tesseract = {
-        let configured = std::env::var_os("PDFCRAFT_TESSERACT").map(|v| v.to_string_lossy().into_owned());
+        let configured = std::env::var_os("IRIDIUM_PDF_TESSERACT").map(|v| v.to_string_lossy().into_owned());
         match tesseract_engine_now(configured.as_deref()) {
             Probe::Known(Some(_)) => Ok(()),
             Probe::Known(None) => Err(tesseract_unavailable()),
@@ -655,7 +656,7 @@ pub struct OcrJob {
 
 /// A page's "has text" probe for skip-text: at least one non-blank text run. A failed probe
 /// (the text layer could not be read) never enables a skip.
-fn page_has_text(text: Option<&Arc<pdfcraft_render::PageText>>) -> bool {
+fn page_has_text(text: Option<&Arc<iridium_pdf_render::PageText>>) -> bool {
     text.is_some_and(|t| t.glyphs.iter().any(|g| !g.text.trim().is_empty()))
 }
 
@@ -803,7 +804,7 @@ impl OcrSteps {
         if let Some(e) = shot.error {
             return Err(skip(&e));
         }
-        let full = pdfcraft_ocr::OcrImage::new(shot.width, shot.height, shot.rgba.to_vec()).map_err(|e| skip(&e.to_string()))?;
+        let full = iridium_pdf_ocr::OcrImage::new(shot.width, shot.height, shot.rgba.to_vec()).map_err(|e| skip(&e.to_string()))?;
         // The optional region: crop the rendered page, clamped; an empty region skips the
         // page with a named reason (nothing was asked of it).
         let (image, offset) = match settings.region {
@@ -820,10 +821,10 @@ impl OcrSteps {
         // back in processed coordinates and are mapped to the ORIGINAL raster's before
         // placement. The render dpi is the real one (pixels per point × 72), never a
         // fixed value.
-        let pre = pdfcraft_ocr::preprocess::preprocess(
+        let pre = iridium_pdf_ocr::preprocess::preprocess(
             image,
             scale * 72.0,
-            &pdfcraft_ocr::preprocess::PreprocessOptions {
+            &iridium_pdf_ocr::preprocess::PreprocessOptions {
                 auto_rotate: settings.auto_rotate,
                 deskew: settings.deskew,
                 denoise: settings.denoise,
@@ -840,7 +841,7 @@ impl OcrSteps {
             info,
             existing,
             strategy: settings.strategy,
-            options: pdfcraft_ocr::RecognizeOptions { language: settings.language.clone() },
+            options: iridium_pdf_ocr::RecognizeOptions { language: settings.language.clone() },
             output_mode: settings.output_mode,
         })
     }
@@ -854,7 +855,7 @@ pub struct OcrShot {
     /// preprocessed (`None` once [`OcrShot::take_image`] has handed them on).
     image: Option<OcrImage>,
     /// Processed pixels → the rendered raster's (the exact inverse of preprocessing).
-    inverse: pdfcraft_ocr::preprocess::InverseTransform,
+    inverse: iridium_pdf_ocr::preprocess::InverseTransform,
     /// Where the region crop starts in the rendered raster.
     offset: [f32; 2],
     /// The rendered raster's pixels per point of page view space.
@@ -863,7 +864,7 @@ pub struct OcrShot {
     /// The boxes of the page's own text, in view space.
     existing: Vec<[f32; 4]>,
     strategy: MergeStrategy,
-    options: pdfcraft_ocr::RecognizeOptions,
+    options: iridium_pdf_ocr::RecognizeOptions,
     output_mode: OutputMode,
 }
 
@@ -882,7 +883,7 @@ impl OcrShot {
     /// Recognise the image with `recognizers` (per the job's strategy) and place the words.
     pub fn read(&self, recognizers: &Recognizers) -> OcrPage {
         let Some(image) = &self.image else { return self.place(Err("the page's image was handed to another reader".into())) };
-        let outcome = pdfcraft_ocr::recognize_with_strategy(
+        let outcome = iridium_pdf_ocr::recognize_with_strategy(
             recognizers.primary.as_ref(),
             recognizers.secondary.as_deref(),
             self.strategy,
@@ -934,7 +935,7 @@ impl OcrShot {
         // Only visible editable output needs display glyphs. Searchable output preserves
         // every Unicode character with empty Type3 programs and ToUnicode maps.
         if self.output_mode == OutputMode::EditableText && !words.is_empty() {
-            let missing = pdfcraft_fonts::TextPlan::for_words(words.iter().map(|w| w.text.as_str())).missing();
+            let missing = iridium_pdf_fonts::TextPlan::for_words(words.iter().map(|w| w.text.as_str())).missing();
             if missing > 0 {
                 notes.push(format!("{missing} characters had no font that could show them and appear as ? in the output"));
             }
@@ -946,7 +947,7 @@ impl OcrShot {
 /// Whether a word's pixel box may reach the content stream: width and height (right − left,
 /// bottom − top) must be positive and finite. Anything else — a zero, negative, NaN or
 /// infinite size — is dropped before placement rather than written into the page.
-fn box_writable(word: &pdfcraft_ocr::Word) -> bool {
+fn box_writable(word: &iridium_pdf_ocr::Word) -> bool {
     let [l, t, r, b] = word.rect;
     let (width, height) = (r - l, b - t);
     width > 0.0 && height > 0.0 && width.is_finite() && height.is_finite()
@@ -954,7 +955,7 @@ fn box_writable(word: &pdfcraft_ocr::Word) -> bool {
 
 /// Crop `[x0, y0, x1, y1]` out of `image` as a new [`OcrImage`] (the sides are already clamped
 /// by [`clamp_region`]).
-fn crop(image: &pdfcraft_ocr::OcrImage, x0: u32, y0: u32, x1: u32, y1: u32) -> Option<pdfcraft_ocr::OcrImage> {
+fn crop(image: &iridium_pdf_ocr::OcrImage, x0: u32, y0: u32, x1: u32, y1: u32) -> Option<iridium_pdf_ocr::OcrImage> {
     let (w, h) = (x1.checked_sub(x0)?, y1.checked_sub(y0)?);
     let stride = image.width() as usize * 4;
     let mut out = Vec::with_capacity((w as usize).checked_mul(h as usize)?.checked_mul(4)?);
@@ -963,7 +964,7 @@ fn crop(image: &pdfcraft_ocr::OcrImage, x0: u32, y0: u32, x1: u32, y1: u32) -> O
         let row = image.rgba().get(start..start + (x1 - x0) as usize * 4)?;
         out.extend_from_slice(row);
     }
-    pdfcraft_ocr::OcrImage::new(w, h, out).ok()
+    iridium_pdf_ocr::OcrImage::new(w, h, out).ok()
 }
 
 impl Session {
@@ -1078,22 +1079,22 @@ impl Session {
             })
             .collect();
         layer::validate_words(page_words.iter().flatten()).map_err(|e| e.to_string())?;
-        let mut plan = pdfcraft_fonts::TextPlan::for_words(page_words.iter().flat_map(|ws| ws.iter().map(|w| w.text.as_str())));
-        let pages: Vec<(f64, f64, pdfcraft_cos::Dict, Vec<u8>)> = (0..doc.info.pages.len())
+        let mut plan = iridium_pdf_fonts::TextPlan::for_words(page_words.iter().flat_map(|ws| ws.iter().map(|w| w.text.as_str())));
+        let pages: Vec<(f64, f64, iridium_pdf_cos::Dict, Vec<u8>)> = (0..doc.info.pages.len())
             .map(|p| {
                 let info = doc.info.pages.get(p);
-                (info.map_or(612.0, |i| f64::from(i.width)), info.map_or(792.0, |i| f64::from(i.height)), pdfcraft_cos::Dict::new(), Vec::new())
+                (info.map_or(612.0, |i| f64::from(i.width)), info.map_or(792.0, |i| f64::from(i.height)), iridium_pdf_cos::Dict::new(), Vec::new())
             })
             .collect();
-        let mut created = pdfcraft_create::from_contents(&pages).map_err(|e| e.to_string())?;
+        let mut created = iridium_pdf_create::from_contents(&pages).map_err(|e| e.to_string())?;
         // One shared Helvetica for every page: added once into the new document, then linked
         // from each page's resources as /PCHelv (the name the text layers draw with). The
         // plan's fonts are linked per page too; their objects are shared.
-        let mut font = pdfcraft_cos::Dict::new();
-        font.set(b"Type".to_vec(), pdfcraft_cos::Object::name("Font"));
-        font.set(b"Subtype".to_vec(), pdfcraft_cos::Object::name("Type1"));
-        font.set(b"BaseFont".to_vec(), pdfcraft_cos::Object::name("Helvetica"));
-        font.set(b"Encoding".to_vec(), pdfcraft_cos::Object::name("WinAnsiEncoding"));
+        let mut font = iridium_pdf_cos::Dict::new();
+        font.set(b"Type".to_vec(), iridium_pdf_cos::Object::name("Font"));
+        font.set(b"Subtype".to_vec(), iridium_pdf_cos::Object::name("Type1"));
+        font.set(b"BaseFont".to_vec(), iridium_pdf_cos::Object::name("Helvetica"));
+        font.set(b"Encoding".to_vec(), iridium_pdf_cos::Object::name("WinAnsiEncoding"));
         let fr = created.add(font);
         // The page tree's kids, direct array or indirect reference (a fresh create document
         // keeps /Kids inline) — the output's pages are linked through them.
@@ -1103,29 +1104,29 @@ impl Session {
             .and_then(|d| d.reference(b"Pages"))
             .and_then(|p| created.get(p).as_dict().cloned())
             .and_then(|d| match d.get(b"Kids").map(|k| created.resolve(k)).as_deref() {
-                Some(pdfcraft_cos::Object::Array(a)) => Some(a.clone()),
-                Some(pdfcraft_cos::Object::Ref(r)) => created.get(*r).as_array().cloned(),
+                Some(iridium_pdf_cos::Object::Array(a)) => Some(a.clone()),
+                Some(iridium_pdf_cos::Object::Ref(r)) => created.get(*r).as_array().cloned(),
                 _ => None,
             });
         for (pi, kid) in kids.into_iter().flatten().enumerate() {
-            let pdfcraft_cos::Object::Ref(page) = kid else { continue };
+            let iridium_pdf_cos::Object::Ref(page) = kid else { continue };
             let _ = created.update_dict(page, |d| {
                 let mut res = d.get(b"Resources").and_then(|o| o.as_dict().cloned()).unwrap_or_default();
                 let mut fonts = res.get(b"Font").and_then(|o| o.as_dict().cloned()).unwrap_or_default();
-                fonts.set(b"PCHelv".to_vec(), pdfcraft_cos::Object::Ref(fr));
-                res.set(b"Font".to_vec(), pdfcraft_cos::Object::Dict(fonts));
-                d.set(b"Resources".to_vec(), pdfcraft_cos::Object::Dict(res));
+                fonts.set(b"PCHelv".to_vec(), iridium_pdf_cos::Object::Ref(fr));
+                res.set(b"Font".to_vec(), iridium_pdf_cos::Object::Dict(fonts));
+                d.set(b"Resources".to_vec(), iridium_pdf_cos::Object::Dict(res));
             });
             // The page's content is written after the fonts carry their resource names, so
             // the runs can reference them.
             if page_words.get(pi).is_some_and(|ws| !ws.is_empty()) {
-                pdfcraft_edit::add_type3_fonts(&mut created, pi, &mut plan).map_err(|e| e.to_string())?;
+                iridium_pdf_edit::add_type3_fonts(&mut created, pi, &mut plan).map_err(|e| e.to_string())?;
                 let word_offset = page_words.iter().take(pi).map(Vec::len).sum();
-                let content = pdfcraft_ocr::visible_text_layer_at(&page_words[pi], &plan, word_offset);
-                let mut dict = pdfcraft_cos::Dict::new();
-                dict.set(b"PCMark".to_vec(), pdfcraft_cos::Object::name("OCR"));
-                let stream = created.add(pdfcraft_cos::Object::Stream(pdfcraft_cos::Stream::flate(dict, &content)));
-                let _ = created.update_dict(page, |d| d.set(b"Contents".to_vec(), pdfcraft_cos::Object::Ref(stream)));
+                let content = iridium_pdf_ocr::visible_text_layer_at(&page_words[pi], &plan, word_offset);
+                let mut dict = iridium_pdf_cos::Dict::new();
+                dict.set(b"PCMark".to_vec(), iridium_pdf_cos::Object::name("OCR"));
+                let stream = created.add(iridium_pdf_cos::Object::Stream(iridium_pdf_cos::Stream::flate(dict, &content)));
+                let _ = created.update_dict(page, |d| d.set(b"Contents".to_vec(), iridium_pdf_cos::Object::Ref(stream)));
             }
         }
         self.write_new(&created).map_err(|e| e.to_string())
@@ -1192,7 +1193,7 @@ pub fn low_confidence_pages(pages: &[OcrPage], threshold: f32) -> Option<(usize,
         if p.skipped.is_some() {
             continue;
         }
-        let on_page = p.words.iter().filter(|w| w.confidence.is_some_and(|c| pdfcraft_ocr::low_confidence(c, threshold))).count();
+        let on_page = p.words.iter().filter(|w| w.confidence.is_some_and(|c| iridium_pdf_ocr::low_confidence(c, threshold))).count();
         if on_page > 0 {
             count += on_page;
             page_numbers.push(p.page + 1);
@@ -1344,7 +1345,7 @@ mod tests {
         assert!((0.0..=1.0).contains(&c), "{c}");
     }
     use crate::tests::fixture;
-    use pdfcraft_render::TextGlyph;
+    use iridium_pdf_render::TextGlyph;
 
     fn glyph(text: &str) -> TextGlyph {
         TextGlyph { text: text.into(), rect: [0.0, 0.0, 1.0, 1.0], quad: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]], direction: [1.0, 0.0] }
@@ -1354,12 +1355,12 @@ mod tests {
     /// enables a skip.
     #[test]
     fn has_text_probe_needs_one_non_blank_run() {
-        let none: Option<Arc<pdfcraft_render::PageText>> = None;
+        let none: Option<Arc<iridium_pdf_render::PageText>> = None;
         assert!(!page_has_text(none.as_ref()), "a failed probe never enables a skip");
-        assert!(!page_has_text(Some(Arc::new(pdfcraft_render::PageText::default())).as_ref()));
-        let blank = pdfcraft_render::PageText { glyphs: vec![glyph(" "), glyph("")], ..Default::default() };
+        assert!(!page_has_text(Some(Arc::new(iridium_pdf_render::PageText::default())).as_ref()));
+        let blank = iridium_pdf_render::PageText { glyphs: vec![glyph(" "), glyph("")], ..Default::default() };
         assert!(!page_has_text(Some(Arc::new(blank)).as_ref()));
-        let has = pdfcraft_render::PageText { glyphs: vec![glyph(" "), glyph("a")], ..Default::default() };
+        let has = iridium_pdf_render::PageText { glyphs: vec![glyph(" "), glyph("a")], ..Default::default() };
         assert!(page_has_text(Some(Arc::new(has)).as_ref()));
     }
 
@@ -1541,7 +1542,7 @@ mod tests {
     /// non-finite is ever stamped onto the page.
     #[test]
     fn non_finite_and_negative_word_boxes_are_dropped_before_placement() {
-        let word = |rect: [f32; 4]| pdfcraft_ocr::Word::new("w", rect, "ocrs");
+        let word = |rect: [f32; 4]| iridium_pdf_ocr::Word::new("w", rect, "ocrs");
         for (why, rect) in [
             ("NaN width", [f32::NAN, 0.0, 10.0, 10.0]),
             ("NaN height", [0.0, 0.0, 10.0, f32::NAN]),
@@ -1560,7 +1561,7 @@ mod tests {
     /// matter).
     #[test]
     fn crops_take_the_asked_pixels() {
-        let img = pdfcraft_ocr::OcrImage::new(3, 2, (0..6).flat_map(|p| vec![p as u8; 4]).collect()).unwrap();
+        let img = iridium_pdf_ocr::OcrImage::new(3, 2, (0..6).flat_map(|p| vec![p as u8; 4]).collect()).unwrap();
         let c = crop(&img, 1, 0, 3, 2).unwrap();
         assert_eq!((c.width(), c.height()), (2, 2));
         assert_eq!(c.rgba()[0], 1, "the crop starts at x=1");
@@ -1674,7 +1675,7 @@ mod tests {
     fn an_ocrs_only_choice_never_probes_tesseract() {
         use std::os::unix::fs::PermissionsExt;
         let probe = |name: &str| {
-            let dir = std::env::temp_dir().join(format!("pdfcraft-ocr-probe-{}-{name}", std::process::id()));
+            let dir = std::env::temp_dir().join(format!("iridium-pdf-ocr-probe-{}-{name}", std::process::id()));
             std::fs::create_dir_all(&dir).unwrap();
             let program = dir.join("fake-tesseract");
             std::fs::write(&program, "#!/bin/sh\ntouch \"$0.probed\"\nexit 1\n").unwrap();
@@ -1722,9 +1723,13 @@ mod tests {
         fn languages(&self) -> Vec<(String, String)> {
             vec![("en".into(), "English".into())]
         }
-        fn recognize(&self, _image: &pdfcraft_ocr::OcrImage, _options: &pdfcraft_ocr::RecognizeOptions) -> Result<Vec<pdfcraft_ocr::Line>, OcrError> {
+        fn recognize(
+            &self,
+            _image: &iridium_pdf_ocr::OcrImage,
+            _options: &iridium_pdf_ocr::RecognizeOptions,
+        ) -> Result<Vec<iridium_pdf_ocr::Line>, OcrError> {
             self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(vec![pdfcraft_ocr::Line { words: vec![pdfcraft_ocr::Word::new("word", [1.0, 1.0, 9.0, 9.0], "fake").with_confidence(95.0)] }])
+            Ok(vec![iridium_pdf_ocr::Line { words: vec![iridium_pdf_ocr::Word::new("word", [1.0, 1.0, 9.0, 9.0], "fake").with_confidence(95.0)] }])
         }
     }
 
@@ -1809,7 +1814,7 @@ mod tests {
         let mut stepped = Vec::new();
         while let Some(next) = steps.next_page() {
             let shot = next.unwrap();
-            let json = pdfcraft_ocr::lines_to_json(&fake.recognize(shot.image().unwrap(), &pdfcraft_ocr::RecognizeOptions::default()).unwrap());
+            let json = iridium_pdf_ocr::lines_to_json(&fake.recognize(shot.image().unwrap(), &iridium_pdf_ocr::RecognizeOptions::default()).unwrap());
             let lines = lines_from_json(&json, "fake").map_err(|e| e.to_string());
             stepped.push(shot.place(lines.map(|lines| StrategyOutcome { lines, ..Default::default() })));
         }
@@ -2107,7 +2112,7 @@ mod tests {
         let mut out = Session::new();
         let oid = out.open("ocr.pdf", None, bytes, None).unwrap();
         let text = crate::tests::page_texts(&out, oid)[0].clone();
-        if pdfcraft_fonts::CRAFT_FONTS.is_empty() {
+        if iridium_pdf_fonts::CRAFT_FONTS.is_empty() {
             assert!(text.contains("??????"), "{text}");
         } else {
             assert!(text.contains("Привет"), "{text}");
@@ -2120,7 +2125,7 @@ mod tests {
     /// the Latin word elsewhere on the page stays.
     #[test]
     fn the_editable_type3_layer_is_redacted_end_to_end() {
-        if pdfcraft_fonts::CRAFT_FONTS.is_empty() {
+        if iridium_pdf_fonts::CRAFT_FONTS.is_empty() {
             eprintln!("skipping: built without craft-fonts (set CRAFT_FONTS_DIR to run it)");
             return;
         }
@@ -2141,7 +2146,7 @@ mod tests {
         let before = crate::tests::page_texts(&out, oid)[0].clone();
         assert!(before.contains("Привет") && before.contains("Hello"), "{before}");
         let shape = crate::Shape::Redact {
-            quads: vec![pdfcraft_annot::rect_quad([10.0, 240.0, 110.0, 270.0])],
+            quads: vec![iridium_pdf_annot::rect_quad([10.0, 240.0, 110.0, 270.0])],
             overlay: String::new(),
             look: Default::default(),
         };
@@ -2170,7 +2175,7 @@ mod tests {
     /// shows page 1's text.
     #[test]
     fn editable_output_keeps_each_pages_own_words() {
-        if pdfcraft_fonts::CRAFT_FONTS.is_empty() {
+        if iridium_pdf_fonts::CRAFT_FONTS.is_empty() {
             eprintln!("skipping: built without craft-fonts (set CRAFT_FONTS_DIR to run it)");
             return;
         }
@@ -2215,14 +2220,14 @@ mod tests {
         };
         s.apply(id, Edit::AddOcrText { page: 0, words: vec![word] }).unwrap();
         assert!(crate::tests::page_texts(&s, id)[0].contains("日本語"));
-        let shape = pdfcraft_annot::Shape::Redact {
-            quads: vec![pdfcraft_annot::rect_quad([18.0, 248.0, 122.0, 262.0])],
+        let shape = iridium_pdf_annot::Shape::Redact {
+            quads: vec![iridium_pdf_annot::rect_quad([18.0, 248.0, 122.0, 262.0])],
             overlay: String::new(),
             look: Default::default(),
         };
-        let mark = Edit::AddAnnotation(pdfcraft_annot::NewAnnotation {
+        let mark = Edit::AddAnnotation(iridium_pdf_annot::NewAnnotation {
             page: 0,
-            style: pdfcraft_annot::Style::default_for(&shape),
+            style: iridium_pdf_annot::Style::default_for(&shape),
             shape,
             contents: String::new(),
             author: "Ada".into(),

@@ -2,8 +2,8 @@
 //! drawn (a form inherits the graphics state of its `Do`), and puts that width back after a
 //! stroke it widens, in forms drawn by forms too.
 
-use pdfcraft_cos::{Document, ObjRef, Object};
-use pdfcraft_edit::{Hairlines, fix_hairlines};
+use iridium_pdf_cos::{Document, ObjRef, Object};
+use iridium_pdf_edit::{Hairlines, fix_hairlines};
 use std::sync::Arc;
 
 /// A document of `objects` (object `i + 1` is the `i`th: a dictionary, and stream data when

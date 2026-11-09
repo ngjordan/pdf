@@ -286,8 +286,8 @@ impl AddedImage {
 
     /// The matrix from image space (the unit square) to display space: crop, flip, rotate,
     /// then fill the box.
-    pub(super) fn matrix(&self) -> pdfcraft_content::Matrix {
-        use pdfcraft_content::Matrix as M;
+    pub(super) fn matrix(&self) -> iridium_pdf_content::Matrix {
+        use iridium_pdf_content::Matrix as M;
         let [l, b, r, t] = Self::clamp_crop(self.crop);
         let (cw, ch) = (1.0 - l - r, 1.0 - b - t);
         let mut m = M([1.0 / cw, 0.0, 0.0, 1.0 / ch, -l / cw, -b / ch]);
@@ -315,7 +315,7 @@ pub struct Added {
     pub content: Content,
 }
 
-/// PdfCraft-owned page content discovered in one page/content traversal.
+/// PDF-owned page content discovered in one page/content traversal.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct MarkerScan {
     pub marks: Vec<MarkKind>,

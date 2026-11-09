@@ -1,6 +1,6 @@
 //! Preflight must preserve references accepted by the COS generation-repair policy.
-use pdfcraft_cos::{Document, Object, SaveOptions, write_full, write_incremental};
-use pdfcraft_preflight::{Level, convert};
+use iridium_pdf_cos::{Document, Object, SaveOptions, write_full, write_incremental};
+use iridium_pdf_preflight::{Level, convert};
 use std::sync::Arc;
 
 fn image_file(damaged: bool) -> Arc<Vec<u8>> {

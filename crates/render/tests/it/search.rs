@@ -1,4 +1,4 @@
-use pdfcraft_render::{PageText, TextGlyph, text::fold_case};
+use iridium_pdf_render::{PageText, TextGlyph, text::fold_case};
 use std::ops::Range;
 
 fn page(parts: &[&str]) -> PageText {
@@ -419,7 +419,7 @@ fn laid_out(lines: &[(f32, f32, &str)], size: f32) -> PageText {
             });
         }
     }
-    pdfcraft_render::text::layout(glyphs)
+    iridium_pdf_render::text::layout(glyphs)
 }
 
 #[test]
@@ -731,7 +731,7 @@ fn pdf(objects: &[String]) -> Vec<u8> {
 /// column to the head of the left one.
 #[test]
 fn a_word_divided_between_vertical_columns_of_a_page_is_found_in_both() {
-    use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
+    use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
     let chars: Vec<char> = "装置の検知機構です".chars().collect();
     let pairs: String = (1u32..).zip(&chars).map(|(code, c)| format!("<{code:04X}> <{:04X}> ", *c as u32)).collect();
     let to_unicode = format!(

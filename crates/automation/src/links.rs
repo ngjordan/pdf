@@ -1,10 +1,10 @@
 //! Link tools: list, add, edit and delete links; create links from URLs in the text; remove
 //! all links. Rectangles are points from the top-left of the displayed page.
 
-use pdfcraft_engine::{
+use iridium_pdf_engine::{
     Edit, LinkAction, LinkHighlight, LinkStyle, LinkZoom, read_remote_document, remote_document_path_is_absolute, resolve_remote_document_path,
 };
-use pdfcraft_render::{DestView, LinkTarget, RemoteDestination};
+use iridium_pdf_render::{DestView, LinkTarget, RemoteDestination};
 use serde_json::{Value, json};
 use std::path::Path;
 
@@ -77,7 +77,7 @@ impl Automation {
 
     pub(crate) fn link_list(&self, a: &Args) -> Result<Value> {
         let doc = self.doc(a)?;
-        let viewed: std::collections::HashMap<(usize, usize), &pdfcraft_render::Link> =
+        let viewed: std::collections::HashMap<(usize, usize), &iridium_pdf_render::Link> =
             doc.info.links.iter().map(|t| ((t.page, t.index), t)).collect();
         let items: Vec<Value> = doc
             .links()
@@ -123,7 +123,7 @@ impl Automation {
                         let opened = match link.map(|t| &t.target) {
                             Some(LinkTarget::Uri(kept)) => Some(kept.clone()),
                             Some(_) => None,
-                            None => pdfcraft_render::resolve_uri(doc.info.uri_base.as_deref(), u),
+                            None => iridium_pdf_render::resolve_uri(doc.info.uri_base.as_deref(), u),
                         };
                         if let Some(opened) = opened.filter(|o| o != u) {
                             v["resolved_url"] = json!(opened);
@@ -175,7 +175,7 @@ impl Automation {
                 .map(|(page, l)| {
                     let mut v = json!({ "page": page + 1, "rects": l.rects, "url": l.uri });
                     // What the viewer does on a click: the same check every document link gets.
-                    if let Err(e) = pdfcraft_engine::links::document_url(&l.uri) {
+                    if let Err(e) = iridium_pdf_engine::links::document_url(&l.uri) {
                         v["blocked"] = json!(e.to_string());
                     }
                     v

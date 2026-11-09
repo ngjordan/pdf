@@ -2,7 +2,7 @@
 //! (ISO 32000-2 §9.3.6, Table 104). For a Type 3 font, modes 3 and 7 render nothing, the other
 //! modes render the glyph descriptions, and modes 4 to 7 add nothing to the clipping path
 //! (vendored hayro-interpret patch 64).
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
 use std::sync::Arc;
 
 /// Glyph procedures in a 1000-unit glyph space (`/FontMatrix [0.001 0 0 0.001 0 0]`), named

@@ -1,9 +1,9 @@
-//! The two content-stream parsers PdfCraft runs, operator by operator on the same bytes.
+//! The two content-stream parsers PDF runs, operator by operator on the same bytes.
 //!
 //! The renderer, text extraction and Find read a page through hayro's tokenizer
 //! (`hayro_syntax::content::UntypedIter`, typed through `TypedIter`). Edit text, redaction,
 //! the redaction audit, Office export, accessibility and the automation tools read it through
-//! `pdfcraft_content::parse`. Where the two disagree on the same bytes, a feature acts on a
+//! `iridium_pdf_content::parse`. Where the two disagree on the same bytes, a feature acts on a
 //! page the renderer never showed: #3107, #3108, #3111 and #3177 are that class.
 //!
 //! Each fixture here is parsed by both and the operator sequences compared. Where the parsers
@@ -23,7 +23,7 @@ use std::fmt::Write as _;
 use hayro_syntax::content::ops::TypedInstruction;
 use hayro_syntax::content::{TypedIter, UntypedIter};
 use hayro_syntax::object::{MaybeRef, Object as HObject};
-use pdfcraft_cos::Object as CObject;
+use iridium_pdf_cos::Object as CObject;
 
 /// One operator with its operands, normalized so the two parsers can be compared as text.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -110,7 +110,7 @@ fn norm_maybe(m: &MaybeRef<HObject<'_>>) -> String {
 
 /// The content crate's operators.
 fn content(data: &[u8]) -> Vec<Tok> {
-    pdfcraft_content::parse(data)
+    iridium_pdf_content::parse(data)
         .ops
         .iter()
         .map(|op| Tok {
@@ -200,7 +200,7 @@ fn the_two_parsers_agree_on_well_formed_streams_and_common_damage() {
 fn surplus_operands_are_read_from_the_end_by_hayro_and_either_way_by_the_content_crate() {
     let data = b"BT 0 20 Tc (x) Tj ET";
     agree("surplus operand before Tc", data, &["BT", "Tc", "Tj", "ET"]);
-    let parsed = pdfcraft_content::parse(data);
+    let parsed = iridium_pdf_content::parse(data);
     let tc = &parsed.ops[1];
     assert_eq!(tc.nums::<1>(), Some([20.0]), "last N, as the renderer");
     assert_eq!(tc.num(0), Some(0.0), "the i-th from the front");
@@ -276,7 +276,7 @@ fn both_parsers_read_a_doubled_minus_as_one_number() {
     let data = b"1 0 0 1 --280 10 cm";
     agree("doubled minus", data, &["cm"]);
     assert_eq!(content(data)[0].operands, ["1", "0", "0", "1", "-280", "10"]);
-    assert_eq!(pdfcraft_content::parse(data).skipped, 0, "--280 is read as one number, not recovered from -280");
+    assert_eq!(iridium_pdf_content::parse(data).skipped, 0, "--280 is read as one number, not recovered from -280");
 }
 
 // ── known divergences, pinned on both sides ─────────────────────────────────────────────────
@@ -303,7 +303,7 @@ fn scientific_notation_is_a_number_to_the_content_crate_and_an_unknown_operator_
 /// The bytes of the first inline image each parser reads in `data`: the content crate's, then
 /// hayro's raw stream data (nothing stripped).
 fn inline_bytes(data: &[u8]) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
-    let parsed = pdfcraft_content::parse(data);
+    let parsed = iridium_pdf_content::parse(data);
     let c = parsed.ops.iter().find_map(|op| op.inline.as_ref().map(|(_, d)| d.clone()));
     let mut iter = UntypedIter::new(data);
     let mut h = None;
@@ -454,7 +454,7 @@ fn one_page_pdf(content: &[u8]) -> Vec<u8> {
 /// reaches the pixels and no sample is taken for the delimiter before `EI`.
 #[test]
 fn the_renderer_draws_a_last_sample_that_is_white_space() {
-    use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
+    use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
     for samples in [[0x20, 0x45, 0x49, 0x20], [0x10, 0x60, 0xB0, 0x20], [0x10, 0x60, 0xB0, 0x0A]] {
         // Each sample is a 100 × 100 pt block from x = 100, y = 300 (PDF space).
         let mut content = b"q 400 0 0 100 100 300 cm BI /W 4 /H 1 /BPC 8 /CS /G ID ".to_vec();

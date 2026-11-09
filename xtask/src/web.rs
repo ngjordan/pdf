@@ -2,12 +2,12 @@
 //! tell the page where it is.
 //!
 //! Trunk names the page's files after a hash of their contents, so hosts can cache them forever,
-//! but leaves a worker's files under their plain names (`pdfcraft-ocr-worker.js`, `_bg.wasm`,
+//! but leaves a worker's files under their plain names (`iridium-pdf-ocr-worker.js`, `_bg.wasm`,
 //! `_loader.js`) and writes nothing into `index.html` for it. A browser holding an old worker
 //! script with a new `.wasm` would break, so Trunk runs this after each build
-//! (apps/pdfcraft-web/Trunk.toml, `TRUNK_STAGING_DIR`): it renames the three files to
-//! `pdfcraft-ocr-worker-<hash>…`, updates the names inside them, and adds
-//! `<meta name="pdfcraft-ocr-worker" content="./pdfcraft-ocr-worker-<hash>_loader.js">`, which
+//! (apps/iridium-pdf-web/Trunk.toml, `TRUNK_STAGING_DIR`): it renames the three files to
+//! `iridium-pdf-ocr-worker-<hash>…`, updates the names inside them, and adds
+//! `<meta name="iridium-pdf-ocr-worker" content="./iridium-pdf-ocr-worker-<hash>_loader.js">`, which
 //! crates/ui-egui/src/workflows/ocr_web.rs reads.
 
 use std::path::{Path, PathBuf};
@@ -15,8 +15,8 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, bail};
 
 /// The `<meta>` name the page looks for.
-const META: &str = "pdfcraft-ocr-worker";
-const STEM: &str = "pdfcraft-ocr-worker";
+const META: &str = "iridium-pdf-ocr-worker";
+const STEM: &str = "iridium-pdf-ocr-worker";
 
 pub fn worker_link(args: &[String]) -> Result<()> {
     let dir = match args.first() {
@@ -98,9 +98,9 @@ mod tests {
 
     fn trunk_output(wasm: &[u8]) -> Worker {
         Worker {
-            js: b"function f(){ module_or_path = new URL('pdfcraft-ocr-worker_bg.wasm', import.meta.url); }".to_vec(),
+            js: b"function f(){ module_or_path = new URL('iridium-pdf-ocr-worker_bg.wasm', import.meta.url); }".to_vec(),
             wasm: wasm.to_vec(),
-            loader: b"import init from './pdfcraft-ocr-worker.js';await init();".to_vec(),
+            loader: b"import init from './iridium-pdf-ocr-worker.js';await init();".to_vec(),
         }
     }
 
@@ -108,7 +108,7 @@ mod tests {
     fn worker_files_get_content_hashed_names_that_point_at_each_other() {
         let h = trunk_output(b"\0asm one").hashed().unwrap();
         let names: Vec<&str> = h.files.iter().map(|f| f.0.as_str()).collect();
-        let hash = &h.loader["pdfcraft-ocr-worker-".len()..h.loader.len() - "_loader.js".len()];
+        let hash = &h.loader["iridium-pdf-ocr-worker-".len()..h.loader.len() - "_loader.js".len()];
         assert_eq!(hash.len(), 16);
         assert_eq!(names, [format!("{STEM}-{hash}.js"), format!("{STEM}-{hash}_bg.wasm"), h.loader.clone()]);
         let text = |i: usize| String::from_utf8(h.files[i].1.clone()).unwrap();
@@ -125,21 +125,21 @@ mod tests {
         w.js = b"no wasm named here".to_vec();
         assert!(w.hashed().is_err());
         let mut w = trunk_output(b"\0asm");
-        w.loader = b"import a from './pdfcraft-ocr-worker.js'; import b from './pdfcraft-ocr-worker.js';".to_vec();
+        w.loader = b"import a from './iridium-pdf-ocr-worker.js'; import b from './iridium-pdf-ocr-worker.js';".to_vec();
         assert!(w.hashed().is_err());
     }
 
     #[test]
     fn the_page_names_the_loader_once() {
-        let html = "<html>\n  <head>\n    <title>PdfCraft</title>\n  </head>\n  <body></body>\n</html>\n";
-        let once = add_worker_meta(html, "pdfcraft-ocr-worker-9f8e_loader.js").unwrap();
-        assert!(once.contains("<meta name=\"pdfcraft-ocr-worker\" content=\"./pdfcraft-ocr-worker-9f8e_loader.js\" />\n  </head>"), "{once}");
+        let html = "<html>\n  <head>\n    <title>PDF</title>\n  </head>\n  <body></body>\n</html>\n";
+        let once = add_worker_meta(html, "iridium-pdf-ocr-worker-9f8e_loader.js").unwrap();
+        assert!(once.contains("<meta name=\"iridium-pdf-ocr-worker\" content=\"./iridium-pdf-ocr-worker-9f8e_loader.js\" />\n  </head>"), "{once}");
         // Running again replaces the tag rather than adding another.
-        let twice = add_worker_meta(&once, "pdfcraft-ocr-worker-7777_loader.js").unwrap();
-        assert_eq!(twice.matches("pdfcraft-ocr-worker").count(), 2, "{twice}");
-        assert!(twice.contains("./pdfcraft-ocr-worker-7777_loader.js"));
-        assert!(twice.contains("<title>PdfCraft</title>") && twice.ends_with("</html>\n"));
-        assert!(add_worker_meta(html, "pdfcraft-ocr-worker-\"x_loader.js").is_err());
-        assert!(add_worker_meta("<body></body>", "pdfcraft-ocr-worker_loader.js").is_err());
+        let twice = add_worker_meta(&once, "iridium-pdf-ocr-worker-7777_loader.js").unwrap();
+        assert_eq!(twice.matches("iridium-pdf-ocr-worker").count(), 2, "{twice}");
+        assert!(twice.contains("./iridium-pdf-ocr-worker-7777_loader.js"));
+        assert!(twice.contains("<title>PDF</title>") && twice.ends_with("</html>\n"));
+        assert!(add_worker_meta(html, "iridium-pdf-ocr-worker-\"x_loader.js").is_err());
+        assert!(add_worker_meta("<body></body>", "iridium-pdf-ocr-worker_loader.js").is_err());
     }
 }

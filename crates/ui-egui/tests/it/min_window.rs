@@ -4,11 +4,11 @@
 use egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::{MIN_WINDOW_SIZE, PdfCraftApp};
+use iridium_pdf_ui_egui::{MIN_WINDOW_SIZE, PdfApp};
 
-fn harness(size: egui::Vec2) -> Harness<'static, PdfCraftApp> {
+fn harness(size: egui::Vec2) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(size).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app
     });
@@ -63,12 +63,12 @@ fn fixture(n: usize) -> Vec<u8> {
 }
 
 fn protected(user: &str, owner: &str, permissions: i32) -> Vec<u8> {
-    protected_with(pdfcraft_cos::Algorithm::Aes256, user, owner, permissions)
+    protected_with(iridium_pdf_cos::Algorithm::Aes256, user, owner, permissions)
 }
 
-fn protected_with(algorithm: pdfcraft_cos::Algorithm, user: &str, owner: &str, permissions: i32) -> Vec<u8> {
-    let mut doc = pdfcraft_cos::Document::open(std::sync::Arc::new(fixture(2))).unwrap();
-    doc.set_encryption(&pdfcraft_cos::NewEncryption {
+fn protected_with(algorithm: iridium_pdf_cos::Algorithm, user: &str, owner: &str, permissions: i32) -> Vec<u8> {
+    let mut doc = iridium_pdf_cos::Document::open(std::sync::Arc::new(fixture(2))).unwrap();
+    doc.set_encryption(&iridium_pdf_cos::NewEncryption {
         algorithm,
         user_password: user,
         owner_password: owner,
@@ -77,14 +77,14 @@ fn protected_with(algorithm: pdfcraft_cos::Algorithm, user: &str, owner: &str, p
         seed: [4; 32],
     })
     .unwrap();
-    pdfcraft_cos::write_full(&doc, &Default::default()).unwrap()
+    iridium_pdf_cos::write_full(&doc, &Default::default()).unwrap()
 }
 
 /// A narrow window: the stacked notice bar keeps both buttons inside the window and apart.
 #[test]
 fn the_stacked_notice_keeps_its_buttons_in_view() {
     let mut h = Harness::builder().with_size(egui::vec2(MIN_WINDOW_SIZE[0], MIN_WINDOW_SIZE[1])).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("locked.pdf", None, protected("", "owner", 0b0100)).unwrap();
         app

@@ -79,7 +79,7 @@ impl TextState {
     /// (ISO 32000-2 §11.6.5.2), so one selected at another CTM is selected there and the CTM
     /// set back.
     pub(crate) fn paint_ops(&self, current: &TextState, ctm: [f64; 6]) -> Vec<Op> {
-        let n = pdfcraft_content::num;
+        let n = iridium_pdf_content::num;
         let mut v = Vec::new();
         // The selections both share stay in force; the ones after them are selected again in order.
         let shared = self.ext_gstate.iter().zip(&current.ext_gstate).take_while(|(a, b)| a == b).count();
@@ -108,7 +108,7 @@ impl TextState {
 
     /// Operators that set this state (inside a text object).
     pub(crate) fn ops(&self) -> Vec<Op> {
-        let n = pdfcraft_content::num;
+        let n = iridium_pdf_content::num;
         let mut v = Vec::new();
         if let Some((f, size)) = &self.font {
             v.push(Op::new("Tf", vec![Object::name(f), n(*size)]));
@@ -438,7 +438,7 @@ impl GsSelection {
             v.push(gs);
             return;
         };
-        let cm = |m: Matrix| Op::new("cm", m.0.iter().map(|x| pdfcraft_content::num(*x)).collect());
+        let cm = |m: Matrix| Op::new("cm", m.0.iter().map(|x| iridium_pdf_content::num(*x)).collect());
         v.extend([cm(to), gs, cm(back)]);
     }
 }

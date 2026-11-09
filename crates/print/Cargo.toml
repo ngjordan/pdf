@@ -1,5 +1,5 @@
 [package]
-name = "pdfcraft-print"
+name = "iridium-pdf-print"
 description = "Printing: page selection, sizing (fit, actual, shrink, custom), multiple pages per sheet, booklets, posters, comments & forms; print-ready PDF and the system spooler"
 version.workspace = true
 edition.workspace = true
@@ -10,10 +10,10 @@ workspace = true
 
 [dependencies]
 craft-print = { workspace = true }
-pdfcraft-cos = { workspace = true }
-pdfcraft-content = { workspace = true }
-pdfcraft-model = { workspace = true }
+iridium-pdf-cos = { workspace = true }
+iridium-pdf-content = { workspace = true }
+iridium-pdf-model = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-pdfcraft-render = { workspace = true }
+iridium-pdf-render = { workspace = true }

@@ -59,7 +59,7 @@ pub(crate) fn map<T: Sync, R: Send>(
             let results = results.clone();
             let (next, stop, work) = (&next, &stop, &work);
             // A thread that can't start only leaves more for the others, or for below.
-            let _ = std::thread::Builder::new().name("pdfcraft-optimize-worker".into()).spawn_scoped(scope, move || {
+            let _ = std::thread::Builder::new().name("iridium-pdf-optimize-worker".into()).spawn_scoped(scope, move || {
                 give_way_to_other_programs();
                 while !stop.load(Ordering::Relaxed) {
                     let i = next.fetch_add(1, Ordering::Relaxed);

@@ -4,8 +4,8 @@
 
 use std::sync::Arc;
 
-use pdfcraft_cos::{Document, ObjRef, Object, PdfString, SaveOptions, write_incremental};
-use pdfcraft_sign::{Modification, SignOptions, Status, TrustStore, kind, pkcs12, signatures};
+use iridium_pdf_cos::{Document, ObjRef, Object, PdfString, SaveOptions, write_incremental};
+use iridium_pdf_sign::{Modification, SignOptions, Status, TrustStore, kind, pkcs12, signatures};
 
 fn data(name: &str) -> Vec<u8> {
     std::fs::read(format!("{}/tests/data/{name}", env!("CARGO_MANIFEST_DIR"))).unwrap()
@@ -57,7 +57,7 @@ fn certified(p: u8) -> Vec<u8> {
         certify: Some(p),
         ..SignOptions::default()
     };
-    pdfcraft_sign::sign(&open(&form()), &id, &opts).unwrap()
+    iridium_pdf_sign::sign(&open(&form()), &id, &opts).unwrap()
 }
 
 fn edit_after(signed: &[u8], f: impl FnOnce(&mut Document)) -> Vec<u8> {
@@ -126,9 +126,9 @@ fn a_signed_catalog_is_judged_as_the_catalog_whatever_its_type() {
     assert_refused(
         "catalog relabelled",
         &edit_after(&signed, |doc| {
-            let content = doc.add(Object::Stream(pdfcraft_cos::Stream::from_raw(Default::default(), b"0 0 m 300 300 l S".to_vec())));
+            let content = doc.add(Object::Stream(iridium_pdf_cos::Stream::from_raw(Default::default(), b"0 0 m 300 300 l S".to_vec())));
             let pages = doc.add(Object::Dict(Default::default()));
-            let mut page = pdfcraft_cos::Dict::new();
+            let mut page = iridium_pdf_cos::Dict::new();
             page.set(b"Parent".to_vec(), Object::Ref(pages));
             page.set(b"MediaBox".to_vec(), Object::Array([0, 0, 300, 300].map(Object::Int).to_vec()));
             page.set(b"Contents".to_vec(), Object::Ref(content));
@@ -191,7 +191,7 @@ fn a_field_dropped_from_the_form_is_no_change_any_level_permits() {
 #[test]
 fn a_signed_fields_widget_may_be_filled_but_not_hidden_or_moved() {
     let signed = certified(2);
-    let edit = |f: &dyn Fn(&mut pdfcraft_cos::Dict)| edit_after(&signed, |doc| doc.update_dict(r(5), |w| f(w)).unwrap());
+    let edit = |f: &dyn Fn(&mut iridium_pdf_cos::Dict)| edit_after(&signed, |doc| doc.update_dict(r(5), |w| f(w)).unwrap());
     let filled = edit(&|w| w.set(b"V".to_vec(), PdfString::text("Bob")));
     assert_eq!(verdict(&filled), (Status::Valid, Modification::Allowed(vec![kind::FORM_FILL])));
     assert_refused("hidden", &edit(&|w| w.set(b"F".to_vec(), Object::Int(2))), kind::PAGE_CONTENT);

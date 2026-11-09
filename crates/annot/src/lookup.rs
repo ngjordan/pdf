@@ -13,7 +13,7 @@ pub fn page_refs(doc: &Document) -> Result<Vec<ObjRef>, AnnotError> {
 
 /// Depth-first walk over the leaf pages under `top`. It keeps one cursor per open `/Kids` array,
 /// never one entry per child, so a child listed many times or shared between nodes is skipped by
-/// the seen check without being queued first (`pdfcraft_model::pages` walks the same way).
+/// the seen check without being queued first (`iridium_pdf_model::pages` walks the same way).
 /// Cycles end at the seen check, a `/Kids` array object shared by several nodes is read once,
 /// and at most a million nodes and four million `/Kids` entries are read.
 pub(crate) struct PageWalk<'a> {
@@ -91,7 +91,7 @@ thread_local! {
 
 /// Replace a page's `/Annots`, writing into the shared array object when it is indirect. An empty
 /// list removes a direct `/Annots`.
-pub fn set_annots(doc: &mut Document, page: ObjRef, list: Vec<Object>) -> Result<(), pdfcraft_cos::CosError> {
+pub fn set_annots(doc: &mut Document, page: ObjRef, list: Vec<Object>) -> Result<(), iridium_pdf_cos::CosError> {
     let existing = doc.get(page).as_dict().and_then(|d| d.reference(b"Annots"));
     match existing {
         Some(r) if doc.get(r).as_array().is_some() => doc.set(r, Object::Array(list)),
@@ -130,7 +130,7 @@ pub(crate) fn annot_dict(doc: &Document, r: ObjRef) -> Dict {
 
 /// A Fill & Sign item: typed text, a check/cross/dot/line, or a typed, drawn or image signature.
 ///
-/// New items carry `/PCFillSign`. Older files are recognised from the dictionaries PdfCraft
+/// New items carry `/PCFillSign`. Older files are recognised from the dictionaries PDF
 /// already writes (`/IT /FreeTextTypeWriter`, stamp `/Name`, drawn ink whose subject is
 /// "Signature").
 pub fn is_fill_sign(doc: &Document, d: &Dict) -> bool {

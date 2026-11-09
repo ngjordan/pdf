@@ -3,8 +3,8 @@
 
 use std::collections::HashSet;
 
-use pdfcraft_content::{Matrix, contains, overlaps, parse};
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, Stream};
+use iridium_pdf_content::{Matrix, contains, overlaps, parse};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, Stream};
 
 use super::extract::{appearance_matrix, bbox_of, matrix_of, page_content, res_dict};
 use super::util::{Ctx, image_codec};
@@ -370,7 +370,7 @@ impl Geo<'_> {
 
 /// Extend the current path (`sub`: its subpaths in device space; `clip`: the clip operator it
 /// carries) by one construction operator.
-fn extend_path(op: &pdfcraft_content::Op, ctm: &Matrix, sub: &mut Vec<Vec<(f64, f64)>>, clip: &mut Option<bool>) {
+fn extend_path(op: &iridium_pdf_content::Op, ctm: &Matrix, sub: &mut Vec<Vec<(f64, f64)>>, clip: &mut Option<bool>) {
     let o = op.op.as_slice();
     let nums: Vec<f64> = op.operands.iter().filter_map(Object::as_f64).collect();
     let at = |x: f64, y: f64| ctm.apply(x, y);

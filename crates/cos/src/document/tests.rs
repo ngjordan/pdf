@@ -118,7 +118,7 @@ fn an_object_stream_with_parameters_by_reference_is_read() {
         rows.push(b.wrapping_sub(before));
         before = *b;
     }
-    let coded = pdfcraft_filters::encode_flate(&rows);
+    let coded = iridium_pdf_filters::encode_flate(&rows);
     let mut out = b"%PDF-1.5\n".to_vec();
     let mut offs = [0usize; 7];
     let mut obj = |out: &mut Vec<u8>, n: usize, body: &[u8]| {
@@ -188,7 +188,7 @@ fn encrypt_dictionary_entries_read_the_same_by_reference() {
     assert_eq!((direct.stm_f.as_slice(), direct.str_f.as_slice(), direct.ef_f.as_slice()), (&b"StdCF"[..], &b"Other"[..], &b"StdCF"[..]));
     assert_eq!(direct.length_bits, 40, "the filter's own length, in bytes");
     assert!(!direct.encrypt_metadata);
-    assert_eq!(direct.crypt_filters.iter().filter(|(_, m)| *m == pdfcraft_crypt::Method::Aes128).count(), 1);
+    assert_eq!(direct.crypt_filters.iter().filter(|(_, m)| *m == iridium_pdf_crypt::Method::Aes128).count(), 1);
     for (key, value) in &entries {
         let mut one = d.clone();
         let r = doc.add(value.clone());
@@ -211,8 +211,8 @@ fn encrypt_dictionary_entries_read_the_same_by_reference() {
 #[test]
 fn decode_parms_given_by_reference_are_read_once_direct() {
     let rows = [1u8, 2, 3, 4, 5, 6, 7, 8];
-    let params = pdfcraft_filters::Params { predictor: 12, colors: 1, bits_per_component: 8, columns: 4, early_change: 1 };
-    let coded = pdfcraft_filters::encode(&pdfcraft_filters::Filter::Flate, &params, &rows).unwrap();
+    let params = iridium_pdf_filters::Params { predictor: 12, colors: 1, bits_per_component: 8, columns: 4, early_change: 1 };
+    let coded = iridium_pdf_filters::encode(&iridium_pdf_filters::Filter::Flate, &params, &rows).unwrap();
     let mut parms = Dict::new();
     parms.set(b"Predictor".to_vec(), Object::Int(12));
     parms.set(b"Columns".to_vec(), Object::Int(4));
@@ -261,15 +261,15 @@ fn decode_parms_given_by_reference_are_read_once_direct() {
     let many = stream(1, Object::Array(vec![Object::Ref(r); 1000]));
     let made = doc.with_direct_parms(&many);
     assert_eq!(made.dict.get(b"DecodeParms").and_then(Object::as_array).map(Vec::len), Some(1));
-    let long = stream(pdfcraft_filters::MAX_CHAIN + 1, Object::Array(vec![Object::Ref(r); 9]));
+    let long = stream(iridium_pdf_filters::MAX_CHAIN + 1, Object::Array(vec![Object::Ref(r); 9]));
     assert!(matches!(doc.with_direct_parms(&long), Cow::Borrowed(_)));
     // A chain as long as a decoder takes is resolved, and a `/Crypt` in it doesn't count, as
     // the decoders leave it out: ASCIIHex as often as the limit allows, then the predictor's
     // Flate, its parameters by reference.
     let hex = |b: &[u8]| b.iter().flat_map(|x| format!("{x:02X}").into_bytes()).chain(*b">").collect::<Vec<u8>>();
-    let wrapped = (1..pdfcraft_filters::MAX_CHAIN).fold(coded.clone(), |data, _| hex(&data));
+    let wrapped = (1..iridium_pdf_filters::MAX_CHAIN).fold(coded.clone(), |data, _| hex(&data));
     for crypt in [false, true] {
-        let mut names = vec![Object::name("ASCIIHexDecode"); pdfcraft_filters::MAX_CHAIN - 1];
+        let mut names = vec![Object::name("ASCIIHexDecode"); iridium_pdf_filters::MAX_CHAIN - 1];
         names.push(Object::name("FlateDecode"));
         if crypt {
             names.insert(0, Object::name("Crypt"));
@@ -292,7 +292,7 @@ fn decode_parms_given_by_reference_are_read_once_direct() {
 fn fax_images_decode_with_their_parameters() {
     // 10 × 3: the first five samples of each row white, the rest black.
     let bits = [0b1111_1000, 0, 0b1111_1000, 0, 0b1111_1000, 0];
-    let coded = pdfcraft_filters::encode_g4(&bits, 10, 3).unwrap();
+    let coded = iridium_pdf_filters::encode_g4(&bits, 10, 3).unwrap();
     let mut doc = Document::new_empty();
     let mut parms = Dict::new();
     parms.set(b"K".to_vec(), Object::Int(-1));
@@ -353,7 +353,7 @@ fn fax_images_decode_with_their_parameters() {
     assert!(matches!(image(&doc, None, 10, 3), Err(CosError::Filter(_))), "the default 1728 /Columns");
     let mut plain = Dict::new();
     plain.set(b"Filter".to_vec(), Object::name("FlateDecode"));
-    assert_eq!(doc.decoded_image(&Stream::from_raw(plain, pdfcraft_filters::encode_flate(&bits))).unwrap(), bits);
+    assert_eq!(doc.decoded_image(&Stream::from_raw(plain, iridium_pdf_filters::encode_flate(&bits))).unwrap(), bits);
 
     // Behind other filters, its parameters at its own place in the array (/Crypt counts).
     let behind = |filters: &[Object], parms: &[Object], data: Vec<u8>| {
@@ -366,7 +366,7 @@ fn fax_images_decode_with_their_parameters() {
     };
     let (fax, null, own) = (Object::name("CCITTFaxDecode"), Object::Null, Object::Dict(parms.clone()));
     let hex = coded.iter().map(|b| format!("{b:02x}")).chain([">".to_string()]).collect::<String>().into_bytes();
-    let flated = pdfcraft_filters::encode_flate(&coded);
+    let flated = iridium_pdf_filters::encode_flate(&coded);
     let ahx = [Object::name("AHx"), fax.clone()];
     assert_eq!(behind(&ahx, &[null.clone(), Object::Ref(indirect)], hex.clone()).unwrap(), bits, "behind ASCIIHexDecode");
     assert_eq!(
@@ -388,12 +388,12 @@ fn fax_images_decode_with_their_parameters() {
 #[test]
 fn shared_jbig2_globals_are_read_once() {
     let bits = [0b1111_1000, 0, 0b1111_1000, 0, 0b1111_1000, 0];
-    let coded = pdfcraft_filters::encode_jbig2_generic(&bits, 10, 3).unwrap();
+    let coded = iridium_pdf_filters::encode_jbig2_generic(&bits, 10, 3).unwrap();
     let mut doc = Document::new_empty();
     let mut d = Dict::new();
     d.set(b"Filter".to_vec(), Object::name("FlateDecode"));
     let skipped = [0, 0, 0, 0, 0x3E, 0, 0, 0, 0, 0, 4, 0, 0, 0, 1];
-    let globals = doc.add(Object::Stream(Stream::from_raw(d, pdfcraft_filters::encode_flate(&skipped))));
+    let globals = doc.add(Object::Stream(Stream::from_raw(d, iridium_pdf_filters::encode_flate(&skipped))));
     let image = |doc: &mut Document| {
         let mut d = Dict::new();
         d.set(b"Width".to_vec(), Object::Int(10));
@@ -438,7 +438,7 @@ fn shared_jbig2_globals_are_read_once() {
 /// with neither is an error, not an image of no rows.
 #[test]
 fn a_jbig2_image_needs_its_size_given_directly() {
-    let coded = pdfcraft_filters::encode_jbig2_generic(&[0xFF, 0xFF], 8, 2).unwrap();
+    let coded = iridium_pdf_filters::encode_jbig2_generic(&[0xFF, 0xFF], 8, 2).unwrap();
     let mut doc = Document::new_empty();
     let size = doc.add(Object::Int(2));
     let image = |width: Object, height: Object| {
@@ -458,7 +458,7 @@ fn a_jbig2_image_needs_its_size_given_directly() {
 #[test]
 fn kept_jbig2_globals_are_bounded_in_total() {
     let bits = [0b1111_1000, 0, 0b1111_1000, 0, 0b1111_1000, 0];
-    let coded = pdfcraft_filters::encode_jbig2_generic(&bits, 10, 3).unwrap();
+    let coded = iridium_pdf_filters::encode_jbig2_generic(&bits, 10, 3).unwrap();
     let length = 22 * 1024 * 1024;
     let mut skipped = vec![0, 0, 0, 0, 0x3E, 0, 0];
     skipped.extend_from_slice(&u32::try_from(4 + length).unwrap().to_be_bytes());
@@ -469,7 +469,7 @@ fn kept_jbig2_globals_are_bounded_in_total() {
     for _ in 0..3 {
         let mut d = Dict::new();
         d.set(b"Filter".to_vec(), Object::name("FlateDecode"));
-        let globals = doc.add(Object::Stream(Stream::from_raw(d, pdfcraft_filters::encode_flate(&skipped))));
+        let globals = doc.add(Object::Stream(Stream::from_raw(d, iridium_pdf_filters::encode_flate(&skipped))));
         let mut d = Dict::new();
         d.set(b"Width".to_vec(), Object::Int(10));
         d.set(b"Height".to_vec(), Object::Int(3));
@@ -497,9 +497,9 @@ fn kept_jbig2_globals_are_bounded_in_total() {
 #[test]
 fn jbig2_globals_with_parameters_by_reference_are_read_afresh() {
     let bits = [0b1111_1000, 0, 0b1111_1000, 0, 0b1111_1000, 0];
-    let coded = pdfcraft_filters::encode_jbig2_generic(&bits, 10, 3).unwrap();
+    let coded = iridium_pdf_filters::encode_jbig2_generic(&bits, 10, 3).unwrap();
     let skipped = [0, 0, 0, 0, 0x3E, 0, 0, 0, 0, 0, 4, 0, 0, 0, 1];
-    let params = pdfcraft_filters::Params { predictor: 12, colors: 1, bits_per_component: 8, columns: 15, early_change: 1 };
+    let params = iridium_pdf_filters::Params { predictor: 12, colors: 1, bits_per_component: 8, columns: 15, early_change: 1 };
     let mut doc = Document::new_empty();
     let mut parms = Dict::new();
     parms.set(b"Predictor".to_vec(), Object::Int(12));
@@ -508,7 +508,7 @@ fn jbig2_globals_with_parameters_by_reference_are_read_afresh() {
     let mut d = Dict::new();
     d.set(b"Filter".to_vec(), Object::name("FlateDecode"));
     d.set(b"DecodeParms".to_vec(), Object::Ref(parms));
-    let predicted = pdfcraft_filters::encode(&pdfcraft_filters::Filter::Flate, &params, &skipped).unwrap();
+    let predicted = iridium_pdf_filters::encode(&iridium_pdf_filters::Filter::Flate, &params, &skipped).unwrap();
     let globals = doc.add(Object::Stream(Stream::from_raw(d, predicted)));
     let mut d = Dict::new();
     d.set(b"Width".to_vec(), Object::Int(10));
@@ -544,7 +544,7 @@ fn jbig2_globals_with_parameters_by_reference_are_read_afresh() {
 fn jbig2_images_decode_with_their_globals() {
     // 10 × 3: the first five samples of each row white, the rest black.
     let bits = [0b1111_1000, 0, 0b1111_1000, 0, 0b1111_1000, 0];
-    let coded = pdfcraft_filters::encode_jbig2_generic(&bits, 10, 3).unwrap();
+    let coded = iridium_pdf_filters::encode_jbig2_generic(&bits, 10, 3).unwrap();
     let hex = coded.iter().map(|b| format!("{b:02x}")).chain([">".to_string()]).collect::<String>().into_bytes();
     let mut doc = Document::new_empty();
     // An extension segment (ISO/IEC 14492 7.4.14), which a decoder skips, Flate-encoded; and data
@@ -552,7 +552,7 @@ fn jbig2_images_decode_with_their_globals() {
     let globals = |doc: &mut Document, data: &[u8]| {
         let mut d = Dict::new();
         d.set(b"Filter".to_vec(), Object::name("FlateDecode"));
-        let globals = doc.add(Object::Stream(Stream::from_raw(d, pdfcraft_filters::encode_flate(data))));
+        let globals = doc.add(Object::Stream(Stream::from_raw(d, iridium_pdf_filters::encode_flate(data))));
         let mut parms = Dict::new();
         parms.set(b"JBIG2Globals".to_vec(), Object::Ref(globals));
         Object::Dict(parms)
@@ -597,8 +597,8 @@ fn jbig2_images_decode_with_their_globals() {
 fn a_missing_file_id_is_derived_from_the_encryption_seed() {
     let mut doc = Document::new_empty();
     let seed = [9u8; 32];
-    doc.set_encryption(&pdfcraft_crypt::NewEncryption {
-        algorithm: pdfcraft_crypt::Algorithm::Aes256,
+    doc.set_encryption(&iridium_pdf_crypt::NewEncryption {
+        algorithm: iridium_pdf_crypt::Algorithm::Aes256,
         user_password: "user",
         owner_password: "owner",
         permissions: -4,
@@ -607,13 +607,13 @@ fn a_missing_file_id_is_derived_from_the_encryption_seed() {
     })
     .unwrap();
     let id = doc.trailer().get(b"ID").and_then(|o| o.as_array()).and_then(|a| a.first()).and_then(|o| o.as_string()).map(|s| s.bytes.clone());
-    assert_eq!(id.as_deref(), Some(pdfcraft_crypt::file_id(&seed).as_slice()));
+    assert_eq!(id.as_deref(), Some(iridium_pdf_crypt::file_id(&seed).as_slice()));
 
     let mut kept = Document::new_empty();
     let fixed = Object::String(crate::PdfString { bytes: b"0123456789abcdef".to_vec(), hex: true });
     kept.trailer_mut().set(b"ID".to_vec(), Object::Array(vec![fixed.clone(), fixed]));
-    kept.set_encryption(&pdfcraft_crypt::NewEncryption {
-        algorithm: pdfcraft_crypt::Algorithm::Aes256,
+    kept.set_encryption(&iridium_pdf_crypt::NewEncryption {
+        algorithm: iridium_pdf_crypt::Algorithm::Aes256,
         user_password: "user",
         owner_password: "owner",
         permissions: -4,
@@ -2045,7 +2045,7 @@ fn a_decompression_bomb_in_an_xref_stream_is_refused_and_the_file_reconstructed(
     // /W [1 1 1]: at 3 bytes a row that is more than 8,388,607 objects' worth, so it is not
     // decoded (in full: the limit applies while inflating) and the objects are found by
     // reconstruction instead.
-    let bomb = pdfcraft_filters::encode_flate(&pdfcraft_filters::encode_flate(&vec![0u8; 32 << 20]));
+    let bomb = iridium_pdf_filters::encode_flate(&iridium_pdf_filters::encode_flate(&vec![0u8; 32 << 20]));
     let mut bytes = b"%PDF-1.7\n".to_vec();
     let o1 = bytes.len();
     bytes.extend_from_slice(b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
@@ -2274,7 +2274,7 @@ fn page_tree_pages(doc: &Document) -> Vec<Dict> {
 /// the repair log says why; a save rewrites it in full, with every page.
 #[test]
 fn an_update_without_prev_is_rebuilt_with_its_page_tree_and_a_repair_note() {
-    let doc = Document::open(Arc::new(pdfcraft_testkit::update_without_prev(false))).expect("the unlinked file opens");
+    let doc = Document::open(Arc::new(iridium_pdf_testkit::update_without_prev(false))).expect("the unlinked file opens");
     let pages = page_tree_pages(&doc);
     assert_eq!(pages.len(), 3);
     assert!(pages.first().is_some_and(|p| p.contains(b"Annots")), "the update's page wins: {pages:?}");
@@ -2293,7 +2293,7 @@ fn an_update_without_prev_is_rebuilt_with_its_page_tree_and_a_repair_note() {
     assert!(reopened.repair_log().is_empty(), "{:?}", reopened.repair_log());
 
     // The same file with `/Prev` reads through its chain, as before.
-    let linked = Document::open(Arc::new(pdfcraft_testkit::update_without_prev(true))).expect("the linked file opens");
+    let linked = Document::open(Arc::new(iridium_pdf_testkit::update_without_prev(true))).expect("the linked file opens");
     assert_eq!(page_tree_pages(&linked).len(), 3);
     assert!(!linked.reconstructed() && !linked.rebuilt_unlinked_update());
     assert_eq!(linked.revisions().len(), 2);
@@ -2304,7 +2304,7 @@ fn an_update_without_prev_is_rebuilt_with_its_page_tree_and_a_repair_note() {
 /// update, so the earlier revision is cut off just the same, and the file is rebuilt.
 #[test]
 fn a_hybrid_update_without_prev_is_rebuilt_too() {
-    let doc = Document::open(Arc::new(pdfcraft_testkit::hybrid_update_without_prev(false))).expect("the unlinked file opens");
+    let doc = Document::open(Arc::new(iridium_pdf_testkit::hybrid_update_without_prev(false))).expect("the unlinked file opens");
     let pages = page_tree_pages(&doc);
     assert_eq!(pages.len(), 3);
     assert!(pages.first().is_some_and(|p| p.contains(b"Annots")), "the update's page wins: {pages:?}");
@@ -2312,7 +2312,7 @@ fn a_hybrid_update_without_prev_is_rebuilt_too() {
     assert!(doc.repair_log().iter().any(|l| l.contains("no /Prev")), "{:?}", doc.repair_log());
     let catalog = doc.get(doc.root().expect("root"));
     assert!(catalog.as_dict().is_some_and(|c| c.contains(b"Lang")), "the update's catalog wins");
-    let linked = Document::open(Arc::new(pdfcraft_testkit::hybrid_update_without_prev(true))).expect("the linked file opens");
+    let linked = Document::open(Arc::new(iridium_pdf_testkit::hybrid_update_without_prev(true))).expect("the linked file opens");
     assert_eq!(page_tree_pages(&linked).len(), 3);
     assert!(!linked.rebuilt_unlinked_update() && linked.repair_log().is_empty(), "{:?}", linked.repair_log());
     assert_eq!(linked.revisions().len(), 2);

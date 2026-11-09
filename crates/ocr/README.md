@@ -1,4 +1,4 @@
-# pdfcraft-ocr
+# iridium-pdf-ocr
 
 Layer L4 (may use `fonts` for the text layers' metrics): Scan & OCR — recognising the words in
 a page raster and turning them back into page content (execution plan M10).
@@ -9,7 +9,7 @@ let image = OcrImage::new(w, h, rgba)?;                  // validated by constru
 let lines = recognizer.recognize(&image, &options)?;     // Vec<Line>: words in reading order
 let placed: Vec<PlacedWord> = …;                         // PlacedWord::place maps boxes to user space
 // The editable output draws real glyphs: plan the words, register the display faces into the
-// plan (`pdfcraft_edit::add_type3_fonts`), then generate the layer. An unregistered plan falls
+// plan (`iridium_pdf_edit::add_type3_fonts`), then generate the layer. An unregistered plan falls
 // back to WinAnsi, and characters no registered face has become '?'.
 let plan = TextPlan::for_words(placed.iter().map(|w| w.text.as_str()));
 add_type3_fonts(&mut doc, page, &mut plan)?;             // names the plan's fonts on the page
@@ -21,7 +21,7 @@ let layer = visible_text_layer(&placed, &plan);          // visible text: the ed
 - **Engines behind one trait.** A [`Recognizer`] reports its `id`, whether it is `available`,
   the languages it reads, and reads `Vec<Line>` from an image. Two exist: the pure-Rust
   `OcrsRecognizer` (the `ocrs` crate, MIT/Apache-2.0, with its pre-trained models,
-  CC-BY-SA-4.0, fetched by `cargo xtask models`; found via `$PDFCRAFT_MODELS` or `models/`
+  CC-BY-SA-4.0, fetched by `cargo xtask models`; found via `$IRIDIUM_PDF_MODELS` or `models/`
   beside the executable — see ATTRIBUTION.toml), and — off the web build —
   `tesseract::TesseractCli`, which drives an installed `tesseract` binary as an external
   process: never linked, bundled or downloaded. Implementations are shared across threads

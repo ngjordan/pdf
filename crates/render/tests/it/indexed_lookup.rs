@@ -17,7 +17,7 @@
 
 use std::sync::Arc;
 
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RenderWarning, RenderedPage, RequestKind};
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest, RenderWarning, RenderedPage, RequestKind};
 
 /// The eight entries the tests' tables hold, in order.
 const TABLE: &str = "FF0000 00FF00 0000FF FFFF00 FF00FF 00FFFF 808080 000000";

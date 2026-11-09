@@ -291,7 +291,7 @@ impl DocView {
             return;
         }
         if let Some(text) = self.texts.get(&page).cloned() {
-            let found: Arc<[TextLink]> = pdfcraft_engine::text_links::find_text_links(&text).into();
+            let found: Arc<[TextLink]> = iridium_pdf_engine::text_links::find_text_links(&text).into();
             self.text_links.insert(page, (text, found));
         }
     }
@@ -659,13 +659,13 @@ impl DocView {
         receive_batch(pool, |r| self.receive_result(ctx, r));
     }
 
-    pub(super) fn receive_result(&mut self, ctx: &egui::Context, r: pdfcraft_render::RenderedPage) -> usize {
+    pub(super) fn receive_result(&mut self, ctx: &egui::Context, r: iridium_pdf_render::RenderedPage) -> usize {
         if !self.last_queue.contains(&r.request) {
             return 0;
         }
         ctx.request_repaint();
         // Whether drawn or read for its text, a page cut at the limits is named (#623).
-        if r.warnings.contains(&pdfcraft_render::RenderWarning::ContentTruncated) {
+        if r.warnings.contains(&iridium_pdf_render::RenderWarning::ContentTruncated) {
             self.cut_pages.insert(r.request.page);
         }
         if r.request.kind == RequestKind::Text {
@@ -851,7 +851,7 @@ impl DocView {
 /// Take a bounded batch of finished renders from `pool` and hand each to `receive`, which
 /// returns the bytes it uploaded: at most a few results, one frame's upload allowance, and 4 ms
 /// a frame.
-fn receive_batch(pool: &RenderPool, mut receive: impl FnMut(pdfcraft_render::RenderedPage) -> usize) {
+fn receive_batch(pool: &RenderPool, mut receive: impl FnMut(iridium_pdf_render::RenderedPage) -> usize) {
     let budget = if pool.is_inline() { 1 } else { RESULTS_PER_FRAME };
     let mut uploaded = 0usize;
     #[cfg(not(target_arch = "wasm32"))]
@@ -873,8 +873,8 @@ fn receive_batch(pool: &RenderPool, mut receive: impl FnMut(pdfcraft_render::Ren
 /// A copy of a render result, for a second view of the document that asked for the same request
 /// (split view). Not `Clone` on purpose: page rasters are large, and this is the one place they
 /// are copied.
-fn copy_result(r: &pdfcraft_render::RenderedPage) -> pdfcraft_render::RenderedPage {
-    pdfcraft_render::RenderedPage {
+fn copy_result(r: &iridium_pdf_render::RenderedPage) -> iridium_pdf_render::RenderedPage {
+    iridium_pdf_render::RenderedPage {
         request: r.request,
         width: r.width,
         height: r.height,
@@ -920,7 +920,7 @@ const SLOW_MILLIS: u32 = 500;
 
 /// A rendered raster as texture data. Its words are premultiplied RGBA bytes, exactly
 /// `Color32`s, so the renderer's buffer becomes the image without a copy on the UI thread.
-pub(crate) fn texture_image(size: [usize; 2], pixels: pdfcraft_render::Pixels) -> egui::ColorImage {
+pub(crate) fn texture_image(size: [usize; 2], pixels: iridium_pdf_render::Pixels) -> egui::ColorImage {
     match bytemuck::allocation::try_cast_vec::<u32, Color32>(pixels.into_words()) {
         Ok(px) if px.len() == size[0].saturating_mul(size[1]) => egui::ColorImage::new(size, px),
         Ok(px) => egui::ColorImage::from_rgba_premultiplied(size, bytemuck::cast_slice(&px)),

@@ -2,7 +2,7 @@
 
 use super::area::{SIGN_TAB_MAX, sign_tab_layout, sign_tab_on_page, sign_tabs};
 use super::*;
-use pdfcraft_engine::{FormField, FormFieldKind, FormWidget, SignatureInfo};
+use iridium_pdf_engine::{FormField, FormFieldKind, FormWidget, SignatureInfo};
 
 /// The widget rectangle the unit tests use (user space).
 const RECT: [f64; 4] = [20.0, 110.0, 140.0, 180.0];
@@ -33,8 +33,8 @@ fn listing(name: &str, page: usize, rect: [f64; 4]) -> SignatureInfo {
         algorithm: None,
         timestamp: false,
         timestamp_time: None,
-        status: pdfcraft_engine::SignatureStatus::Unknown,
-        modification: pdfcraft_engine::sign::Modification::None,
+        status: iridium_pdf_engine::SignatureStatus::Unknown,
+        modification: iridium_pdf_engine::sign::Modification::None,
         details: Vec::new(),
         verdict_shown: false,
     }
@@ -44,7 +44,7 @@ fn listing(name: &str, page: usize, rect: [f64; 4]) -> SignatureInfo {
 fn field(name: &str, page: usize, rect: [f64; 4]) -> FormField {
     FormField {
         name: name.into(),
-        obj: pdfcraft_cos::ObjRef::new(4, 0),
+        obj: iridium_pdf_cos::ObjRef::new(4, 0),
         kind: FormFieldKind::Signature,
         value: Vec::new(),
         default: Vec::new(),
@@ -57,7 +57,7 @@ fn field(name: &str, page: usize, rect: [f64; 4]) -> FormField {
         quadding: 0,
         tooltip: None,
         widgets: vec![FormWidget {
-            obj: pdfcraft_cos::ObjRef::new(4, 0),
+            obj: iridium_pdf_cos::ObjRef::new(4, 0),
             page: Some(page),
             rect,
             on_state: None,
@@ -133,7 +133,7 @@ fn sign_tabs_skip_fields_that_a_click_cannot_sign() {
         vec![f]
     };
     let cases = [
-        ("read-only", empty(), with(|f| f.flags = pdfcraft_engine::field_flags::READ_ONLY), true),
+        ("read-only", empty(), with(|f| f.flags = iridium_pdf_engine::field_flags::READ_ONLY), true),
         ("filling refused", empty(), with(|_| {}), false),
         ("no form field", empty(), Vec::new(), true),
         ("another kind", empty(), with(|f| f.kind = FormFieldKind::Text), true),
@@ -260,7 +260,7 @@ trailer << /Root 1 0 R >>
 %%EOF";
 
 /// Every shape painted in the last frame, with nested lists flattened.
-fn painted(h: &egui_kittest::Harness<'static, PdfCraftApp>) -> Vec<egui::Shape> {
+fn painted(h: &egui_kittest::Harness<'static, PdfApp>) -> Vec<egui::Shape> {
     let mut stack: Vec<egui::Shape> = h.output().shapes.iter().map(|c| c.shape.clone()).collect();
     let mut out = Vec::new();
     while let Some(shape) = stack.pop() {
@@ -273,7 +273,7 @@ fn painted(h: &egui_kittest::Harness<'static, PdfCraftApp>) -> Vec<egui::Shape> 
 }
 
 /// Where the named field's first widget is on screen.
-fn field_on_screen(h: &egui_kittest::Harness<'static, PdfCraftApp>, name: &str) -> Rect {
+fn field_on_screen(h: &egui_kittest::Harness<'static, PdfApp>, name: &str) -> Rect {
     let app = h.state();
     let view = &app.views[0];
     let doc = app.session.get(view.id).expect("open");
@@ -293,9 +293,9 @@ trailer << /Root 1 0 R >>
 %%EOF";
 
 /// The real shell with `bytes` open, the side panes closed, after the first frames.
-fn shell(bytes: &'static [u8]) -> egui_kittest::Harness<'static, PdfCraftApp> {
+fn shell(bytes: &'static [u8]) -> egui_kittest::Harness<'static, PdfApp> {
     let mut h = egui_kittest::Harness::builder().with_size(vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("sign-fields.pdf", None, bytes.to_vec()).unwrap();
         app.set_option("left", "closed").unwrap();
@@ -307,7 +307,7 @@ fn shell(bytes: &'static [u8]) -> egui_kittest::Harness<'static, PdfCraftApp> {
 }
 
 /// The accent chips painted in the last frame: the sign tabs.
-fn chips(h: &egui_kittest::Harness<'static, PdfCraftApp>) -> Vec<Rect> {
+fn chips(h: &egui_kittest::Harness<'static, PdfApp>) -> Vec<Rect> {
     let accent = Tokens::get(&h.ctx).accent;
     painted(h)
         .iter()
@@ -319,7 +319,7 @@ fn chips(h: &egui_kittest::Harness<'static, PdfCraftApp>) -> Vec<Rect> {
 }
 
 /// Clicks at `at` and lets the shell answer.
-fn click_at(h: &mut egui_kittest::Harness<'static, PdfCraftApp>, at: Pos2) {
+fn click_at(h: &mut egui_kittest::Harness<'static, PdfApp>, at: Pos2) {
     h.drag_at(at);
     h.run_steps(1);
     h.drop_at(at);

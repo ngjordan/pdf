@@ -23,7 +23,7 @@
 //!   ASCIIHex layer from streams that have one; store LZW-compressed streams with Flate instead.
 //!
 //! Metadata, attachments, comments, scripts, private data, hidden layers, bookmarks and form
-//! fields are discarded by `pdfcraft-redact`'s Remove Hidden Information, which the engine
+//! fields are discarded by `iridium-pdf-redact`'s Remove Hidden Information, which the engine
 //! runs alongside.
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
@@ -39,8 +39,8 @@ mod unused;
 
 pub use audit::{SpaceCategory, SpaceUse, audit_space};
 
-use pdfcraft_cos::{Dict, Document, ImageBudget, MAX_PAGE_DECODED, ObjRef, Object, Stream, serialize};
-use pdfcraft_filters::{Filter, Params};
+use iridium_pdf_cos::{Dict, Document, ImageBudget, MAX_PAGE_DECODED, ObjRef, Object, Stream, serialize};
+use iridium_pdf_filters::{Filter, Params};
 
 pub use images::effective_resolutions;
 pub use pool::give_way_to_other_programs;
@@ -55,7 +55,7 @@ pub enum OptimizeError {
     #[error("the document's encryption requires PDF {required} or later (chosen: PDF {chosen})")]
     IncompatibleEncryption { required: &'static str, chosen: &'static str },
     #[error(transparent)]
-    Cos(#[from] pdfcraft_cos::CosError),
+    Cos(#[from] iridium_pdf_cos::CosError),
     #[error("the optimization was cancelled")]
     Cancelled,
 }
@@ -321,10 +321,10 @@ pub struct Report {
 fn required_encryption_version(doc: &Document) -> Option<&'static str> {
     let h = doc.output_handler()?;
     let d = h.dict();
-    if d.v >= 5 || d.crypt_filters.iter().any(|(_, m)| *m == pdfcraft_cos::CryptMethod::Aes256) {
+    if d.v >= 5 || d.crypt_filters.iter().any(|(_, m)| *m == iridium_pdf_cos::CryptMethod::Aes256) {
         Some("1.7")
     } else if d.v == 4 {
-        if d.crypt_filters.iter().any(|(_, m)| *m == pdfcraft_cos::CryptMethod::Aes128) { Some("1.6") } else { Some("1.5") }
+        if d.crypt_filters.iter().any(|(_, m)| *m == iridium_pdf_cos::CryptMethod::Aes128) { Some("1.6") } else { Some("1.5") }
     } else {
         None
     }
@@ -347,7 +347,7 @@ pub fn optimize_with_progress(doc: &mut Document, settings: &Settings, progress:
         return Err(OptimizeError::IncompatibleEncryption { required, chosen });
     }
     let mut report = Report::default();
-    let pages = pdfcraft_annot::page_refs(doc).map_err(|_| OptimizeError::NoPages)?;
+    let pages = iridium_pdf_annot::page_refs(doc).map_err(|_| OptimizeError::NoPages)?;
     // Merging fragments, the image pass and the LZW pass read the same images, so they share it.
     let mut budget = ImageBudget::new(doc);
     if settings.merge_fragments {
@@ -415,7 +415,7 @@ pub fn optimize_with_progress(doc: &mut Document, settings: &Settings, progress:
     {
         const PRINT: [&[u8]; 7] = [b"PrintScaling", b"Duplex", b"PickTrayByPDFSize", b"PrintPageRange", b"NumCopies", b"PrintArea", b"PrintClip"];
         let vp = doc.get(root).as_dict().and_then(|c| c.get(b"ViewerPreferences").cloned());
-        let edit = |d: &mut pdfcraft_cos::Dict| PRINT.iter().filter(|k| d.remove(k).is_some()).count();
+        let edit = |d: &mut iridium_pdf_cos::Dict| PRINT.iter().filter(|k| d.remove(k).is_some()).count();
         match vp {
             Some(Object::Ref(r)) => {
                 let mut n = 0;
@@ -549,11 +549,11 @@ fn lzw_to_flate(s: &Stream, max: usize, budget: &mut ImageBudget) -> Option<Stre
         return None;
     }
     let flate = Params { early_change: 1, ..params.clone() };
-    let raw = pdfcraft_filters::encode(&Filter::Flate, &flate, &data).ok()?;
+    let raw = iridium_pdf_filters::encode(&Filter::Flate, &flate, &data).ok()?;
     // The predictor's encoder must give back exactly what its decoder read (a short last row,
     // unusual parameters), or the stream would change. The limit counts a PNG predictor's tag
     // bytes too, at most one per row of at least one byte.
-    if pdfcraft_filters::decode(&[(Filter::Flate, flate)], &raw, data.len().saturating_mul(2).saturating_add(1)).ok()? != data {
+    if iridium_pdf_filters::decode(&[(Filter::Flate, flate)], &raw, data.len().saturating_mul(2).saturating_add(1)).ok()? != data {
         return None;
     }
     // Without a predictor the other parameters say nothing to Flate.
@@ -627,7 +627,7 @@ mod tests {
     #[test]
     fn an_lzw_stream_that_decodes_past_the_limit_is_left_as_it_is() {
         let data = b"0 0 m 612 792 l S\n".repeat(64);
-        let raw = pdfcraft_filters::encode(&Filter::Lzw, &Params::default(), &data).unwrap();
+        let raw = iridium_pdf_filters::encode(&Filter::Lzw, &Params::default(), &data).unwrap();
         let mut dict = Dict::new();
         dict.set(b"Filter".to_vec(), Object::name("LZWDecode"));
         let s = Stream::from_raw(dict, raw);
@@ -642,7 +642,7 @@ mod tests {
     #[test]
     fn lzw_streams_spend_the_runs_allowance() {
         let data = b"0 0 m 612 792 l S\n".repeat(64);
-        let raw = pdfcraft_filters::encode(&Filter::Lzw, &Params::default(), &data).unwrap();
+        let raw = iridium_pdf_filters::encode(&Filter::Lzw, &Params::default(), &data).unwrap();
         let mut dict = Dict::new();
         dict.set(b"Filter".to_vec(), Object::name("LZWDecode"));
         let s = Stream::from_raw(dict, raw);

@@ -3,15 +3,15 @@
 //! no glyph anywhere (written as `?` — and counted, never silently dropped).
 //!
 //! The plan is a pure function of the words ([`TextPlan::for_words`]). The content generators
-//! (`pdfcraft_ocr::text_layer` / `visible_text_layer`) read the per-character codes and
-//! advances from it, and whoever registers the fonts (`pdfcraft_edit::add_type3_fonts`) fills
+//! (`iridium_pdf_ocr::text_layer` / `visible_text_layer`) read the per-character codes and
+//! advances from it, and whoever registers the fonts (`iridium_pdf_edit::add_type3_fonts`) fills
 //! in each face's resource name and object. The build must work without craft-fonts too: there
 //! [`CRAFT_FONTS`] is empty, nothing can be planned, and every non-WinAnsi character is
 //! reported as a substitution instead.
 
 use std::collections::HashMap;
 
-use pdfcraft_cos::ObjRef;
+use iridium_pdf_cos::ObjRef;
 
 use crate::{CraftFont, GlyphOutline, craft_glyph, document_japanese_font, face_has, fits_win_ansi, win_ansi_char};
 

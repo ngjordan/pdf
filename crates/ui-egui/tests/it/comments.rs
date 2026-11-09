@@ -5,8 +5,8 @@ use egui::accesskit::Role;
 use egui::{Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use pdfcraft_render::Annotation;
-use pdfcraft_ui_egui::{PdfCraftApp, QuickTool};
+use iridium_pdf_render::Annotation;
+use iridium_pdf_ui_egui::{PdfApp, QuickTool};
 
 use crate::support;
 
@@ -26,13 +26,13 @@ endstream endobj
 trailer << /Root 1 0 R >>
 %%EOF";
 
-fn harness(setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, PdfCraftApp> {
+fn harness(setup: impl FnOnce(&mut PdfApp) + 'static) -> Harness<'static, PdfApp> {
     harness_with_bytes(TEXT_FIXTURE.to_vec(), setup)
 }
 
-fn harness_with_bytes(bytes: Vec<u8>, setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, PdfCraftApp> {
+fn harness_with_bytes(bytes: Vec<u8>, setup: impl FnOnce(&mut PdfApp) + 'static) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("text.pdf", None, bytes).expect("opens");
         app.set_option("left", "closed").unwrap();
@@ -46,12 +46,12 @@ fn harness_with_bytes(bytes: Vec<u8>, setup: impl FnOnce(&mut PdfCraftApp) + 'st
 }
 
 /// A point on page 1 in PDF user space → screen (no rotation; MediaBox 300×200).
-fn at(h: &Harness<'static, PdfCraftApp>, x: f32, y: f32) -> Pos2 {
+fn at(h: &Harness<'static, PdfApp>, x: f32, y: f32) -> Pos2 {
     let r = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
     pos2(r.left() + x / 300.0 * r.width(), r.top() + (200.0 - y) / 200.0 * r.height())
 }
 
-fn drag(h: &mut Harness<'static, PdfCraftApp>, from: Pos2, to: Pos2) {
+fn drag(h: &mut Harness<'static, PdfApp>, from: Pos2, to: Pos2) {
     h.hover_at(from);
     h.run_steps(1);
     h.drag_at(from);
@@ -64,7 +64,7 @@ fn drag(h: &mut Harness<'static, PdfCraftApp>, from: Pos2, to: Pos2) {
     h.run_steps(3);
 }
 
-fn click(h: &mut Harness<'static, PdfCraftApp>, p: Pos2) {
+fn click(h: &mut Harness<'static, PdfApp>, p: Pos2) {
     h.hover_at(p);
     h.run_steps(1);
     h.drag_at(p);
@@ -74,18 +74,18 @@ fn click(h: &mut Harness<'static, PdfCraftApp>, p: Pos2) {
 }
 
 /// Drag between two page points (user space).
-fn drag_pt(h: &mut Harness<'static, PdfCraftApp>, a: (f32, f32), b: (f32, f32)) {
+fn drag_pt(h: &mut Harness<'static, PdfApp>, a: (f32, f32), b: (f32, f32)) {
     let (a, b) = (at(h, a.0, a.1), at(h, b.0, b.1));
     drag(h, a, b);
 }
 
 /// Click a page point (user space).
-fn click_pt(h: &mut Harness<'static, PdfCraftApp>, p: (f32, f32)) {
+fn click_pt(h: &mut Harness<'static, PdfApp>, p: (f32, f32)) {
     let p = at(h, p.0, p.1);
     click(h, p);
 }
 /// Click a page point with modifier keys held (⌘-click adds a comment to the selection).
-fn click_pt_with(h: &mut Harness<'static, PdfCraftApp>, p: (f32, f32), modifiers: egui::Modifiers) {
+fn click_pt_with(h: &mut Harness<'static, PdfApp>, p: (f32, f32), modifiers: egui::Modifiers) {
     let p = at(h, p.0, p.1);
     h.hover_at(p);
     h.event(egui::Event::ModifiersChanged(modifiers));
@@ -99,11 +99,11 @@ fn click_pt_with(h: &mut Harness<'static, PdfCraftApp>, p: (f32, f32), modifiers
 }
 
 /// A text field by its placeholder ("Add a comment", "Add a reply").
-fn field<'a>(h: &'a Harness<'static, PdfCraftApp>, placeholder: &'a str) -> egui_kittest::Node<'a> {
+fn field<'a>(h: &'a Harness<'static, PdfApp>, placeholder: &'a str) -> egui_kittest::Node<'a> {
     h.query_all_by(|n| n.placeholder() == Some(placeholder)).next().unwrap_or_else(|| panic!("no field {placeholder:?}"))
 }
 
-fn comments(h: &Harness<'static, PdfCraftApp>) -> Vec<Annotation> {
+fn comments(h: &Harness<'static, PdfApp>) -> Vec<Annotation> {
     let s = h.state();
     s.session.get(s.views[0].id).unwrap().info.annotations.clone()
 }
@@ -117,10 +117,10 @@ fn sidebar_comment_centres_the_annotation_at_high_zoom() {
             app.set_option("layout", layout).unwrap();
             app.set_option("zoom", "800").unwrap();
             app.views[0].rotation = rotation;
-            let shape = pdfcraft_engine::Shape::Note { at: [150.0, 90.0], icon: pdfcraft_engine::NoteIcon::Comment };
-            assert!(app.apply_edit(pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+            let shape = iridium_pdf_engine::Shape::Note { at: [150.0, 90.0], icon: iridium_pdf_engine::NoteIcon::Comment };
+            assert!(app.apply_edit(iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
                 page: 1,
-                style: pdfcraft_engine::Style::default_for(&shape),
+                style: iridium_pdf_engine::Style::default_for(&shape),
                 shape,
                 contents: "Reveal this note".into(),
                 author: "Tester".into(),
@@ -147,7 +147,7 @@ fn sidebar_comment_centres_the_annotation_at_high_zoom() {
         assert!((view.zoom - 8.0).abs() < 0.01, "revealing a comment preserves zoom");
         if layout == "continuous"
             && rotation == 0
-            && let Ok(dir) = std::env::var("PDFCRAFT_SHOTS")
+            && let Ok(dir) = std::env::var("IRIDIUM_PDF_SHOTS")
         {
             let _gpu = crate::gpu();
             crate::support::settle(&mut h);
@@ -168,15 +168,15 @@ fn double_clicking_a_cards_text_edits_it() {
 fn double_click_a_cards_text(selected: bool) {
     // Frames 1/60 s apart, so two clicks make a double-click.
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).with_step_dt(1.0 / 60.0).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("text.pdf", None, TEXT_FIXTURE.to_vec()).expect("opens");
         app.set_option("left", "closed").unwrap();
         app.set_option("panel", "comments").unwrap();
-        let shape = pdfcraft_engine::Shape::Note { at: [150.0, 90.0], icon: pdfcraft_engine::NoteIcon::Comment };
-        assert!(app.apply_edit(pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+        let shape = iridium_pdf_engine::Shape::Note { at: [150.0, 90.0], icon: iridium_pdf_engine::NoteIcon::Comment };
+        assert!(app.apply_edit(iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
             page: 0,
-            style: pdfcraft_engine::Style::default_for(&shape),
+            style: iridium_pdf_engine::Style::default_for(&shape),
             shape,
             contents: "Edit this note".into(),
             author: "Tester".into(),
@@ -215,7 +215,7 @@ fn dragging_over_text_with_the_highlighter_highlights_it() {
     assert_eq!(c.len(), 1, "{c:?}");
     assert_eq!((c[0].subtype.as_str(), c[0].author.as_deref(), c[0].quads.len()), ("Highlight", Some("Tester"), 1));
     assert_eq!(h.state().views[0].comments.selected, Some((0, 0)), "the new comment is selected");
-    assert_eq!(h.state().quick_tool, QuickTool::Comment(pdfcraft_ui_egui::comments::CommentTool::Highlight), "the highlighter stays on");
+    assert_eq!(h.state().quick_tool, QuickTool::Comment(iridium_pdf_ui_egui::comments::CommentTool::Highlight), "the highlighter stays on");
     // The Comments panel opened with the tool and lists it.
     h.get_by_label_contains("Comments");
     assert_eq!(h.state().session.get(h.state().views[0].id).unwrap().can_undo(), Some("Add highlight"));
@@ -223,7 +223,7 @@ fn dragging_over_text_with_the_highlighter_highlights_it() {
 
 #[test]
 fn the_quick_bar_colour_changes_the_selected_comment() {
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_ui_egui::comments::CommentTool;
 
     let mut h = harness(|app| app.set_option("quick", "highlight").unwrap());
     let (a, b) = {
@@ -247,7 +247,7 @@ fn the_quick_bar_colour_changes_the_selected_comment() {
 
 #[test]
 fn the_quick_bar_colour_changes_the_selected_arrow() {
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_ui_egui::comments::CommentTool;
 
     // Arrows are saved as Line annotations; the Arrow tool's colour must still reach them.
     let mut h = harness(|app| app.set_option("quick", "arrow").unwrap());
@@ -269,7 +269,7 @@ fn the_quick_bar_colour_changes_the_selected_arrow() {
 
 #[test]
 fn the_quick_bar_colour_skips_the_selected_comment_when_commenting_is_forbidden() {
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_ui_egui::comments::CommentTool;
 
     // One page with a yellow highlight, encrypted to allow printing only (no commenting).
     let plain = b"%PDF-1.7
@@ -279,9 +279,9 @@ fn the_quick_bar_colour_skips_the_selected_comment_when_commenting_is_forbidden(
 4 0 obj << /Type /Annot /Subtype /Highlight /Rect [20 140 120 165] /QuadPoints [20 165 120 165 20 140 120 140] /C [1 0.94 0] >> endobj
 trailer << /Root 1 0 R >>
 %%EOF";
-    let mut doc = pdfcraft_cos::Document::open(std::sync::Arc::new(plain.to_vec())).expect("fixture parses");
-    doc.set_encryption(&pdfcraft_cos::NewEncryption {
-        algorithm: pdfcraft_cos::Algorithm::Aes256,
+    let mut doc = iridium_pdf_cos::Document::open(std::sync::Arc::new(plain.to_vec())).expect("fixture parses");
+    doc.set_encryption(&iridium_pdf_cos::NewEncryption {
+        algorithm: iridium_pdf_cos::Algorithm::Aes256,
         user_password: "",
         owner_password: "owner",
         permissions: 0b0100,
@@ -289,7 +289,7 @@ trailer << /Root 1 0 R >>
         seed: [5; 32],
     })
     .expect("encrypts");
-    let bytes = pdfcraft_cos::write_full(&doc, &Default::default()).expect("writes");
+    let bytes = iridium_pdf_cos::write_full(&doc, &Default::default()).expect("writes");
     let mut h = harness(move |app| {
         app.open_bytes("restricted.pdf", None, bytes).expect("opens restricted");
         app.set_option("quick", "highlight").unwrap();
@@ -337,17 +337,17 @@ fn a_new_highlight_opens_its_note_for_typing() {
 }
 
 /// The Comments panel's editor for a comment's note (the reply field is the other multiline one).
-fn note_editor<'a>(h: &'a Harness<'static, PdfCraftApp>) -> egui_kittest::Node<'a> {
+fn note_editor<'a>(h: &'a Harness<'static, PdfApp>) -> egui_kittest::Node<'a> {
     h.query_all_by(|n| n.role() == egui::accesskit::Role::MultilineTextInput && n.placeholder() != Some("Add a reply")).next().expect("note editor")
 }
 
 /// The text in the open note editor.
-fn note(h: &Harness<'static, PdfCraftApp>) -> Option<String> {
+fn note(h: &Harness<'static, PdfApp>) -> Option<String> {
     h.state().views[0].comments.editing.as_ref().map(|(_, _, text)| text.clone())
 }
 
 /// A letter key as a keyboard sends it: the key goes down, types its letter and comes up.
-fn type_key(h: &mut Harness<'static, PdfCraftApp>, key: egui::Key, letter: &str) {
+fn type_key(h: &mut Harness<'static, PdfApp>, key: egui::Key, letter: &str) {
     h.key_down(key);
     h.event(egui::Event::Text(letter.into()));
     h.key_up(key);
@@ -355,7 +355,7 @@ fn type_key(h: &mut Harness<'static, PdfCraftApp>, key: egui::Key, letter: &str)
 }
 
 /// Highlight glyphs `from..to` of page 1's text with the highlighter.
-fn highlight_text(h: &mut Harness<'static, PdfCraftApp>, from: usize, to: usize) {
+fn highlight_text(h: &mut Harness<'static, PdfApp>, from: usize, to: usize) {
     let (a, b) = {
         let v = &h.state().views[0];
         (v.glyph_screen_pos(0, from).expect("text layer"), v.glyph_screen_pos(0, to).expect("glyph"))
@@ -397,7 +397,7 @@ fn clicking_the_page_gives_the_keyboard_back_from_a_highlight_note() {
 fn drawing_another_comment_takes_the_keyboard_from_a_highlight_note() {
     // #2669: a highlight's note kept the keyboard while rectangles and ovals were drawn (a drag
     // is not a click, so the editor never let go), and V and H were typed into it.
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_ui_egui::comments::CommentTool;
     let mut h = harness(|app| {
         app.set_option("quick", "highlight").unwrap();
         app.set_option("panel", "comments").unwrap();
@@ -614,7 +614,7 @@ fn selected_text_comment_action_opens_note_composer() {
     h.run_steps(3);
     h.get_by_label("Add comment").click();
     h.run_steps(2);
-    assert!(matches!(h.state().views[0].comments.composer.as_ref().map(|c| &c.kind), Some(pdfcraft_ui_egui::comments::ComposerKind::Note)));
+    assert!(matches!(h.state().views[0].comments.composer.as_ref().map(|c| &c.kind), Some(iridium_pdf_ui_egui::comments::ComposerKind::Note)));
     assert!(h.state().views[0].selected_text().is_none());
 }
 
@@ -641,7 +641,7 @@ fn shapes_and_ink_are_drawn_by_dragging() {
 /// Press, drag and release a stroke, running only one frame after the release. Finished
 /// renders are held back from the view (`hold_rasters`), so the raster the commit asks for can't
 /// arrive before the test looks, however fast it renders; a test lets it through by clearing it.
-fn stroke_without_settling(h: &mut Harness<'static, PdfCraftApp>, a: (f32, f32), b: (f32, f32)) {
+fn stroke_without_settling(h: &mut Harness<'static, PdfApp>, a: (f32, f32), b: (f32, f32)) {
     h.state_mut().views[0].hold_rasters = true;
     let (from, to) = (at(h, a.0, a.1), at(h, b.0, b.1));
     h.hover_at(from);
@@ -697,7 +697,7 @@ fn pen_strokes_stay_unselected_so_writing_continues() {
     let kinds: Vec<&str> = c.iter().map(|a| a.subtype.as_str()).collect();
     assert_eq!(kinds, ["Ink", "Ink"], "{c:?}");
     assert_eq!(h.state().views[0].comments.selected, None, "nothing is selected after drawing");
-    assert_eq!(h.state().quick_tool, QuickTool::Comment(pdfcraft_ui_egui::comments::CommentTool::Ink), "the pen stays on");
+    assert_eq!(h.state().quick_tool, QuickTool::Comment(iridium_pdf_ui_egui::comments::CommentTool::Ink), "the pen stays on");
     // Other drawn shapes are still selected when made.
     h.state_mut().set_option("quick", "square").unwrap();
     drag_pt(&mut h, (180.0, 100.0), (260.0, 40.0));
@@ -732,7 +732,7 @@ fn sticky_note_composer_posts_and_returns_to_select() {
 #[test]
 fn a_sticky_note_on_a_turned_page_is_picked_where_it_is_drawn() {
     let mut h = harness(|app| {
-        app.apply_edit(pdfcraft_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
+        app.apply_edit(iridium_pdf_engine::Edit::RotatePages { pages: vec![0], degrees: 90 });
         app.set_option("quick", "note").unwrap();
     });
     crate::support::settle(&mut h);
@@ -767,7 +767,7 @@ fn the_composer_hides_while_its_comment_is_scrolled_away() {
     click_pt(&mut h, (250.0, 180.0));
     field(&h, "Add a comment").type_text("Draft");
     h.run_steps(2);
-    let editors = |h: &Harness<'static, PdfCraftApp>| -> Vec<egui::Rect> {
+    let editors = |h: &Harness<'static, PdfApp>| -> Vec<egui::Rect> {
         h.query_all_by(|n| n.role() == egui::accesskit::Role::MultilineTextInput).map(|n| n.rect()).collect()
     };
     let viewport = h.state().views[0].viewport_rect();
@@ -793,10 +793,10 @@ fn the_edit_composer_shows_while_part_of_its_comment_is_on_screen() {
     let mut h = harness(|app| app.set_option("quick", "square").unwrap());
     drag_pt(&mut h, (20.0, 190.0), (280.0, 10.0));
     // What "Edit text…" opens: the composer anchored at the comment's top-right corner.
-    h.state_mut().views[0].comments.composer = Some(pdfcraft_ui_egui::comments::Composer {
+    h.state_mut().views[0].comments.composer = Some(iridium_pdf_ui_egui::comments::Composer {
         page: 0,
         at: [280.0, 190.0],
-        kind: pdfcraft_ui_egui::comments::ComposerKind::Edit(0),
+        kind: iridium_pdf_ui_egui::comments::ComposerKind::Edit(0),
         text: String::new(),
         focus: true,
     });
@@ -822,7 +822,7 @@ fn the_composer_takes_the_keyboard_back_after_its_page_was_off_screen() {
     field(&h, "Add a comment").type_text("Draft");
     h.run_steps(2);
     let editor_focused =
-        |h: &Harness<'static, PdfCraftApp>| h.query_all_by(|n| n.role() == egui::accesskit::Role::MultilineTextInput).any(|n| n.is_focused());
+        |h: &Harness<'static, PdfApp>| h.query_all_by(|n| n.role() == egui::accesskit::Role::MultilineTextInput).any(|n| n.is_focused());
     assert!(editor_focused(&h), "the new note's editor has the keyboard");
     let viewport = h.state().views[0].viewport_rect();
     h.state_mut().views[0].goto = Some((1, 0.6));
@@ -836,13 +836,13 @@ fn the_composer_takes_the_keyboard_back_after_its_page_was_off_screen() {
 }
 
 /// The rectangle of the comment whose text starts with `text`.
-fn rect_of(h: &Harness<'static, PdfCraftApp>, text: &str) -> [f32; 4] {
+fn rect_of(h: &Harness<'static, PdfApp>, text: &str) -> [f32; 4] {
     let c = comments(h);
     c.iter().find(|a| a.contents.as_deref().is_some_and(|t| t.starts_with(text))).unwrap_or_else(|| panic!("no comment {text:?}: {c:?}")).rect
 }
 
 /// Post `text` in the open text box composer.
-fn post_text(h: &mut Harness<'static, PdfCraftApp>, text: &str) {
+fn post_text(h: &mut Harness<'static, PdfApp>, text: &str) {
     field(h, "Type text").type_text(text);
     h.run_steps(2);
     h.get_by_label("Post").click();
@@ -866,7 +866,7 @@ fn a_text_box_is_sized_by_dragging() {
     h.hover_at(to);
     h.run_steps(2);
     assert!(
-        matches!(&h.state().views[0].comments.gesture, Some(pdfcraft_ui_egui::comments::Gesture::Draw { points, .. }) if points.len() == 2),
+        matches!(&h.state().views[0].comments.gesture, Some(iridium_pdf_ui_egui::comments::Gesture::Draw { points, .. }) if points.len() == 2),
         "the box shows while it is dragged"
     );
     h.drop_at(to);
@@ -891,14 +891,14 @@ fn a_text_box_is_sized_by_dragging() {
     assert!(near(r, [150.0, 180.0, 250.0, 190.0]), "{r:?}");
 
     // Drags of two and four pixels are clicks: the box fits its text.
-    let fitted = pdfcraft_ui_egui::comments::text_box_rect([0.0, 0.0], "Hi", 12.0, 0);
+    let fitted = iridium_pdf_ui_egui::comments::text_box_rect([0.0, 0.0], "Hi", 12.0, 0);
     for (text, x, d) in [("Hi", 200.0, 2.0), ("Hi again", 270.0, 4.0)] {
         h.state_mut().set_option("quick", "freetext").unwrap();
         let p = at(&h, x, 40.0);
         drag(&mut h, p, p + egui::vec2(d, d));
         post_text(&mut h, text);
         let r = rect_of(&h, text).map(f64::from);
-        let fitted = if text == "Hi" { fitted } else { pdfcraft_ui_egui::comments::text_box_rect([0.0, 0.0], text, 12.0, 0) };
+        let fitted = if text == "Hi" { fitted } else { iridium_pdf_ui_egui::comments::text_box_rect([0.0, 0.0], text, 12.0, 0) };
         assert!((r[2] - r[0] - (fitted[2] - fitted[0])).abs() < 1.0 && (r[3] - r[1] - (fitted[3] - fitted[1])).abs() < 1.0, "{text}: {r:?}");
     }
 }
@@ -915,7 +915,7 @@ fn a_dragged_text_box_follows_a_rotated_view() {
         h.state_mut().set_option("zoom", "150").unwrap();
         h.run_steps(3);
         crate::support::settle(&mut h);
-        let screen = |h: &Harness<'static, PdfCraftApp>, x: f32, y: f32| {
+        let screen = |h: &Harness<'static, PdfApp>, x: f32, y: f32| {
             let r = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
             let (u, v) = (x / 300.0, (200.0 - y) / 200.0);
             let (a, b) = if rotation == 90 { (1.0 - v, u) } else { (v, 1.0 - u) };
@@ -933,13 +933,13 @@ fn a_dragged_text_box_follows_a_rotated_view() {
 /// border does not cut off the last line.
 #[test]
 fn a_dragged_text_box_wraps_inside_its_border() {
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_ui_egui::comments::CommentTool;
     let mut h = harness(|app| {
         app.set_option("quick", "freetext").unwrap();
         app.comment_prefs.set_width(CommentTool::TextBox, 3.0);
     });
     // Wide enough for "word word" inside a 2 pt padding, not inside 2 + 3 pt.
-    let w = pdfcraft_engine::annot_text::text_width("word word", 12.0) as f32 + 6.0;
+    let w = iridium_pdf_engine::annot_text::text_width("word word", 12.0) as f32 + 6.0;
     drag_pt(&mut h, (20.0, 190.0), (20.0 + w, 180.0));
     post_text(&mut h, "word word");
     let r = rect_of(&h, "word word");
@@ -977,7 +977,7 @@ fn line_ends_are_dragged_to_change_length_and_angle() {
     drag_pt(&mut h, (40.0, 100.0), (140.0, 100.0));
     let line = comments(&h).into_iter().find(|a| a.subtype == "Line").expect("a line");
     assert_eq!(line.points.len(), 2);
-    let ends = |h: &Harness<'static, PdfCraftApp>| comments(h).into_iter().find(|a| a.index == line.index).unwrap().points;
+    let ends = |h: &Harness<'static, PdfApp>| comments(h).into_iter().find(|a| a.index == line.index).unwrap().points;
     // With the line tool, a drag from the end just drawn draws another line.
     let first = ends(&h);
     drag_pt(&mut h, (first[1][0], first[1][1]), (140.0, 40.0));
@@ -1125,11 +1125,11 @@ fn the_rubber_band_shows_the_closing_side_with_shift_held() {
 #[test]
 fn shift_holds_new_lines_and_sides_level_or_plumb() {
     let mut h = harness(|app| app.set_option("quick", "line").unwrap());
-    let shift = |h: &mut Harness<'static, PdfCraftApp>, on: bool| {
+    let shift = |h: &mut Harness<'static, PdfApp>, on: bool| {
         h.event(egui::Event::ModifiersChanged(if on { egui::Modifiers::SHIFT } else { egui::Modifiers::NONE }));
         h.run_steps(1);
     };
-    let points = |h: &Harness<'static, PdfCraftApp>, subtype: &str| {
+    let points = |h: &Harness<'static, PdfApp>, subtype: &str| {
         // In the order drawn: the list isn't sorted by index.
         let mut drawn: Vec<_> = comments(h).into_iter().filter(|a| a.subtype == subtype).collect();
         drawn.sort_by_key(|a| a.index);
@@ -1172,7 +1172,7 @@ fn shift_holds_new_lines_and_sides_level_or_plumb() {
 #[test]
 fn a_shape_just_drawn_resizes_from_its_handles_without_the_select_tool() {
     // #2338: the new shape showed its handles, but only the Select tool answered them.
-    let square = QuickTool::Comment(pdfcraft_ui_egui::comments::CommentTool::Rectangle);
+    let square = QuickTool::Comment(iridium_pdf_ui_egui::comments::CommentTool::Rectangle);
     let mut h = harness(|app| app.set_option("quick", "square").unwrap());
     drag_pt(&mut h, (40.0, 100.0), (140.0, 40.0));
     assert_eq!(h.state().views[0].comments.selected, Some((0, 0)), "the new rectangle is selected");
@@ -1217,8 +1217,8 @@ fn the_panel_posts_comments_and_replies() {
 }
 
 /// The side panel's width as egui keeps it from one frame to the next.
-fn panel_width(h: &Harness<'static, PdfCraftApp>) -> f32 {
-    h.ctx.data(|data| data.get_temp::<egui::Rect>(egui::Id::unique("pdfcraft-inspector-body"))).expect("the inspector body is shown").width()
+fn panel_width(h: &Harness<'static, PdfApp>) -> f32 {
+    h.ctx.data(|data| data.get_temp::<egui::Rect>(egui::Id::unique("iridium-pdf-inspector-body"))).expect("the inspector body is shown").width()
 }
 
 #[test]
@@ -1267,8 +1267,8 @@ fn line_ending_properties_change_and_undo() {
     h.run_steps(1);
     {
         let d = h.state_mut().comment_props.as_mut().expect("open");
-        assert_eq!(d.edited.endings.as_deref(), Some(&[pdfcraft_engine::LineEnding::None, pdfcraft_engine::LineEnding::None][..]));
-        d.edited.endings = Some(vec![pdfcraft_engine::LineEnding::None, pdfcraft_engine::LineEnding::Diamond]);
+        assert_eq!(d.edited.endings.as_deref(), Some(&[iridium_pdf_engine::LineEnding::None, iridium_pdf_engine::LineEnding::None][..]));
+        d.edited.endings = Some(vec![iridium_pdf_engine::LineEnding::None, iridium_pdf_engine::LineEnding::Diamond]);
     }
     h.get_by_label("OK").click();
     h.run_steps(3);
@@ -1278,14 +1278,14 @@ fn line_ending_properties_change_and_undo() {
         assert_eq!(doc.can_undo(), Some("Change comment properties"));
         doc.comment_props(0, 0).unwrap().endings
     };
-    assert_eq!(endings.as_deref(), Some(&[pdfcraft_engine::LineEnding::None, pdfcraft_engine::LineEnding::Diamond][..]));
+    assert_eq!(endings.as_deref(), Some(&[iridium_pdf_engine::LineEnding::None, iridium_pdf_engine::LineEnding::Diamond][..]));
     h.state_mut().execute("edit.undo");
     h.run_steps(2);
     let s = h.state();
     let doc = s.session.get(s.views[0].id).unwrap();
     assert_eq!(
         doc.comment_props(0, 0).unwrap().endings.as_deref(),
-        Some(&[pdfcraft_engine::LineEnding::None, pdfcraft_engine::LineEnding::None][..])
+        Some(&[iridium_pdf_engine::LineEnding::None, iridium_pdf_engine::LineEnding::None][..])
     );
 }
 
@@ -1319,7 +1319,7 @@ fn comment_properties_change_appearance_and_author() {
 /// and from Properties for existing ones; "No fill" takes it away again.
 #[test]
 fn shapes_take_a_fill_colour_from_the_quick_bar_and_properties() {
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_ui_egui::comments::CommentTool;
     let mut h = harness(|app| app.set_option("quick", "square").unwrap());
     h.run_steps(2);
     // No fill by default; the quick bar says so.
@@ -1330,7 +1330,7 @@ fn shapes_take_a_fill_colour_from_the_quick_bar_and_properties() {
     assert_eq!(h.state().comment_prefs.style(CommentTool::Line).fill, None);
     h.run_steps(2);
     drag_pt(&mut h, (40.0, 100.0), (140.0, 40.0));
-    let fill_of = |h: &Harness<'static, PdfCraftApp>, index: usize| {
+    let fill_of = |h: &Harness<'static, PdfApp>, index: usize| {
         let s = h.state();
         let doc = s.session.get(s.views[0].id).unwrap();
         let p = doc.comment_props(0, index).unwrap();
@@ -1377,13 +1377,13 @@ fn shapes_take_a_fill_colour_from_the_quick_bar_and_properties() {
 /// callout has none to choose. Make Properties Default carries it into the Text box tool.
 #[test]
 fn text_box_properties_choose_the_border_shape() {
-    use pdfcraft_engine::BorderShape;
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_engine::BorderShape;
+    use iridium_pdf_ui_egui::comments::CommentTool;
     let mut h = harness(|_| {});
-    let shape = pdfcraft_engine::Shape::TextBox { rect: [40.0, 120.0, 200.0, 160.0], font_size: 12.0 };
-    let mut style = pdfcraft_engine::Style::default_for(&shape);
+    let shape = iridium_pdf_engine::Shape::TextBox { rect: [40.0, 120.0, 200.0, 160.0], font_size: 12.0 };
+    let mut style = iridium_pdf_engine::Style::default_for(&shape);
     style.width = 1.0;
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
         page: 0,
         shape,
         style,
@@ -1413,20 +1413,20 @@ fn text_box_properties_choose_the_border_shape() {
 /// the toolbar, and a default made from it draws no circle either.
 #[test]
 fn no_thickness_in_text_box_properties_takes_the_circle_away() {
-    use pdfcraft_engine::BorderShape;
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_engine::BorderShape;
+    use iridium_pdf_ui_egui::comments::CommentTool;
     let mut h = harness(|_| {});
-    let shape = pdfcraft_engine::Shape::TextBox { rect: [40.0, 120.0, 200.0, 160.0], font_size: 12.0 };
-    let mut style = pdfcraft_engine::Style::default_for(&shape);
+    let shape = iridium_pdf_engine::Shape::TextBox { rect: [40.0, 120.0, 200.0, 160.0], font_size: 12.0 };
+    let mut style = iridium_pdf_engine::Style::default_for(&shape);
     style.width = 1.0;
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
         page: 0,
         shape,
         style,
         contents: "Pos. 3".into(),
         author: "Tester".into(),
     })));
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::BorderShapeAnnotation { page: 0, index: 0, shape: BorderShape::Circle }));
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::BorderShapeAnnotation { page: 0, index: 0, shape: BorderShape::Circle }));
     h.state_mut().comment_prefs.set_border_shape(CommentTool::TextBox, BorderShape::Circle);
     h.run_steps(2);
     h.state_mut().open_comment_props(0, 0);
@@ -1452,12 +1452,12 @@ fn no_thickness_in_text_box_properties_takes_the_circle_away() {
 /// the next rectangle is drawn with a see-through fill and an opaque line.
 #[test]
 fn comment_properties_set_each_parts_opacity() {
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_ui_egui::comments::CommentTool;
     let mut h = harness(|app| app.set_option("quick", "square").unwrap());
     h.state_mut().comment_prefs.set_fill(CommentTool::Rectangle, Some([1.0, 1.0, 0.0]));
     h.run_steps(2);
     drag_pt(&mut h, (40.0, 100.0), (140.0, 40.0));
-    let props = |h: &Harness<'static, PdfCraftApp>, index: usize| {
+    let props = |h: &Harness<'static, PdfApp>, index: usize| {
         let s = h.state();
         let p = s.session.get(s.views[0].id).unwrap().comment_props(0, index).unwrap();
         (p.opacity, p.fill_opacity, p.text_opacity)
@@ -1484,10 +1484,10 @@ fn comment_properties_set_each_parts_opacity() {
     assert_eq!(props(&h, 1), (1.0, Some(0.3), None), "the next rectangle takes the default");
 
     // A text box with a border and a fill: its text, border and fill.
-    let shape = pdfcraft_engine::Shape::TextBox { rect: [40.0, 120.0, 200.0, 160.0], font_size: 12.0 };
-    let mut style = pdfcraft_engine::Style::default_for(&shape);
+    let shape = iridium_pdf_engine::Shape::TextBox { rect: [40.0, 120.0, 200.0, 160.0], font_size: 12.0 };
+    let mut style = iridium_pdf_engine::Style::default_for(&shape);
     (style.width, style.fill) = (1.0, Some([1.0, 1.0, 0.6]));
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
         page: 0,
         shape,
         style,
@@ -1501,7 +1501,7 @@ fn comment_properties_set_each_parts_opacity() {
     for label in ["Text opacity", "Border opacity", "Fill opacity"] {
         h.get_by_role_and_label(egui::accesskit::Role::Slider, label);
     }
-    if let Ok(dir) = std::env::var("PDFCRAFT_SHOTS") {
+    if let Ok(dir) = std::env::var("IRIDIUM_PDF_SHOTS") {
         let _gpu = crate::gpu();
         h.render().unwrap().save(format!("{dir}/comment-part-opacity.png")).unwrap();
     }
@@ -1550,7 +1550,7 @@ fn the_panel_filters_and_sorts() {
     assert_eq!(h.query_all_by_label("Oval").count(), ovals - 1, "the oval's card is filtered out");
     assert!(h.query_all_by_label("Rectangle").count() >= 1);
     h.state_mut().views[0].comments.hidden_types.clear();
-    h.state_mut().views[0].comments.sort = pdfcraft_ui_egui::comments::SortBy::Type;
+    h.state_mut().views[0].comments.sort = iridium_pdf_ui_egui::comments::SortBy::Type;
     h.run_steps(2);
     // Grouped by type: a group header names each type.
     assert_eq!(h.query_all_by_label("Oval").count(), ovals + 1, "a group header was added");
@@ -1698,7 +1698,7 @@ trailer << /Root 1 0 R >>
 
 /// The "…" of the reply row that shows `text`: the last one above it (it sits on the row's
 /// author line).
-fn reply_options<'a>(h: &'a Harness<'static, PdfCraftApp>, text: &str) -> egui_kittest::Node<'a> {
+fn reply_options<'a>(h: &'a Harness<'static, PdfApp>, text: &str) -> egui_kittest::Node<'a> {
     let y = h.get_by_label(text).rect().top();
     h.query_all_by_label("Options for this reply")
         .filter(|b| b.rect().top() <= y)
@@ -1716,7 +1716,7 @@ fn one_reply_is_deleted_from_its_menu_and_the_thread_stays() {
         app.set_option("panel", "comments").unwrap();
         app.views[0].comments.selected = Some((0, 2));
     });
-    let texts = |h: &Harness<'static, PdfCraftApp>| -> Vec<String> { comments(h).iter().filter_map(|a| a.contents.clone()).collect() };
+    let texts = |h: &Harness<'static, PdfApp>| -> Vec<String> { comments(h).iter().filter_map(|a| a.contents.clone()).collect() };
     let all = ["Wrong reply", "The comment", "Right reply", "Answer to the wrong reply", "Accepted set by Ben"];
     assert_eq!(texts(&h), all);
     assert_eq!(h.query_all_by_label("Options for this reply").count(), 3, "each reply has one; the status is a badge");
@@ -1793,7 +1793,7 @@ trailer << /Root 1 0 R >>
 
 /// Opens the inline editor on the reply that shows `text`, from its "…" menu, and types `draft`
 /// into it without saving.
-fn draft_reply(h: &mut Harness<'static, PdfCraftApp>, text: &str, draft: &str) {
+fn draft_reply(h: &mut Harness<'static, PdfApp>, text: &str, draft: &str) {
     reply_options(h, text).click();
     h.run_steps(2);
     h.query_all_by_label("Edit").last().expect("the reply menu's Edit, after the toolbar tab").click();
@@ -1815,7 +1815,7 @@ fn undo_and_redo_close_a_reply_editor_left_open() {
         app.set_option("panel", "comments").unwrap();
         app.views[0].comments.selected = Some((0, 0));
     });
-    let texts = |h: &Harness<'static, PdfCraftApp>| -> Vec<String> { comments(h).iter().filter_map(|a| a.contents.clone()).collect() };
+    let texts = |h: &Harness<'static, PdfApp>| -> Vec<String> { comments(h).iter().filter_map(|a| a.contents.clone()).collect() };
     let all = ["The comment", "Reply A", "Reply B", "Reply C"];
     assert_eq!(texts(&h), all);
 
@@ -1929,7 +1929,7 @@ fn replies_that_lead_nowhere_stay_comments_and_deeper_replies_join_their_thread(
 #[test]
 fn arrow_keys_leave_a_reply_to_an_unnamed_comment_where_it_is() {
     let mut h = harness_with_bytes(THREAD_EDGES.to_vec(), |app| app.set_option("quick", "select").unwrap());
-    let rect = |h: &Harness<'static, PdfCraftApp>, text: &str| comments(h).into_iter().find(|a| a.contents.as_deref() == Some(text)).unwrap().rect;
+    let rect = |h: &Harness<'static, PdfApp>, text: &str| comments(h).into_iter().find(|a| a.contents.as_deref() == Some(text)).unwrap().rect;
     let (reply, parent) = (rect(&h, "Direct reply"), rect(&h, "Unnamed parent"));
     h.state_mut().views[0].comments.selected = Some((0, 1));
     h.key_press(egui::Key::ArrowRight);
@@ -2028,7 +2028,7 @@ fn the_panel_reveals_edits_and_reopens_a_late_thread_without_changing_its_replie
         );
     }
     assert_eq!(after.iter().find(|a| a.name.as_deref() == Some("late-reply")).unwrap().in_reply_to.as_deref(), Some("late"));
-    reopened.state_mut().views[0].comments.sort = pdfcraft_ui_egui::comments::SortBy::Author;
+    reopened.state_mut().views[0].comments.sort = iridium_pdf_ui_egui::comments::SortBy::Author;
     reopened.run_steps(2);
     assert_eq!(reopened.query_all_by_label("Delta").count(), 2, "the author group and its card remain visible after sorting");
     reopened.get_by_label("Late root edited exactly");
@@ -2039,10 +2039,10 @@ fn the_panel_reveals_edits_and_reopens_a_late_thread_without_changing_its_replie
 fn page_groups_collapse_and_expand() {
     let mut h = harness(|app| app.set_option("panel", "comments").unwrap());
     for (page, text) in [(0, "First page note"), (1, "Second page note")] {
-        let shape = pdfcraft_engine::Shape::Note { at: [100.0, 100.0], icon: pdfcraft_engine::NoteIcon::Comment };
-        h.state_mut().apply_edit(pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+        let shape = iridium_pdf_engine::Shape::Note { at: [100.0, 100.0], icon: iridium_pdf_engine::NoteIcon::Comment };
+        h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
             page,
-            style: pdfcraft_engine::Style::default_for(&shape),
+            style: iridium_pdf_engine::Style::default_for(&shape),
             shape,
             contents: text.into(),
             author: "Tester".into(),
@@ -2050,7 +2050,7 @@ fn page_groups_collapse_and_expand() {
     }
     h.state_mut().views[0].comments.selected = None;
     h.run_steps(3);
-    let shown = |h: &Harness<'static, PdfCraftApp>, text: &str| h.query_all_by_label_contains(text).count() > 0;
+    let shown = |h: &Harness<'static, PdfApp>, text: &str| h.query_all_by_label_contains(text).count() > 0;
     assert!(shown(&h, "First page note") && shown(&h, "Second page note"));
     assert_eq!(h.query_all_by_label("Collapse").count(), 2, "one chevron per page group");
 
@@ -2097,10 +2097,10 @@ fn flatten_comments_from_the_page_menu_and_the_panel_menu() {
         app.set_option("panel", "comments").unwrap();
         app.set_option("quick", "select").unwrap();
     });
-    let shape = pdfcraft_engine::Shape::Rectangle { rect: [20.0, 20.0, 80.0, 60.0] };
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+    let shape = iridium_pdf_engine::Shape::Rectangle { rect: [20.0, 20.0, 80.0, 60.0] };
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
         page: 0,
-        style: pdfcraft_engine::Style::default_for(&shape),
+        style: iridium_pdf_engine::Style::default_for(&shape),
         shape,
         contents: "Reviewed".into(),
         author: "Tester".into(),
@@ -2147,7 +2147,7 @@ fn comments_take_checkmarks_lock_hide_and_summarize() {
     h.get_by_label("Remove checkmark");
 
     // "…" ▸ Copy text puts the comment's text on the clipboard.
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::SetAnnotationContents { page: 0, index: 0, text: "Copy me".into() });
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::SetAnnotationContents { page: 0, index: 0, text: "Copy me".into() });
     h.run_steps(2);
     h.get_by_label("More").click();
     h.run_steps(2);
@@ -2253,9 +2253,9 @@ fn polygons_clouds_connected_lines_callouts_and_inserted_text() {
     assert_eq!(h.state().quick_tool, QuickTool::Select);
 }
 
-fn drawn_points(h: &Harness<'static, PdfCraftApp>) -> usize {
+fn drawn_points(h: &Harness<'static, PdfApp>) -> usize {
     match &h.state().views[0].comments.gesture {
-        Some(pdfcraft_ui_egui::comments::Gesture::Draw { points, .. }) => points.len(),
+        Some(iridium_pdf_ui_egui::comments::Gesture::Draw { points, .. }) => points.len(),
         _ => 0,
     }
 }
@@ -2332,7 +2332,7 @@ fn the_panel_filters_by_colour_and_checkmark() {
     h.state_mut().set_option("quick", "circle").unwrap();
     drag_pt(&mut h, (160.0, 100.0), (260.0, 40.0));
     h.state_mut().set_option("quick", "select").unwrap();
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::StyleAnnotation {
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::StyleAnnotation {
         page: 0,
         index: 1,
         color: Some([0.0, 0.47, 0.84]),
@@ -2340,9 +2340,9 @@ fn the_panel_filters_by_colour_and_checkmark() {
         width: None,
         endings: None,
     });
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::MarkAnnotation { page: 0, index: 0, marked: true, author: "Tester".into() });
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::MarkAnnotation { page: 0, index: 0, marked: true, author: "Tester".into() });
     h.run_steps(2);
-    let cards = |h: &Harness<'static, PdfCraftApp>| (h.query_all_by_label("Rectangle").count(), h.query_all_by_label("Oval").count());
+    let cards = |h: &Harness<'static, PdfApp>| (h.query_all_by_label("Rectangle").count(), h.query_all_by_label("Oval").count());
     // The filter menu lists the colours by name (counted with it open: it names the types too).
     h.get_by_label("Filter comments").click();
     h.run_steps(2);
@@ -2373,15 +2373,15 @@ fn the_panel_shows_each_reviewers_status_and_only_my_checkmark() {
     let me = h.state().comment_prefs.author.clone();
     let other = format!("{me} (other)");
     for (state, author) in [
-        (pdfcraft_engine::ReviewState::Accepted, "Bob"),
-        (pdfcraft_engine::ReviewState::Completed, "Carol"),
-        (pdfcraft_engine::ReviewState::Rejected, "Bob"),
-        (pdfcraft_engine::ReviewState::Completed, "Dan"),
-        (pdfcraft_engine::ReviewState::None, "Dan"),
+        (iridium_pdf_engine::ReviewState::Accepted, "Bob"),
+        (iridium_pdf_engine::ReviewState::Completed, "Carol"),
+        (iridium_pdf_engine::ReviewState::Rejected, "Bob"),
+        (iridium_pdf_engine::ReviewState::Completed, "Dan"),
+        (iridium_pdf_engine::ReviewState::None, "Dan"),
     ] {
-        h.state_mut().apply_edit(pdfcraft_engine::Edit::SetAnnotationStatus { page: 0, index: 0, state, author: author.into() });
+        h.state_mut().apply_edit(iridium_pdf_engine::Edit::SetAnnotationStatus { page: 0, index: 0, state, author: author.into() });
     }
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::MarkAnnotation { page: 0, index: 0, marked: true, author: other.clone() });
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::MarkAnnotation { page: 0, index: 0, marked: true, author: other.clone() });
     h.state_mut().views[0].comments.selected = Some((0, 0));
     h.run_steps(2);
     h.get_by_label("Bob: Rejected");
@@ -2398,7 +2398,7 @@ fn the_panel_shows_each_reviewers_status_and_only_my_checkmark() {
     h.state_mut().set_option("quick", "select").unwrap();
     h.state_mut().views[0].comments.selected = None;
     h.run_steps(2);
-    let cards = |h: &Harness<'static, PdfCraftApp>| (h.query_all_by_label("Rectangle").count(), h.query_all_by_label("Oval").count());
+    let cards = |h: &Harness<'static, PdfApp>| (h.query_all_by_label("Rectangle").count(), h.query_all_by_label("Oval").count());
     let shown = cards(&h);
     h.state_mut().views[0].comments.hidden_statuses = vec!["Rejected".into()];
     h.run_steps(2);
@@ -2429,7 +2429,7 @@ fn make_current_properties_default() {
     });
     drag_pt(&mut h, (40.0, 100.0), (140.0, 40.0));
     h.state_mut().set_option("quick", "select").unwrap();
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::StyleAnnotation {
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::StyleAnnotation {
         page: 0,
         index: 0,
         color: Some([0.0, 0.47, 0.84]),
@@ -2442,14 +2442,14 @@ fn make_current_properties_default() {
     h.run_steps(2);
     h.get_by_label("Make Current Properties Default").click();
     h.run_steps(3);
-    let st = h.state().comment_prefs.style(pdfcraft_ui_egui::comments::CommentTool::Rectangle);
+    let st = h.state().comment_prefs.style(iridium_pdf_ui_egui::comments::CommentTool::Rectangle);
     assert_eq!((st.color, st.opacity, st.width), ([0.0, 0.47, 0.84], 0.5, 5.0));
     // The default survives a restart (#340): a fresh app reads the persisted settings and its
     // next rectangle still takes the style.
     let json = h.state().persist();
-    let mut fresh = PdfCraftApp::new();
+    let mut fresh = PdfApp::new();
     fresh.restore(&json);
-    let st = fresh.comment_prefs.style(pdfcraft_ui_egui::comments::CommentTool::Rectangle);
+    let st = fresh.comment_prefs.style(iridium_pdf_ui_egui::comments::CommentTool::Rectangle);
     assert_eq!((st.color, st.opacity, st.width), ([0.0, 0.47, 0.84], 0.5, 5.0), "the tool default persisted");
     // The next rectangle takes it.
     h.state_mut().set_option("quick", "square").unwrap();
@@ -2463,7 +2463,7 @@ fn make_current_properties_default() {
 /// the tool's default (here a strikethrough's colour); without it, only the comment changes.
 #[test]
 fn properties_dialog_makes_the_strikethrough_colour_default() {
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_ui_egui::comments::CommentTool;
     let mut h = harness(|app| app.set_option("quick", "strikeout").unwrap());
     let green = [0.18, 0.62, 0.36];
     let blue = [0.0, 0.47, 0.84];
@@ -2496,7 +2496,7 @@ fn properties_dialog_makes_the_strikethrough_colour_default() {
     let st = h.state().comment_prefs.style(CommentTool::StrikeOut);
     assert_eq!((st.color, st.opacity), (green, 0.1));
     let fresh = {
-        let mut fresh = PdfCraftApp::new();
+        let mut fresh = PdfApp::new();
         fresh.restore(&h.state().persist());
         fresh.comment_prefs.style(CommentTool::StrikeOut).color
     };
@@ -2512,8 +2512,8 @@ fn properties_dialog_makes_the_strikethrough_colour_default() {
 /// at, the one Comment Properties shows, not the comment's /CA.
 #[test]
 fn a_text_only_text_box_made_default_gives_the_tool_its_texts_opacity() {
-    use pdfcraft_engine::{Edit, NewAnnotation, Shape, Style};
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_engine::{Edit, NewAnnotation, Shape, Style};
+    use iridium_pdf_ui_egui::comments::CommentTool;
     let mut h = harness(|_| {});
     let shape = Shape::TextBox { rect: [100.0, 600.0, 220.0, 630.0], font_size: 12.0 };
     let style = Style { width: 0.0, fill: None, ..Style::default_for(&shape) };
@@ -2529,7 +2529,7 @@ fn a_text_only_text_box_made_default_gives_the_tool_its_texts_opacity() {
     // As the automation's comment_edit sets it.
     assert!(h.state_mut().apply_edit(Edit::PartOpacity { page: 0, index, fill: None, text: Some(0.5) }));
     h.run_steps(2);
-    let opacity = |h: &Harness<'static, PdfCraftApp>| h.state().comment_prefs.style(CommentTool::TextBox).opacity;
+    let opacity = |h: &Harness<'static, PdfApp>| h.state().comment_prefs.style(CommentTool::TextBox).opacity;
     assert!((opacity(&h) - 1.0).abs() < 1e-6);
     h.state_mut().open_comment_props(0, index);
     h.run_steps(2);
@@ -2548,8 +2548,8 @@ fn a_text_only_text_box_made_default_gives_the_tool_its_texts_opacity() {
 /// that colour.
 #[test]
 fn a_text_box_made_default_gives_the_tool_its_border_colour() {
-    use pdfcraft_engine::{Edit, NewAnnotation, Shape, Style};
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_engine::{Edit, NewAnnotation, Shape, Style};
+    use iridium_pdf_ui_egui::comments::CommentTool;
     let mut h = harness(|_| {});
     let shape = Shape::TextBox { rect: [100.0, 600.0, 220.0, 630.0], font_size: 12.0 };
     let style = Style { width: 1.0, ..Style::default_for(&shape) };
@@ -2578,7 +2578,7 @@ fn a_text_box_made_default_gives_the_tool_its_border_colour() {
 /// (Comment Properties may have given it one), and the tool's again with none selected.
 #[test]
 fn the_border_colour_button_shows_the_selected_text_boxs_colour() {
-    use pdfcraft_engine::{Edit, NewAnnotation, Shape, Style};
+    use iridium_pdf_engine::{Edit, NewAnnotation, Shape, Style};
     let mut h = harness(|app| app.set_option("quick", "freetext").unwrap());
     let shape = Shape::TextBox { rect: [100.0, 600.0, 220.0, 630.0], font_size: 12.0 };
     let style = Style { width: 1.0, ..Style::default_for(&shape) };
@@ -2595,7 +2595,7 @@ fn the_border_colour_button_shows_the_selected_text_boxs_colour() {
     assert!(h.state_mut().apply_edit(Edit::BorderColorAnnotation { page: 0, index, color: Some([0.0, 0.47, 0.84]) }));
     h.run_steps(2);
     // The colour the button's square is drawn in.
-    let shown = |h: &Harness<'static, PdfCraftApp>| {
+    let shown = |h: &Harness<'static, PdfApp>| {
         let button = h.get_by_label("Border colour").rect();
         h.output().shapes.iter().find_map(|s| match &s.shape {
             egui::Shape::Rect(r) if r.stroke.width == 3.0 && button.contains_rect(r.rect) => Some(r.stroke.color),
@@ -2618,7 +2618,7 @@ fn the_border_colour_button_shows_the_selected_text_boxs_colour() {
 /// #1302: making an arrow's properties the default updates the Arrow tool, not later plain lines.
 #[test]
 fn an_arrows_default_does_not_restyle_lines() {
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_ui_egui::comments::CommentTool;
 
     let mut h = harness(|app| {
         app.set_option("panel", "comments").unwrap();
@@ -2626,7 +2626,7 @@ fn an_arrows_default_does_not_restyle_lines() {
     });
     drag_pt(&mut h, (20.0, 40.0), (140.0, 80.0));
     h.state_mut().set_option("quick", "select").unwrap();
-    h.state_mut().apply_edit(pdfcraft_engine::Edit::StyleAnnotation {
+    h.state_mut().apply_edit(iridium_pdf_engine::Edit::StyleAnnotation {
         page: 0,
         index: 0,
         color: Some([0.0, 0.47, 0.84]),
@@ -2718,7 +2718,7 @@ trailer << /Root 1 0 R >>
 fn replacing_text_strikes_it_and_adds_a_caret() {
     let mut h = harness(|app| app.set_option("quick", "replace").unwrap());
     // Review on #5689 (CodeRabbit): both parts take the Replace text tool's style.
-    h.state_mut().comment_prefs.set_color(pdfcraft_ui_egui::comments::CommentTool::ReplaceText, [0.1, 0.6, 0.2]);
+    h.state_mut().comment_prefs.set_color(iridium_pdf_ui_egui::comments::CommentTool::ReplaceText, [0.1, 0.6, 0.2]);
     drag_pt(&mut h, (20.0, 155.0), (120.0, 155.0));
     assert!(h.state().views[0].comments.composer.is_some(), "the composer asks for the replacement");
     field(&h, "Replacement text").type_text("slow red");
@@ -2735,8 +2735,8 @@ fn replacing_text_strikes_it_and_adds_a_caret() {
     assert_eq!(h.state().quick_tool, QuickTool::Select);
     // Both members are the Replace text tool's, not Strikethrough's or Insert text's (#3947), so
     // Make Current Properties Default updates the Replace text tool.
-    assert_eq!(pdfcraft_ui_egui::comments::tool_for(strike), Some(pdfcraft_ui_egui::comments::CommentTool::ReplaceText));
-    assert_eq!(pdfcraft_ui_egui::comments::tool_for(caret), Some(pdfcraft_ui_egui::comments::CommentTool::ReplaceText));
+    assert_eq!(iridium_pdf_ui_egui::comments::tool_for(strike), Some(iridium_pdf_ui_egui::comments::CommentTool::ReplaceText));
+    assert_eq!(iridium_pdf_ui_egui::comments::tool_for(caret), Some(iridium_pdf_ui_egui::comments::CommentTool::ReplaceText));
     // The panel's card is the caret's, the group's primary: it shows the replacement, and
     // nothing is named Strikethrough.
     h.state_mut().set_option("panel", "comments").unwrap();
@@ -2788,9 +2788,9 @@ fn attachment_comment_fixture() -> Vec<u8> {
     out
 }
 
-fn attachment_harness(setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, PdfCraftApp> {
+fn attachment_harness(setup: impl FnOnce(&mut PdfApp) + 'static) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("annexed.pdf", None, attachment_comment_fixture()).expect("opens");
         app.set_option("left", "closed").unwrap();
@@ -2802,7 +2802,7 @@ fn attachment_harness(setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness
     h
 }
 
-fn open_tab_names(h: &Harness<'static, PdfCraftApp>) -> Vec<String> {
+fn open_tab_names(h: &Harness<'static, PdfApp>) -> Vec<String> {
     let s = h.state();
     s.views.iter().filter_map(|v| s.session.get(v.id)).map(|d| d.name.clone()).collect()
 }
@@ -2845,7 +2845,7 @@ fn an_attachment_comment_opens_its_file_from_the_card_menu() {
 }
 
 /// Drag with the middle button (the mouse wheel) in small steps.
-fn middle_drag(h: &mut Harness<'static, PdfCraftApp>, from: Pos2, to: Pos2) {
+fn middle_drag(h: &mut Harness<'static, PdfApp>, from: Pos2, to: Pos2) {
     let button = |pos, pressed| egui::Event::PointerButton { pos, button: egui::PointerButton::Middle, pressed, modifiers: egui::Modifiers::NONE };
     h.event(egui::Event::PointerMoved(from));
     h.run_steps(1);
@@ -2912,7 +2912,7 @@ fn the_eraser_rubs_as_wide_as_its_thickness_setting() {
         assert_eq!(comments(&h).len(), 1);
         let zoom = h.state().views[0].page_screen_rect(0).expect("page 1 on screen").width() / 300.0;
         let app = h.state_mut();
-        app.comment_prefs.set_width(pdfcraft_ui_egui::comments::CommentTool::Eraser, width);
+        app.comment_prefs.set_width(iridium_pdf_ui_egui::comments::CommentTool::Eraser, width);
         app.set_option("quick", "eraser").unwrap();
         // Along the whole drawing, 20 pixels above it: out of reach of the default eraser
         // (6 pixels), within reach of the largest (36).
@@ -2925,7 +2925,7 @@ fn the_eraser_rubs_as_wide_as_its_thickness_setting() {
 }
 
 /// The widths of the eraser preview's strokes drawn in the last frame.
-fn eraser_preview_widths(h: &Harness<'static, PdfCraftApp>) -> Vec<f32> {
+fn eraser_preview_widths(h: &Harness<'static, PdfApp>) -> Vec<f32> {
     fn walk(shape: &egui::Shape, out: &mut Vec<f32>) {
         let preview = egui::Color32::from_gray(128).gamma_multiply(0.35);
         match shape {
@@ -2947,7 +2947,7 @@ fn the_eraser_preview_is_as_wide_as_it_rubs() {
     // (twice its radius, three pixels per point of thickness): 12 pixels by default, 72 at 12 pt.
     for (width, across) in [(2.0, 12.0), (12.0, 72.0)] {
         let mut h = harness(move |app| {
-            app.comment_prefs.set_width(pdfcraft_ui_egui::comments::CommentTool::Eraser, width);
+            app.comment_prefs.set_width(iridium_pdf_ui_egui::comments::CommentTool::Eraser, width);
             app.set_option("quick", "eraser").unwrap();
         });
         let (from, to) = (at(&h, 60.0, 100.0), at(&h, 240.0, 100.0));
@@ -2974,7 +2974,7 @@ fn hovering_a_comment_shows_its_author_and_text() {
         "8 0 obj << /Type /Annot /Subtype /Square /Rect [50 50 150 120] /C [1 0 0] /T (Ada) /Contents (Check this figure) >> endobj\ntrailer",
     );
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("hover.pdf", None, pdf.into_bytes()).expect("opens");
         app.set_option("left", "closed").unwrap();
@@ -3005,7 +3005,7 @@ fn preference_hides_author_only_highlight_hover_previews() {
         "8 0 obj << /Type /Annot /Subtype /Highlight /Rect [50 50 150 120] /C [1 1 0] /T (Ada) /QuadPoints [50 120 150 120 50 50 150 50] >> endobj\ntrailer",
     );
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("highlight_hover.pdf", None, pdf.into_bytes()).expect("opens");
         app.set_option("left", "closed").unwrap();
@@ -3046,12 +3046,12 @@ fn markup_hover_fixture(subtype: &str, rotation: u16, extra: &str, refs: &str) -
         .into_bytes()
 }
 
-fn markup_hover_harness(pdf: Vec<u8>, view_rotation: u16) -> Harness<'static, PdfCraftApp> {
+fn markup_hover_harness(pdf: Vec<u8>, view_rotation: u16) -> Harness<'static, PdfApp> {
     // Give the fixture a complete xref so byte comparisons do not measure repair-on-save.
-    let doc = pdfcraft_cos::Document::open(std::sync::Arc::new(pdf)).expect("synthetic fixture parses");
-    let pdf = pdfcraft_cos::write_full(&doc, &Default::default()).expect("writes complete fixture");
+    let doc = iridium_pdf_cos::Document::open(std::sync::Arc::new(pdf)).expect("synthetic fixture parses");
+    let pdf = iridium_pdf_cos::write_full(&doc, &Default::default()).expect("writes complete fixture");
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("markup.pdf", None, pdf).expect("opens synthetic markup");
         app.set_option("left", "closed").unwrap();
@@ -3068,13 +3068,13 @@ fn markup_hover_harness(pdf: Vec<u8>, view_rotation: u16) -> Harness<'static, Pd
 }
 
 /// Includes the document's crop/rotation and the independent Rotate View transform.
-fn hover_markup_at(h: &mut Harness<'static, PdfCraftApp>, x: f32, y: f32) {
+fn hover_markup_at(h: &mut Harness<'static, PdfApp>, x: f32, y: f32) {
     let p = {
         let app = h.state();
         let v = &app.views[0];
         let info = &app.session.get(v.id).unwrap().info;
         let page = &info.pages[0];
-        let xf = pdfcraft_ui_egui::canvas::PageXform {
+        let xf = iridium_pdf_ui_egui::canvas::PageXform {
             rect: v.page_screen_rect(0).expect("page on screen"),
             rot: v.rotation,
             pw: page.width,
@@ -3199,13 +3199,13 @@ fn the_squiggly_tool_marks_selected_text() {
     assert_eq!(c.len(), 1, "{c:?}");
     assert_eq!((c[0].subtype.as_str(), c[0].quads.len()), ("Squiggly", 1));
     // It sits with the other text markup in the Highlight ▸ flyout, and edits as itself.
-    assert!(pdfcraft_ui_egui::comments::GROUPS[1].contains(&pdfcraft_ui_egui::comments::CommentTool::Squiggly));
-    assert_eq!(pdfcraft_ui_egui::comments::tool_for(&c[0]), Some(pdfcraft_ui_egui::comments::CommentTool::Squiggly));
+    assert!(iridium_pdf_ui_egui::comments::GROUPS[1].contains(&iridium_pdf_ui_egui::comments::CommentTool::Squiggly));
+    assert_eq!(iridium_pdf_ui_egui::comments::tool_for(&c[0]), Some(iridium_pdf_ui_egui::comments::CommentTool::Squiggly));
 }
 
 #[test]
 fn the_opacity_set_for_a_tool_goes_into_its_new_comments() {
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_ui_egui::comments::CommentTool;
     let mut h = harness(|app| app.comment_prefs.set_opacity(CommentTool::StrikeOut, 0.5));
     // Clamped: an invisible comment can't be found again.
     h.state_mut().comment_prefs.set_opacity(CommentTool::Underline, 0.0);
@@ -3217,7 +3217,7 @@ fn the_opacity_set_for_a_tool_goes_into_its_new_comments() {
     assert_eq!(c.len(), 1, "{c:?}");
     // The new comment carries /CA 0.5 (read back from the document's bytes).
     let bytes = h.state().session.get(h.state().views[0].id).unwrap().bytes.as_ref().clone();
-    let doc = pdfcraft_cos::Document::open(std::sync::Arc::new(bytes)).unwrap();
+    let doc = iridium_pdf_cos::Document::open(std::sync::Arc::new(bytes)).unwrap();
     let opacities: Vec<f64> = doc
         .object_numbers()
         .into_iter()
@@ -3237,7 +3237,7 @@ fn the_opacity_set_for_a_tool_goes_into_its_new_comments() {
 /// across restarts, until they open it again.
 #[test]
 fn a_closed_comments_panel_stays_closed_when_picking_comment_tools() {
-    use pdfcraft_ui_egui::RightPanel;
+    use iridium_pdf_ui_egui::RightPanel;
     let mut h = harness(|_| {});
     assert_eq!(h.state().right, None);
     assert!(h.state_mut().execute("comment.highlight"));
@@ -3255,7 +3255,7 @@ fn a_closed_comments_panel_stays_closed_when_picking_comment_tools() {
         h.run_steps(2);
         assert_eq!(h.state().right, None, "{tool} reopened the closed Comments panel");
     }
-    let mut again = PdfCraftApp::new();
+    let mut again = PdfApp::new();
     again.restore(&h.state().persist());
     assert!(again.comments_panel_closed, "the choice survives a restart");
     // Opening it again from the rail lets the tools open it once more.
@@ -3277,7 +3277,7 @@ fn a_closed_comments_panel_stays_closed_when_picking_comment_tools() {
 /// with the new /DA size as one undo step, and shapes without text have no such control.
 #[test]
 fn text_box_properties_change_the_font_size() {
-    use pdfcraft_engine::{Edit, NewAnnotation, Shape};
+    use iridium_pdf_engine::{Edit, NewAnnotation, Shape};
     let mut h = harness(|_| {});
     let tb = NewAnnotation {
         page: 0,
@@ -3306,8 +3306,8 @@ fn text_box_properties_change_the_font_size() {
 
 #[test]
 fn text_box_and_callout_properties_include_fill_and_thickness() {
-    use pdfcraft_engine::{Edit, LineEnding, NewAnnotation, Shape};
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_engine::{Edit, LineEnding, NewAnnotation, Shape};
+    use iridium_pdf_ui_egui::comments::CommentTool;
     let mut h = harness(|_| {});
     for (tool, shape) in [
         (CommentTool::TextBox, Shape::TextBox { rect: [40.0, 600.0, 240.0, 640.0], font_size: 12.0 }),
@@ -3353,11 +3353,11 @@ fn text_box_and_callout_properties_include_fill_and_thickness() {
 
 #[test]
 fn text_comments_can_save_a_zero_width_default() {
-    use pdfcraft_engine::{Edit, NewAnnotation, Shape};
-    use pdfcraft_ui_egui::comments::CommentTool;
+    use iridium_pdf_engine::{Edit, NewAnnotation, Shape};
+    use iridium_pdf_ui_egui::comments::CommentTool;
     let mut h = harness(|_| {});
     let shape = Shape::TextBox { rect: [40.0, 600.0, 240.0, 640.0], font_size: 12.0 };
-    let mut style = pdfcraft_engine::Style::default_for(&shape);
+    let mut style = iridium_pdf_engine::Style::default_for(&shape);
     style.width = 0.0;
     h.state_mut().apply_edit(Edit::AddAnnotation(NewAnnotation { page: 0, shape, style, contents: "Hello".into(), author: "Ada".into() }));
     h.run_steps(2);
@@ -3372,7 +3372,7 @@ fn text_comments_can_save_a_zero_width_default() {
     h.state_mut().comment_prefs.set_width(CommentTool::Rectangle, 0.0);
     assert_eq!(h.state().comment_prefs.style(CommentTool::Callout).width, 0.0);
     assert_eq!(h.state().comment_prefs.style(CommentTool::Rectangle).width, 0.5);
-    let mut restored = PdfCraftApp::new();
+    let mut restored = PdfApp::new();
     restored.restore(&h.state().persist());
     assert_eq!(restored.comment_prefs.style(CommentTool::TextBox).width, 0.0);
     assert_eq!(restored.comment_prefs.style(CommentTool::Callout).width, 0.0);
@@ -3386,10 +3386,11 @@ fn a_moved_comment_is_drawn_where_it_goes_before_release() {
     let _gpu = crate::gpu();
     let mut h = harness(|_| {});
     let id = h.state().views[0].id;
-    for shape in
-        [pdfcraft_engine::Shape::Rectangle { rect: [30.0, 30.0, 70.0, 70.0] }, pdfcraft_engine::Shape::Oval { rect: [230.0, 30.0, 270.0, 70.0] }]
-    {
-        let style = pdfcraft_engine::Style {
+    for shape in [
+        iridium_pdf_engine::Shape::Rectangle { rect: [30.0, 30.0, 70.0, 70.0] },
+        iridium_pdf_engine::Shape::Oval { rect: [230.0, 30.0, 270.0, 70.0] },
+    ] {
+        let style = iridium_pdf_engine::Style {
             color: [1.0, 0.0, 0.0],
             opacity: 1.0,
             width: 2.0,
@@ -3397,9 +3398,9 @@ fn a_moved_comment_is_drawn_where_it_goes_before_release() {
             fill_opacity: None,
             text_opacity: None,
             border_color: None,
-            border_shape: pdfcraft_engine::BorderShape::Rectangle,
+            border_shape: iridium_pdf_engine::BorderShape::Rectangle,
         };
-        assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+        assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
             page: 0,
             shape,
             style,
@@ -3519,8 +3520,12 @@ fn an_upright_comment_on_a_turned_page_is_drawn_where_it_goes_before_release() {
         let a = info.annotations.iter().find(|a| a.subtype == "Square").expect("the square");
         assert!(a.no_rotate, "kept upright");
         let page = &info.pages[0];
-        let xf =
-            pdfcraft_ui_egui::canvas::PageXform { rect: v.page_screen_rect(0).expect("on screen"), rot: v.rotation, pw: page.width, ph: page.height };
+        let xf = iridium_pdf_ui_egui::canvas::PageXform {
+            rect: v.page_screen_rect(0).expect("on screen"),
+            rot: v.rotation,
+            pw: page.width,
+            ph: page.height,
+        };
         xf.user_rect(info, 0, a.shown_rect(page.rotation))
     };
     let red = |v: [u8; 4]| v[0] > 200 && v[1] < 80 && v[2] < 80;
@@ -3624,7 +3629,7 @@ fn a_card_out_of_view_that_grows_moves_the_cards_below_it() {
     assert!(h.query_by_label("Card 1").is_none(), "card 1 is out of view");
     let before = h.get_by_label("Card 61").rect().top();
     for text in ["A first reply", "A second reply"] {
-        h.state_mut().apply_edit(pdfcraft_engine::Edit::ReplyToAnnotation { page: 0, index: 0, text: text.into(), author: "Bo".into() });
+        h.state_mut().apply_edit(iridium_pdf_engine::Edit::ReplyToAnnotation { page: 0, index: 0, text: text.into(), author: "Bo".into() });
     }
     h.run_steps(4);
     let after = h.get_by_label("Card 61").rect().top();
@@ -3661,8 +3666,8 @@ fn freehand_highlighter_draws_translucent_yellow_ink() {
     assert_eq!(props.color, Some([1.0, 0.94, 0.0]));
     assert!((props.opacity - 0.35).abs() < 0.001);
     assert_eq!(props.width, Some(14.0));
-    assert_eq!(h.state().quick_tool, QuickTool::Comment(pdfcraft_ui_egui::comments::CommentTool::FreehandHighlight));
-    h.state_mut().comment_prefs.set_width(pdfcraft_ui_egui::comments::CommentTool::FreehandHighlight, 100.0);
+    assert_eq!(h.state().quick_tool, QuickTool::Comment(iridium_pdf_ui_egui::comments::CommentTool::FreehandHighlight));
+    h.state_mut().comment_prefs.set_width(iridium_pdf_ui_egui::comments::CommentTool::FreehandHighlight, 100.0);
     drag_pt(&mut h, (40.0, 160.0), (240.0, 160.0));
     let c = comments(&h);
     assert_eq!(c.len(), 2);
@@ -3694,7 +3699,7 @@ fn hotbar_picker_adds_and_runs_freehand_highlight() {
     // The new tool is available directly from its custom shortcut.
     h.query_all_by_role_and_label(Role::Button, "Freehand-Highlight").last().unwrap().click();
     h.run_steps(3);
-    assert_eq!(h.state().quick_tool, QuickTool::Comment(pdfcraft_ui_egui::comments::CommentTool::FreehandHighlight));
+    assert_eq!(h.state().quick_tool, QuickTool::Comment(iridium_pdf_ui_egui::comments::CommentTool::FreehandHighlight));
 }
 
 /// #6548: resting on the hotbar's gear showed two stacked tooltips, "Hotbar settings" and
@@ -3709,10 +3714,10 @@ fn hotbar_settings_button_shows_one_tooltip() {
     // simulated seconds rather than slept: it cannot pass early or depend on the machine's speed.
     let delay = f64::from(h.ctx.global_style().interaction.tooltip_delay);
     let start = h.ctx.input(|i| i.time);
-    let elapsed = |h: &Harness<'static, PdfCraftApp>| h.ctx.input(|i| i.time) - start;
+    let elapsed = |h: &Harness<'static, PdfApp>| h.ctx.input(|i| i.time) - start;
     // The button's name; a second tooltip repeating it would make two. Checked after every
     // frame, so one that shows only briefly is caught too.
-    let names = |h: &Harness<'static, PdfCraftApp>| h.query_all_by_label("Hotbar settings").count();
+    let names = |h: &Harness<'static, PdfApp>| h.query_all_by_label("Hotbar settings").count();
     let mut frames = 0;
     while h.query_all_by_label("Hotbar settings / add tools").next().is_none() {
         assert!(elapsed(&h) < 4.0 * delay && frames < 100, "no tooltip after {:.2}s of rest", elapsed(&h));
@@ -3759,7 +3764,7 @@ fn hotbar_drag_moves_and_persists_position() {
     drag(&mut h, from, from + egui::vec2(90.0, 90.0));
     let after: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
     assert_ne!(before["hotbar"]["position"], after["hotbar"]["position"]);
-    let mut restored = PdfCraftApp::new();
+    let mut restored = PdfApp::new();
     restored.restore(&h.state().persist());
     let saved: serde_json::Value = serde_json::from_str(&restored.persist()).unwrap();
     assert_eq!(saved["hotbar"], after["hotbar"]);
@@ -3796,7 +3801,7 @@ fn hotbar_settings_layout_and_side_controls_are_reachable_by_label() {
     let mut h = harness(|_| {});
     h.get_by_label("Hotbar settings").click();
     h.run_steps(3);
-    fn vertical(h: &Harness<'static, PdfCraftApp>) -> serde_json::Value {
+    fn vertical(h: &Harness<'static, PdfApp>) -> serde_json::Value {
         serde_json::from_str::<serde_json::Value>(&h.state().persist()).unwrap()["hotbar"]["vertical"].clone()
     }
     let before = vertical(&h);
@@ -3886,7 +3891,7 @@ fn hotbar_docked_left_does_not_override_quick_tools() {
 fn hotbar_docked_in_compact_window_keeps_settings_button_visible() {
     for side in ["left", "right"] {
         let mut h = Harness::builder().with_size(egui::vec2(800.0, 480.0)).build_eframe(move |_cc| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_bytes("text.pdf", None, TEXT_FIXTURE.to_vec()).expect("opens");
             app.set_option("left", "closed").unwrap();
@@ -3938,7 +3943,7 @@ fn hotbar_settings_menu_closes_on_click_outside() {
 #[test]
 fn hotbar_picker_in_narrow_viewport_fits_within_screen_width() {
     let mut h = Harness::builder().with_size(egui::vec2(270.0, 480.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("text.pdf", None, TEXT_FIXTURE.to_vec()).expect("opens");
         app
@@ -3952,7 +3957,7 @@ fn hotbar_picker_in_narrow_viewport_fits_within_screen_width() {
 #[test]
 fn hotbar_floating_picker_does_not_overlap_rendered_bar() {
     let mut h = Harness::builder().with_size(egui::vec2(1000.0, 600.0)).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("text.pdf", None, TEXT_FIXTURE.to_vec()).expect("opens");
         app
@@ -3973,9 +3978,9 @@ fn hotbar_floating_picker_does_not_overlap_rendered_bar() {
 }
 
 fn edit_composer_preserves_only_typewriter_whitespace(kind: u8) {
-    let shots = std::env::var_os("PDFCRAFT_COMPOSER_SHOTS").is_some();
+    let shots = std::env::var_os("IRIDIUM_PDF_COMPOSER_SHOTS").is_some();
     let _gpu = shots.then(crate::gpu);
-    use pdfcraft_engine::{Edit, NewAnnotation, NoteIcon, Shape, Style};
+    use iridium_pdf_engine::{Edit, NewAnnotation, NoteIcon, Shape, Style};
     let mut h = harness(move |app| {
         app.set_option("layout", "single").unwrap();
         app.set_option("panel", "comments").unwrap();
@@ -4011,7 +4016,7 @@ fn edit_composer_preserves_only_typewriter_whitespace(kind: u8) {
     h.run_steps(3);
     let c = h.state().views[0].comments.composer.as_ref().expect("double-click opens the edit composer");
     assert_eq!(c.page, 1);
-    assert_eq!(c.kind, pdfcraft_ui_egui::comments::ComposerKind::Edit(0));
+    assert_eq!(c.kind, iridium_pdf_ui_egui::comments::ComposerKind::Edit(0));
     h.input_mut().events.push(egui::Event::Text(" edited\n\n".into()));
     let ctx = h.ctx.clone();
     let mut raw = std::mem::take(h.input_mut());
@@ -4029,14 +4034,14 @@ fn edit_composer_preserves_only_typewriter_whitespace(kind: u8) {
     let id = h.state().views[0].id;
     let bytes = h.state().session.save_bytes(id).unwrap();
     // Check the raw saved string: ordinary-comment reader trimming must not hide a bad post.
-    let cos = pdfcraft_cos::Document::open(bytes.clone()).unwrap();
-    let pages = pdfcraft_model::pages(&cos);
+    let cos = iridium_pdf_cos::Document::open(bytes.clone()).unwrap();
+    let pages = iridium_pdf_model::pages(&cos);
     let annots = cos.resolve(pages[1].dict.get(b"Annots").unwrap());
     let annot = cos.resolve(&annots.as_array().unwrap()[0]);
     let contents = cos.resolve(annot.as_dict().unwrap().get(b"Contents").unwrap());
     let expected = if kind == 0 { "Original edited\n\n" } else { "Original edited" };
     assert_eq!(contents.as_string().unwrap().to_text(), expected, "only a typewriter edit preserves trailing blank lines");
-    let mut reopened = pdfcraft_engine::Session::new();
+    let mut reopened = iridium_pdf_engine::Session::new();
     let again = reopened.open("edited.pdf", None, bytes, None).unwrap();
     let saved = reopened.get(again).unwrap().info.annotations.iter().find(|a| a.page == 1 && a.index == 0).unwrap();
     assert_eq!(saved.contents.as_deref(), Some(expected));
@@ -4124,7 +4129,7 @@ fn dragging_any_selected_comment_moves_the_whole_selection() {
     assert_eq!(h.state().session.get(id).unwrap().can_undo(), Some("Move comments"));
     // A locked one in the selection stays where it is; the others still move (it would refuse
     // the whole step otherwise, and nothing would move).
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::LockAnnotation { page: 0, index: 1, locked: true }));
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::LockAnnotation { page: 0, index: 1, locked: true }));
     h.run_steps(2);
     assert_eq!(h.state().views[0].comments.selection().len(), 3);
     let before = comments(&h);
@@ -4147,12 +4152,12 @@ fn dragging_any_selected_comment_moves_the_whole_selection() {
 /// tool or a stamp tool still on, the click places the bundle and opens no text box or stamp.
 #[test]
 fn copied_comments_take_the_click_from_the_tool_that_is_on() {
-    use pdfcraft_ui_egui::fill_sign::FillTool;
+    use iridium_pdf_ui_egui::fill_sign::FillTool;
     let mut h = harness(|_| {});
     let id = h.state().views[0].id;
-    let shape = pdfcraft_engine::Shape::Rectangle { rect: [20.0, 20.0, 60.0, 60.0] };
-    let style = pdfcraft_engine::Style::default_for(&shape);
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+    let shape = iridium_pdf_engine::Shape::Rectangle { rect: [20.0, 20.0, 60.0, 60.0] };
+    let style = iridium_pdf_engine::Style::default_for(&shape);
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
         page: 0,
         shape,
         style,
@@ -4162,8 +4167,9 @@ fn copied_comments_take_the_click_from_the_tool_that_is_on() {
     h.run_steps(2);
     h.state_mut().views[0].comments.select_only((0, 0));
     assert!(h.state_mut().execute("comment.copy"));
-    let count = |h: &Harness<'static, PdfCraftApp>| h.state().session.get(id).unwrap().info.annotations.len();
-    for (tool, at) in [(QuickTool::Fill(FillTool::Text), (150.0, 100.0)), (QuickTool::Stamp(pdfcraft_engine::StampKind::Approved), (200.0, 160.0))] {
+    let count = |h: &Harness<'static, PdfApp>| h.state().session.get(id).unwrap().info.annotations.len();
+    for (tool, at) in [(QuickTool::Fill(FillTool::Text), (150.0, 100.0)), (QuickTool::Stamp(iridium_pdf_engine::StampKind::Approved), (200.0, 160.0))]
+    {
         h.state_mut().quick_tool = tool;
         h.run_steps(2);
         let before = count(&h);
@@ -4184,11 +4190,11 @@ fn copied_comments_take_the_click_from_the_tool_that_is_on() {
 }
 
 /// Two boxes on page 1 of the active document, and a reply to the first.
-fn add_two_boxes_and_a_reply(h: &mut Harness<'static, PdfCraftApp>) {
+fn add_two_boxes_and_a_reply(h: &mut Harness<'static, PdfApp>) {
     for rect in [[20.0, 20.0, 60.0, 60.0], [100.0, 20.0, 140.0, 60.0]] {
-        let shape = pdfcraft_engine::Shape::Rectangle { rect };
-        let style = pdfcraft_engine::Style::default_for(&shape);
-        assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+        let shape = iridium_pdf_engine::Shape::Rectangle { rect };
+        let style = iridium_pdf_engine::Style::default_for(&shape);
+        assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
             page: 0,
             shape,
             style,
@@ -4196,7 +4202,12 @@ fn add_two_boxes_and_a_reply(h: &mut Harness<'static, PdfCraftApp>) {
             author: "Tester".into(),
         })));
     }
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::ReplyToAnnotation { page: 0, index: 0, text: "Reply".into(), author: "Tester".into() }));
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::ReplyToAnnotation {
+        page: 0,
+        index: 0,
+        text: "Reply".into(),
+        author: "Tester".into()
+    }));
     h.run_steps(2);
 }
 
@@ -4225,9 +4236,9 @@ fn copied_comments_paste_into_another_document() {
     h.state_mut().active = Some(1);
     h.run_steps(2);
     assert!(h.state_mut().execute("comment.paste"));
-    let count = |h: &Harness<'static, PdfCraftApp>| h.state().session.get(target).unwrap().info.annotations.len();
+    let count = |h: &Harness<'static, PdfApp>| h.state().session.get(target).unwrap().info.annotations.len();
     assert_eq!(count(&h), 0, "nothing placed yet");
-    assert!(matches!(h.state().views[1].comments.gesture, Some(pdfcraft_ui_egui::comments::Gesture::Place { count: 2, .. })));
+    assert!(matches!(h.state().views[1].comments.gesture, Some(iridium_pdf_ui_egui::comments::Gesture::Place { count: 2, .. })));
     click_pt(&mut h, (150.0, 100.0));
     let pasted = h.state().session.get(target).unwrap().info.annotations.clone();
     assert_eq!(pasted.len(), 3, "two comments and the reply: {pasted:?}");
@@ -4270,7 +4281,7 @@ fn copied_comments_paste_into_another_document() {
     h.run_steps(3);
     assert!(h.state().views[1].comments.gesture.is_none(), "plain text is not a paste of comments");
     // Nor when comments were copied earlier: a word copied in another app since is that word.
-    h.state_mut().comment_clipboard = Some(pdfcraft_ui_egui::CommentClip { xfdf, count: 2 });
+    h.state_mut().comment_clipboard = Some(iridium_pdf_ui_egui::CommentClip { xfdf, count: 2 });
     h.event(egui::Event::Paste("a word from elsewhere".into()));
     h.run_steps(3);
     assert!(h.state().views[1].comments.gesture.is_none(), "the old comments don't hang on the pointer");
@@ -4289,7 +4300,7 @@ fn connected_lines_are_completed_from_the_context_menu() {
         click_pt(&mut h, p);
     }
     assert_eq!(comments(&h).len(), 0, "still drawing");
-    let right_click = |h: &mut Harness<'static, PdfCraftApp>, p: (f32, f32)| {
+    let right_click = |h: &mut Harness<'static, PdfApp>, p: (f32, f32)| {
         let p = at(h, p.0, p.1);
         h.hover_at(p);
         h.run_steps(1);
@@ -4328,7 +4339,7 @@ fn connected_lines_are_completed_from_the_context_menu() {
     h.state_mut().set_option("zoom", "50").unwrap();
     crate::support::settle(&mut h);
     assert!(h.state().views[0].page_screen_rect(0).is_some(), "page 1 is on screen too");
-    let at2 = |h: &Harness<'static, PdfCraftApp>, x: f32, y: f32| {
+    let at2 = |h: &Harness<'static, PdfApp>, x: f32, y: f32| {
         let r = h.state().views[0].page_screen_rect(1).expect("page 2 on screen");
         pos2(r.left() + x / 300.0 * r.width(), r.top() + (200.0 - y) / 200.0 * r.height())
     };
@@ -4358,7 +4369,7 @@ fn connected_lines_are_completed_from_the_context_menu() {
 /// a locked one stays as it is. One undo step. Colouring the selection works the same way.
 #[test]
 fn properties_change_every_selected_comment_where_it_applies() {
-    use pdfcraft_engine::{Edit, NewAnnotation, Shape, Style};
+    use iridium_pdf_engine::{Edit, NewAnnotation, Shape, Style};
     let mut h = harness(|_| {});
     let shapes = [
         Shape::Rectangle { rect: [20.0, 20.0, 60.0, 60.0] },
@@ -4394,7 +4405,7 @@ fn properties_change_every_selected_comment_where_it_applies() {
     }
     h.get_by_label("OK").click();
     h.run_steps(3);
-    let props = |h: &Harness<'static, PdfCraftApp>, index: usize| {
+    let props = |h: &Harness<'static, PdfApp>, index: usize| {
         let s = h.state();
         s.session.get(s.views[0].id).unwrap().comment_props(0, index).unwrap()
     };
@@ -4431,7 +4442,7 @@ fn properties_change_every_selected_comment_where_it_applies() {
 /// whose one opacity is the whole comment's, as it was.
 #[test]
 fn part_opacity_changes_every_selected_comment_that_shows_the_part() {
-    use pdfcraft_engine::{Edit, NewAnnotation, Shape, Style};
+    use iridium_pdf_engine::{Edit, NewAnnotation, Shape, Style};
     let mut h = harness(|_| {});
     for (n, width) in [1.0, 1.0, 0.0].into_iter().enumerate() {
         let x = 20.0 + 100.0 * n as f64;
@@ -4445,7 +4456,7 @@ fn part_opacity_changes_every_selected_comment_that_shows_the_part() {
             author: "Tester".into()
         })));
     }
-    let props = |h: &Harness<'static, PdfCraftApp>, index: usize| {
+    let props = |h: &Harness<'static, PdfApp>, index: usize| {
         let s = h.state();
         s.session.get(s.views[0].id).unwrap().comment_props(0, index).unwrap()
     };
@@ -4473,7 +4484,7 @@ fn part_opacity_changes_every_selected_comment_that_shows_the_part() {
 /// then drops the tool.
 #[test]
 fn escape_with_a_fill_tool_deselects_every_comment_then_drops_the_tool() {
-    use pdfcraft_ui_egui::fill_sign::FillTool;
+    use iridium_pdf_ui_egui::fill_sign::FillTool;
     let mut h = harness(|_| {});
     add_two_boxes_and_a_reply(&mut h);
     h.state_mut().quick_tool = QuickTool::Fill(FillTool::Text);
@@ -4499,7 +4510,7 @@ fn escape_with_a_fill_tool_deselects_every_comment_then_drops_the_tool() {
 fn properties_dialog_makes_the_text_box_font_size_default() {
     let blue = [0.0, 0.47, 0.84];
     let mut h = harness(|_| {});
-    let font_size_of_last = |h: &Harness<'static, PdfCraftApp>| {
+    let font_size_of_last = |h: &Harness<'static, PdfApp>| {
         let s = h.state();
         let doc = s.session.get(s.views[0].id).unwrap();
         let last = doc.info.annotations.len() - 1;

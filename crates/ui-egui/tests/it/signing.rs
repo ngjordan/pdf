@@ -4,8 +4,8 @@ use crate::support;
 use egui::{Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use pdfcraft_engine::SignatureStatus;
-use pdfcraft_ui_egui::{Dialog, PdfCraftApp, QuickTool, RightPanel, SignStep};
+use iridium_pdf_engine::SignatureStatus;
+use iridium_pdf_ui_egui::{Dialog, PdfApp, QuickTool, RightPanel, SignStep};
 
 const FIXTURE: &[u8] = b"%PDF-1.7
 1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
@@ -22,15 +22,15 @@ trailer << /Root 1 0 R >>
 fn dir() -> std::path::PathBuf {
     static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let d = std::env::temp_dir().join(format!("pdfcraft-signing-ui-{}-{n}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("iridium-pdf-signing-ui-{}-{n}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d
 }
 
-fn harness(dir: std::path::PathBuf) -> Harness<'static, PdfCraftApp> {
+fn harness(dir: std::path::PathBuf) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("contract.pdf", None, FIXTURE.to_vec()).expect("opens");
         app.set_option("left", "closed").unwrap();
@@ -42,12 +42,12 @@ fn harness(dir: std::path::PathBuf) -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn at(h: &Harness<'static, PdfCraftApp>, x: f32, y: f32) -> Pos2 {
+fn at(h: &Harness<'static, PdfApp>, x: f32, y: f32) -> Pos2 {
     let r = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
     pos2(r.left() + x / 300.0 * r.width(), r.top() + (200.0 - y) / 200.0 * r.height())
 }
 
-fn drag(h: &mut Harness<'static, PdfCraftApp>, from: Pos2, to: Pos2) {
+fn drag(h: &mut Harness<'static, PdfApp>, from: Pos2, to: Pos2) {
     h.hover_at(from);
     h.run_steps(1);
     h.drag_at(from);
@@ -60,7 +60,7 @@ fn drag(h: &mut Harness<'static, PdfCraftApp>, from: Pos2, to: Pos2) {
     h.run_steps(3);
 }
 
-fn field<'a>(h: &'a Harness<'static, PdfCraftApp>, label: &'a str) -> egui_kittest::Node<'a> {
+fn field<'a>(h: &'a Harness<'static, PdfApp>, label: &'a str) -> egui_kittest::Node<'a> {
     h.get_all_by_label(label).last().unwrap_or_else(|| panic!("no {label:?}"))
 }
 
@@ -105,7 +105,7 @@ fn drawing_a_signature_creating_an_id_signing_and_trusting() {
     assert_trust_and_id_persist(&h);
 }
 
-fn create_signing_id(h: &mut Harness<'static, PdfCraftApp>) {
+fn create_signing_id(h: &mut Harness<'static, PdfApp>) {
     assert!(h.state_mut().execute("sign.digital"));
     assert_eq!(h.state().quick_tool, QuickTool::SignArea { certify: false });
     let (a, b) = (at(h, 40.0, 90.0), at(h, 220.0, 40.0));
@@ -135,7 +135,7 @@ fn create_signing_id(h: &mut Harness<'static, PdfCraftApp>) {
     h.get_by_label("Sign as \"Grace Hopper\"");
 }
 
-fn sign_with_created_id(h: &mut Harness<'static, PdfCraftApp>, dir: &std::path::Path) {
+fn sign_with_created_id(h: &mut Harness<'static, PdfApp>, dir: &std::path::Path) {
     // A wrong password says so.
     field(h, "Digital ID password").click();
     h.run_steps(1);
@@ -167,14 +167,14 @@ fn sign_with_created_id(h: &mut Harness<'static, PdfCraftApp>, dir: &std::path::
     h.get_by_label("At least one signature has problems.");
 }
 
-fn trust_signer_and_inspect_certificate(h: &mut Harness<'static, PdfCraftApp>) {
+fn trust_signer_and_inspect_certificate(h: &mut Harness<'static, PdfApp>) {
     // Signatures panel: expand, trust the signer → valid.
     h.get_by_label_contains("Signed by Grace Hopper").click();
     h.run_steps(2);
     h.get_by_label("Signature validity is UNKNOWN:");
     // Seed a find so the trust path proves it invalidates the view: trust rebuilds
     // the display copy, and the next frame must draw from it without any zoom change.
-    h.state_mut().views[0].find = Some(pdfcraft_ui_egui::canvas::Find { matches: vec![(0, 0..5)], ..Default::default() });
+    h.state_mut().views[0].find = Some(iridium_pdf_ui_egui::canvas::Find { matches: vec![(0, 0..5)], ..Default::default() });
     h.get_by_label("Add to trusted certificates").click();
     h.run_steps(3);
     h.get_by_label("Signed and all signatures are valid.");
@@ -206,7 +206,7 @@ fn trust_signer_and_inspect_certificate(h: &mut Harness<'static, PdfCraftApp>) {
     assert_eq!(h.state().dialog, None);
 }
 
-fn verify_signed_snapshot_reuse(h: &mut Harness<'static, PdfCraftApp>) {
+fn verify_signed_snapshot_reuse(h: &mut Harness<'static, PdfApp>) {
     // View signed version opens the bytes the signature covers as a new document.
     h.get_by_label("View signed version").click();
     h.run_steps(3);
@@ -218,7 +218,7 @@ fn verify_signed_snapshot_reuse(h: &mut Harness<'static, PdfCraftApp>) {
         assert!(version.name.contains("signed version") && version.signatures.iter().any(|signature| signature.signed));
     }
     assert!(s.views[0].snapshot.is_none());
-    assert!(s.views[1].snapshot.as_ref().is_some_and(|snap| snap.kind == pdfcraft_ui_egui::canvas::SnapshotKind::SignedVersion));
+    assert!(s.views[1].snapshot.as_ref().is_some_and(|snap| snap.kind == iridium_pdf_ui_egui::canvas::SnapshotKind::SignedVersion));
     // A repeat click reuses the snapshot tab instead of opening another identical one.
     h.get_by_label("View signed version").click();
     h.run_steps(3);
@@ -261,12 +261,12 @@ fn verify_signed_snapshot_reuse(h: &mut Harness<'static, PdfCraftApp>) {
     }
 }
 
-fn verify_dirty_snapshot_close(h: &mut Harness<'static, PdfCraftApp>) {
+fn verify_dirty_snapshot_close(h: &mut Harness<'static, PdfApp>) {
     // Closing a dirty snapshot asks about saving instead of closing at once.
     h.get_by_label("View signed version").click();
     h.run_steps(3);
     let id = h.state().views[1].id;
-    h.state_mut().session.apply(id, pdfcraft_engine::Edit::SetInfo { key: "Title".into(), value: "Dirty".into() }).unwrap();
+    h.state_mut().session.apply(id, iridium_pdf_engine::Edit::SetInfo { key: "Title".into(), value: "Dirty".into() }).unwrap();
     h.state_mut().views[1].close_requested = true;
     h.run_steps(2);
     assert_eq!(h.state().views.len(), 2);
@@ -276,10 +276,10 @@ fn verify_dirty_snapshot_close(h: &mut Harness<'static, PdfCraftApp>) {
     assert_eq!(h.state().views.len(), 1);
 }
 
-fn assert_trust_and_id_persist(h: &Harness<'static, PdfCraftApp>) {
+fn assert_trust_and_id_persist(h: &Harness<'static, PdfApp>) {
     // Trusted certificates and the ID list persist.
     let saved = h.state().persist();
-    let mut fresh = PdfCraftApp::new();
+    let mut fresh = PdfApp::new();
     fresh.set_option("language", "en").unwrap();
     fresh.restore(&saved);
     assert_eq!((fresh.digital_ids.len(), fresh.session.trusted_certificates().len()), (1, 1));
@@ -328,28 +328,28 @@ fn save_as_keeps_a_signed_document_incremental() {
     // #2165: Save As to a new file rewrites unsigned documents in full; a signed one is appended
     // to, or its signature would no longer cover the file.
     let p12 = concat!(env!("CARGO_MANIFEST_DIR"), "/../sign/tests/data/ec-p256.p12");
-    let digital_id = pdfcraft_engine::sign::pkcs12::open(&std::fs::read(p12).unwrap(), "test").unwrap();
-    let mut s = pdfcraft_engine::Session::new();
+    let digital_id = iridium_pdf_engine::sign::pkcs12::open(&std::fs::read(p12).unwrap(), "test").unwrap();
+    let mut s = iridium_pdf_engine::Session::new();
     let id = s.open("contract.pdf", None, std::sync::Arc::new(FIXTURE.to_vec()), None).unwrap();
-    let opts = pdfcraft_engine::SignOptions { page: 0, rect: Some([20.0, 20.0, 180.0, 60.0]), ..Default::default() };
+    let opts = iridium_pdf_engine::SignOptions { page: 0, rect: Some([20.0, 20.0, 180.0, 60.0]), ..Default::default() };
     let signed = s.sign(id, &digital_id, opts).unwrap();
     let out = dir().join("copy.pdf");
     let (bytes, cert) = (signed.to_vec(), digital_id.certificate.clone());
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("contract.pdf", None, bytes).expect("opens");
         app.session.set_trusted_certificates(vec![cert]);
         app
     });
     h.run_steps(4);
-    let status = |h: &Harness<'static, PdfCraftApp>| {
+    let status = |h: &Harness<'static, PdfApp>| {
         let s = h.state();
         s.session.get(s.views[0].id).unwrap().signatures.iter().find(|x| x.signed).map(|x| x.status)
     };
     assert_eq!(status(&h), Some(SignatureStatus::Valid));
     h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
-    assert!(h.state_mut().save_active(pdfcraft_ui_egui::SaveTarget::As), "a signed document can be saved as a copy");
+    assert!(h.state_mut().save_active(iridium_pdf_ui_egui::SaveTarget::As), "a signed document can be saved as a copy");
     let saved = std::fs::read(&out).expect("file written");
     assert!(saved.starts_with(&signed), "the signed revision is kept as it was");
     assert_eq!(status(&h), Some(SignatureStatus::Valid));
@@ -387,22 +387,22 @@ fn save_as_appends_to_a_document_whose_field_walk_passes_a_signature_over() {
     let bytes = signature_past_the_field_walk();
     let (original, out) = (bytes.clone(), dir().join("copy.pdf"));
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("form.pdf", None, bytes).expect("opens");
         app
     });
     h.run_steps(4);
     // An edit to save: an unedited copy is the original's bytes, appended to or not.
-    let shape = pdfcraft_engine::Shape::Rectangle { rect: [200.0, 120.0, 260.0, 180.0] };
-    let style = pdfcraft_engine::Style::default_for(&shape);
-    let note = pdfcraft_engine::NewAnnotation { page: 0, style, shape, contents: "Checked".into(), author: "Tester".into() };
-    assert!(h.state_mut().apply_edit(pdfcraft_engine::Edit::AddAnnotation(note)));
+    let shape = iridium_pdf_engine::Shape::Rectangle { rect: [200.0, 120.0, 260.0, 180.0] };
+    let style = iridium_pdf_engine::Style::default_for(&shape);
+    let note = iridium_pdf_engine::NewAnnotation { page: 0, style, shape, contents: "Checked".into(), author: "Tester".into() };
+    assert!(h.state_mut().apply_edit(iridium_pdf_engine::Edit::AddAnnotation(note)));
     h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
-    assert!(h.state_mut().save_active(pdfcraft_ui_egui::SaveTarget::As), "the document can be saved as a copy");
+    assert!(h.state_mut().save_active(iridium_pdf_ui_egui::SaveTarget::As), "the document can be saved as a copy");
     let saved = std::fs::read(&out).expect("file written");
     assert!(saved.starts_with(&original), "Save As rewrote the file instead of appending to it");
-    let mut s = pdfcraft_engine::Session::new();
+    let mut s = iridium_pdf_engine::Session::new();
     let id = s.open("copy.pdf", None, std::sync::Arc::new(saved), None).expect("the copy opens");
     let notes: Vec<_> = s.get(id).unwrap().info.annotations.iter().filter_map(|a| a.contents.as_deref()).collect();
     assert!(notes.contains(&"Checked"), "the copy has the comment added before Save As: {notes:?}");
@@ -429,14 +429,14 @@ fn clicking_an_empty_signature_field_signs_it() {
 }
 
 /// The centre of `WITH_FIELD`'s signature field, opened as the second document.
-fn field_centre(h: &Harness<'static, PdfCraftApp>) -> Pos2 {
+fn field_centre(h: &Harness<'static, PdfApp>) -> Pos2 {
     let r = h.state().views[1].page_screen_rect(0).expect("on screen");
     pos2(r.left() + 150.0 / 300.0 * r.width(), r.top() + (200.0 - 50.0) / 200.0 * r.height())
 }
 
 /// Opens `WITH_FIELD` as the second document and signs its empty field with the test ID, by
 /// clicking the field.
-fn sign_the_empty_field(h: &mut Harness<'static, PdfCraftApp>) {
+fn sign_the_empty_field(h: &mut Harness<'static, PdfApp>) {
     h.state_mut().open_bytes("form.pdf", None, WITH_FIELD.to_vec()).unwrap();
     h.state_mut().active = Some(1);
     h.run_steps(6);
@@ -450,7 +450,7 @@ fn sign_the_empty_field(h: &mut Harness<'static, PdfCraftApp>) {
     assert_eq!(h.state().dialog, Some(Dialog::Sign));
     assert_eq!(h.state().sign_draft.as_ref().and_then(|d| d.field.clone()).as_deref(), Some("Approver"));
     let entry = {
-        let id = pdfcraft_engine::sign::pkcs12::open(
+        let id = iridium_pdf_engine::sign::pkcs12::open(
             &std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/../sign/tests/data/ec-p256.p12")).unwrap(),
             "test",
         )
@@ -469,7 +469,7 @@ fn sign_the_empty_field(h: &mut Harness<'static, PdfCraftApp>) {
 }
 
 /// Whether the page's hover tip shows and says `text`.
-fn tip_says(h: &Harness<'static, PdfCraftApp>, text: &str) -> bool {
+fn tip_says(h: &Harness<'static, PdfApp>, text: &str) -> bool {
     let layer = egui::LayerId::new(egui::Order::Tooltip, egui::Id::unique("canvas-hover"));
     let Some(tip) = h.ctx.memory(|m| m.area_rect(egui::Id::unique("canvas-hover")).filter(|_| m.areas().is_visible(&layer))) else { return false };
     h.query_all_by_label_contains(text).any(|n| tip.contains(n.rect().center()))
@@ -489,7 +489,7 @@ fn a_signature_badge_says_its_verdict_with_any_tool() {
         sig.summary()
     };
     let p = field_centre(&h);
-    let hover = |h: &mut Harness<'static, PdfCraftApp>, tool: QuickTool, at: Pos2| {
+    let hover = |h: &mut Harness<'static, PdfApp>, tool: QuickTool, at: Pos2| {
         h.state_mut().quick_tool = tool;
         h.run_steps(4);
         h.hover_at(at);
@@ -497,20 +497,20 @@ fn a_signature_badge_says_its_verdict_with_any_tool() {
         (h.output().platform_output.cursor_icon, tip_says(h, verdict))
     };
     assert!(hover(&mut h, QuickTool::Select, p).1, "the Select tool shows the verdict");
-    let stamp = QuickTool::Stamp(pdfcraft_engine::StampKind::DynApproved);
+    let stamp = QuickTool::Stamp(iridium_pdf_engine::StampKind::DynApproved);
     assert_eq!(hover(&mut h, stamp, p + egui::vec2(1.0, 0.0)), (egui::CursorIcon::Crosshair, true), "so does a stamp, beside its crosshair");
 }
 
 #[test]
 fn the_fill_and_sign_signature_or_an_image_shows_in_a_digital_signature() {
-    use pdfcraft_ui_egui::SignGraphic;
-    use pdfcraft_ui_egui::fill_sign::SavedSig;
+    use iridium_pdf_ui_egui::SignGraphic;
+    use iridium_pdf_ui_egui::fill_sign::SavedSig;
     let dir = dir().join("graphic");
     std::fs::create_dir_all(&dir).unwrap();
     let mut h = harness(dir.clone());
     let p12 = concat!(env!("CARGO_MANIFEST_DIR"), "/../sign/tests/data/ec-p256.p12");
-    let cert = pdfcraft_engine::sign::pkcs12::open(&std::fs::read(p12).unwrap(), "test").unwrap().certificate;
-    let sign_as = |h: &mut Harness<'static, PdfCraftApp>, rect: [f64; 4]| {
+    let cert = iridium_pdf_engine::sign::pkcs12::open(&std::fs::read(p12).unwrap(), "test").unwrap().certificate;
+    let sign_as = |h: &mut Harness<'static, PdfApp>, rect: [f64; 4]| {
         h.state_mut().start_signing(0, Some(rect), None, None);
         let entry = h.state_mut().add_digital_id(p12, &cert);
         let d = h.state_mut().sign_draft.as_mut().unwrap();
@@ -546,7 +546,7 @@ fn the_fill_and_sign_signature_or_an_image_shows_in_a_digital_signature() {
     let image = {
         let mut png = std::io::Cursor::new(Vec::new());
         image::RgbaImage::from_pixel(60, 20, image::Rgba([200, 0, 0, 255])).write_to(&mut png, image::ImageFormat::Png).unwrap();
-        pdfcraft_engine::SignatureImage::from_bytes(png.get_ref()).unwrap()
+        iridium_pdf_engine::SignatureImage::from_bytes(png.get_ref()).unwrap()
     };
     h.state_mut().sign_draft.as_mut().unwrap().graphic = SignGraphic::Image(image.clone());
     h.run_steps(2);
@@ -558,7 +558,7 @@ fn the_fill_and_sign_signature_or_an_image_shows_in_a_digital_signature() {
     let signed = std::fs::read(dir.join("contract_signed.pdf")).unwrap();
     assert!(signed.windows(6).any(|w| w == b"/Image"), "the image is embedded");
     assert_eq!(s.session.get(s.views[0].id).unwrap().signatures.iter().filter(|x| x.signed).count(), 2);
-    let mut fresh = PdfCraftApp::new();
+    let mut fresh = PdfApp::new();
     fresh.restore(&s.persist());
     assert_eq!(fresh.sign_graphic, SignGraphic::Image(image));
     // A saved choice that can't be read back falls back to the name.
@@ -568,7 +568,7 @@ fn the_fill_and_sign_signature_or_an_image_shows_in_a_digital_signature() {
 
 /// The decoded text of every visible signature appearance (Helvetica forms) in a signed file.
 fn stamped(path: &std::path::Path) -> String {
-    use pdfcraft_cos::{Document, ObjRef, Object};
+    use iridium_pdf_cos::{Document, ObjRef, Object};
     let doc = Document::open(std::sync::Arc::new(std::fs::read(path).unwrap())).unwrap();
     let mut text = String::new();
     for num in doc.object_numbers() {
@@ -592,9 +592,9 @@ fn the_signature_labels_follow_the_interface_language() {
     if crate::support::skip_without_catalogs("the_signature_labels_follow_the_interface_language") {
         return;
     }
-    use pdfcraft_ui_egui::i18n::{Lang, tr};
+    use iridium_pdf_ui_egui::i18n::{Lang, tr};
     let p12 = concat!(env!("CARGO_MANIFEST_DIR"), "/../sign/tests/data/ec-p256.p12");
-    let cert = pdfcraft_engine::sign::pkcs12::open(&std::fs::read(p12).unwrap(), "test").unwrap().certificate;
+    let cert = iridium_pdf_engine::sign::pkcs12::open(&std::fs::read(p12).unwrap(), "test").unwrap().certificate;
     let note = "The labels are in English: the signature's font can't draw them in this language.";
     for (code, labels, in_english) in [("de", ["(Digital", "(Grund:", "(Datum:"], false), ("zh-hans", ["(Digitally", "(Reason:", "(Date:"], true)] {
         let dir = dir().join(code);
@@ -625,10 +625,10 @@ fn the_signature_labels_follow_the_interface_language() {
 
 #[test]
 fn os_store_identities_are_not_persisted() {
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("language", "en").unwrap();
     for path in ["windows:Store signer", "keychain:Store signer", "file-id.p12"] {
-        app.digital_ids.push(pdfcraft_ui_egui::DigitalIdEntry {
+        app.digital_ids.push(iridium_pdf_ui_egui::DigitalIdEntry {
             path: path.into(),
             name: "Signer".into(),
             issuer: "Test issuer".into(),
@@ -641,7 +641,7 @@ fn os_store_identities_are_not_persisted() {
     let settings: serde_json::Value = serde_json::from_str(&saved).unwrap();
     assert_eq!(settings["digital_ids"].as_array().unwrap().len(), 1);
     assert_eq!(settings["digital_ids"][0]["path"], "file-id.p12");
-    let mut restored = PdfCraftApp::new();
+    let mut restored = PdfApp::new();
     restored.set_option("language", "en").unwrap();
     restored.restore(&saved);
     assert_eq!(restored.digital_ids.len(), 1);
@@ -653,7 +653,7 @@ fn windows_store_identity_does_not_ask_for_a_file_password() {
     let mut h = harness(dir());
     h.state_mut().start_signing(0, None, None, None);
     // A synthetic picker entry exercises the dialog without a real Windows identity.
-    h.state_mut().digital_ids.push(pdfcraft_ui_egui::DigitalIdEntry {
+    h.state_mut().digital_ids.push(iridium_pdf_ui_egui::DigitalIdEntry {
         path: "windows:No Such Signer".into(),
         name: "Store signer".into(),
         issuer: "Test issuer".into(),
@@ -669,7 +669,7 @@ fn windows_store_identity_does_not_ask_for_a_file_password() {
     h.run_steps(3);
     h.get_by_label("Sign as \"Store signer\"");
     assert_eq!(h.query_all_by_label("Digital ID password").count(), 0);
-    h.get_by_label("The key is in the Windows certificate store, which may ask to allow PdfCraft to use it.");
+    h.get_by_label("The key is in the Windows certificate store, which may ask to allow PDF to use it.");
     support::outside_menus(&h, "Sign").click();
     h.run_steps(3);
     assert_eq!(h.state().dialog, Some(Dialog::Sign));
@@ -683,7 +683,7 @@ fn long_digital_id_names_stay_inside_the_picker() {
     let mut h = harness(dir());
     h.state_mut().start_signing(0, None, None, None);
     let long = "a certificate subject much longer than the picker is wide ".repeat(4);
-    h.state_mut().digital_ids.push(pdfcraft_ui_egui::DigitalIdEntry {
+    h.state_mut().digital_ids.push(iridium_pdf_ui_egui::DigitalIdEntry {
         path: "windows:No Such Signer".into(),
         name: long.clone(),
         issuer: long,
@@ -720,7 +720,7 @@ fn long_digital_id_names_stay_inside_the_picker() {
 fn an_unusable_id_is_shown_with_its_reason_and_cannot_be_chosen() {
     let mut h = harness(dir());
     // Not a `windows:` path: those are replaced by the real store listing when signing starts.
-    h.state_mut().digital_ids.push(pdfcraft_ui_egui::DigitalIdEntry {
+    h.state_mut().digital_ids.push(iridium_pdf_ui_egui::DigitalIdEntry {
         path: "store-test:broken".into(),
         name: "Broken signer".into(),
         issuer: String::new(),
@@ -740,7 +740,7 @@ fn an_unusable_id_is_shown_with_its_reason_and_cannot_be_chosen() {
     h.run_steps(3);
     assert_eq!(h.state().sign_draft.as_ref().unwrap().step, SignStep::Choose);
     // A usable ID after it is the one selected to begin with.
-    h.state_mut().digital_ids.push(pdfcraft_ui_egui::DigitalIdEntry {
+    h.state_mut().digital_ids.push(iridium_pdf_ui_egui::DigitalIdEntry {
         path: "store-test:fine".into(),
         name: "Working signer".into(),
         issuer: "Test issuer".into(),
@@ -809,7 +809,7 @@ fn signing_preserves_destination_opening_attributes() {
     xattr::set(&dest, "com.apple.quarantine", b"0082;1234;Preview;").unwrap();
     let mut h = harness(dir.clone());
     let p12 = concat!(env!("CARGO_MANIFEST_DIR"), "/../sign/tests/data/ec-p256.p12");
-    let cert = pdfcraft_engine::sign::pkcs12::open(&std::fs::read(p12).unwrap(), "test").unwrap().certificate;
+    let cert = iridium_pdf_engine::sign::pkcs12::open(&std::fs::read(p12).unwrap(), "test").unwrap().certificate;
     h.state_mut().start_signing(0, None, None, None);
     let entry = h.state_mut().add_digital_id(p12, &cert);
     let d = h.state_mut().sign_draft.as_mut().unwrap();

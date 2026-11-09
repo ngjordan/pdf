@@ -35,7 +35,7 @@ pub enum BmAction {
 }
 
 /// Matching titles plus their ancestors, keeping document paths rather than filtered indexes.
-/// `query` is folded with [`pdfcraft_render::text::fold_case`], as titles are here.
+/// `query` is folded with [`iridium_pdf_render::text::fold_case`], as titles are here.
 pub(super) fn outline_matches(items: &[OutlineItem], query: &str) -> std::collections::HashSet<Vec<usize>> {
     let mut matches = std::collections::HashSet::new();
     if query.is_empty() {
@@ -43,7 +43,7 @@ pub(super) fn outline_matches(items: &[OutlineItem], query: &str) -> std::collec
     }
     let mut pending: Vec<_> = items.iter().enumerate().map(|(i, item)| (vec![i], item)).collect();
     while let Some((path, item)) = pending.pop() {
-        if pdfcraft_render::text::fold_case(&item.title).contains(query) {
+        if iridium_pdf_render::text::fold_case(&item.title).contains(query) {
             let mut ancestor = path.clone();
             while !ancestor.is_empty() {
                 matches.insert(ancestor.clone());
@@ -348,7 +348,7 @@ mod label_column {
 mod bookmark_filter {
     use super::{outline_matches, title_format};
     use crate::theme::{self, Tokens};
-    use pdfcraft_render::OutlineItem;
+    use iridium_pdf_render::OutlineItem;
 
     /// #3193: a bookmark's title is drawn in its own style and colour.
     #[test]
@@ -372,7 +372,7 @@ mod bookmark_filter {
         OutlineItem {
             title: title.into(),
             page: Some(0),
-            view: pdfcraft_render::DestView::Top,
+            view: iridium_pdf_render::DestView::Top,
             action: None,
             children,
             open: true,
@@ -386,7 +386,7 @@ mod bookmark_filter {
     #[test]
     fn titles_match_in_any_case_with_turkish_i() {
         let outline = [item("İSTANBUL ŞUBESİ", vec![item("Kış dönemi", vec![])]), item("Ankara", vec![])];
-        let fold = pdfcraft_render::text::fold_case;
+        let fold = iridium_pdf_render::text::fold_case;
         assert_eq!(outline_matches(&outline, &fold("istanbul")).len(), 1);
         assert_eq!(outline_matches(&outline, &fold("şubesi")).len(), 1);
         // A child match keeps its parent: [0] and [0, 0].

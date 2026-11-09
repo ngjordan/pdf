@@ -3,7 +3,7 @@
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_ui_egui::PdfApp;
 
 /// A one-page PDF with no embedded files, to attach to.
 const INNER: &[u8] = b"%PDF-1.7
@@ -43,9 +43,9 @@ fn attachments_pdf() -> Vec<u8> {
 
 /// The app with [`attachments_pdf`] open and the Attachments panel showing, at 60 frames a
 /// second so two clicks a frame apart make a double-click.
-fn harness() -> Harness<'static, PdfCraftApp> {
+fn harness() -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).with_step_dt(1.0 / 60.0).build_eframe(|_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, attachments_pdf()).unwrap();
         app.set_option("panel", "attachments").unwrap();
@@ -60,7 +60,7 @@ struct Dir(std::path::PathBuf);
 
 impl Dir {
     fn new(test: &str) -> Self {
-        let path = std::env::temp_dir().join(format!("pdfcraft-attachment-row-{test}-{}", std::process::id()));
+        let path = std::env::temp_dir().join(format!("iridium-pdf-attachment-row-{test}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&path);
         std::fs::create_dir_all(&path).unwrap();
         Self(path)
@@ -74,7 +74,7 @@ impl Drop for Dir {
 }
 
 /// Two pointer clicks a frame apart on `label` (an accessibility click is never a double-click).
-fn double_click(h: &mut Harness<'static, PdfCraftApp>, label: &str) {
+fn double_click(h: &mut Harness<'static, PdfApp>, label: &str) {
     let at = row_name(h, label);
     h.hover_at(at);
     h.run_steps(1);
@@ -86,7 +86,7 @@ fn double_click(h: &mut Harness<'static, PdfCraftApp>, label: &str) {
     h.run_steps(3);
 }
 
-fn right_click(h: &mut Harness<'static, PdfCraftApp>, label: &str) {
+fn right_click(h: &mut Harness<'static, PdfApp>, label: &str) {
     let at = row_name(h, label);
     h.hover_at(at);
     h.run_steps(1);
@@ -110,7 +110,7 @@ fn double_clicking_another_attachment_saves_it() {
     let mut h = harness();
     h.state_mut().pick_override = Some(vec![target.to_string_lossy().into_owned()]);
     double_click(&mut h, "notes.txt");
-    assert_eq!(std::fs::read(&target).unwrap(), b"hello notes", "PdfCraft opens only PDFs, so it saves the rest");
+    assert_eq!(std::fs::read(&target).unwrap(), b"hello notes", "PDF opens only PDFs, so it saves the rest");
     assert_eq!(h.state().views.len(), 1, "nothing opens");
 }
 
@@ -119,7 +119,7 @@ fn the_right_click_menu_opens_saves_and_deletes() {
     let dir = Dir::new("menu");
     let target = dir.0.join("from menu.pdf");
     let mut h = harness();
-    let count = |h: &Harness<'static, PdfCraftApp>, label: &str| h.query_all_by_label(label).count();
+    let count = |h: &Harness<'static, PdfApp>, label: &str| h.query_all_by_label(label).count();
     // The rows have Save and Delete buttons each, and the PDF's row an Open button.
     assert_eq!((count(&h, "Save attachment…"), count(&h, "Open in a new tab"), count(&h, "Delete attachment")), (2, 1, 2));
     // A text file's menu has Save and Delete, no Open.
@@ -171,7 +171,7 @@ fn the_row_buttons_still_take_their_own_clicks() {
 #[test]
 fn a_right_click_on_a_row_button_opens_the_row_menu() {
     let mut h = harness();
-    let count = |h: &Harness<'static, PdfCraftApp>, label: &str| h.query_all_by_label(label).count();
+    let count = |h: &Harness<'static, PdfApp>, label: &str| h.query_all_by_label(label).count();
     // inner.pdf's row comes first: its Save button is the first one.
     let at = h.get_all_by_label("Save attachment…").next().expect("inner.pdf's Save button").rect().center();
     h.hover_at(at);
@@ -185,6 +185,6 @@ fn a_right_click_on_a_row_button_opens_the_row_menu() {
 
 /// Where the attachment named `label` shows in the panel: the lowest text with that name, below
 /// a tab of the same name once the attachment is open.
-fn row_name(h: &Harness<'static, PdfCraftApp>, label: &str) -> egui::Pos2 {
+fn row_name(h: &Harness<'static, PdfApp>, label: &str) -> egui::Pos2 {
     h.get_all_by_label(label).map(|n| n.rect()).max_by(|a, b| a.top().total_cmp(&b.top())).expect("the attachment is listed").center()
 }

@@ -3,10 +3,10 @@
 
 use std::collections::{HashMap, HashSet};
 
-use pdfcraft_content::Matrix;
-use pdfcraft_cos::{Dict, Document, ObjRef, Object};
-use pdfcraft_fonts::pdf::Metrics;
-use pdfcraft_model::Page;
+use iridium_pdf_content::Matrix;
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object};
+use iridium_pdf_fonts::pdf::Metrics;
+use iridium_pdf_model::Page;
 
 use crate::alt::{page_content, standard, tree_root};
 
@@ -50,7 +50,7 @@ const MAX_TITLE_SOURCE_BYTES: usize = 32 << 20;
 /// The headings, in document order. Headings without text or a page are left out.
 pub fn headings(doc: &Document) -> Vec<Heading> {
     let Some(root) = tree_root(doc) else { return Vec::new() };
-    let pages = pdfcraft_model::pages(doc);
+    let pages = iridium_pdf_model::pages(doc);
     let mut w = Walker {
         doc,
         role_map: root.get(b"RoleMap").map(|o| doc.resolve(o)).and_then(|o| o.as_dict().cloned()).unwrap_or_default(),
@@ -219,7 +219,7 @@ pub(crate) fn mcid_texts(doc: &Document, page: &Dict) -> HashMap<i64, String> {
     let mut saved: Vec<(TextState, Matrix, Matrix)> = Vec::new();
     let mut unsaved = 0usize;
     let (mut tm, mut tlm) = (Matrix::IDENTITY, Matrix::IDENTITY);
-    for op in pdfcraft_content::parse(&page_content(doc, page)).ops {
+    for op in iridium_pdf_content::parse(&page_content(doc, page)).ops {
         crate::count_mark_reads(1);
         let id = stack.last().copied().flatten();
         match op.op.as_slice() {

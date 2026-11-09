@@ -67,7 +67,7 @@ fn a_link_element_that_keeps_its_text_loses_the_description_of_its_removed_annot
 /// and on the document element above both.
 fn titled() -> Document {
     let mut doc = sectioned("11 0 R");
-    let title = |t: &str| Object::String(pdfcraft_cos::PdfString::literal(t.as_bytes().to_vec()));
+    let title = |t: &str| Object::String(iridium_pdf_cos::PdfString::literal(t.as_bytes().to_vec()));
     for (n, t) in [(8, "LEAK_DOC_TITLE"), (9, "LEAK_OWN_TITLE"), (11, "LEAK_SECT_TITLE"), (10, "Public title")] {
         doc.update_dict(ObjRef::new(n, 0), |d| d.set(b"T".to_vec(), title(t))).unwrap();
     }

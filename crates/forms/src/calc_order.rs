@@ -4,7 +4,7 @@
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 
-use pdfcraft_cos::{Document, ObjRef, Object};
+use iridium_pdf_cos::{Document, ObjRef, Object};
 
 use crate::{Field, FormError, acroform, fields};
 
@@ -32,7 +32,7 @@ pub struct CalculatedField {
 /// Something wrong with a calculated field's formula or its place in the calculation order.
 #[derive(Clone, Debug, PartialEq)]
 pub enum CalculationIssue {
-    /// It reads `field`, which the form doesn't have (a field deleted, renamed outside PdfCraft,
+    /// It reads `field`, which the form doesn't have (a field deleted, renamed outside PDF,
     /// or mistyped), so the formula gets no value there.
     MissingField { field: String },
     /// It reads `field`, which calculates after it, so it uses that field's previous value.
@@ -40,7 +40,7 @@ pub enum CalculationIssue {
     /// Its formula reads its own result: it reads `fields`, which read it back (itself, when it
     /// reads itself directly). No order is right for a loop: one of the formulas has to change.
     Cycle { fields: Vec<String> },
-    /// `/CO` leaves it out. PdfCraft calculates it after the listed fields, but other PDF viewers
+    /// `/CO` leaves it out. PDF calculates it after the listed fields, but other PDF viewers
     /// may not calculate it at all.
     NotInOrder,
     /// Its script also reads fields by names it builds at run time (`getField("row" + i)`). Those

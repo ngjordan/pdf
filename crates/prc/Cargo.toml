@@ -1,5 +1,5 @@
 [package]
-name = "pdfcraft-prc"
+name = "iridium-pdf-prc"
 description = "PRC 3D model reader (ISO 14739-1): container, bit-level primitives, schema"
 version.workspace = true
 edition.workspace = true

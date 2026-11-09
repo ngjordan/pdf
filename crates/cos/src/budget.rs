@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use pdfcraft_filters::FilterError;
+use iridium_pdf_filters::FilterError;
 
 use crate::{CosError, Document, ObjRef, Object, Stream};
 
@@ -12,7 +12,7 @@ use crate::{CosError, Document, ObjRef, Object, Stream};
 /// pixels. A page scanned at 300 dpi takes about 17 million, 8.4 for its pixels and that again to
 /// decode them, so this alone reads about 1,000 of them. A byte into or out of a filter is a step
 /// too, and takes less: 3 ns at most, or up to 19 ns through a predictor on samples of a bit. A
-/// byte Flate reads is [`pdfcraft_filters::FLATE_READ_WORK`] steps besides, since inflating blocks
+/// byte Flate reads is [`iridium_pdf_filters::FLATE_READ_WORK`] steps besides, since inflating blocks
 /// that make nothing takes up to 21 ns a byte: about 7 ns a step.
 const IMAGE_WORK: u64 = 1 << 34;
 /// The steps each byte of the file adds to [`IMAGE_WORK`], so that a long scan is read whole: such a
@@ -28,8 +28,8 @@ pub const MAX_PAGE_DECODED: usize = 256 << 20;
 pub const MAX_PAGE_FORMS: usize = 50_000;
 
 /// The most pixels an image redaction decodes, to clear the ones under a mark or to store again
-/// without the `/JBIG2Globals` it shares with a redacted image (`pdfcraft_redact`). Optimize has
-/// JBIG2 images share a dictionary only within it (`pdfcraft_optimize`), so that redaction can
+/// without the `/JBIG2Globals` it shares with a redacted image (`iridium_pdf_redact`). Optimize has
+/// JBIG2 images share a dictionary only within it (`iridium_pdf_optimize`), so that redaction can
 /// store each of them again: one it couldn't would refuse the redaction.
 pub const MAX_REDACTED_IMAGE_PIXELS: u64 = 64 << 20;
 
@@ -93,12 +93,12 @@ impl ImageBudget {
     /// one.
     ///
     /// They go through its filters ([`Stream::decoded`]), or, for a CCITT fax or JBIG2 image (its
-    /// last filter), through the filters before it and then [`pdfcraft_filters::decode_ccitt_within`]
-    /// with its [`Document::fax_params`], or [`pdfcraft_filters::decode_jbig2_within`] with its
+    /// last filter), through the filters before it and then [`iridium_pdf_filters::decode_ccitt_within`]
+    /// with its [`Document::fax_params`], or [`iridium_pdf_filters::decode_jbig2_within`] with its
     /// `/JBIG2Globals`, as `CCITTFaxDecode` and `JBIG2Decode` give them (ISO 32000-2 §7.4.6,
     /// §7.4.7). Parameters given by reference count, for every filter
     /// ([`Document::with_direct_parms`]). A fax image's `/Columns` has to be its `/Width`, and a
-    /// JBIG2 image's page its `/Width` × `/Height`: PdfCraft's renderer draws the whole page into
+    /// JBIG2 image's page its `/Width` × `/Height`: PDF's renderer draws the whole page into
     /// the image. Up to its `/Height` rows are decoded, whatever a fax image's `/Rows` says; damaged
     /// fax data gives fewer, so a caller checks it has the rows it needs. Damaged JBIG2 data, and
     /// globals that can't be read (within [`MAX_JBIG2_GLOBALS`](crate::MAX_JBIG2_GLOBALS)), are an
@@ -112,23 +112,23 @@ impl ImageBudget {
     /// nothing left an image is refused before anything is read, its globals included.
     ///
     /// ```
-    /// # let doc = pdfcraft_cos::Document::new_empty();
-    /// # let s = pdfcraft_cos::Stream::from_raw(pdfcraft_cos::Dict::new(), Vec::new());
-    /// let samples = pdfcraft_cos::ImageBudget::new(&doc).decode(&doc, &s, 1 << 20);
+    /// # let doc = iridium_pdf_cos::Document::new_empty();
+    /// # let s = iridium_pdf_cos::Stream::from_raw(iridium_pdf_cos::Dict::new(), Vec::new());
+    /// let samples = iridium_pdf_cos::ImageBudget::new(&doc).decode(&doc, &s, 1 << 20);
     /// assert_eq!(samples.unwrap(), b"");
     /// ```
     ///
     /// `Document` has no way of its own to decode an image:
     ///
     /// ```compile_fail
-    /// # let doc = pdfcraft_cos::Document::new_empty();
-    /// # let s = pdfcraft_cos::Stream::from_raw(pdfcraft_cos::Dict::new(), Vec::new());
+    /// # let doc = iridium_pdf_cos::Document::new_empty();
+    /// # let s = iridium_pdf_cos::Stream::from_raw(iridium_pdf_cos::Dict::new(), Vec::new());
     /// let _ = doc.decoded_image(&s);
     /// ```
     ///
     /// ```compile_fail
-    /// # let doc = pdfcraft_cos::Document::new_empty();
-    /// # let s = pdfcraft_cos::Stream::from_raw(pdfcraft_cos::Dict::new(), Vec::new());
+    /// # let doc = iridium_pdf_cos::Document::new_empty();
+    /// # let s = iridium_pdf_cos::Stream::from_raw(iridium_pdf_cos::Dict::new(), Vec::new());
     /// let _ = doc.decoded_image_within(&s, 1 << 20);
     /// ```
     pub fn decode(&mut self, doc: &Document, s: &Stream, max: usize) -> Result<Vec<u8>, CosError> {
@@ -147,15 +147,15 @@ impl ImageBudget {
         if s.filters().iter().all(|(f, _)| f.is_decodable()) { self.pay_size(s, decoded) } else { Ok(decoded) }
     }
 
-    /// `data` through `chain`, any corruption being an error ([`pdfcraft_filters::decode_within`]),
+    /// `data` through `chain`, any corruption being an error ([`iridium_pdf_filters::decode_within`]),
     /// for a stream a run rewrites rather than an image it reads, charged to the allowance.
     pub fn decode_chain(
         &mut self,
-        chain: &[(pdfcraft_filters::Filter, pdfcraft_filters::Params)],
+        chain: &[(iridium_pdf_filters::Filter, iridium_pdf_filters::Params)],
         data: &[u8],
         max: usize,
     ) -> Result<Vec<u8>, FilterError> {
-        pdfcraft_filters::decode_within(chain, data, max, &mut self.work)
+        iridium_pdf_filters::decode_within(chain, data, max, &mut self.work)
     }
 
     /// Pays `steps` of other work on decoded data, or spends all there is and says so.
@@ -184,7 +184,7 @@ impl ImageBudget {
     /// `/Height` but no more than a bit of the data each, unless it is JBIG2, whose decoder pays for
     /// its page, or isn't decoded here. What can't be paid for refuses the image.
     fn pay_size(&mut self, s: &Stream, decoded: Vec<u8>) -> Result<Vec<u8>, CosError> {
-        if !charged(s) || matches!(s.filters().last(), Some((pdfcraft_filters::Filter::Jbig2, _))) {
+        if !charged(s) || matches!(s.filters().last(), Some((iridium_pdf_filters::Filter::Jbig2, _))) {
             return Ok(decoded);
         }
         let side = |key: &[u8]| s.dict.int(key).and_then(|v| u64::try_from(v).ok()).unwrap_or(0);
@@ -223,7 +223,7 @@ impl ImageBudget {
 /// Whether `s` can be decoded here and so charged: general filters, a fax or JBIG2 decoder last at
 /// most. Those decoders anywhere else can't run.
 fn charged(s: &Stream) -> bool {
-    use pdfcraft_filters::Filter;
+    use iridium_pdf_filters::Filter;
     s.readable_filters().is_ok_and(|chain| {
         chain.split_last().is_none_or(|((last, _), before)| {
             (last.is_decodable() || matches!(last, Filter::Jbig2 | Filter::CcittFax)) && before.iter().all(|(f, _)| f.is_decodable())
@@ -390,12 +390,12 @@ mod image_tests {
         if let Some(parms) = parms {
             dict.set(b"DecodeParms".to_vec(), parms);
         }
-        Stream::from_raw(dict, pdfcraft_filters::encode_jbig2_generic(&[0xFF; 4], 16, 2).unwrap())
+        Stream::from_raw(dict, iridium_pdf_filters::encode_jbig2_generic(&[0xFF; 4], 16, 2).unwrap())
     }
 
     /// What a Flate stage pays to read `n` bytes, besides what it makes.
     fn read(n: usize) -> u64 {
-        pdfcraft_filters::FLATE_READ_WORK * n as u64
+        iridium_pdf_filters::FLATE_READ_WORK * n as u64
     }
 
     /// Each image spends what it took from one allowance, and those past it are refused and
@@ -440,10 +440,10 @@ mod image_tests {
     fn filter_bombs_stop_at_the_allowance() {
         let doc = Document::new_empty();
         let samples = vec![0; 1 << 20];
-        let inner = pdfcraft_filters::encode_flate(&samples);
+        let inner = iridium_pdf_filters::encode_flate(&samples);
         let mut dict = Dict::new();
         dict.set(b"Filter".to_vec(), Object::Array(vec![Object::name("FlateDecode"), Object::name("FlateDecode")]));
-        let bomb = Stream::from_raw(dict, pdfcraft_filters::encode_flate(&inner));
+        let bomb = Stream::from_raw(dict, iridium_pdf_filters::encode_flate(&inner));
         let cost = (bomb.raw.len() + inner.len() + samples.len()) as u64 + read(bomb.raw.len()) + read(inner.len());
         let mut budget = ImageBudget::with_work(2 * cost + 1);
         for left in [cost + 1, 1] {
@@ -470,13 +470,13 @@ mod image_tests {
             Stream::from_raw(dict, raw)
         };
 
-        let image = behind(pdfcraft_filters::encode_flate(&alone.raw));
+        let image = behind(iridium_pdf_filters::encode_flate(&alone.raw));
         let mut budget = ImageBudget::with_work(u64::MAX);
         assert_eq!(budget.decode(&doc, &image, 1 << 20).unwrap(), samples);
         assert_eq!(u64::MAX - budget.work_left(), decoding + (image.raw.len() + alone.raw.len()) as u64 + read(image.raw.len()));
 
         // Past this image's limit: an error, with what finding out took paid and the rest left.
-        let bomb = behind(pdfcraft_filters::encode_flate(&vec![0; 1 << 16]));
+        let bomb = behind(iridium_pdf_filters::encode_flate(&vec![0; 1 << 16]));
         let mut budget = ImageBudget::with_work(u64::MAX);
         assert!(budget.decode(&doc, &bomb, 1000).is_err());
         assert_eq!(u64::MAX - budget.work_left(), bomb.raw.len() as u64 + read(bomb.raw.len()) + 1000);
@@ -493,7 +493,7 @@ mod image_tests {
     #[test]
     fn globals_pay_for_their_filters_each_time_they_are_decoded() {
         let skipped = [0, 0, 0, 0, 0x3E, 0, 0, 0, 0, 0, 4, 0, 0, 0, 1];
-        let raw = pdfcraft_filters::encode_flate(&skipped);
+        let raw = iridium_pdf_filters::encode_flate(&skipped);
         let stream = |doc: &Document, r: ObjRef| match &*doc.get(r) {
             Object::Stream(s) => s.clone(),
             _ => panic!("not a stream"),
@@ -528,7 +528,7 @@ mod image_tests {
         assert_eq!(spent(&doc, &s), first - filters, "kept");
 
         // Globals that fail pay too, with the image not refused: these go past their own limit.
-        let over = pdfcraft_filters::encode_flate(&vec![0; crate::MAX_JBIG2_GLOBALS + 1]);
+        let over = iridium_pdf_filters::encode_flate(&vec![0; crate::MAX_JBIG2_GLOBALS + 1]);
         let mut doc = Document::new_empty();
         let mut dict = Dict::new();
         dict.set(b"Filter".to_vec(), Object::name("FlateDecode"));
@@ -548,7 +548,7 @@ mod image_tests {
     fn fax_images_share_the_allowance() {
         let doc = Document::new_empty();
         let (w, h) = (4096u32, 64u32);
-        let coded = pdfcraft_filters::encode_g4(&vec![0xFF; 512 * h as usize], w, h).unwrap();
+        let coded = iridium_pdf_filters::encode_g4(&vec![0xFF; 512 * h as usize], w, h).unwrap();
         let mut parms = Dict::new();
         parms.set(b"K".to_vec(), Object::Int(-1));
         parms.set(b"Columns".to_vec(), Object::Int(i64::from(w)));
@@ -557,7 +557,7 @@ mod image_tests {
         dict.set(b"Height".to_vec(), Object::Int(i64::from(h)));
         dict.set(b"Filter".to_vec(), Object::Array(vec![Object::name("FlateDecode"), Object::name("CCITTFaxDecode")]));
         dict.set(b"DecodeParms".to_vec(), Object::Array(vec![Object::Null, Object::Dict(parms)]));
-        let image = Stream::from_raw(dict, pdfcraft_filters::encode_flate(&coded));
+        let image = Stream::from_raw(dict, iridium_pdf_filters::encode_flate(&coded));
         let pixels = u64::from(w) * u64::from(h);
         let cost = (image.raw.len() + coded.len() + 4 * coded.len() + 512 * h as usize) as u64 + read(image.raw.len()) + pixels;
         let mut budget = ImageBudget::with_work(cost);
@@ -583,7 +583,7 @@ mod image_tests {
             Stream::from_raw(dict, data)
         };
         let rows = vec![0xFFu8; 512 * 1024];
-        let flate = blank(Some("FlateDecode"), pdfcraft_filters::encode_flate(&rows));
+        let flate = blank(Some("FlateDecode"), iridium_pdf_filters::encode_flate(&rows));
         let cost = (flate.raw.len() + rows.len()) as u64 + read(flate.raw.len()) + 4096 * 1024;
         let mut budget = ImageBudget::with_work(cost);
         assert_eq!(budget.decode(&doc, &flate, 1 << 24).unwrap(), rows);
@@ -684,9 +684,9 @@ mod image_tests {
     /// comes out of the same allowance: what can't be paid for spends all of it.
     #[test]
     fn a_rewritten_stream_shares_the_allowance() {
-        use pdfcraft_filters::{Filter, FilterError, Params};
+        use iridium_pdf_filters::{Filter, FilterError, Params};
         let samples = vec![7u8; 1000];
-        let raw = pdfcraft_filters::encode_flate(&samples);
+        let raw = iridium_pdf_filters::encode_flate(&samples);
         let chain = [(Filter::Flate, Params::default())];
         let cost = (raw.len() + samples.len()) as u64 + read(raw.len());
         let mut budget = ImageBudget::with_work(cost + 10);
@@ -710,7 +710,7 @@ mod image_tests {
     #[test]
     fn filters_alone_are_charged_too() {
         let mut doc = Document::new_empty();
-        let p = pdfcraft_filters::Params { predictor: 12, columns: 4, ..pdfcraft_filters::Params::default() };
+        let p = iridium_pdf_filters::Params { predictor: 12, columns: 4, ..iridium_pdf_filters::Params::default() };
         let rows = vec![7u8; 400];
         let mut parms = Dict::new();
         parms.set(b"Predictor".to_vec(), Object::Int(12));
@@ -719,7 +719,7 @@ mod image_tests {
         let mut dict = Dict::new();
         dict.set(b"Filter".to_vec(), Object::name("FlateDecode"));
         dict.set(b"DecodeParms".to_vec(), Object::Ref(parms));
-        let raw = pdfcraft_filters::encode(&pdfcraft_filters::Filter::Flate, &p, &rows).unwrap();
+        let raw = iridium_pdf_filters::encode(&iridium_pdf_filters::Filter::Flate, &p, &rows).unwrap();
         let image = Stream::from_raw(dict, raw);
         let mut budget = ImageBudget::with_work(u64::MAX);
         assert_eq!(budget.decode_filters(&doc, &image, 1 << 20).unwrap(), rows);
@@ -774,14 +774,14 @@ mod image_tests {
             dict.set(b"DecodeParms".to_vec(), Object::Dict(parms));
             Stream::from_raw(dict, raw)
         };
-        let untagged = pdfcraft_filters::encode_flate(&samples);
+        let untagged = iridium_pdf_filters::encode_flate(&samples);
         let mut budget = ImageBudget::with_work(u64::MAX);
         assert_eq!(budget.decode(&doc, &image(Some(4), untagged.clone()), 1 << 20).unwrap(), samples);
         // Without a height to tell, the predictor is undone, as before.
         assert_ne!(budget.decode(&doc, &image(None, untagged.clone()), 1 << 20).ok(), Some(samples.clone()));
         assert_ne!(budget.decode(&doc, &image(Some(5), untagged), 1 << 20).ok(), Some(samples.clone()));
-        let p = pdfcraft_filters::Params { predictor: 15, colors: 3, columns: 3, ..pdfcraft_filters::Params::default() };
-        let tagged = pdfcraft_filters::encode(&pdfcraft_filters::Filter::Flate, &p, &samples).unwrap();
+        let p = iridium_pdf_filters::Params { predictor: 15, colors: 3, columns: 3, ..iridium_pdf_filters::Params::default() };
+        let tagged = iridium_pdf_filters::encode(&iridium_pdf_filters::Filter::Flate, &p, &samples).unwrap();
         assert_eq!(budget.decode(&doc, &image(Some(4), tagged), 1 << 20).unwrap(), samples);
     }
 
@@ -820,7 +820,7 @@ mod image_tests {
         doc.add(Object::Stream(Stream::from_raw(Dict::new(), vec![0; 3000])));
         doc.add(Object::Dict(Dict::new()));
         doc.add(Object::Stream(Stream::flate(Dict::new(), &[1; 100])));
-        let flate = pdfcraft_filters::encode_flate(&[1; 100]).len() as u64;
+        let flate = iridium_pdf_filters::encode_flate(&[1; 100]).len() as u64;
         assert_eq!(ImageBudget::new(&doc).work_left(), IMAGE_WORK + (3000 + flate) * IMAGE_WORK_PER_BYTE);
         // A stream of an opened file changed in memory counts with the file.
         let pdf = b"%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF".to_vec();

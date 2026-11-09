@@ -264,9 +264,9 @@ pub(super) fn selection_actions(
         SelectionAction::Markup(tool) => {
             // Every markup button carries a markup tool; anything else adds nothing.
             let Some(kind) = tool.markup() else { return false };
-            view.pending_edit = Some(Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
+            view.pending_edit = Some(Edit::AddAnnotation(iridium_pdf_engine::NewAnnotation {
                 page,
-                shape: pdfcraft_engine::Shape::TextMarkup { kind, quads },
+                shape: iridium_pdf_engine::Shape::TextMarkup { kind, quads },
                 style: prefs.style(tool),
                 contents: String::new(),
                 author: prefs.author.clone(),

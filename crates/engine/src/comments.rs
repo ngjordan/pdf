@@ -1,15 +1,15 @@
 //! The comment list and its summary.
 
 /// The comment list, read from the object graph (as `inspect` lists comments).
-pub(crate) fn comment_list(doc: &pdfcraft_cos::Document) -> Vec<pdfcraft_render::Annotation> {
-    let mut list: Vec<pdfcraft_render::Annotation> = pdfcraft_annot::summaries(doc)
+pub(crate) fn comment_list(doc: &iridium_pdf_cos::Document) -> Vec<iridium_pdf_render::Annotation> {
+    let mut list: Vec<iridium_pdf_render::Annotation> = iridium_pdf_annot::summaries(doc)
         .into_iter()
-        .map(|s| pdfcraft_render::Annotation {
+        .map(|s| iridium_pdf_render::Annotation {
             page: s.page,
             subtype: s.subtype,
             author: s.author,
             contents: s.contents,
-            modified: s.modified.map(|m| pdfcraft_render::pretty_date(&m)),
+            modified: s.modified.map(|m| iridium_pdf_render::pretty_date(&m)),
             name: s.name,
             in_reply_to: s.in_reply_to,
             parent: s.parent,
@@ -26,7 +26,7 @@ pub(crate) fn comment_list(doc: &pdfcraft_cos::Document) -> Vec<pdfcraft_render:
             points: s.points,
         })
         .collect();
-    pdfcraft_render::link_replies(&mut list);
+    iridium_pdf_render::link_replies(&mut list);
     list
 }
 
@@ -80,7 +80,7 @@ pub fn comment_type_name(subtype: &str) -> &str {
 }
 
 /// [`comment_type_name`], telling callouts, clouds and typewriter text apart by `/IT`.
-pub fn comment_kind(a: &pdfcraft_render::Annotation) -> &str {
+pub fn comment_kind(a: &iridium_pdf_render::Annotation) -> &str {
     match a.intent.as_deref() {
         Some("FreehandHighlight") if a.subtype == "Ink" => "Freehand Highlight",
         Some("FreeTextCallout") => "Callout",
@@ -93,11 +93,11 @@ pub fn comment_kind(a: &pdfcraft_render::Annotation) -> &str {
 /// The text of a comment summary: one block per comment (replies indented under it), with a
 /// "Page N" heading when sorted by page. Checkmarks and status replies are left out, as are
 /// pop-ups; the number is the comment's position on its page.
-pub fn comment_summary(name: &str, all: &[pdfcraft_render::Annotation], sort: SummarySort) -> String {
+pub fn comment_summary(name: &str, all: &[iridium_pdf_render::Annotation], sort: SummarySort) -> String {
     use std::fmt::Write;
-    let top: Vec<&pdfcraft_render::Annotation> = all.iter().filter(|a| a.is_comment()).collect();
+    let top: Vec<&iridium_pdf_render::Annotation> = all.iter().filter(|a| a.is_comment()).collect();
     // Each reply under the annotation its `/IRT` points at, in document order, gathered once.
-    type Children<'a> = std::collections::HashMap<(usize, usize), Vec<&'a pdfcraft_render::Annotation>>;
+    type Children<'a> = std::collections::HashMap<(usize, usize), Vec<&'a iridium_pdf_render::Annotation>>;
     let mut children = Children::new();
     for r in all.iter().filter(|r| r.state.is_none()) {
         if let Some(parent) = r.parent {
@@ -106,7 +106,7 @@ pub fn comment_summary(name: &str, all: &[pdfcraft_render::Annotation], sort: Su
     }
     // Write a comment's replies, indenting each level. A reply to a reply keeps its `/IRT` on the
     // direct parent, so following one level would leave the deeper replies out of the summary.
-    fn write_replies(out: &mut String, children: &Children<'_>, parent: &pdfcraft_render::Annotation, depth: usize) {
+    fn write_replies(out: &mut String, children: &Children<'_>, parent: &iridium_pdf_render::Annotation, depth: usize) {
         use std::fmt::Write;
         if depth > 64 {
             return;
@@ -121,7 +121,7 @@ pub fn comment_summary(name: &str, all: &[pdfcraft_render::Annotation], sort: Su
             write_replies(out, children, r, depth + 1);
         }
     }
-    let mut numbered: Vec<(usize, &pdfcraft_render::Annotation)> = Vec::new();
+    let mut numbered: Vec<(usize, &iridium_pdf_render::Annotation)> = Vec::new();
     let mut last = usize::MAX;
     let mut n = 0;
     for a in &top {

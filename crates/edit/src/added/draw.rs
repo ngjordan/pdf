@@ -6,14 +6,14 @@ use super::{
     Content, Dict, Document, EditError, GlyphError, GlyphOutline, Object, PdfString, ShapedScript, align_code, literal, matrix_number, n,
     shaped_glyph, win_ansi,
 };
-use pdfcraft_fonts::shaped_text::{self, ShapedFonts};
+use iridium_pdf_fonts::shaped_text::{self, ShapedFonts};
 
 fn font_name(base: &str) -> String {
     format!("PCF{}", base.replace('-', ""))
 }
 
 #[cfg(test)]
-pub(super) use pdfcraft_fonts::shaped_text::GLYPHS_PER_FONT;
+pub(super) use iridium_pdf_fonts::shaped_text::GLYPHS_PER_FONT;
 
 /// A line of a shaped-text item after layout: its text, whether its paragraph runs right to left,
 /// its paragraph, its pieces in drawing order and its width at the item's size.
@@ -134,8 +134,8 @@ pub(super) fn draw(doc: &mut Document, c: &Content, view: [f64; 6], taken: &Dict
             fonts.set(name.clone().into_bytes(), Object::Dict(font));
             let face_or_new = |has: fn(char) -> bool, face: bool| t.text.chars().any(has) && (face || !existing);
             if t.text.chars().any(is_thai)
-                || face_or_new(is_arabic, pdfcraft_fonts::document_arabic_font().is_some())
-                || face_or_new(is_hebrew, pdfcraft_fonts::document_hebrew_font(false).is_some())
+                || face_or_new(is_arabic, iridium_pdf_fonts::document_arabic_font().is_some())
+                || face_or_new(is_hebrew, iridium_pdf_fonts::document_hebrew_font(false).is_some())
             {
                 draw_shaped(doc, t, taken, &mut fonts, &mut out)?;
                 res.set(b"Font".to_vec(), Object::Dict(fonts));
@@ -248,7 +248,7 @@ pub(super) fn params(c: &Content) -> Dict {
 pub(crate) fn thai_glyph_resources(
     doc: &mut Document,
     fonts: &mut Dict,
-    shaped: &pdfcraft_fonts::source_shaping::ShapedRun,
+    shaped: &iridium_pdf_fonts::source_shaping::ShapedRun,
 ) -> Result<Vec<(String, Vec<u8>)>, EditError> {
     if shaped.glyphs.len() > 65_534 {
         return Err(EditError::Invalid("shaped row exceeds its geometry budget".into()));
@@ -266,7 +266,7 @@ pub(crate) fn thai_glyph_resources(
         let at = *index.entry((id, glyph.text.as_str())).or_insert_with(|| {
             let at = clusters.len();
             let width = outlines.get(&key).map_or(0.0, |g| g.width);
-            clusters.push(pdfcraft_fonts::ShapedCluster {
+            clusters.push(iridium_pdf_fonts::ShapedCluster {
                 script: ShapedScript::Thai,
                 glyphs: vec![(id, [0.0, 0.0])],
                 advance: width,

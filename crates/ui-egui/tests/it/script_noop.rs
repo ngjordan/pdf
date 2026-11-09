@@ -1,7 +1,7 @@
 //! A script button with no convertible characters must not rewrite hidden source text.
 use egui_kittest::{Harness, kittest::Queryable};
-use pdfcraft_render::{PageRenderer, RenderRequest};
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_render::{PageRenderer, RenderRequest};
+use iridium_pdf_ui_egui::PdfApp;
 use std::sync::Arc;
 
 fn hidden_text() -> Vec<u8> {
@@ -39,7 +39,7 @@ fn pixels(bytes: Arc<Vec<u8>>) -> Vec<u8> {
 fn unsupported_script_buttons_leave_hidden_text_bytes_history_and_saved_pixels_unchanged() {
     for button in ["Superscript", "Subscript"] {
         let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(|_| {
-            let mut app = PdfCraftApp::new();
+            let mut app = PdfApp::new();
             app.set_option("language", "en").unwrap();
             app.open_bytes("hidden.pdf", None, hidden_text()).unwrap();
             app
@@ -73,7 +73,7 @@ fn unsupported_script_buttons_leave_hidden_text_bytes_history_and_saved_pixels_u
         let doc = h.state().session.get(id).unwrap();
         assert_eq!(doc.bytes.as_ref(), before.as_ref(), "no conversion must leave source bytes untouched");
         assert!(doc.can_undo().is_none(), "no conversion must not create an edit");
-        let mut reopened = PdfCraftApp::new();
+        let mut reopened = PdfApp::new();
         reopened.open_bytes("reopened.pdf", None, saved.as_ref().clone()).unwrap();
         assert_eq!(reopened.session.get(reopened.views[0].id).unwrap().text_blocks(0)[0].text, "QQQ");
     }

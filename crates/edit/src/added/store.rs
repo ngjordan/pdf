@@ -93,7 +93,7 @@ fn with_resolved<T>(doc: &Document, object: &Object, f: impl FnOnce(&Object) -> 
     }
 }
 
-fn for_each_content_entry(doc: &Document, page: &pdfcraft_model::Page, mut visit: impl FnMut(&Object)) {
+fn for_each_content_entry(doc: &Document, page: &iridium_pdf_model::Page, mut visit: impl FnMut(&Object)) {
     let Some(contents) = page.dict.get(b"Contents") else { return };
     with_resolved(doc, contents, |resolved| match resolved {
         Object::Array(entries) => {
@@ -143,7 +143,7 @@ pub fn scan_markers(doc: &Document) -> MarkerScan {
                             .get(b"UserUnit")
                             .and_then(Object::as_f64)
                             .filter(|u| u.is_finite() && *u >= 1.0)
-                            .map_or(1.0, |u| u.min(pdfcraft_model::MAX_USER_UNIT));
+                            .map_or(1.0, |u| u.min(iridium_pdf_model::MAX_USER_UNIT));
                         scan.added.push(Added { page: pi, obj, content: content.scaled(page.user_unit(doc) / written) });
                     }
                 });
@@ -177,16 +177,16 @@ fn validate(c: &Content) -> Result<(), EditError> {
             if (r[2] - r[0]).abs() < 1.0 {
                 return Err(EditError::Invalid("the text box is too narrow".into()));
             }
-            if t.text.chars().any(is_thai) && pdfcraft_fonts::document_thai_font().is_none() {
+            if t.text.chars().any(is_thai) && iridium_pdf_fonts::document_thai_font().is_none() {
                 return Err(thai_error(GlyphError::NoFont, &t.text));
             }
             // Without the Arabic face, `draw` decides for the Arabic letters themselves (#403): a new
             // item is refused with what's missing, and one that already holds Arabic stays movable.
             // Everything else in it is drawn in the standard font, so it still has to fit.
-            let undrawable = if t.text.chars().any(shaped_arabic) && pdfcraft_fonts::document_arabic_font().is_none() {
+            let undrawable = if t.text.chars().any(shaped_arabic) && iridium_pdf_fonts::document_arabic_font().is_none() {
                 t.text.split('\n').find_map(|line| {
                     line.chars()
-                        .find(|c| !(shaped_arabic(*c) || is_thai(*c) && pdfcraft_fonts::thai_has(*c) || pdfcraft_fonts::win_ansi_encodable(*c)))
+                        .find(|c| !(shaped_arabic(*c) || is_thai(*c) && iridium_pdf_fonts::thai_has(*c) || iridium_pdf_fonts::win_ansi_encodable(*c)))
                 })
             } else {
                 first_undrawable(t)
@@ -331,7 +331,7 @@ fn own_fonts(doc: &Document, obj: ObjRef) -> Vec<Vec<u8>> {
     // The stream is one this writer put there, so its decode is bounded by the stream itself: the
     // page limit alone would refuse an item larger than a page's content, and its fonts would stay
     // on the page's /Font, which `write` and `delete_content` are supposed to take them off.
-    let limit = pdfcraft_cos::MAX_PAGE_DECODED.max(s.raw.len().saturating_mul(16));
+    let limit = iridium_pdf_cos::MAX_PAGE_DECODED.max(s.raw.len().saturating_mul(16));
     let Ok(data) = s.decoded_within(limit) else { return Vec::new() };
     // Each name once: a stream that repeats a name is not copied out once per use.
     let names: std::collections::BTreeSet<&[u8]> =

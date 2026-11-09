@@ -3,7 +3,7 @@
 use egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_ui_egui::PdfApp;
 
 const FIXTURE: &[u8] = b"%PDF-1.7
 1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
@@ -15,9 +15,9 @@ trailer << /Root 1 0 R >>
 const WIDTH: f32 = 1400.0;
 const NO_BOOKMARKS: &str = "This document has no bookmarks.";
 
-fn harness_sized(size: egui::Vec2, setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, PdfCraftApp> {
+fn harness_sized(size: egui::Vec2, setup: impl FnOnce(&mut PdfApp) + 'static) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(size).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("doc.pdf", None, FIXTURE.to_vec()).unwrap();
         setup(&mut app);
@@ -27,20 +27,20 @@ fn harness_sized(size: egui::Vec2, setup: impl FnOnce(&mut PdfCraftApp) + 'stati
     h
 }
 
-fn harness(setup: impl FnOnce(&mut PdfCraftApp) + 'static) -> Harness<'static, PdfCraftApp> {
+fn harness(setup: impl FnOnce(&mut PdfApp) + 'static) -> Harness<'static, PdfApp> {
     harness_sized(egui::vec2(WIDTH, 900.0), setup)
 }
 
-fn rail(h: &Harness<'static, PdfCraftApp>) -> egui::Rect {
+fn rail(h: &Harness<'static, PdfApp>) -> egui::Rect {
     h.get_by_role_and_label(Role::Button, "Bookmarks").rect()
 }
 
-fn side(h: &Harness<'static, PdfCraftApp>) -> egui::Rect {
+fn side(h: &Harness<'static, PdfApp>) -> egui::Rect {
     h.get_by_label(NO_BOOKMARKS).rect()
 }
 
 /// The Tools pane's All tools header button.
-fn tools(h: &Harness<'static, PdfCraftApp>) -> egui::Rect {
+fn tools(h: &Harness<'static, PdfApp>) -> egui::Rect {
     h.get_by_label("Expand all tools").rect()
 }
 
@@ -107,7 +107,7 @@ fn a_dragged_width_is_remembered_across_restarts() {
     // The pointer was pressed 2 pt inside the panel, and the edge follows the pointer.
     assert!((after - (before + 40.0 - 2.0)).abs() <= 1.0, "{before} -> {after}");
     let saved = h.state().persist();
-    let mut restored = PdfCraftApp::new();
+    let mut restored = PdfApp::new();
     restored.restore(&saved);
     assert_eq!(restored.side_panels.side_width, after);
 }
@@ -234,7 +234,7 @@ fn scrollbar_and_panel_resize_handle_do_not_collide_on_either_dock_side() {
     }
 
     // Dragging either scrollbar by its right edge scrolls its content and leaves the width alone.
-    let drag = |h: &mut Harness<'static, PdfCraftApp>, at: egui::Pos2| {
+    let drag = |h: &mut Harness<'static, PdfApp>, at: egui::Pos2| {
         h.hover_at(at);
         h.run_steps(1);
         h.drag_at(at);
@@ -244,7 +244,7 @@ fn scrollbar_and_panel_resize_handle_do_not_collide_on_either_dock_side() {
         h.drop_at(at + egui::vec2(0.0, 60.0));
         h.run_steps(2);
     };
-    let page_top = |h: &Harness<'static, PdfCraftApp>| h.state().views[0].page_screen_rect(0).expect("page on screen").min.y;
+    let page_top = |h: &Harness<'static, PdfApp>| h.state().views[0].page_screen_rect(0).expect("page on screen").min.y;
     let before = page_top(&h_right);
     drag(&mut h_right, egui::pos2(page_bar.max.x - 1.0, page_bar.center().y));
     assert!(page_top(&h_right) < before, "dragging the page's scrollbar scrolls the page");

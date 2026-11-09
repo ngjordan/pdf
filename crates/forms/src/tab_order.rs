@@ -194,7 +194,7 @@ pub fn move_in_tab_order(doc: &mut Document, name: &str, earlier: bool) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pdfcraft_cos::{Dict, PdfString};
+    use iridium_pdf_cos::{Dict, PdfString};
 
     #[test]
     fn move_in_tab_order_preserves_multi_widget_relative_tab_order() {

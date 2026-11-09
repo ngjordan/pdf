@@ -77,7 +77,7 @@ pub enum QuickTool {
     /// Edit a PDF ▸ Edit text: click a line of existing text to edit it.
     EditText,
     /// Add a stamp: click to place this stamp.
-    Stamp(pdfcraft_engine::StampKind),
+    Stamp(iridium_pdf_engine::StampKind),
     /// A custom stamp from the library (its index).
     CustomStamp(usize),
     /// Edit a PDF ▸ Link: draw link areas, select and edit links.
@@ -120,7 +120,7 @@ pub enum Dialog {
     /// Set Page Boxes (crop, trim, bleed, art, media).
     PageBoxes,
     /// Add / Update Header and Footer, Watermark, Background.
-    Marks(pdfcraft_engine::MarkKind),
+    Marks(iridium_pdf_engine::MarkKind),
     /// Export a PDF ▸ Image / Text.
     Export(export_ui::ExportKind),
     /// Fill & Sign ▸ Create signature (the drawing pad).
@@ -231,8 +231,8 @@ pub struct PagePropsDraft {
     pub doc: DocId,
     pub generation: u64,
     pub pages: Vec<usize>,
-    pub before: Option<pdfcraft_engine::TabOrder>,
-    pub tab_order: Option<pdfcraft_engine::TabOrder>,
+    pub before: Option<iridium_pdf_engine::TabOrder>,
+    pub tab_order: Option<iridium_pdf_engine::TabOrder>,
 }
 
 /// Copied comments: their XFDF (each with its replies), for `Edit::PasteComments`.
@@ -256,7 +256,7 @@ pub struct PageClip {
 /// One page of a whole-document copy: its text as read for display, to read, or not to try
 /// (reading it failed before).
 pub(crate) enum CopyPage {
-    Read(std::sync::Arc<pdfcraft_render::PageText>),
+    Read(std::sync::Arc<iridium_pdf_render::PageText>),
     ToRead,
     Skip,
 }
@@ -270,7 +270,7 @@ pub(crate) struct DocumentCopyJob {
 }
 
 impl DocumentCopyJob {
-    pub(crate) fn of(v: &DocView, doc: &pdfcraft_engine::Document) -> DocumentCopyJob {
+    pub(crate) fn of(v: &DocView, doc: &iridium_pdf_engine::Document) -> DocumentCopyJob {
         let pages = (0..v.page_count())
             .map(|p| match v.texts.get(&p) {
                 Some(t) => CopyPage::Read(t.clone()),
@@ -285,7 +285,7 @@ impl DocumentCopyJob {
     /// once its text is taken, so a large document never holds every page's text layer at once.
     /// `None` when `cancel` was set.
     pub(crate) fn text(self, cancel: &std::sync::atomic::AtomicBool) -> Option<String> {
-        let mut renderer: Option<pdfcraft_render::PageRenderer> = None;
+        let mut renderer: Option<iridium_pdf_render::PageRenderer> = None;
         let mut out = String::new();
         let mut push = |text: String| {
             if !text.is_empty() {
@@ -303,12 +303,12 @@ impl DocumentCopyJob {
                 CopyPage::Read(t) => push(t.text_of(0..t.glyphs.len())),
                 CopyPage::ToRead => {
                     let r = renderer.get_or_insert_with(|| {
-                        let config = pdfcraft_render::RenderConfig { password: self.password.clone(), ..Default::default() };
-                        pdfcraft_render::PageRenderer::new(self.bytes.clone(), config)
+                        let config = iridium_pdf_render::RenderConfig { password: self.password.clone(), ..Default::default() };
+                        iridium_pdf_render::PageRenderer::new(self.bytes.clone(), config)
                     });
-                    let req = pdfcraft_render::RenderRequest {
+                    let req = iridium_pdf_render::RenderRequest {
                         page,
-                        kind: pdfcraft_render::RequestKind::Text,
+                        kind: iridium_pdf_render::RequestKind::Text,
                         tile: None,
                         scale: 1.0,
                         tag: 0,
@@ -342,7 +342,7 @@ pub struct PasswordPrompt {
     /// the document is unlocked.
     pub(crate) then: Option<&'static str>,
     /// A link destination to apply after the linked PDF is unlocked.
-    pub(crate) after_open: Option<pdfcraft_render::RemoteDestination>,
+    pub(crate) after_open: Option<iridium_pdf_render::RemoteDestination>,
     /// A launch-time display override, applied only after this PDF is unlocked.
     pub(crate) display_override: Option<(canvas::PageLayout, bool)>,
 }
@@ -355,7 +355,7 @@ pub(crate) struct OpenRequest {
     pub(crate) input: open_worker::Input,
     pub(crate) password: Option<String>,
     pub(crate) activate: bool,
-    pub(crate) after_open: Option<pdfcraft_render::RemoteDestination>,
+    pub(crate) after_open: Option<iridium_pdf_render::RemoteDestination>,
     pub(crate) recovered: Option<RecoveryMeta>,
     pub(crate) then: Option<&'static str>,
 }
@@ -372,7 +372,7 @@ pub struct UnlockPrompt {
 }
 
 impl UnlockPrompt {
-    pub(crate) fn new(doc: &pdfcraft_engine::Document, then: Option<&'static str>) -> Self {
+    pub(crate) fn new(doc: &iridium_pdf_engine::Document, then: Option<&'static str>) -> Self {
         Self { doc: doc.id, name: doc.name.clone(), input: String::new(), error: None, then }
     }
 }
@@ -423,7 +423,7 @@ pub struct PendingLink {
 pub struct PendingRemoteLink {
     pub source: DocId,
     pub path: std::path::PathBuf,
-    pub destination: pdfcraft_render::RemoteDestination,
+    pub destination: iridium_pdf_render::RemoteDestination,
 }
 
 /// Settings for the Number pages dialog.
@@ -431,12 +431,12 @@ pub struct PendingRemoteLink {
 pub struct NumberDraft {
     pub from: usize,
     pub to: usize,
-    pub style: pdfcraft_engine::LabelStyle,
+    pub style: iridium_pdf_engine::LabelStyle,
     pub prefix: String,
     pub start: u32,
 }
 
-/// What [`PdfCraftApp::open_path`] did: opened the file in a new tab, focused the tab already
+/// What [`PdfApp::open_path`] did: opened the file in a new tab, focused the tab already
 /// showing it, handed it to the background open worker, or failed. Failures tell the user
 /// through a toast; this is the programmatic contract for callers that must know (the control
 /// channel, tools that wait for a file) (#1620).

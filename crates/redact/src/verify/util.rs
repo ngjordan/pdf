@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use std::fmt::Write as _;
 use std::sync::Arc;
 
-use pdfcraft_cos::{DecodeBudget, Dict, Document, Object, Stream};
+use iridium_pdf_cos::{DecodeBudget, Dict, Document, Object, Stream};
 use sha2::{Digest, Sha256};
 
 use crate::verify::limits::{MAX_STREAM, MAX_TOTAL_DECODED, MAX_WORK, MIN_NEEDLE};

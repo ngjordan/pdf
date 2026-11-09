@@ -2,8 +2,8 @@
 //! inside a path is not allowed) and put back after it is painted, so the `w` other strokes
 //! share, and strokes under another transformation, keep their width.
 
-use pdfcraft_cos::{Document, Object};
-use pdfcraft_edit::{Hairlines, fix_hairlines};
+use iridium_pdf_cos::{Document, Object};
+use iridium_pdf_edit::{Hairlines, fix_hairlines};
 use std::sync::Arc;
 
 /// A one-page document drawing `content`.
@@ -36,7 +36,7 @@ fn one_page(content: &[u8]) -> Document {
 
 /// The page's content, its tokens joined by single spaces.
 fn content_text(doc: &Document) -> String {
-    let page = pdfcraft_model::pages(doc).swap_remove(0);
+    let page = iridium_pdf_model::pages(doc).swap_remove(0);
     let list: Vec<Object> = match &*doc.resolve(page.dict.get(b"Contents").unwrap()) {
         Object::Array(a) => a.clone(),
         _ => vec![page.dict.get(b"Contents").unwrap().clone()],

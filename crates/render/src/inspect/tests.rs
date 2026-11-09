@@ -662,7 +662,7 @@ fn attachments_of_both_kinds_are_listed_and_extracted() {
             subset: true,
             encoding: None,
             substitute: Some("Helvetica".into()),
-            substitution: Some(pdfcraft_fonts::fallback::Why::NamedStandard14.note().into()),
+            substitution: Some(iridium_pdf_fonts::fallback::Why::NamedStandard14.note().into()),
         }]
     );
 }
@@ -946,7 +946,7 @@ trailer << /Root 1 0 R >>
     assert_eq!(listed, [("Text", 1, Some("typed")), ("Square", 3, Some("untyped")), ("Circle", 5, Some("null type"))], "{:?}", info.annotations);
 }
 
-/// `/QuadPoints` is read by the rule redaction apply uses (`pdfcraft_geom::quad_points`): a quad
+/// `/QuadPoints` is read by the rule redaction apply uses (`iridium_pdf_geom::quad_points`): a quad
 /// with a non-number is left out rather than drawn with a zero, an indirect number is followed,
 /// and a trailing partial quad is dropped.
 #[test]
@@ -1018,7 +1018,7 @@ fn an_annotation_reached_through_a_reference_chain_is_listed_once() {
     }
 }
 
-/// Comments list their `/C` as pdfcraft-annot draws and lists it: four entries with a null are
+/// Comments list their `/C` as iridium-pdf-annot draws and lists it: four entries with a null are
 /// CMYK with the null as 0, one entry is grey, a reference among four entries is unreadable,
 /// three numbers (some by reference) are RGB, and a text box keeps its three-number `/C`.
 #[test]
@@ -1503,8 +1503,8 @@ fn rebuilt_file_prefers_a_trailer_whose_root_is_the_catalog() {
 fn lazy_structure_matches_the_compatibility_inspector() {
     // Each fixture as lopdf writes it, and with its objects in object streams.
     let packed = |bytes: &[u8]| {
-        let doc = pdfcraft_cos::Document::open(Arc::new(bytes.to_vec())).unwrap();
-        pdfcraft_cos::write_full(&doc, &pdfcraft_cos::SaveOptions { object_streams: true, ..Default::default() }).unwrap()
+        let doc = iridium_pdf_cos::Document::open(Arc::new(bytes.to_vec())).unwrap();
+        iridium_pdf_cos::write_full(&doc, &iridium_pdf_cos::SaveOptions { object_streams: true, ..Default::default() }).unwrap()
     };
     let fixtures = [ATTACHMENTS, LAYERS, DESTS].into_iter().flat_map(|bytes| {
         let mut original = Document::load_mem(bytes).unwrap();
@@ -1961,7 +1961,7 @@ fn outline_items_carry_their_colour_and_style() {
 /// A bookmark's action (`/A`, ISO 32000-2 §12.3.3 Table 151) is read as a link's is. Only a
 /// go-to's `/D` is a page of this document: a remote go-to's names a page or destination of the
 /// other file (§12.6.4.3), so `[0 /FitH 200]` there is not this file's first page. A web address,
-/// another PDF and actions PdfCraft doesn't run are kept for the bookmark to run or report. An
+/// another PDF and actions PDF doesn't run are kept for the bookmark to run or report. An
 /// action without a type is still read as the go-to its `/D` suggests.
 #[test]
 fn bookmark_actions_are_read_as_links_read_them() {
@@ -2441,9 +2441,9 @@ trailer << /Root 1 0 R >>
 /// user password, as a save writes them.
 fn r6_password_values() -> String {
     let plain = b"%PDF-1.7\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [] /Count 0 >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF".to_vec();
-    let mut doc = pdfcraft_cos::Document::open(Arc::new(plain)).unwrap();
-    doc.set_encryption(&pdfcraft_cos::NewEncryption {
-        algorithm: pdfcraft_cos::Algorithm::Aes256,
+    let mut doc = iridium_pdf_cos::Document::open(Arc::new(plain)).unwrap();
+    doc.set_encryption(&iridium_pdf_cos::NewEncryption {
+        algorithm: iridium_pdf_cos::Algorithm::Aes256,
         user_password: "user pw",
         owner_password: "owner pw",
         permissions: -4,
@@ -2451,8 +2451,8 @@ fn r6_password_values() -> String {
         seed: [5; 32],
     })
     .unwrap();
-    let saved = pdfcraft_cos::write_full(&doc, &pdfcraft_cos::SaveOptions::default()).unwrap();
-    let saved = pdfcraft_cos::Document::open_with_password(Arc::new(saved), Some("user pw")).unwrap();
+    let saved = iridium_pdf_cos::write_full(&doc, &iridium_pdf_cos::SaveOptions::default()).unwrap();
+    let saved = iridium_pdf_cos::Document::open_with_password(Arc::new(saved), Some("user pw")).unwrap();
     let encrypt = saved.resolve(saved.trailer().get(b"Encrypt").unwrap());
     let encrypt = encrypt.as_dict().unwrap();
     ["O", "U", "OE", "UE", "Perms"]

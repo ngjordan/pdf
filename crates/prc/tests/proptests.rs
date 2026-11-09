@@ -1,6 +1,6 @@
 //! Arbitrary bytes through every reader: an error or a value, never a panic.
 
-use pdfcraft_prc::{BitReader, PrcFile, Schema};
+use iridium_pdf_prc::{BitReader, PrcFile, Schema};
 use proptest::prelude::*;
 
 proptest! {

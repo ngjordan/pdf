@@ -5,7 +5,7 @@
 //! box's `/MK /CA` caption draws.
 
 use crate::euro_width::{SIZE, ink_runs_in};
-use pdfcraft_fonts::Std14;
+use iridium_pdf_fonts::Std14;
 
 /// The page's left margin, where the text starts, in pixels.
 const ORIGIN: f64 = 20.0;

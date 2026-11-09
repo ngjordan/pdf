@@ -1,5 +1,5 @@
 [package]
-name = "pdfcraft-xfa"
+name = "iridium-pdf-xfa"
 description = "XFA forms: reads a dynamic form's XDP packets and lays its template out as PDF pages and AcroForm fields"
 version.workspace = true
 edition.workspace = true
@@ -11,8 +11,8 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
-pdfcraft-cos = { workspace = true }
-pdfcraft-fonts = { workspace = true }
+iridium-pdf-cos = { workspace = true }
+iridium-pdf-fonts = { workspace = true }
 roxmltree = "0.21"
 base64 = "0.23"
 png = "0.18"

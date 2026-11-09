@@ -1,12 +1,12 @@
 //! Copy with formatting: the selected glyphs of a page as paragraphs of styled spans and an
-//! HTML fragment ([`pdfcraft_export::clip_html`]) for the clipboard, next to the plain text.
+//! HTML fragment ([`iridium_pdf_export::clip_html`]) for the clipboard, next to the plain text.
 //!
 //! Glyphs come from the text layer (view space); style comes from the page's reading blocks,
 //! which never mix styles, mapped into view space. A glyph takes the style of the block its
 //! centre lies in; a glyph in no block is copied unstyled.
 
-use pdfcraft_export::{ClipBuilder, ClipStyle, ClipText, clip_html};
-use pdfcraft_render::{PageInfo, PageText};
+use iridium_pdf_export::{ClipBuilder, ClipStyle, ClipText, clip_html};
+use iridium_pdf_render::{PageInfo, PageText};
 
 use crate::EditError;
 use crate::compare::{display_unit, weight_and_slant};
@@ -89,7 +89,7 @@ impl crate::Document {
     fn styled_blocks(&self, page: usize) -> (Vec<StyledBlock>, bool) {
         let Some(info) = self.info.pages.get(page) else { return (Vec::new(), false) };
         let Some(editor) = self.editor.as_ref() else { return (Vec::new(), true) };
-        let Ok(reading) = pdfcraft_edit::reading_blocks_checked(&editor.cos, page) else { return (Vec::new(), true) };
+        let Ok(reading) = iridium_pdf_edit::reading_blocks_checked(&editor.cos, page) else { return (Vec::new(), true) };
         let unit = display_unit(info);
         let blocks = reading
             .blocks
@@ -98,7 +98,7 @@ impl crate::Document {
             .map(|b| {
                 let (bold, italic) = weight_and_slant(&b.base_font);
                 let style = ClipStyle {
-                    families: pdfcraft_export::font_family(&b.base_font),
+                    families: iridium_pdf_export::font_family(&b.base_font),
                     size: b.size * unit,
                     bold: b.bold || bold,
                     italic: b.italic || italic,
@@ -200,7 +200,7 @@ fn block_at(blocks: &[StyledBlock], glyph: [f32; 4], hint: Option<usize>, steps:
 mod tests {
     use std::sync::Arc;
 
-    use pdfcraft_export::{ClipBuilder, ClipStyle};
+    use iridium_pdf_export::{ClipBuilder, ClipStyle};
 
     use crate::Session;
 
@@ -216,7 +216,7 @@ mod tests {
 
     /// A one-page PDF drawing `content` with `/F1` Helvetica-Bold and `/F2` Helvetica.
     fn page_with(content: &[u8]) -> Vec<u8> {
-        pdfcraft_testkit::Pdf::new()
+        iridium_pdf_testkit::Pdf::new()
             .obj("<< /Type /Catalog /Pages 2 0 R >>")
             .obj("<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 300 300] >>")
             .obj("<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>")
@@ -226,10 +226,10 @@ mod tests {
             .build()
     }
 
-    fn page_text(s: &Session, id: crate::DocId) -> Arc<pdfcraft_render::PageText> {
+    fn page_text(s: &Session, id: crate::DocId) -> Arc<iridium_pdf_render::PageText> {
         let doc = s.get(id).unwrap();
-        let mut r = pdfcraft_render::PageRenderer::new(doc.bytes.clone(), Default::default());
-        let request = pdfcraft_render::RenderRequest { page: 0, kind: pdfcraft_render::RequestKind::Text, scale: 1.0, ..Default::default() };
+        let mut r = iridium_pdf_render::PageRenderer::new(doc.bytes.clone(), Default::default());
+        let request = iridium_pdf_render::RenderRequest { page: 0, kind: iridium_pdf_render::RequestKind::Text, scale: 1.0, ..Default::default() };
         r.render(request).text.unwrap()
     }
 
@@ -281,7 +281,7 @@ mod tests {
         let plain = |c: &super::RichCopy| c.text.paragraphs.iter().flatten().map(|s| s.text.clone()).collect::<String>();
         assert_eq!(plain(&short).replace([' ', '\n'], ""), plain(&full).replace([' ', '\n'], ""));
         let last = short.text.paragraphs.last().and_then(|p| p.last()).unwrap();
-        assert_eq!(last.style, pdfcraft_export::ClipStyle::default(), "{last:?}");
+        assert_eq!(last.style, iridium_pdf_export::ClipStyle::default(), "{last:?}");
         assert!(short.html.starts_with("<p style=\"margin:0\"><span style=\"font-family:'Helvetica';font-size:24pt\"><strong>T"), "{}", short.html);
         // No steps at all: nothing styled, still no panic.
         let none = doc.rich_copy_within(0, &text, &all, 0).unwrap();
@@ -306,7 +306,7 @@ mod tests {
         let mut s = Session::new();
         let id = s.open("wrap.pdf", None, Arc::new(page_with(content)), None).unwrap();
         let copy = copy_all(&s, id);
-        let text = |p: &Vec<pdfcraft_export::ClipSpan>| p.iter().map(|s| s.text.as_str()).collect::<String>();
+        let text = |p: &Vec<iridium_pdf_export::ClipSpan>| p.iter().map(|s| s.text.as_str()).collect::<String>();
         let paragraphs: Vec<String> = copy.text.paragraphs.iter().map(text).collect();
         assert!(paragraphs.iter().any(|p| p.contains("bold") && p.contains("continues")), "{paragraphs:?}");
         assert!(paragraphs.iter().any(|p| p.contains("Another") && !p.contains("continues")), "a wide gap is still a paragraph: {paragraphs:?}");
@@ -321,7 +321,7 @@ mod tests {
         let mut s = Session::new();
         let id = s.open("columns.pdf", None, Arc::new(page_with(content)), None).unwrap();
         let copy = copy_all(&s, id);
-        let text = |p: &Vec<pdfcraft_export::ClipSpan>| p.iter().map(|s| s.text.as_str()).collect::<String>();
+        let text = |p: &Vec<iridium_pdf_export::ClipSpan>| p.iter().map(|s| s.text.as_str()).collect::<String>();
         let paragraphs: Vec<String> = copy.text.paragraphs.iter().map(text).collect();
         assert!(paragraphs.iter().any(|p| p.contains("Right")), "{paragraphs:?}");
         assert!(!paragraphs.iter().any(|p| p.contains("left end") && p.contains("Right")), "{paragraphs:?}");
@@ -345,7 +345,7 @@ mod tests {
     fn a_capped_copy_is_marked_truncated() {
         let (plain, bold) = (ClipStyle::default(), ClipStyle { bold: true, ..ClipStyle::default() });
         let mut b = ClipBuilder::new();
-        for k in 0..=pdfcraft_export::MAX_CLIP_SPANS {
+        for k in 0..=iridium_pdf_export::MAX_CLIP_SPANS {
             b.push("x", if k % 2 == 0 { &plain } else { &bold });
         }
         let copy = super::finish(b, false);
@@ -369,9 +369,9 @@ mod tests {
 
     #[test]
     fn copy_with_formatting_is_refused_when_copying_is_withheld() {
-        let mut cos = pdfcraft_cos::Document::open(Arc::new(styled_page())).unwrap();
-        cos.set_encryption(&pdfcraft_cos::NewEncryption {
-            algorithm: pdfcraft_cos::Algorithm::Aes256,
+        let mut cos = iridium_pdf_cos::Document::open(Arc::new(styled_page())).unwrap();
+        cos.set_encryption(&iridium_pdf_cos::NewEncryption {
+            algorithm: iridium_pdf_cos::Algorithm::Aes256,
             user_password: "",
             owner_password: "owner",
             permissions: 0b0100, // print only
@@ -379,10 +379,10 @@ mod tests {
             seed: [7; 32],
         })
         .unwrap();
-        let bytes = Arc::new(pdfcraft_cos::write_full(&cos, &Default::default()).unwrap());
+        let bytes = Arc::new(iridium_pdf_cos::write_full(&cos, &Default::default()).unwrap());
         let mut s = Session::new();
         let id = s.open("locked.pdf", None, bytes, None).unwrap();
-        let text = pdfcraft_render::PageText { glyphs: Vec::new(), line_of: Vec::new(), space_before: Vec::new(), truncated: false };
+        let text = iridium_pdf_render::PageText { glyphs: Vec::new(), line_of: Vec::new(), space_before: Vec::new(), truncated: false };
         let err = s.get(id).unwrap().rich_copy(0, &text, &[]).unwrap_err();
         assert!(matches!(err, crate::EditError::NotPermitted(_)), "{err:?}");
     }

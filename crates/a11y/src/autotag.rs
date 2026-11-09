@@ -6,8 +6,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use pdfcraft_content::{Op, Pieces, serialize_ops};
-use pdfcraft_cos::{DecodeBudget, Dict, Document, ObjRef, Object, Stream};
+use iridium_pdf_content::{Op, Pieces, serialize_ops};
+use iridium_pdf_cos::{DecodeBudget, Dict, Document, ObjRef, Object, Stream};
 
 const MAX_PAGES: usize = 1_000;
 const MAX_PAGE_BYTES: usize = 16 * 1024 * 1024;
@@ -37,7 +37,7 @@ pub enum AutoTagError {
     #[error("the PDF has no document catalog")]
     NoCatalog,
     #[error(transparent)]
-    Cos(#[from] pdfcraft_cos::CosError),
+    Cos(#[from] iridium_pdf_cos::CosError),
 }
 
 struct Plan {
@@ -51,7 +51,7 @@ fn unsupported(page: usize, reason: impl Into<String>) -> AutoTagError {
     AutoTagError::Unsupported { page: page + 1, reason: reason.into() }
 }
 
-fn content_pieces(doc: &Document, page: &pdfcraft_model::Page, index: usize) -> Result<Pieces, AutoTagError> {
+fn content_pieces(doc: &Document, page: &iridium_pdf_model::Page, index: usize) -> Result<Pieces, AutoTagError> {
     let Some(contents) = page.dict.get(b"Contents") else { return Ok(Pieces::join::<&[u8]>(&[])) };
     let resolved = doc.resolve(contents);
     let items: Vec<Object> = match &*resolved {
@@ -78,7 +78,7 @@ fn content_pieces(doc: &Document, page: &pdfcraft_model::Page, index: usize) -> 
                 // The decoder's own reason: `CosError::Filter`'s text would say again that the data
                 // couldn't be decoded.
                 let why = match e {
-                    pdfcraft_cos::CosError::Filter(why) => why,
+                    iridium_pdf_cos::CosError::Filter(why) => why,
                     other => other.to_string(),
                 };
                 unsupported(index, format!("content cannot be decoded strictly: {why}"))
@@ -183,7 +183,7 @@ fn harmless_inside(op: &[u8]) -> bool {
 
 /// `totals` is the decoded bytes and operators of the pages planned so far, bounded by
 /// `MAX_TOTAL_BYTES` and `MAX_TOTAL_OPERATORS`.
-fn plan_page(doc: &Document, page: &pdfcraft_model::Page, index: usize, totals: &mut (usize, usize)) -> Result<Plan, AutoTagError> {
+fn plan_page(doc: &Document, page: &iridium_pdf_model::Page, index: usize, totals: &mut (usize, usize)) -> Result<Plan, AutoTagError> {
     if page.dict.contains(b"StructParents") {
         return Err(unsupported(index, "page already has a structure parent key"));
     }
@@ -261,7 +261,7 @@ fn plan(doc: &Document) -> Result<Vec<Plan>, AutoTagError> {
     if catalog.contains(b"AcroForm") {
         return Err(unsupported(0, "form fields need their own tags; this text-only action cannot tag them"));
     }
-    let pages = pdfcraft_model::pages(doc);
+    let pages = iridium_pdf_model::pages(doc);
     if pages.len() > MAX_PAGES {
         return Err(AutoTagError::TooManyPages);
     }

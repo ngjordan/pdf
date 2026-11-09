@@ -196,7 +196,7 @@ impl FieldFont {
 }
 
 /// The mark a check box or radio button shows when on (Field Properties ▸ Options ▸ style).
-/// Stored as `/MK /CA`, the ZapfDingbats character Acrobat uses for it; PdfCraft draws the
+/// Stored as `/MK /CA`, the ZapfDingbats character Acrobat uses for it; PDF draws the
 /// mark as paths, so no symbol font is needed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CheckStyle {
@@ -304,7 +304,7 @@ pub(super) fn da_string(font: FieldFont, size: f64, c: [f64; 3]) -> String {
 
 /// Regenerate every widget appearance of a field from its current value and settings. A value or
 /// button caption its font can't hold is drawn with `?` for those characters, the widget is marked
-/// (`pdfcraft_fonts::UNDRAWN_MARK`) and other viewers are asked to redraw the form (see
+/// (`iridium_pdf_fonts::UNDRAWN_MARK`) and other viewers are asked to redraw the form (see
 /// `ask_viewers_to_redraw`), as when a value is set.
 pub fn redraw_field(doc: &mut Document, name: &str) -> Result<(), FormError> {
     redraw_widgets(doc, name, None)
@@ -326,7 +326,7 @@ pub(super) fn redraw_widgets(doc: &mut Document, name: &str, only: Option<usize>
                 let (mut s, m) = appearance::field_appearance_drawn(doc, &f, w, &f.value, true);
                 missing = m;
                 // Thai glyphs are streams of their own.
-                pdfcraft_fonts::shaped_text::store_streams(doc, &mut s.dict);
+                iridium_pdf_fonts::shaped_text::store_streams(doc, &mut s.dict);
                 let r = doc.add(Object::Stream(s));
                 let mut d = Dict::new();
                 d.set(b"N".to_vec(), Object::Ref(r));
@@ -356,7 +356,7 @@ pub(super) fn redraw_widgets(doc: &mut Document, name: &str, only: Option<usize>
         let existing = crate::merged_appearance(doc, w.obj, &ap);
         doc.update_dict(w.obj, |d| {
             d.set(b"AP".to_vec(), Object::Dict(existing));
-            pdfcraft_fonts::set_undrawn_mark(d, missing);
+            iridium_pdf_fonts::set_undrawn_mark(d, missing);
         })?;
     }
     if undrawn {

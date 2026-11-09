@@ -11,10 +11,10 @@ use std::time::SystemTime;
 
 use egui::{Align, Color32, CornerRadius, Layout, Modifiers, Rect, Sense, Stroke, vec2};
 use egui_extras::{Column, TableBuilder};
-use pdfcraft_engine::SourceProblem;
+use iridium_pdf_engine::SourceProblem;
 
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, icons, widgets};
+use crate::{PdfApp, icons, widgets};
 
 mod actions;
 mod files;

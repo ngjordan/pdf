@@ -68,7 +68,7 @@ pub struct ControlPlugin {
 
 impl egui::Plugin for ControlPlugin {
     fn debug_name(&self) -> &'static str {
-        "pdfcraft-control"
+        "iridium-pdf-control"
     }
 
     /// Inject admitted control batches into the current pass, dropping stale requests, applying cancellations

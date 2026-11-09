@@ -8,10 +8,10 @@ use crate::file_filter::AddFilterAnyCase as _;
 use std::collections::{HashMap, HashSet};
 
 use egui::{Align, Color32, CornerRadius, Layout, Rect, Stroke, pos2, vec2};
-use pdfcraft_engine::{Backdrop, Background, DocId, Edit, FontFamily, HeaderFooter, MarkKind, Watermark};
+use iridium_pdf_engine::{Backdrop, Background, DocId, Edit, FontFamily, HeaderFooter, MarkKind, Watermark};
 
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, icons, widgets};
+use crate::{PdfApp, icons, widgets};
 
 /// How far a watermark may be moved from the page centre, in points.
 const MAX_OFFSET: f64 = 20_000.0;
@@ -105,7 +105,7 @@ pub struct BackdropCount {
 
 impl BackdropCheck {
     /// Check up to [`BACKDROP_PAGES_PER_FRAME`] more of `pages` (0-based) and sort them.
-    pub fn update(&mut self, doc: &pdfcraft_engine::Document, pages: &[usize]) -> BackdropCount {
+    pub fn update(&mut self, doc: &iridium_pdf_engine::Document, pages: &[usize]) -> BackdropCount {
         let key = (doc.id, doc.edit_generation());
         let count = doc.info.pages.len();
         if self.key != Some(key) || self.pages.len() != count {
@@ -148,7 +148,7 @@ impl BackdropCheck {
 
     /// What the check found on `page` (0-based) of this version of `doc`: `None` until it has
     /// looked, `Some(None)` for a page with no backdrop of its own.
-    pub fn found(&self, doc: &pdfcraft_engine::Document, page: usize) -> Option<Option<Backdrop>> {
+    pub fn found(&self, doc: &iridium_pdf_engine::Document, page: usize) -> Option<Option<Backdrop>> {
         if self.key != Some((doc.id, doc.edit_generation())) {
             return None;
         }
@@ -172,7 +172,7 @@ impl MarksDraft {
 const LISTED_PAGE_RUNS: usize = 8;
 
 /// After Remove background: the pages (0-based, ascending) whose own white backdrop stays off,
-/// because they changed after the background was added (`pdfcraft_engine::EditNotice`).
+/// because they changed after the background was added (`iridium_pdf_engine::EditNotice`).
 pub(crate) fn backdrops_left_off_message(pages: &[usize]) -> String {
     pages_phrase(
         pages,
@@ -331,11 +331,11 @@ fn background_tint(d: &MarksDraft, found: Option<Backdrop>) -> Color32 {
 #[derive(Default)]
 pub(crate) struct UnmarkedPage {
     /// The document, its edit generation and the kind of mark taken away.
-    key: Option<(pdfcraft_engine::DocId, u64, MarkKind)>,
-    pages: Option<pdfcraft_engine::UnmarkedPages>,
+    key: Option<(iridium_pdf_engine::DocId, u64, MarkKind)>,
+    pages: Option<iridium_pdf_engine::UnmarkedPages>,
     /// Renders the pages next to the one shown, ahead. None on the web, where the pool renders on
     /// the UI thread inside `try_recv`: it would draw them in the same frame too.
-    renderer: Option<pdfcraft_render::RenderPool>,
+    renderer: Option<iridium_pdf_render::RenderPool>,
     /// The pages rendered, with the scale (×1000) they were rendered at: the page shown and the
     /// pages next to it.
     textures: HashMap<usize, (u64, egui::TextureHandle)>,
@@ -358,7 +358,7 @@ impl UnmarkedPage {
     fn picture(
         &mut self,
         ctx: &egui::Context,
-        (doc, id): (&pdfcraft_engine::Document, pdfcraft_engine::DocId),
+        (doc, id): (&iridium_pdf_engine::Document, iridium_pdf_engine::DocId),
         page: usize,
         near: &[usize],
         kind: MarkKind,
@@ -380,7 +380,7 @@ impl UnmarkedPage {
             let s = PREVIEW_SIDE * ctx.pixels_per_point() / p.width.max(p.height).max(1.0);
             Some((s, (s * 1000.0) as u64))
         };
-        let load = |ctx: &egui::Context, out: pdfcraft_render::RenderedPage| {
+        let load = |ctx: &egui::Context, out: iridium_pdf_render::RenderedPage| {
             let image = crate::canvas::texture_image([out.width as usize, out.height as usize], out.rgba);
             ctx.load_texture("marks-preview-unmarked", image, egui::TextureOptions::LINEAR)
         };
@@ -424,7 +424,7 @@ impl UnmarkedPage {
         {
             let requests = wanted
                 .iter()
-                .filter_map(|&(p, _)| scale(p).map(|(s, tag)| pdfcraft_render::RenderRequest { page: p, scale: s, tag, ..Default::default() }));
+                .filter_map(|&(p, _)| scale(p).map(|(s, tag)| iridium_pdf_render::RenderRequest { page: p, scale: s, tag, ..Default::default() }));
             renderer.set_queue(requests.collect());
             self.ahead = wanted;
         }
@@ -460,7 +460,7 @@ fn step_preview(range: &PageRange, shown: usize, count: usize, forward: bool) ->
 }
 
 /// The dialog for `kind`; returns (apply, cancel).
-pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens, kind: MarkKind) -> (bool, bool) {
+pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfApp, t: &Tokens, kind: MarkKind) -> (bool, bool) {
     let Some((i, id)) = app.active_ids() else { return (false, true) };
     let current = app.views[i].current;
     let Some(doc) = app.session.get(id) else { return (false, true) };
@@ -807,9 +807,9 @@ fn undrawable(kind: MarkKind, d: &MarksDraft) -> Option<char> {
     }
 }
 
-fn mark_file(d: &MarksDraft) -> Option<pdfcraft_engine::MarkFile> {
+fn mark_file(d: &MarksDraft) -> Option<iridium_pdf_engine::MarkFile> {
     let (name, bytes) = d.file.clone().filter(|_| d.use_file)?;
-    Some(pdfcraft_engine::MarkFile { name, bytes, page: d.file_page.max(1) - 1 })
+    Some(iridium_pdf_engine::MarkFile { name, bytes, page: d.file_page.max(1) - 1 })
 }
 
 /// Source ▸ File: Browse…, the page of a PDF, and the size relative to the page. Returns true
@@ -842,7 +842,7 @@ fn file_source(ui: &mut egui::Ui, d: &mut MarksDraft, kind: MarkKind) -> bool {
 
 /// Pages that paint their own backdrop would hide the background: offer to replace a white one,
 /// and say where a picture (a scan) will still hide it.
-fn backdrop_options(ui: &mut egui::Ui, t: &Tokens, d: &mut MarksDraft, doc: &pdfcraft_engine::Document, count: usize) {
+fn backdrop_options(ui: &mut egui::Ui, t: &Tokens, d: &mut MarksDraft, doc: &iridium_pdf_engine::Document, count: usize) {
     let n = d.backdrops.update(doc, &d.range.pages(count));
     if n.pending > 0 {
         ui.label(egui::RichText::new(tl!("Checking pages…")).small().color(t.text_faint));

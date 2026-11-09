@@ -1,6 +1,6 @@
 //! Redaction (architecture §11.2, execution plan M8.5–M8.7). Layer L4.
 //!
-//! Content is marked for redaction with Redact annotations (§12.5.6.23); `pdfcraft-annot`
+//! Content is marked for redaction with Redact annotations (§12.5.6.23); `iridium-pdf-annot`
 //! creates them. [`apply`] then removes everything under the marks, for good:
 //! - text glyphs (the rest of each line keeps its position), inline images, and paths that the
 //!   marks cover; images and vectors partly under a mark lose the covered part;
@@ -16,7 +16,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, Stream};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object, Stream};
 
 pub mod codes;
 mod image;
@@ -61,7 +61,7 @@ pub enum RedactError {
     #[error("{0}")]
     Undrawable(String),
     #[error(
-        "page {0} has vertical-writing text while a redaction mark is pending, and PdfCraft cannot tell whether that text lies under the mark yet, so nothing was changed"
+        "page {0} has vertical-writing text while a redaction mark is pending, and PDF cannot tell whether that text lies under the mark yet, so nothing was changed"
     )]
     VerticalText(usize),
     #[error(
@@ -95,11 +95,11 @@ pub enum RedactError {
     )]
     SharedJbig2Globals(usize),
     #[error(transparent)]
-    Edit(#[from] pdfcraft_edit::EditError),
+    Edit(#[from] iridium_pdf_edit::EditError),
     #[error(transparent)]
-    Form(#[from] pdfcraft_forms::FormError),
+    Form(#[from] iridium_pdf_forms::FormError),
     #[error(transparent)]
-    Cos(#[from] pdfcraft_cos::CosError),
+    Cos(#[from] iridium_pdf_cos::CosError),
 }
 
 /// A redaction mark on a page.
@@ -114,13 +114,13 @@ pub struct Mark {
     pub fill: Option<Rgb>,
     pub overlay: String,
     /// How the overlay text is drawn (`/DA`, `/Q`, `/Repeat`).
-    pub look: pdfcraft_annot::OverlayLook,
+    pub look: iridium_pdf_annot::OverlayLook,
 }
 
 /// The overlay look of a Redact annotation: font, size and colour from `/DA`, alignment from
 /// `/Q`, repetition from `/Repeat`.
-fn overlay_look(doc: &Document, d: &Dict) -> pdfcraft_annot::OverlayLook {
-    let mut look = pdfcraft_annot::OverlayLook::default();
+fn overlay_look(doc: &Document, d: &Dict) -> iridium_pdf_annot::OverlayLook {
+    let mut look = iridium_pdf_annot::OverlayLook::default();
     if let Some(da) = d.get(b"DA").and_then(|o| doc.resolve(o).as_string().map(|s| String::from_utf8_lossy(&s.bytes).into_owned())) {
         let t: Vec<&str> = da.split_whitespace().collect();
         for (i, w) in t.iter().enumerate() {
@@ -136,7 +136,7 @@ fn overlay_look(doc: &Document, d: &Dict) -> pdfcraft_annot::OverlayLook {
                     }
                 }
                 "Tf" if i >= 2 => {
-                    look.font = pdfcraft_annot::OverlayFont::from_resource(t[i - 2].trim_start_matches('/'));
+                    look.font = iridium_pdf_annot::OverlayFont::from_resource(t[i - 2].trim_start_matches('/'));
                     look.size = t[i - 1].parse::<f64>().unwrap_or(0.0).max(0.0);
                 }
                 _ => {}
@@ -185,12 +185,12 @@ pub(crate) fn rect_of(doc: &Document, o: Option<&Object>) -> Option<[f64; 4]> {
     (v.len() == 4 && v.iter().all(|x| x.is_finite())).then(|| [v[0].min(v[2]), v[1].min(v[3]), v[0].max(v[2]), v[1].max(v[3])])
 }
 
-/// A mark's usable `/QuadPoints` quads ([`pdfcraft_geom::quad_points::usable_quads`]), the set the
+/// A mark's usable `/QuadPoints` quads ([`iridium_pdf_geom::quad_points::usable_quads`]), the set the
 /// comment outlines show. Each one is finite, so the box it folds to is a real one.
 fn quad_points(doc: &Document, d: &Dict) -> Vec<[f64; 8]> {
     let Some(q) = d.get(b"QuadPoints").map(|q| doc.resolve(q)) else { return Vec::new() };
     let Some(a) = q.as_array() else { return Vec::new() };
-    pdfcraft_geom::quad_points::usable_quads(a.iter().map(|x| doc.resolve(x).as_f64()))
+    iridium_pdf_geom::quad_points::usable_quads(a.iter().map(|x| doc.resolve(x).as_f64()))
 }
 
 fn color(doc: &Document, d: &Dict, key: &[u8]) -> Option<Rgb> {
@@ -210,7 +210,7 @@ pub(crate) fn annots_of(doc: &Document, page: &Dict) -> Vec<Object> {
 /// Every annotation the pages list. Compared before and after a removal, what is no longer listed
 /// leaves the structure tree too ([`tags::drop_object_refs`]).
 pub(crate) fn listed_annotations(doc: &Document) -> HashSet<ObjRef> {
-    pdfcraft_model::pages(doc).iter().flat_map(|p| annots_of(doc, &p.dict)).filter_map(|a| a.as_ref()).collect()
+    iridium_pdf_model::pages(doc).iter().flat_map(|p| annots_of(doc, &p.dict)).filter_map(|a| a.as_ref()).collect()
 }
 
 /// Every redaction mark in the document, page by page.
@@ -222,7 +222,7 @@ pub fn marks(doc: &Document) -> Vec<Mark> {
 /// [`apply`] refuses rather than skipping.
 pub(crate) fn marks_checked(doc: &Document) -> (Vec<Mark>, Vec<usize>) {
     let (mut out, mut unreadable) = (Vec::new(), Vec::new());
-    for (pi, p) in pdfcraft_model::pages(doc).iter().enumerate() {
+    for (pi, p) in iridium_pdf_model::pages(doc).iter().enumerate() {
         for a in annots_of(doc, &p.dict) {
             let Some(r) = a.as_ref() else {
                 // A mark written in place has no object to find, apply or remove: refuse it
@@ -269,9 +269,9 @@ pub(crate) fn marks_checked(doc: &Document) -> (Vec<Mark>, Vec<usize>) {
 }
 
 /// A page's content streams: (the references or inline objects as listed, their decoded data),
-/// decoded within one page's [`pdfcraft_cos::DecodeBudget`].
+/// decoded within one page's [`iridium_pdf_cos::DecodeBudget`].
 pub(crate) fn page_streams(doc: &Document, page: &Dict, index: usize) -> Result<(Vec<Object>, Vec<Vec<u8>>), RedactError> {
-    page_streams_within(doc, page, index, &mut pdfcraft_cos::DecodeBudget::page())
+    page_streams_within(doc, page, index, &mut iridium_pdf_cos::DecodeBudget::page())
 }
 
 /// [`page_streams`], decoded against `budget`, which the walk of the page's forms then goes on
@@ -280,7 +280,7 @@ pub(crate) fn page_streams_within(
     doc: &Document,
     page: &Dict,
     index: usize,
-    budget: &mut pdfcraft_cos::DecodeBudget,
+    budget: &mut iridium_pdf_cos::DecodeBudget,
 ) -> Result<(Vec<Object>, Vec<Vec<u8>>), RedactError> {
     let list: Vec<Object> = match page.get(b"Contents") {
         None => Vec::new(),
@@ -326,9 +326,9 @@ fn resource_source(doc: &Document, page: ObjRef) -> Option<Option<ObjRef>> {
 /// ancestor `/Resources` they came from once no other page still inherits it, so the parent can't
 /// keep a removed XObject reachable. Pages that aren't redacted are left untouched; an inherited
 /// dictionary that is direct becomes one shared indirect object, never a copy per page.
-fn localize_resources(doc: &mut Document, selected: &[usize]) -> Result<(), pdfcraft_cos::CosError> {
-    let pages = pdfcraft_model::pages(doc);
-    let inherits = |doc: &Document, p: &pdfcraft_model::Page| doc.get(p.obj).as_dict().is_some_and(|d| !d.contains(b"Resources"));
+fn localize_resources(doc: &mut Document, selected: &[usize]) -> Result<(), iridium_pdf_cos::CosError> {
+    let pages = iridium_pdf_model::pages(doc);
+    let inherits = |doc: &Document, p: &iridium_pdf_model::Page| doc.get(p.obj).as_dict().is_some_and(|d| !d.contains(b"Resources"));
     // Ancestor → the reference its resources are shared through, and whether that reference is new.
     let mut shared: HashMap<ObjRef, (Object, bool)> = HashMap::new();
     for page in selected.iter().filter_map(|&i| pages.get(i)) {
@@ -441,12 +441,12 @@ fn appearance_refs(doc: &Document, annotation: &Dict) -> Option<HashSet<ObjRef>>
 
 /// [`apply`] without the copy: an error can leave `doc` part redacted.
 fn apply_to(doc: &mut Document, pages: Option<&[usize]>) -> Result<Report, RedactError> {
-    let images = pdfcraft_cos::ImageBudget::new(doc);
+    let images = iridium_pdf_cos::ImageBudget::new(doc);
     apply_within(doc, pages, images)
 }
 
 /// [`apply_to`], its images decoded within `images`.
-fn apply_within(doc: &mut Document, pages: Option<&[usize]>, images: pdfcraft_cos::ImageBudget) -> Result<Report, RedactError> {
+fn apply_within(doc: &mut Document, pages: Option<&[usize]>, images: iridium_pdf_cos::ImageBudget) -> Result<Report, RedactError> {
     let (all_marks, unreadable) = marks_checked(doc);
     // A mark with no readable area is not applied, and applying the others would look complete:
     // refuse before anything changes. Only the pages being applied count.
@@ -460,10 +460,10 @@ fn apply_within(doc: &mut Document, pages: Option<&[usize]>, images: pdfcraft_co
     }
     // Overlay text is drawn in Helvetica; applying can't be undone in the file, so text it can't
     // draw (a mark another program made) is refused before anything changes, never burnt in as `?`.
-    if let Some((m, c)) = chosen.iter().find_map(|m| pdfcraft_fonts::first_undrawable(&m.overlay).map(|c| (m, c))) {
+    if let Some((m, c)) = chosen.iter().find_map(|m| iridium_pdf_fonts::first_undrawable(&m.overlay).map(|c| (m, c))) {
         return Err(RedactError::Undrawable(format!(
             "{}; change or clear that mark's overlay text, then apply again (nothing was redacted)",
-            pdfcraft_fonts::undrawable_message(&format!("the overlay text of a redaction mark on page {}", m.page + 1), c)
+            iridium_pdf_fonts::undrawable_message(&format!("the overlay text of a redaction mark on page {}", m.page + 1), c)
         )));
     }
     let mut report = Report { marks: chosen.len(), ..Report::default() };
@@ -473,7 +473,7 @@ fn apply_within(doc: &mut Document, pages: Option<&[usize]>, images: pdfcraft_co
     let by_page: Vec<_> = groups.iter().map(|(page, _)| *page).collect();
     // A pattern pruned from a selected page can remain reachable through another page's
     // resources. When a selected page had patterns, inspect every page after the rewrite.
-    let source_pages = pdfcraft_model::pages(doc);
+    let source_pages = iridium_pdf_model::pages(doc);
     let shared_pattern_possible = by_page.iter().any(|&pi| {
         source_pages
             .get(pi)
@@ -490,7 +490,7 @@ fn apply_within(doc: &mut Document, pages: Option<&[usize]>, images: pdfcraft_co
     report.pages = by_page.len();
     localize_resources(doc, &by_page)?;
     let widget_owner: Vec<(ObjRef, ObjRef)> =
-        pdfcraft_forms::fields(doc).into_iter().flat_map(|f| f.widgets.iter().map(|w| (w.obj, f.obj)).collect::<Vec<_>>()).collect();
+        iridium_pdf_forms::fields(doc).into_iter().flat_map(|f| f.widgets.iter().map(|w| (w.obj, f.obj)).collect::<Vec<_>>()).collect();
     let listed_before = listed_annotations(doc);
     let mut applying = Applying {
         report,
@@ -505,7 +505,7 @@ fn apply_within(doc: &mut Document, pages: Option<&[usize]>, images: pdfcraft_co
         pruned_patterns: Vec::new(),
     };
     for &(pi, page_marks) in &groups {
-        let page = pdfcraft_model::pages(doc).swap_remove(pi);
+        let page = iridium_pdf_model::pages(doc).swap_remove(pi);
         let rects: Vec<[f64; 4]> = page_marks.iter().flat_map(|m| m.rects.iter().copied()).collect();
         redact_page_content(doc, &mut applying, pi, &page, &rects)?;
         remove_page_annotations(doc, &mut applying, &page, &rects, page_marks)?;
@@ -530,7 +530,7 @@ fn apply_within(doc: &mut Document, pages: Option<&[usize]>, images: pdfcraft_co
     // parent: their `/IRT` or `/Parent` would keep the removed comment reachable.
     loop {
         let mut grew = false;
-        for p in pdfcraft_model::pages(doc) {
+        for p in iridium_pdf_model::pages(doc) {
             let annots = annots_of(doc, &p.dict);
             let mut kept = Vec::with_capacity(annots.len());
             for a in &annots {
@@ -587,8 +587,8 @@ fn apply_within(doc: &mut Document, pages: Option<&[usize]>, images: pdfcraft_co
 
     // 3. Form fields with a widget under a mark (all their widgets go).
     for field in &doomed_fields {
-        if pdfcraft_forms::fields(doc).iter().any(|f| f.obj == *field) {
-            pdfcraft_forms::delete_field_object(doc, *field)?;
+        if iridium_pdf_forms::fields(doc).iter().any(|f| f.obj == *field) {
+            iridium_pdf_forms::delete_field_object(doc, *field)?;
             report.fields += 1;
         }
     }
@@ -603,17 +603,17 @@ fn apply_within(doc: &mut Document, pages: Option<&[usize]>, images: pdfcraft_co
     // rebuilds fields and pages from that packet, so deleting the AcroForm field alone leaves the
     // redacted value in the file and lets a later relayout put it back. Once redactions are
     // applied the form stops being XFA: the packets, /NeedsRendering, the layout mark and the
-    // rest go (pdfcraft_xfa::strip), leaving a plain already-laid-out AcroForm that neither the
+    // rest go (iridium_pdf_xfa::strip), leaving a plain already-laid-out AcroForm that neither the
     // saved file nor a relayout can restore from.
-    if pdfcraft_xfa::xfa_shape(doc).is_some() {
-        let r = pdfcraft_xfa::strip(doc).map_err(|e| pdfcraft_edit::EditError::Invalid(e.to_string()))?;
+    if iridium_pdf_xfa::xfa_shape(doc).is_some() {
+        let r = iridium_pdf_xfa::strip(doc).map_err(|e| iridium_pdf_edit::EditError::Invalid(e.to_string()))?;
         report.xfa_removed = !r.packets.is_empty();
     }
 
     // 4. The boxes.
     for (pi, content) in overlays {
         if !content.is_empty() {
-            report.overlays.push(pdfcraft_edit::stamp(doc, pi, "Redaction", content)?);
+            report.overlays.push(iridium_pdf_edit::stamp(doc, pi, "Redaction", content)?);
         }
     }
 
@@ -627,9 +627,9 @@ fn apply_within(doc: &mut Document, pages: Option<&[usize]>, images: pdfcraft_co
     // 5. Verify: nothing readable may remain under a region.
     let mut residue = 0;
     for &(pi, page_marks) in &groups {
-        let page = pdfcraft_model::pages(doc).swap_remove(pi);
+        let page = iridium_pdf_model::pages(doc).swap_remove(pi);
         let rects: Vec<[f64; 4]> = page_marks.iter().flat_map(|m| m.rects.iter().copied()).collect();
-        let mut budget = pdfcraft_cos::DecodeBudget::page();
+        let mut budget = iridium_pdf_cos::DecodeBudget::page();
         let (list, data) = page_streams_within(doc, &page.dict, pi, &mut budget)?;
         // The overlay stream draws text of its own: the overlay label is allowed.
         let original: Vec<Vec<u8>> =
@@ -637,9 +637,9 @@ fn apply_within(doc: &mut Document, pages: Option<&[usize]>, images: pdfcraft_co
         let resources = page.dict.get(b"Resources").and_then(|r| doc.resolve(r).as_dict().cloned()).unwrap_or_default();
         let mut scratch = Report::default();
         // Verifying doesn't decode images: what clearing left is read as the page draws it.
-        let mut images = pdfcraft_cos::ImageBudget::with_work(0);
+        let mut images = iridium_pdf_cos::ImageBudget::with_work(0);
         let mut scope = Scope::new(&rects, Mode::Verify, &mut scratch, budget, &mut images);
-        residue += process(doc, &mut scope, &original, &resources, pdfcraft_content::Matrix::IDENTITY).residue;
+        residue += process(doc, &mut scope, &original, &resources, iridium_pdf_content::Matrix::IDENTITY).residue;
     }
     if residue > 0 {
         return Err(RedactError::Residue(residue));
@@ -650,7 +650,7 @@ fn apply_within(doc: &mut Document, pages: Option<&[usize]>, images: pdfcraft_co
     // `apply` runs on a copy, so the refusal leaves the caller's document as it was.
     let shared_appearance_possible = appearance_scan_limit
         || !removed_appearances.is_empty()
-            && pdfcraft_model::pages(doc).iter().enumerate().any(|(index, page)| {
+            && iridium_pdf_model::pages(doc).iter().enumerate().any(|(index, page)| {
                 !by_page.contains(&index)
                     && annots_of(doc, &page.dict).iter().any(|annotation| {
                         doc.resolve(annotation).as_dict().is_some_and(|dict| {
@@ -660,7 +660,7 @@ fn apply_within(doc: &mut Document, pages: Option<&[usize]>, images: pdfcraft_co
             });
     let first_page = by_page.first().map_or(1, |p| p + 1);
     let check_pages =
-        if shared_pattern_possible || shared_appearance_possible { (0..pdfcraft_model::pages(doc).len()).collect::<Vec<_>>() } else { by_page };
+        if shared_pattern_possible || shared_appearance_possible { (0..iridium_pdf_model::pages(doc).len()).collect::<Vec<_>>() } else { by_page };
     // A pruned pattern may also stay named by a /Pages node no page inherits from, or by one a
     // page with a broken /Parent link still reaches: then every page-tree node is inspected too.
     pattern_guard::check(doc, &check_pages, shared_pattern_possible || !pruned_patterns.is_empty())?;
@@ -687,7 +687,7 @@ const MAX_JBIG2_WALK: usize = 100_000;
 /// whole on another page. They are decoded within what is left of the run's allowance (`images`);
 /// past it the redaction is refused as one clearing too many images is. Returns how many images
 /// that weren't removed or replaced were stored again.
-fn restore_shared_jbig2(doc: &mut Document, doomed: &[ObjRef], images: &mut pdfcraft_cos::ImageBudget) -> Result<usize, RedactError> {
+fn restore_shared_jbig2(doc: &mut Document, doomed: &[ObjRef], images: &mut iridium_pdf_cos::ImageBudget) -> Result<usize, RedactError> {
     let mut globals = HashSet::new();
     let mut seen = HashSet::new();
     let mut stack: Vec<ObjRef> = doomed.to_vec();
@@ -753,7 +753,7 @@ struct Applying {
     widget_owner: Vec<(ObjRef, ObjRef)>,
     removed_everywhere: HashSet<ObjRef>,
     /// What clearing images may spend, across the run's pages.
-    images: pdfcraft_cos::ImageBudget,
+    images: iridium_pdf_cos::ImageBudget,
     /// Appearance streams of the annotations removed, on any page: one shared with a kept
     /// annotation keeps a pruned pattern's cell reachable (see `pattern_guard`).
     removed_appearances: HashSet<ObjRef>,
@@ -768,17 +768,17 @@ fn redact_page_content(
     doc: &mut Document,
     applying: &mut Applying,
     pi: usize,
-    page: &pdfcraft_model::Page,
+    page: &iridium_pdf_model::Page,
     rects: &[[f64; 4]],
 ) -> Result<(), RedactError> {
     let Applying { report, doomed_xobjects, retired_properties, images, pruned_patterns, .. } = applying;
     // 1. Content.
-    let mut budget = pdfcraft_cos::DecodeBudget::page();
+    let mut budget = iridium_pdf_cos::DecodeBudget::page();
     let (list, data) = page_streams_within(doc, &page.dict, pi, &mut budget)?;
     let resources = page.dict.get(b"Resources").and_then(|r| doc.resolve(r).as_dict().cloned()).unwrap_or_default();
     let out = {
         let mut scope = Scope::new(rects, Mode::Apply, report, budget, images);
-        process(doc, &mut scope, &data, &resources, pdfcraft_content::Matrix::IDENTITY)
+        process(doc, &mut scope, &data, &resources, iridium_pdf_content::Matrix::IDENTITY)
     };
     // Fail closed: the interpreter lays vertical-writing text out horizontally, so it cannot
     // tell whether those glyphs lie under a mark. Rather than report success and possibly
@@ -864,7 +864,7 @@ fn redact_page_content(
         let after = doc.get(page.obj).as_dict().cloned().unwrap_or_default();
         let (_, new_data) = page_streams(doc, &after, pi)?;
         let (changed_ids, empty_ids) =
-            tags::touched(doc, &resources, pdfcraft_content::Pieces::join(&data).data(), pdfcraft_content::Pieces::join(&new_data).data());
+            tags::touched(doc, &resources, iridium_pdf_content::Pieces::join(&data).data(), iridium_pdf_content::Pieces::join(&new_data).data());
         report.tags += tags::clean(doc, page.obj, None, &changed_ids, &empty_ids)?;
     }
 
@@ -878,7 +878,7 @@ fn redact_page_content(
 fn remove_page_annotations(
     doc: &mut Document,
     applying: &mut Applying,
-    page: &pdfcraft_model::Page,
+    page: &iridium_pdf_model::Page,
     rects: &[[f64; 4]],
     page_marks: &[&Mark],
 ) -> Result<(), RedactError> {
@@ -900,7 +900,7 @@ fn remove_page_annotations(
         if subtype == b"Popup" {
             continue;
         }
-        if rect_of(doc, d.get(b"Rect")).is_some_and(|b| rects.iter().any(|x| pdfcraft_content::overlaps(*x, b, 0.0))) {
+        if rect_of(doc, d.get(b"Rect")).is_some_and(|b| rects.iter().any(|x| iridium_pdf_content::overlaps(*x, b, 0.0))) {
             removed.push(r);
             if subtype == b"Widget" {
                 if let Some((_, field)) = widget_owner.iter().find(|(w, _)| *w == r)
@@ -996,15 +996,15 @@ pub fn clear_marks(doc: &mut Document, pages: Option<&[usize]>) -> Result<usize,
     if targets.is_empty() {
         return Err(RedactError::NothingToApply);
     }
-    let listed: Vec<Object> = pdfcraft_model::pages(doc).iter().flat_map(|p| annots_of(doc, &p.dict)).collect();
-    let doomed = pdfcraft_annot::with_replies_and_popups(doc, &listed, targets.iter().copied());
-    for p in pdfcraft_model::pages(doc) {
+    let listed: Vec<Object> = iridium_pdf_model::pages(doc).iter().flat_map(|p| annots_of(doc, &p.dict)).collect();
+    let doomed = iridium_pdf_annot::with_replies_and_popups(doc, &listed, targets.iter().copied());
+    for p in iridium_pdf_model::pages(doc) {
         let annots = annots_of(doc, &p.dict);
-        let kept: Vec<Object> = annots.iter().filter(|a| !pdfcraft_annot::goes_with(a, &doomed)).cloned().collect();
+        let kept: Vec<Object> = annots.iter().filter(|a| !iridium_pdf_annot::goes_with(a, &doomed)).cloned().collect();
         // As deleting a comment does: a page whose marks were all it had loses `/Annots` again,
         // and an indirect array stays the one object the page points to.
         if kept.len() != annots.len() {
-            pdfcraft_annot::set_annots(doc, p.obj, kept)?;
+            iridium_pdf_annot::set_annots(doc, p.obj, kept)?;
         }
     }
     Ok(targets.len())

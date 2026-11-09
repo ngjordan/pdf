@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use pdfcraft_cos::{Document, ObjRef, Object};
+use iridium_pdf_cos::{Document, ObjRef, Object};
 
 use super::Modification;
 use super::changes::classify_changes;
@@ -360,7 +360,7 @@ fn a_signature_added_with_respelled_strings_is_signing() {
     assert_eq!(verdict(&restyled.open(), signed.open(), None), Modification::Allowed(vec![super::kind::FORM_FILL, super::kind::SIGNATURE]));
 }
 
-/// A signed widget whose /Rect was written with reals, filled and saved by PdfCraft's own writer,
+/// A signed widget whose /Rect was written with reals, filled and saved by PDF's own writer,
 /// which writes a whole real as an integer: the rectangle is the same numbers (ISO 32000-2
 /// §7.3.3, "wherever a real number is expected, an integer may be used instead"), so the save is a
 /// form fill. A rectangle whose numbers did change is still a moved widget.
@@ -377,13 +377,13 @@ fn a_widget_rect_saved_back_as_integers_is_a_form_fill() {
     let save = |rect: Option<f64>| {
         let mut doc = signed.open();
         doc.update_dict(r(5, 0), |w| {
-            w.set(b"V".to_vec(), Object::String(pdfcraft_cos::PdfString::literal("Bob")));
+            w.set(b"V".to_vec(), Object::String(iridium_pdf_cos::PdfString::literal("Bob")));
             if let Some(x) = rect {
                 w.set(b"Rect".to_vec(), Object::Array(vec![Object::Real(x), Object::Real(20.0), Object::Real(120.0), Object::Real(40.0)]));
             }
         })
         .unwrap();
-        let bytes = pdfcraft_cos::write_incremental(&doc, &pdfcraft_cos::SaveOptions { object_streams: false, ..Default::default() }).unwrap();
+        let bytes = iridium_pdf_cos::write_incremental(&doc, &iridium_pdf_cos::SaveOptions { object_streams: false, ..Default::default() }).unwrap();
         Document::open(Arc::new(bytes)).unwrap()
     };
     let filled = save(None);

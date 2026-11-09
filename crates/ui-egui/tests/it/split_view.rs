@@ -7,8 +7,8 @@ use egui::accesskit::Role;
 use egui::{Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use pdfcraft_ui_egui::PdfCraftApp;
-use pdfcraft_ui_egui::panes::Place;
+use iridium_pdf_ui_egui::PdfApp;
+use iridium_pdf_ui_egui::panes::Place;
 
 /// `pages` portrait pages (300 × 400) with a line of text each.
 fn fixture(pages: usize) -> Vec<u8> {
@@ -36,9 +36,9 @@ fn fixture(pages: usize) -> Vec<u8> {
     out
 }
 
-fn harness(names: &'static [&'static str]) -> Harness<'static, PdfCraftApp> {
+fn harness(names: &'static [&'static str]) -> Harness<'static, PdfApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.run_inline = true;
         app.set_option("language", "en").unwrap();
         for name in names {
@@ -50,17 +50,17 @@ fn harness(names: &'static [&'static str]) -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn index(h: &Harness<'static, PdfCraftApp>, name: &str) -> usize {
+fn index(h: &Harness<'static, PdfApp>, name: &str) -> usize {
     let s = h.state();
     s.views.iter().position(|v| s.session.get(v.id).is_some_and(|d| d.name == name)).expect("tab open")
 }
 
-fn places(h: &Harness<'static, PdfCraftApp>) -> Vec<Place> {
+fn places(h: &Harness<'static, PdfApp>) -> Vec<Place> {
     h.state().views.iter().map(|v| v.place()).collect()
 }
 
 /// Run frames until `ready`, rendering in between (renders arrive between frames).
-fn wait(h: &mut Harness<'static, PdfCraftApp>, what: &str, ready: impl Fn(&PdfCraftApp) -> bool) {
+fn wait(h: &mut Harness<'static, PdfApp>, what: &str, ready: impl Fn(&PdfApp) -> bool) {
     for _ in 0..600 {
         h.run_steps(1);
         if ready(h.state()) {
@@ -72,7 +72,7 @@ fn wait(h: &mut Harness<'static, PdfCraftApp>, what: &str, ready: impl Fn(&PdfCr
 }
 
 /// A press and release at `at` (a click on the page area).
-fn click_at(h: &mut Harness<'static, PdfCraftApp>, at: egui::Pos2) {
+fn click_at(h: &mut Harness<'static, PdfApp>, at: egui::Pos2) {
     h.event(egui::Event::PointerMoved(at));
     h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE });
     h.run_steps(1);
@@ -80,7 +80,7 @@ fn click_at(h: &mut Harness<'static, PdfCraftApp>, at: egui::Pos2) {
     h.run_steps(2);
 }
 
-fn drag_tab(h: &mut Harness<'static, PdfCraftApp>, name: &str, to: egui::Pos2) {
+fn drag_tab(h: &mut Harness<'static, PdfApp>, name: &str, to: egui::Pos2) {
     let from = h.get_by_role_and_label(Role::Tab, name).rect().center();
     h.event(egui::Event::PointerMoved(from));
     h.event(egui::Event::PointerButton { pos: from, button: egui::PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE });
@@ -141,8 +141,8 @@ fn the_same_document_in_both_panes_is_one_document_with_one_undo() {
     assert_eq!(h.state().views[first].id, h.state().views[second].id, "one document");
     assert_eq!(h.state().session.docs().len(), 1);
     // Both panes draw the portrait page.
-    let portrait = |s: &PdfCraftApp, i: usize| s.views[i].drawn_page_size(0).is_some_and(|[w, hgt]| hgt > w);
-    let landscape = |s: &PdfCraftApp, i: usize| s.views[i].drawn_page_size(0).is_some_and(|[w, hgt]| w > hgt);
+    let portrait = |s: &PdfApp, i: usize| s.views[i].drawn_page_size(0).is_some_and(|[w, hgt]| hgt > w);
+    let landscape = |s: &PdfApp, i: usize| s.views[i].drawn_page_size(0).is_some_and(|[w, hgt]| w > hgt);
     wait(&mut h, "both panes drawn", |s| portrait(s, first) && portrait(s, second));
     // Each pane scrolls on its own: the second goes to page 3.
     h.state_mut().views[second].go_to_page(2);
@@ -174,7 +174,7 @@ fn the_same_document_in_both_panes_is_one_document_with_one_undo() {
     click_at(&mut h, at);
     assert_eq!(h.state().active, Some(first));
     wait(&mut h, "both panes drawn", |s| portrait(s, first) && portrait(s, second));
-    use pdfcraft_engine::{Edit, NewAnnotation, Shape, Style};
+    use iridium_pdf_engine::{Edit, NewAnnotation, Shape, Style};
     let shape = Shape::Rectangle { rect: [40.0, 40.0, 200.0, 200.0] };
     let comment = NewAnnotation { page: 0, style: Style::default_for(&shape), shape, contents: String::new(), author: String::new() };
     assert!(h.state_mut().apply_edit(Edit::AddAnnotation(comment)));
@@ -228,7 +228,7 @@ fn split_again_or_closing_a_panes_last_tab_ends_split_view() {
     h.run_steps(3);
     let second = h.state().views.iter().position(|v| v.place() == Place::Second).unwrap();
     let (first_key, id) = (h.state().views[0].view_key(), h.state().views[0].id);
-    let typed = pdfcraft_ui_egui::fill_sign::TypeBox {
+    let typed = iridium_pdf_ui_egui::fill_sign::TypeBox {
         page: 0,
         at: [40.0, 40.0],
         text: "typed".into(),
@@ -239,7 +239,7 @@ fn split_again_or_closing_a_panes_last_tab_ends_split_view() {
     };
     h.state_mut().views[second].fill_text = Some(typed);
     h.state_mut().request_close_tab(second);
-    assert_eq!(h.state().close_request, Some(pdfcraft_ui_egui::CloseRequest::Tab(id)), "the typing is asked about");
+    assert_eq!(h.state().close_request, Some(iridium_pdf_ui_egui::CloseRequest::Tab(id)), "the typing is asked about");
     let ctx = h.ctx.clone();
     h.state_mut().resolve_close(&ctx, Some(false));
     h.run_steps(3);

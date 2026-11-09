@@ -187,7 +187,7 @@ pub(crate) fn animated(ctx: &egui::Context) -> bool {
 
 /// Return the stable egui id holding the last wheel-zoom input state.
 fn zoom_id() -> egui::Id {
-    egui::Id::unique("pdfcraft-motion-wheel-zoom")
+    egui::Id::unique("iridium-pdf-motion-wheel-zoom")
 }
 
 /// This pass's zoom factor from a pinch or ⌘/Ctrl with the wheel (1.0 for none): egui's
@@ -205,7 +205,7 @@ pub(crate) fn zoom_delta(ctx: &egui::Context) -> f32 {
 
 /// Return the stable egui id holding the modifiers of this frame's wheel events.
 fn gesture_id() -> egui::Id {
-    egui::Id::unique("pdfcraft-motion-wheel-gesture")
+    egui::Id::unique("iridium-pdf-motion-wheel-gesture")
 }
 
 /// This pass's wheel events, each with the modifiers it acts with: a touch gesture keeps

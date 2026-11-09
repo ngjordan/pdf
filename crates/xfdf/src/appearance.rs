@@ -92,7 +92,7 @@ struct Writer<'a> {
 
 impl Writer<'_> {
     fn key_attr(key: Option<&[u8]>) -> String {
-        key.map(|k| format!(" KEY=\"{}\"", esc(&pdfcraft_forms::name_text(k)))).unwrap_or_default()
+        key.map(|k| format!(" KEY=\"{}\"", esc(&iridium_pdf_forms::name_text(k)))).unwrap_or_default()
     }
 
     fn spend(&mut self, depth: usize) -> Option<()> {
@@ -135,7 +135,7 @@ impl Writer<'_> {
             // Rust prints the shortest decimal that reads back as the same number, never with an
             // exponent; a non-finite number (which PDF can't hold) is written as 0.
             Object::Real(r) => self.out.push_str(&format!("<FIXED{k} VAL=\"{}\"/>\n", if r.is_finite() { *r } else { 0.0 })),
-            Object::Name(n) => self.out.push_str(&format!("<NAME{k} VAL=\"{}\"/>\n", esc(&pdfcraft_forms::name_text(n)))),
+            Object::Name(n) => self.out.push_str(&format!("<NAME{k} VAL=\"{}\"/>\n", esc(&iridium_pdf_forms::name_text(n)))),
             Object::String(s) => match std::str::from_utf8(&s.bytes) {
                 // Text XML can hold as it is (`esc` would drop other control characters).
                 Ok(t) if t.chars().all(|c| !(c < ' ' && !matches!(c, '\t' | '\n' | '\r')) && c != '\u{FFFE}' && c != '\u{FFFF}') => {
@@ -286,7 +286,7 @@ fn read(node: roxmltree::Node, depth: usize, values: &mut usize) -> Result<Node,
         let mut out = Vec::new();
         for child in node.children().filter(|c| c.is_element() && !c.tag_name().name().eq_ignore_ascii_case("DATA")) {
             let key = attr(child, "KEY").ok_or_else(|| format!("an entry of {tag} has no KEY"))?;
-            out.push((pdfcraft_forms::name_bytes(key), read(child, depth + 1, values)?));
+            out.push((iridium_pdf_forms::name_bytes(key), read(child, depth + 1, values)?));
         }
         Ok(out)
     };
@@ -315,7 +315,7 @@ fn read(node: roxmltree::Node, depth: usize, values: &mut usize) -> Result<Node,
             dict.retain(|(k, _)| k.as_slice() != b"Length");
             Node::Stream(dict, bytes)
         }
-        "NAME" => Node::Value(Object::Name(pdfcraft_forms::name_bytes(val()?))),
+        "NAME" => Node::Value(Object::Name(iridium_pdf_forms::name_bytes(val()?))),
         "INT" => Node::Value(Object::Int(val()?.trim().parse::<i64>().map_err(|_| "INT is not an integer")?)),
         "FIXED" => {
             let v = val()?.trim().parse::<f64>().ok().filter(|v| v.is_finite()).ok_or("FIXED is not a number")?;
@@ -359,7 +359,7 @@ pub(crate) fn materialize(doc: &mut Document, node: Node) -> Object {
         Node::Dict(entries) => Object::Dict(dict(doc, entries)),
         Node::Stream(entries, raw) => {
             let d = dict(doc, entries);
-            Object::Ref(doc.add(Object::Stream(pdfcraft_cos::Stream { dict: d, raw: raw.into() })))
+            Object::Ref(doc.add(Object::Stream(iridium_pdf_cos::Stream { dict: d, raw: raw.into() })))
         }
     }
 }

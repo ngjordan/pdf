@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use pdfcraft_render::{Layer, LayerOp, RenderPool};
+use iridium_pdf_render::{Layer, LayerOp, RenderPool};
 
 use crate::{Document, display_config, render_threads};
 
@@ -32,8 +32,8 @@ fn print_category(name: &[u8]) -> Option<(&'static [u8], &'static [u8])> {
 /// Print category, `/Usage /Print /PrintState`). A group with recommendations is on only if all
 /// of them, in all the entries naming it, are ON; other groups keep their state. `/Category` is
 /// an array; a single name is read as one. `None` when no `/AS` entry is for printing.
-pub(crate) fn print_layer_states(cos: &pdfcraft_cos::Document, layers: &[Layer]) -> Option<Vec<Layer>> {
-    use pdfcraft_cos::Object;
+pub(crate) fn print_layer_states(cos: &iridium_pdf_cos::Document, layers: &[Layer]) -> Option<Vec<Layer>> {
+    use iridium_pdf_cos::Object;
     let root = cos.trailer().get(b"Root").map(|r| cos.resolve(r))?;
     let properties = root.as_dict()?.get(b"OCProperties").map(|p| cos.resolve(p))?;
     let config = properties.as_dict()?.get(b"D").map(|d| cos.resolve(d))?;
@@ -102,8 +102,8 @@ pub(crate) fn print_layer_states(cos: &pdfcraft_cos::Document, layers: &[Layer])
 /// layers' own `/Usage`, which some readers apply when they draw (a `/ViewState /ON` turns a layer
 /// that prints off back on). The configuration's other entries (`/Order`, `/RBGroups`…) are kept.
 /// A document without `/OCProperties` is left alone.
-pub(crate) fn set_default_layer_state(cos: &mut pdfcraft_cos::Document, layers: &[Layer]) {
-    use pdfcraft_cos::{Dict, ObjRef, Object};
+pub(crate) fn set_default_layer_state(cos: &mut iridium_pdf_cos::Document, layers: &[Layer]) {
+    use iridium_pdf_cos::{Dict, ObjRef, Object};
     let Some(root_ref) = cos.trailer().get(b"Root").and_then(Object::as_ref) else { return };
     let Some(mut root) = cos.get(root_ref).as_dict().cloned() else { return };
     let Some(properties) = root.get(b"OCProperties").cloned() else { return };
@@ -138,7 +138,7 @@ pub(crate) fn use_layer_choices(doc: &mut Document) {
 /// The layer overrides a print preview draws with (`RenderConfig::print_layers`): the layers as
 /// they print ([`print_layer_states`]), so the preview shows the page as it prints. `None` when
 /// the document has no auto state for printing (or no structure to read it from).
-pub(crate) fn print_preview_layers(cos: Option<&pdfcraft_cos::Document>, layers: &[Layer]) -> Option<Arc<Vec<(i32, i32, bool)>>> {
+pub(crate) fn print_preview_layers(cos: Option<&iridium_pdf_cos::Document>, layers: &[Layer]) -> Option<Arc<Vec<(i32, i32, bool)>>> {
     let printed = print_layer_states(cos?, layers)?;
     Some(Arc::new(printed.iter().map(|l| (l.id.0 as i32, l.id.1 as i32, l.visible)).collect()))
 }

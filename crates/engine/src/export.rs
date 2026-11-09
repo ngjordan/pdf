@@ -9,7 +9,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex, PoisonError, mpsc};
 
-use pdfcraft_render::{PageRenderer, RenderRequest, RequestKind};
+use iridium_pdf_render::{PageRenderer, RenderRequest, RequestKind};
 
 use crate::Document;
 
@@ -49,7 +49,7 @@ pub struct Exporter {
     renderer: PageRenderer,
     /// What the renderer draws, for the extra renderers [`Exporter::images`] starts.
     bytes: std::sync::Arc<Vec<u8>>,
-    config: pdfcraft_render::RenderConfig,
+    config: iridium_pdf_render::RenderConfig,
     pages: usize,
     /// Each page's displayed size in points, for [`Exporter::dpi_used`].
     sizes: Vec<(f32, f32)>,
@@ -59,7 +59,7 @@ pub struct Exporter {
 #[derive(Clone)]
 pub struct ExportSource {
     pub bytes: std::sync::Arc<Vec<u8>>,
-    pub config: pdfcraft_render::RenderConfig,
+    pub config: iridium_pdf_render::RenderConfig,
     pub pages: usize,
     /// Each page's displayed size in points (after `/Rotate` and `/UserUnit`).
     pub sizes: Vec<(f32, f32)>,
@@ -67,7 +67,7 @@ pub struct ExportSource {
 
 impl Document {
     /// What an export reads, for exporting on another thread. These are the displayed
-    /// bytes, so they may carry appearances PdfCraft drew that the file itself does not hold:
+    /// bytes, so they may carry appearances PDF drew that the file itself does not hold:
     /// missing comment appearances, and the signature states of named-layer signature
     /// appearances. Exports and Print as Image follow the page as shown; the viewer's badges
     /// are not document content and never enter them. Saving uses the working file.
@@ -83,15 +83,15 @@ impl Document {
 
 /// Export all images: the images `pages` (0-based) use, each once, skipping those under
 /// `min_side` pixels on their shorter side. JPEGs come out unchanged, other images as PNG.
-pub fn extract_images(src: &ExportSource, pages: &[usize], min_side: u32) -> Result<pdfcraft_create::ImageExport, String> {
-    let doc = pdfcraft_cos::Document::open_with_password(src.bytes.clone(), src.config.password.as_deref()).map_err(|e| e.to_string())?;
-    Ok(pdfcraft_create::extract_images(&doc, pages, min_side))
+pub fn extract_images(src: &ExportSource, pages: &[usize], min_side: u32) -> Result<iridium_pdf_create::ImageExport, String> {
+    let doc = iridium_pdf_cos::Document::open_with_password(src.bytes.clone(), src.config.password.as_deref()).map_err(|e| e.to_string())?;
+    Ok(iridium_pdf_create::extract_images(&doc, pages, min_side))
 }
 
 /// The file name for the `index`-th (1-based) exported image: `<stem>_Page_<n>_Image_<index>.<ext>`.
 /// The page number has leading zeros for as many digits as the document's `page_count` has, so the
 /// files sort in page order (#2208): page 7 of 120 is `Page_007`.
-pub fn image_file_name(stem: &str, image: &pdfcraft_create::ExtractedImage, index: usize, page_count: usize) -> String {
+pub fn image_file_name(stem: &str, image: &iridium_pdf_create::ExtractedImage, index: usize, page_count: usize) -> String {
     let width = page_count.max(1).to_string().len();
     format!("{stem}_Page_{:0width$}_Image_{index:04}.{}", image.page + 1, image.extension)
 }
@@ -119,7 +119,7 @@ impl Exporter {
     pub fn dpi_used(&self, page: usize, dpi: f64) -> f64 {
         let dpi = dpi.clamp(18.0, 1200.0);
         match self.sizes.get(page) {
-            Some(&(w, h)) => f64::from(pdfcraft_render::effective_scale(w, h, (dpi / 72.0) as f32)) * 72.0,
+            Some(&(w, h)) => f64::from(iridium_pdf_render::effective_scale(w, h, (dpi / 72.0) as f32)) * 72.0,
             None => dpi,
         }
     }
@@ -455,10 +455,10 @@ pub fn encode_tiff(width: u32, height: u32, premultiplied: &[u8], dpi: f64) -> R
 mod image_name_tests {
     use super::image_file_name;
 
-    fn image(page: usize) -> pdfcraft_create::ExtractedImage {
-        pdfcraft_create::ExtractedImage {
+    fn image(page: usize) -> iridium_pdf_create::ExtractedImage {
+        iridium_pdf_create::ExtractedImage {
             page,
-            object: pdfcraft_cos::ObjRef { num: 1, generation: 0 },
+            object: iridium_pdf_cos::ObjRef { num: 1, generation: 0 },
             width: 1,
             height: 1,
             extension: "png",

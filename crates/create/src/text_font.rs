@@ -1,17 +1,17 @@
 //! The font a text document is set in: standard Helvetica, or, for text Helvetica can't draw, the
-//! bundled Inter face (`pdfcraft_fonts::document_latin_fonts`), which every build has and which
+//! bundled Inter face (`iridium_pdf_fonts::document_latin_fonts`), which every build has and which
 //! carries the Latin, Greek and Cyrillic letters WinAnsiEncoding lacks. Text Helvetica draws is
 //! set in Helvetica exactly as before.
 
-use pdfcraft_cos::{Dict, Document, ObjRef, Object};
-use pdfcraft_fonts::pdf::Metrics;
-use pdfcraft_fonts::{helvetica_width, literal, win_ansi};
+use iridium_pdf_cos::{Dict, Document, ObjRef, Object};
+use iridium_pdf_fonts::pdf::Metrics;
+use iridium_pdf_fonts::{helvetica_width, literal, win_ansi};
 
 use crate::CreateError;
 
 /// The bundled face, Regular.
-fn face() -> Option<&'static pdfcraft_fonts::CraftFont> {
-    pdfcraft_fonts::document_latin_fonts(false).into_iter().next()
+fn face() -> Option<&'static iridium_pdf_fonts::CraftFont> {
+    iridium_pdf_fonts::document_latin_fonts(false).into_iter().next()
 }
 
 /// Line breaks, tabs and form feeds lay the text out; they are not drawn.
@@ -29,7 +29,7 @@ pub(crate) fn drawn_as(c: char) -> char {
 /// draw, or `None` when it draws all of `text`.
 pub(crate) fn first_missing(text: &str) -> Option<(usize, char)> {
     let face = face();
-    let draws = |s: &str| !s.chars().any(char::is_control) && face.is_some_and(|f| pdfcraft_fonts::embedding::covers(f.bytes, s));
+    let draws = |s: &str| !s.chars().any(char::is_control) && face.is_some_and(|f| iridium_pdf_fonts::embedding::covers(f.bytes, s));
     let mut buf = [0u8; 4];
     text.split('\n').enumerate().find_map(|(i, line)| {
         // A whole line at once; the character only for a line the face can't draw.
@@ -72,7 +72,7 @@ impl TextFont {
     pub(crate) fn inter(doc: &mut Document) -> Result<Self, CreateError> {
         let face = face().ok_or_else(|| CreateError::Invalid("this build has no bundled Latin, Greek and Cyrillic face".into()))?;
         let mut fonts = Dict::new();
-        let name = pdfcraft_fonts::embedding::embed(doc, &mut fonts, face.bytes, face.family).map_err(CreateError::Invalid)?;
+        let name = iridium_pdf_fonts::embedding::embed(doc, &mut fonts, face.bytes, face.family).map_err(CreateError::Invalid)?;
         let font = fonts.reference(name.as_bytes()).ok_or_else(|| CreateError::Invalid("the bundled face could not be added".into()))?;
         let dict = doc.dict(&Object::Ref(font)).ok_or_else(|| CreateError::Invalid("the bundled face could not be read".into()))?;
         Ok(Self { font, inter: Some(Metrics::from_dict(doc, &dict)) })

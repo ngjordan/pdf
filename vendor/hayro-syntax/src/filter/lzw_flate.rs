@@ -1477,7 +1477,7 @@ mod tests {
 
 /// PdfCraft patch tests: PNG predictors are undone byte by byte (`unfilter_png`).
 #[cfg(test)]
-mod pdfcraft_png_predictor_tests {
+mod iridium_pdf_png_predictor_tests {
     use crate::filter::lzw_flate::{PredictorParams, apply_predictor, flate, untagged_png_rows};
     use crate::object::{Dict, FromBytes};
 
@@ -1737,7 +1737,7 @@ mod pdfcraft_png_predictor_tests {
 /// PdfCraft patch tests: TIFF predictor 2 on 8- and 16-bit samples is undone on byte rows
 /// (`undo_tiff_bytes`), with the same output as the bit-level path.
 #[cfg(all(test, feature = "std"))]
-mod pdfcraft_tiff_predictor_tests {
+mod iridium_pdf_tiff_predictor_tests {
     use super::{BIT_LEVEL_ONLY, BIT_LEVEL_TIFF_ROWS};
     use crate::filter::lzw_flate::{PredictorParams, apply_predictor};
 

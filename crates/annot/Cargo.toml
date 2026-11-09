@@ -1,5 +1,5 @@
 [package]
-name = "pdfcraft-annot"
+name = "iridium-pdf-annot"
 description = "Annotations (comments): builders, appearance streams and edits, ISO 32000-2 §12.5"
 version.workspace = true
 edition.workspace = true
@@ -9,11 +9,11 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-pdfcraft-cos = { workspace = true }
-pdfcraft-fonts = { workspace = true }
+iridium-pdf-cos = { workspace = true }
+iridium-pdf-fonts = { workspace = true }
 # The usable-quad rule `/QuadPoints` readers share.
-pdfcraft-geom = { workspace = true }
-pdfcraft-model = { workspace = true }
+iridium-pdf-geom = { workspace = true }
+iridium-pdf-model = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]

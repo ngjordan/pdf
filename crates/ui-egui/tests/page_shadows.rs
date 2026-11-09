@@ -1,7 +1,7 @@
 //! Decorative page shadows are app preferences, never PDF edits.
 
 use egui_kittest::{Harness, kittest::Queryable};
-use pdfcraft_ui_egui::PdfCraftApp;
+use iridium_pdf_ui_egui::PdfApp;
 
 #[test]
 fn viewer_shadows_follow_the_preference_without_moving_pages() {
@@ -80,7 +80,7 @@ fn horizontal_viewport_fades_also_follow_the_preference() {
     assert_eq!(h.state().views[0].visible_page_rects(), pages);
 }
 
-fn scroll_down(h: &mut Harness<'static, PdfCraftApp>, points: f32) {
+fn scroll_down(h: &mut Harness<'static, PdfApp>, points: f32) {
     h.hover_at(h.state().views[0].viewport_rect().center());
     h.run_steps(1);
     h.event(egui::Event::MouseWheel {
@@ -95,7 +95,7 @@ fn scroll_down(h: &mut Harness<'static, PdfCraftApp>, points: f32) {
 
 /// Inspect the actual egui painter output: untextured four-vertex gradients
 /// with a transparent edge, spanning one dimension of the document viewport.
-fn viewport_fades(h: &Harness<'static, PdfCraftApp>) -> Vec<egui::Rect> {
+fn viewport_fades(h: &Harness<'static, PdfApp>) -> Vec<egui::Rect> {
     let viewport = h.state().views[0].viewport_rect();
     h.output()
         .shapes
@@ -138,7 +138,7 @@ fn checkbox_and_multiple_documents_do_not_edit_pdf_state() {
     let mut h = harness("light");
     h.state_mut().open_bytes("second.pdf", None, pdf()).unwrap();
     let ids: Vec<_> = h.state().views.iter().map(|v| v.id).collect();
-    h.state_mut().session.apply(ids[0], pdfcraft_engine::Edit::SetInfo { key: "Title".into(), value: "Keep existing edits".into() }).unwrap();
+    h.state_mut().session.apply(ids[0], iridium_pdf_engine::Edit::SetInfo { key: "Title".into(), value: "Keep existing edits".into() }).unwrap();
     assert!(h.state().session.get(ids[0]).unwrap().dirty);
     assert!(h.state().session.get(ids[0]).unwrap().can_undo().is_some());
     let saved: Vec<_> = ids.iter().map(|id| h.state_mut().session.save_bytes(*id).unwrap()).collect();
@@ -246,16 +246,16 @@ fn rendered_page_content_is_identical_with_and_without_decoration() {
         }
     }
     assert_ne!(enabled.as_raw(), disabled.as_raw(), "the decoration really changes the image");
-    if let Ok(directory) = std::env::var("PDFCRAFT_SHADOW_SCREENSHOTS") {
+    if let Ok(directory) = std::env::var("IRIDIUM_PDF_SHADOW_SCREENSHOTS") {
         enabled.save(format!("{directory}/page-shadows-enabled.png")).unwrap();
         disabled.save(format!("{directory}/page-shadows-disabled.png")).unwrap();
     }
 }
 
-fn harness(theme: &str) -> Harness<'static, PdfCraftApp> {
+fn harness(theme: &str) -> Harness<'static, PdfApp> {
     let theme = theme.to_string();
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         // Save comparisons must not depend on crossing a /ModDate second boundary.
         app.session = app.session.with_clock(|| 1_700_000_000);
         app.set_option("language", "en").unwrap();
@@ -268,8 +268,8 @@ fn harness(theme: &str) -> Harness<'static, PdfCraftApp> {
     h
 }
 
-fn shadows(h: &Harness<'static, PdfCraftApp>, grid: bool) -> Vec<egui::Rect> {
-    let color = pdfcraft_ui_egui::theme::Tokens::for_kind(h.state().theme).page_shadow;
+fn shadows(h: &Harness<'static, PdfApp>, grid: bool) -> Vec<egui::Rect> {
+    let color = iridium_pdf_ui_egui::theme::Tokens::for_kind(h.state().theme).page_shadow;
     fn collect(shape: &egui::Shape, color: egui::Color32, grid: bool, out: &mut Vec<egui::Rect>) {
         match shape {
             egui::Shape::Vec(shapes) => {
@@ -331,14 +331,14 @@ fn pdf() -> Vec<u8> {
 
 #[test]
 fn page_shadow_preference_round_trips_and_ignores_invalid_settings() {
-    let mut app = PdfCraftApp::new();
-    let enabled = |app: &PdfCraftApp| serde_json::from_str::<serde_json::Value>(&app.persist()).unwrap()["show_page_edge_shadows"].clone();
+    let mut app = PdfApp::new();
+    let enabled = |app: &PdfApp| serde_json::from_str::<serde_json::Value>(&app.persist()).unwrap()["show_page_edge_shadows"].clone();
     assert_eq!(enabled(&app), true);
     app.restore("{}");
     assert_eq!(enabled(&app), true);
     for value in [false, true] {
         app.set_option("show_page_edge_shadows", if value { "true" } else { "false" }).unwrap();
-        let mut restored = PdfCraftApp::new();
+        let mut restored = PdfApp::new();
         restored.restore(&app.persist());
         assert_eq!(enabled(&restored), value);
     }

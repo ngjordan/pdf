@@ -1,4 +1,4 @@
-# pdfcraft-testkit
+# iridium-pdf-testkit
 
 Synthetic PDF fixtures: **one way to write the bytes, so tests differ only where they mean to.**
 
@@ -18,7 +18,7 @@ for a fixture to be quietly wrong in a way that makes a test prove less than it 
 ## API
 
 ```rust
-use pdfcraft_testkit::Pdf;
+use iridium_pdf_testkit::Pdf;
 
 let bytes = Pdf::new()
     .version("1.4")                                        // default 1.7
@@ -26,7 +26,7 @@ let bytes = Pdf::new()
     .obj("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
     .obj("<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>")
     .stream("", b"BT /F1 12 Tf (hi) Tj ET")                // /Length computed
-    .obj("<< /Producer (pdfcraft-testkit example) >>")       // becomes 5 0 R
+    .obj("<< /Producer (iridium-pdf-testkit example) >>")       // becomes 5 0 R
     .trailer_entry("/Info 5 0 R")
     .build();
 ```

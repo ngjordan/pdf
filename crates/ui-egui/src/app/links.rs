@@ -1,21 +1,21 @@
 use super::*;
 
-impl PdfCraftApp {
+impl PdfApp {
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn open_remote_link(&mut self, source: DocId, file: String, destination: pdfcraft_render::RemoteDestination) {
+    pub(crate) fn open_remote_link(&mut self, source: DocId, file: String, destination: iridium_pdf_render::RemoteDestination) {
         if self.pending_remote_link.is_some() || self.pending_link.is_some() {
             return;
         }
         let Some(source_doc) = self.session.get(source) else { return };
         let source_path = source_doc.path.clone();
-        let path = match pdfcraft_engine::resolve_remote_document_path(source_path.as_deref().map(std::path::Path::new), &file) {
+        let path = match iridium_pdf_engine::resolve_remote_document_path(source_path.as_deref().map(std::path::Path::new), &file) {
             Ok(path) => path,
             Err(e) => {
                 self.notify_fmt("Couldn't follow linked PDF: {reason}", &[("reason", &e.to_string())]);
                 return;
             }
         };
-        if pdfcraft_engine::remote_document_path_is_absolute(&file) {
+        if iridium_pdf_engine::remote_document_path_is_absolute(&file) {
             self.pending_remote_link = Some(PendingRemoteLink { source, path, destination });
             return;
         }
@@ -34,7 +34,7 @@ impl PdfCraftApp {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn open_resolved_remote_link(&mut self, path: std::path::PathBuf, destination: pdfcraft_render::RemoteDestination) {
+    fn open_resolved_remote_link(&mut self, path: std::path::PathBuf, destination: iridium_pdf_render::RemoteDestination) {
         let path = path.to_string_lossy().into_owned();
         let name = std::path::Path::new(&path).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.clone());
         let stamp = file_watch::Stamp::at(&path);
@@ -56,7 +56,7 @@ impl PdfCraftApp {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub(crate) fn open_remote_link(&mut self, _source: DocId, _file: String, _destination: pdfcraft_render::RemoteDestination) {
+    pub(crate) fn open_remote_link(&mut self, _source: DocId, _file: String, _destination: iridium_pdf_render::RemoteDestination) {
         self.notify_tr("Local cross-PDF links require the desktop app");
     }
 
@@ -65,24 +65,24 @@ impl PdfCraftApp {
         self.pending_remote_link = None;
     }
 
-    pub(super) fn apply_remote_destination(&mut self, destination: pdfcraft_render::RemoteDestination) {
+    pub(super) fn apply_remote_destination(&mut self, destination: iridium_pdf_render::RemoteDestination) {
         let Some(index) = self.views.len().checked_sub(1) else { return };
         let Some(doc) = self.session.get(self.views[index].id) else { return };
         let warning = match destination {
-            pdfcraft_render::RemoteDestination::Default => None,
-            pdfcraft_render::RemoteDestination::Named(_) => Some("The linked PDF opened, but its named destination was not applied."),
-            pdfcraft_render::RemoteDestination::Page { page, view } if page < doc.info.pages.len() => {
+            iridium_pdf_render::RemoteDestination::Default => None,
+            iridium_pdf_render::RemoteDestination::Named(_) => Some("The linked PDF opened, but its named destination was not applied."),
+            iridium_pdf_render::RemoteDestination::Page { page, view } if page < doc.info.pages.len() => {
                 self.views[index].go_to_dest(page, view, &doc.info);
                 None
             }
-            pdfcraft_render::RemoteDestination::Page { .. } => Some("The linked PDF opened, but its page destination was out of range."),
+            iridium_pdf_render::RemoteDestination::Page { .. } => Some("The linked PDF opened, but its page destination was out of range."),
         };
         if let Some(warning) = warning {
             self.notify_tr(warning);
         }
     }
 
-    /// Open a web link in the system browser (a new tab on the web). Only for PdfCraft's own
+    /// Open a web link in the system browser (a new tab on the web). Only for PDF's own
     /// links; an address that came from a document goes through [`Self::request_document_url`].
     pub fn open_url(&mut self, url: &str) {
         if let Some(ctx) = &self.ctx {
@@ -96,18 +96,18 @@ impl PdfCraftApp {
     /// (#90, #91). While one request is waiting, further ones are dropped, so a script can't
     /// queue up a stream of dialogs.
     pub fn request_document_url(&mut self, url: &str, origin: LinkOrigin) {
-        match pdfcraft_engine::links::document_url(url) {
+        match iridium_pdf_engine::links::document_url(url) {
             Ok(url) => {
                 if self.pending_link.is_none() && self.pending_remote_link.is_none() {
                     self.pending_link = Some(PendingLink { url, origin });
                 }
             }
             Err(e) => {
-                use pdfcraft_engine::links::BlockedLink;
+                use iridium_pdf_engine::links::BlockedLink;
                 let template = if matches!(e, BlockedLink::MailFile | BlockedLink::MailEncodedWord) {
-                    "{who} in this document tried to open an address PdfCraft won't open: {e}."
+                    "{who} in this document tried to open an address PDF won't open: {e}."
                 } else {
-                    "{who} in this document tried to open an address PdfCraft won't open: {e}. Only web (http, https) and email (mailto) links open from documents."
+                    "{who} in this document tried to open an address PDF won't open: {e}. Only web (http, https) and email (mailto) links open from documents."
                 };
                 self.notify_fmt(template, &[("who", tl!(origin.noun())), ("e", &e.to_string())]);
             }

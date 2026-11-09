@@ -5,10 +5,10 @@
 
 use std::sync::Arc;
 
-use pdfcraft_annot::{Meta, NewAnnotation, Shape, Style, add_annotation, rect_quad};
-use pdfcraft_cos::{Document, Object, SaveOptions, write_full, write_incremental};
-use pdfcraft_redact::{PatternProblem, RedactError, apply, marks};
-use pdfcraft_testkit::{Pdf, stream_obj};
+use iridium_pdf_annot::{Meta, NewAnnotation, Shape, Style, add_annotation, rect_quad};
+use iridium_pdf_cos::{Document, Object, SaveOptions, write_full, write_incremental};
+use iridium_pdf_redact::{PatternProblem, RedactError, apply, marks};
+use iridium_pdf_testkit::{Pdf, stream_obj};
 
 const SECRET: &[u8] = b"ADV2CELLSECRET";
 const TEXT_CELL: &[u8] = b"BT /F1 20 Tf 40 120 Td (ADV2CELLSECRET) Tj ET\n";
@@ -184,8 +184,8 @@ fn a_type3_glyph_without_resources_keeps_the_page_pattern_it_paints_with() {
     let mut doc = doc;
     let blue_glyph = |doc: &Document| {
         let bytes = write_full(doc, &SaveOptions::default()).unwrap();
-        let mut r = pdfcraft_render::PageRenderer::new(Arc::new(bytes), pdfcraft_render::RenderConfig::default());
-        let out = r.render(pdfcraft_render::RenderRequest { page: 0, scale: 1.0, ..Default::default() });
+        let mut r = iridium_pdf_render::PageRenderer::new(Arc::new(bytes), iridium_pdf_render::RenderConfig::default());
+        let out = r.render(iridium_pdf_render::RenderRequest { page: 0, scale: 1.0, ..Default::default() });
         // The glyph covers x 300..340, y 230..270 (rows 30..70 from the top).
         let i = ((50 * out.width + 320) * 4) as usize;
         out.rgba[i..i + 3].to_vec()

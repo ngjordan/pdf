@@ -23,7 +23,7 @@
 //! (4.4), and an empty prefix or namespace binds nothing. The human-readable descriptions
 //! (`pdfaSchema:schema` and the `description` entries) are Text and may be empty.
 
-use pdfcraft_cos::ObjRef;
+use iridium_pdf_cos::ObjRef;
 use roxmltree::{Document, Node};
 
 const RDF: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";

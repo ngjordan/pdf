@@ -1,7 +1,7 @@
 use super::tools::row_label;
 use super::{
-    Align2, Availability, Color32, CornerRadius, LeftPanel, PdfCraftApp, Rect, Sense, Stroke, Tokens, ToolGroup, ToolItem, catalog, icons, theme,
-    vec2, widgets,
+    Align2, Availability, Color32, CornerRadius, LeftPanel, PdfApp, Rect, Sense, Stroke, Tokens, ToolGroup, ToolItem, catalog, icons, theme, vec2,
+    widgets,
 };
 
 /// The page operations Edit shows as a row of icon buttons, as Acrobat's Edit panel does.
@@ -18,7 +18,7 @@ const EDIT_OTHER_TOOLS: [&str; 3] = ["combine", "redact", "form"];
 /// Add content with the rarer items under More; and Other options, the neighbouring tools.
 /// Edit text & images itself is on the floating toolbar, and on from the moment Edit opens.
 /// Every item comes from the catalogue, so its label, icon and availability have one source.
-pub(super) fn edit_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, g: &'static ToolGroup) {
+pub(super) fn edit_panel(app: &mut PdfApp, ui: &mut egui::Ui, t: &Tokens, g: &'static ToolGroup) {
     let items = || g.sections.iter().flat_map(|s| s.items.iter());
     let item = |command: &str| items().find(|i| i.command == command);
     let mut run = None;
@@ -61,7 +61,7 @@ pub(super) fn edit_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, g
             ui.spacing_mut().item_spacing.x = 6.0;
             for i in EDIT_PAGE_BUTTONS.iter().filter_map(|c| item(c)) {
                 // Enabled as the command itself is: a document that forbids page assembly refuses these.
-                let enabled = pdfcraft_engine::commands::command(i.command).is_some_and(|spec| app.command_enabled(spec));
+                let enabled = iridium_pdf_engine::commands::command(i.command).is_some_and(|spec| app.command_enabled(spec));
                 let resp = ui.add_enabled_ui(enabled, |ui| icons::button(ui, i.icon, 34.0, false, tl!(i.label))).inner;
                 if resp.clicked() {
                     run = Some(i.command);
@@ -131,7 +131,7 @@ pub(super) fn edit_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, g
 /// A tool entry with further commands (Add / Update / Remove): a caret at `caret` says it opens a
 /// menu, and each command is enabled by its own needs. Returns the command chosen.
 pub(super) fn actions_menu(
-    app: &PdfCraftApp,
+    app: &PdfApp,
     ui: &egui::Ui,
     resp: &egui::Response,
     item: &ToolItem,
@@ -147,7 +147,7 @@ pub(super) fn actions_menu(
     egui::Popup::menu(resp).show(|ui| {
         ui.set_min_width(180.0);
         for (n, id) in item.actions.iter().enumerate() {
-            let Some(spec) = pdfcraft_engine::commands::command(id) else { continue };
+            let Some(spec) = iridium_pdf_engine::commands::command(id) else { continue };
             // Add stays usable with no document open: it asks for a file first.
             let enabled = (n == 0 && app.active.is_none()) || app.command_enabled(spec);
             let label = crate::i18n::menu_label(spec.id, spec.label);
@@ -182,8 +182,8 @@ fn edit_row(ui: &mut egui::Ui, t: &Tokens, icon: &str, label: &str, availability
 
 /// Add a stamp: Dynamic, Sign Here and Standard Business stamps; click one, then click on the
 /// page to place it.
-pub(super) fn stamp_palette(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
-    use pdfcraft_engine::{StampGroup, StampKind};
+pub(super) fn stamp_palette(app: &mut PdfApp, ui: &mut egui::Ui, t: &Tokens) {
+    use iridium_pdf_engine::{StampGroup, StampKind};
     ui.label(egui::RichText::new(tl!("Choose a stamp, then click on the page to place it.")).small().color(t.text_faint));
     egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
         super::tools::clear_of_scrollbar(ui);
@@ -253,7 +253,7 @@ pub(super) fn stamp_palette(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens
 
 /// Edit a PDF ▸ Format text: for the selected added text (one undoable change), or the style
 /// new text gets.
-fn format_section(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
+fn format_section(app: &mut PdfApp, ui: &mut egui::Ui, t: &Tokens) {
     // Editing a paragraph of existing text: its formatting, applied as it changes.
     if let Some((i, _)) = app.active_ids()
         && let Some(ed) = app.views[i].line_editor.clone()
@@ -339,14 +339,14 @@ fn format_section(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
         let (page, index) = app.views[i].content.selected?;
         let doc = app.session.get(id)?;
         match &doc.added().iter().filter(|a| a.page == page).nth(index)?.content {
-            pdfcraft_engine::AddedContent::Image(img) => Some((page, index, img.clone())),
+            iridium_pdf_engine::AddedContent::Image(img) => Some((page, index, img.clone())),
             _ => None,
         }
     });
     if let Some((page, index, img)) = image {
         match crate::content_ui::image_panel(ui, t, &img) {
             Some(crate::content_ui::ImageAction::Update(content)) => {
-                app.apply_edit(pdfcraft_engine::Edit::UpdateContent { page, index, content });
+                app.apply_edit(iridium_pdf_engine::Edit::UpdateContent { page, index, content });
             }
             Some(crate::content_ui::ImageAction::Replace) => app.replace_image_dialog(page, index),
             None => {}
@@ -360,7 +360,7 @@ fn format_section(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
         let doc = app.session.get(id)?;
         let a = doc.added().iter().filter(|a| a.page == page).nth(index)?;
         match &a.content {
-            pdfcraft_engine::AddedContent::Text(text) => Some((page, index, text.clone())),
+            iridium_pdf_engine::AddedContent::Text(text) => Some((page, index, text.clone())),
             _ => None,
         }
     });
@@ -370,8 +370,12 @@ fn format_section(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
             added_text_format(ui, t, &mut style, None);
             if style != text {
                 // The reusable style follows the selection only when the edit took, so a refused one adds nothing odd later.
-                if app.apply_edit(pdfcraft_engine::Edit::UpdateContent { page, index, content: pdfcraft_engine::AddedContent::Text(style.clone()) }) {
-                    app.text_style = pdfcraft_engine::AddedText { text: String::new(), rect: [0.0; 4], aligns: Vec::new(), ..style };
+                if app.apply_edit(iridium_pdf_engine::Edit::UpdateContent {
+                    page,
+                    index,
+                    content: iridium_pdf_engine::AddedContent::Text(style.clone()),
+                }) {
+                    app.text_style = iridium_pdf_engine::AddedText { text: String::new(), rect: [0.0; 4], aligns: Vec::new(), ..style };
                 }
             }
         }
@@ -390,7 +394,7 @@ fn format_section(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
 fn added_text_format(
     ui: &mut egui::Ui,
     t: &Tokens,
-    style: &mut pdfcraft_engine::AddedText,
+    style: &mut iridium_pdf_engine::AddedText,
     paragraphs: Option<crate::format_text_ui::Paragraphs>,
 ) -> crate::format_text_ui::Outcome {
     let shown = style.family.label().to_string();
@@ -401,12 +405,12 @@ fn added_text_format(
     out
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Format text changed while added text is being typed in view `index`: the box takes the new
     /// style at once and stays open. Text already on the page is updated with what has been typed,
     /// as one undoable change; new text waits until it is finished. Text typed after this styling
     /// starts from it too.
-    pub(crate) fn restyle_draft(&mut self, index: usize, mut style: pdfcraft_engine::AddedText) {
+    pub(crate) fn restyle_draft(&mut self, index: usize, mut style: iridium_pdf_engine::AddedText) {
         // A gray or CMYK ink the colour no longer shows goes now (#6440): kept, the draft would
         // differ from the item the page reads back without it, and a later pick of the ink's
         // look would bring it back.
@@ -417,22 +421,25 @@ impl PdfCraftApp {
         let Some(d) = view.content.draft.as_mut() else { return };
         let committed = d.style.clone();
         // `text` and `rect` stay what the page has; the rest is the new style.
-        d.style = pdfcraft_engine::AddedText { text: committed.text.clone(), rect: committed.rect, ..style };
+        d.style = iridium_pdf_engine::AddedText { text: committed.text.clone(), rect: committed.rect, ..style };
         d.focus = true;
-        self.text_style = pdfcraft_engine::AddedText { text: String::new(), rect: [0.0; 4], aligns: Vec::new(), ..d.style.clone() };
+        self.text_style = iridium_pdf_engine::AddedText { text: String::new(), rect: [0.0; 4], aligns: Vec::new(), ..d.style.clone() };
         let (page, item) = (d.page, d.index);
         let text = d.text.trim_end().to_string();
         let Some(item) = item.filter(|_| !text.trim().is_empty() && !blocked) else { return };
-        let aligns = pdfcraft_engine::paragraph_align::remap(&d.text, &text, &d.style.aligns);
-        let updated = pdfcraft_engine::AddedText { text, rect: d.rect, aligns, ..d.style.clone() };
+        let aligns = iridium_pdf_engine::paragraph_align::remap(&d.text, &text, &d.style.aligns);
+        let updated = iridium_pdf_engine::AddedText { text, rect: d.rect, aligns, ..d.style.clone() };
         if updated == committed {
             return;
         }
-        if self.apply_edit(pdfcraft_engine::Edit::UpdateContent { page, index: item, content: pdfcraft_engine::AddedContent::Text(updated.clone()) })
-            && let Some(d) = self.views.get_mut(index).and_then(|v| v.content.draft.as_mut())
+        if self.apply_edit(iridium_pdf_engine::Edit::UpdateContent {
+            page,
+            index: item,
+            content: iridium_pdf_engine::AddedContent::Text(updated.clone()),
+        }) && let Some(d) = self.views.get_mut(index).and_then(|v| v.content.draft.as_mut())
         {
             // What the page has now. The aligns stay those of the text in the box.
-            d.style = pdfcraft_engine::AddedText { aligns: std::mem::take(&mut d.style.aligns), ..updated };
+            d.style = iridium_pdf_engine::AddedText { aligns: std::mem::take(&mut d.style.aligns), ..updated };
             // The page has the box's text: its typing history restarts at the next claim, even
             // when the restyle left the text as it was, so a Redo can't put undone typing back.
             d.typing_from = None;
@@ -441,7 +448,7 @@ impl PdfCraftApp {
 
     /// Apply the open paragraph's formatting as one change; the paragraph stays open.
     pub(crate) fn apply_line_format(&mut self, index: usize, mut ed: crate::edit_text_ui::LineEditor, ctx: Option<&egui::Context>) {
-        let edit = pdfcraft_engine::Edit::EditTextBlock { page: ed.page, block: ed.block, text: ed.text.clone(), style: ed.style() };
+        let edit = iridium_pdf_engine::Edit::EditTextBlock { page: ed.page, block: ed.block, text: ed.text.clone(), style: ed.style() };
         if self.apply_edit(edit) {
             ed.applied();
             if let Some(doc) = self.session.get(self.views[index].id)

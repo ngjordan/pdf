@@ -2,7 +2,7 @@
 //! panel, page layout, magnification, page; window and interface options) and its language and
 //! binding (ISO 32000-2 §7.7.2 Table 29, §12.2 viewer preferences).
 
-use pdfcraft_cos::{Dict, Document, Object, PdfString};
+use iridium_pdf_cos::{Dict, Document, Object, PdfString};
 
 use crate::OrganizeError;
 
@@ -69,7 +69,7 @@ pub struct InitialView {
     pub non_full_screen: Navigation,
 }
 
-fn catalog(doc: &Document) -> Result<(pdfcraft_cos::ObjRef, Dict), OrganizeError> {
+fn catalog(doc: &Document) -> Result<(iridium_pdf_cos::ObjRef, Dict), OrganizeError> {
     let r = doc.root().ok_or(OrganizeError::NoPageTree)?;
     Ok((r, doc.get(r).as_dict().cloned().ok_or(OrganizeError::NoPageTree)?))
 }
@@ -288,7 +288,7 @@ pub fn set_initial_view(doc: &mut Document, v: &InitialView) -> Result<(), Organ
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pdfcraft_cos::{SaveOptions, write_full};
+    use iridium_pdf_cos::{SaveOptions, write_full};
     use std::sync::Arc;
 
     fn flags(view: InitialView) -> [bool; 6] {
@@ -320,7 +320,7 @@ mod tests {
 
     #[test]
     fn initial_view_malformed_boolean_preferences_keep_false_defaults() {
-        for value in [Object::Null, Object::Int(1), Object::name("true"), Object::Ref(pdfcraft_cos::ObjRef::new(999_999, 0))] {
+        for value in [Object::Null, Object::Int(1), Object::name("true"), Object::Ref(iridium_pdf_cos::ObjRef::new(999_999, 0))] {
             let mut doc = Document::new_empty();
             let value = doc.add(value);
             let mut preferences = Dict::new();

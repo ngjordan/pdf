@@ -1,5 +1,5 @@
 [package]
-name = "pdfcraft-a11y"
+name = "iridium-pdf-a11y"
 description = "Accessibility: the Accessibility Checker (32 rules), its report and fixes"
 version.workspace = true
 edition.workspace = true
@@ -11,8 +11,8 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
-pdfcraft-cos = { workspace = true }
-pdfcraft-model = { workspace = true }
-pdfcraft-content = { workspace = true }
-pdfcraft-fonts = { workspace = true }
+iridium-pdf-cos = { workspace = true }
+iridium-pdf-model = { workspace = true }
+iridium-pdf-content = { workspace = true }
+iridium-pdf-fonts = { workspace = true }
 thiserror.workspace = true

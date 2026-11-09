@@ -7,14 +7,14 @@ use crate::file_filter::AddFilterAnyCase as _;
 use std::path::PathBuf;
 
 use egui::{Align, Color32, CornerRadius, Layout, Pos2, Rect, Stroke, vec2};
-use pdfcraft_engine::sign::{self, Appearance, AppearanceLabels, Certificate, DigitalId, Name, PrivateKey};
-use pdfcraft_engine::{SignOptions, SignatureImage, SignatureInfo, SignatureStatus, StatusCaptions};
+use iridium_pdf_engine::sign::{self, Appearance, AppearanceLabels, Certificate, DigitalId, Name, PrivateKey};
+use iridium_pdf_engine::{SignOptions, SignatureImage, SignatureInfo, SignatureStatus, StatusCaptions};
 
 use crate::canvas::{DocView, PageToolContext, Snapshot, SnapshotKind};
 use crate::fill_sign::SavedSig;
 use crate::page_cursor::Layer;
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, icons, widgets};
+use crate::{PdfApp, icons, widgets};
 
 mod dialog;
 mod panel;
@@ -35,7 +35,7 @@ pub struct DigitalIdEntry {
     pub issuer: String,
     pub email: String,
     pub expires: String,
-    /// Why the ID can't sign (a Windows store certificate whose key PdfCraft can't use): shown
+    /// Why the ID can't sign (a Windows store certificate whose key PDF can't use): shown
     /// greyed with the reason, and never selectable.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unusable: Option<String>,
@@ -202,7 +202,7 @@ pub(crate) fn page_input(cx: PageToolContext<'_>, free: bool, view: &mut DocView
     }
 }
 
-/// Where new digital IDs are saved: next to the recovery folder (`…/PdfCraft/Digital IDs`, or
+/// Where new digital IDs are saved: next to the recovery folder (`…/PDF/Digital IDs`, or
 /// `PdfCraftData/Digital IDs` in portable mode).
 fn id_dir() -> Option<PathBuf> {
     crate::recovery::RecoveryStore::default_dir().and_then(|d| d.parent().map(|p| p.join("Digital IDs")))
@@ -282,7 +282,7 @@ fn entry_unusable(u: &sign::windows::Unusable) -> DigitalIdEntry {
     }
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Export certificate: write `c` as PEM into a chosen folder, named after its subject.
     pub(crate) fn export_certificate(&mut self, c: &Certificate) {
         let name = format!("{}.cer", crate::files::attachment_file_name(&c.display_name()));
@@ -535,7 +535,7 @@ impl PdfCraftApp {
             }
             // Scanned paper becomes transparent, as for Fill & Sign image signatures.
             let image = std::fs::File::open(path)
-                .map_err(pdfcraft_engine::signature_image::SignatureImageError::from)
+                .map_err(iridium_pdf_engine::signature_image::SignatureImageError::from)
                 .and_then(SignatureImage::read)
                 .and_then(|image| image.remove_white_background(245, 35));
             match (image, app.sign_draft.as_mut()) {
@@ -580,7 +580,7 @@ impl PdfCraftApp {
         self.status_captions_lang = Some(lang);
         // Only a document that draws a signature state shows the words: the others keep their
         // pages, selection and search results.
-        let drawing: Vec<pdfcraft_engine::DocId> = self
+        let drawing: Vec<iridium_pdf_engine::DocId> = self
             .views
             .iter()
             .map(|v| v.id)
@@ -694,7 +694,7 @@ mod tests {
     fn scratch() -> PathBuf {
         static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
         let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let d = std::env::temp_dir().join(format!("pdfcraft-sign-ui-{}-{n}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("iridium-pdf-sign-ui-{}-{n}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
         d
@@ -703,7 +703,7 @@ mod tests {
     /// Create a digital ID named "Grace Hopper" in `dir`, as Configure New Digital ID ▸ Create
     /// does. Returns where it was saved.
     fn create_in(dir: &std::path::Path) -> Result<PathBuf, String> {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.export_dir_override = Some(dir.to_string_lossy().into_owned());
         let mut draft = SignDraft::new(0, None, None, None, &[]);
         // P-256 keeps the test fast.
@@ -722,7 +722,7 @@ mod tests {
         std::fs::create_dir_all(&out).unwrap();
         let key = PrivateKey::generate_p256().unwrap();
         let cert = Certificate::self_signed(&Name::build("../x", "", "", "", ""), &key, sign::Time::from_unix(0), 1, &[1]).unwrap();
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.export_dir_override = Some(out.to_string_lossy().into_owned());
         app.export_certificate(&cert);
         let written: Vec<_> = std::fs::read_dir(&dir).unwrap().map(|e| e.unwrap().file_name()).collect();
@@ -744,10 +744,10 @@ mod tests {
         if !crate::i18n::needs_catalogs() {
             return;
         }
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         let plain = app.session.create_from_text("t", "No signatures here.").unwrap();
         app.open_bytes("plain.pdf", None, plain.as_ref().clone()).unwrap();
-        app.views[0].texts.insert(0, std::sync::Arc::new(pdfcraft_render::PageText::default()));
+        app.views[0].texts.insert(0, std::sync::Arc::new(iridium_pdf_render::PageText::default()));
         app.apply_status_captions(crate::i18n::Lang::from_code("de").unwrap());
         assert!(!app.views[0].texts.is_empty(), "its text, selection and search results stay");
     }
@@ -841,7 +841,7 @@ mod tests {
         let dir = scratch();
         let file = dir.join("old.p12");
         std::fs::write(&file, b"not opened").unwrap();
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.digital_ids = vec![listed("windows:abc", "Store"), listed(&file.to_string_lossy(), "Old"), listed("/ids/new.p12", "New")];
         let mut draft = SignDraft::new(0, None, None, None, &app.digital_ids);
         draft.selected = Some(2);
@@ -860,7 +860,7 @@ mod tests {
         // leaves only the store ID, which isn't saved.
         assert!(app.remove_digital_id(1));
         assert_eq!(app.sign_draft.as_ref().unwrap().selected, Some(0));
-        let mut fresh = PdfCraftApp::new();
+        let mut fresh = PdfApp::new();
         fresh.restore(&app.persist());
         assert!(fresh.digital_ids.is_empty(), "the removal survives a restart: {:?}", fresh.digital_ids);
         let _ = std::fs::remove_dir_all(&dir);

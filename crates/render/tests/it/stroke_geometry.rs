@@ -10,8 +10,8 @@ use hayro::hayro_interpret::{
     BlendMode, ClipPath, Context, Device, GlyphDrawMode, Image, InterpreterCache, InterpreterSettings, Paint, PathDrawMode, SoftMask, StrokeProps,
     TransformExt, interpret_page,
 };
+use iridium_pdf_render::{PageRenderer, RenderConfig, RenderRequest, RenderedPage, RequestKind};
 use kurbo::{Affine, BezPath, Rect};
-use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RenderedPage, RequestKind};
 
 const WHITE: [u8; 4] = [255, 255, 255, 255];
 const BLUE: [u8; 4] = [0, 0, 255, 255];

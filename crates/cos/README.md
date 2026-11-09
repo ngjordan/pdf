@@ -1,17 +1,17 @@
-# pdfcraft-cos
+# iridium-pdf-cos
 
 The PDF object layer (ISO 32000-2 §7): the COS object graph, parsed lazily and tolerantly, edited
 through a copy-on-write overlay, and written back incrementally or as a full rewrite.
 
-- **Layer:** L1, standalone. The layering table lets it use only `pdfcraft-filters`,
-  `pdfcraft-crypt` and `pdfcraft-geom` (`xtask/src/layers.rs::STANDALONE_DEPS`); it currently uses
+- **Layer:** L1, standalone. The layering table lets it use only `iridium-pdf-filters`,
+  `iridium-pdf-crypt` and `iridium-pdf-geom` (`xtask/src/layers.rs::STANDALONE_DEPS`); it currently uses
   the first two. That keeps the parser and the crypto independently auditable and reusable.
 - `#![forbid(unsafe_code)]`, and the crate denies `unwrap`/`expect`/`panic!`/`todo!`. Builds for
   `wasm32-unknown-unknown`.
 
 **The object graph is the document model.** Nothing is lifted into a tidier representation and
 written back out, because that is how data gets silently dropped. Typed views live above, in
-`pdfcraft-model`.
+`iridium-pdf-model`.
 
 ## API
 
@@ -72,7 +72,7 @@ another. Edits never touch the original bytes.
   `CosError`, never a panic — this crate is the first thing a hostile file meets. Exhausted xref entries are skipped with a repair log; exhausted /Size hints allocate unused numbers without overflowing or replacing existing objects.
 - **Lazy.** Objects are parsed on first use and cached. (Whole-file buffering is still the case;
   `ByteSource` streaming is `core.lazy-loading`, not yet done.)
-- **Encryption** is handled on load and save through `pdfcraft-crypt`: every standard-security
+- **Encryption** is handled on load and save through `iridium-pdf-crypt`: every standard-security
   revision R2–R6 (RC4, AES-128/256), crypt filters, `/EFF` embedded-file encryption, and
   `/EncryptMetadata`. `security.rs` knows what the spec exempts — the `/Encrypt` dictionary, xref
   streams, the trailer `/ID`, and objects inside an object stream (the stream is encrypted whole).
@@ -114,7 +114,7 @@ recognisable in a diff and byte-stable when re-serialized.
 - Linearized output, Fast Web View (`core.linearization`, M11).
 - Structural validation against the Arlington model (`core.arlington-validation`), which will live
   in the reserved `arlington` crate.
-- Image codecs. `pdfcraft-filters` carries the non-image filters and CCITT fax and JBIG2 decoding
+- Image codecs. `iridium-pdf-filters` carries the non-image filters and CCITT fax and JBIG2 decoding
   (`Document::decoded_image`, a JBIG2 image's `/JBIG2Globals` within `MAX_JBIG2_GLOBALS`, 32 MiB,
   their filters undone once a document for the images that share them, up to 64 MiB kept, while
   their segments are decoded for every image, and `ImageBudget` for an operation over many images,

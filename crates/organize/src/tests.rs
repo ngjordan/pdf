@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use pdfcraft_cos::{Document, Object, SaveOptions, write_full, write_incremental};
+use iridium_pdf_cos::{Document, Object, SaveOptions, write_full, write_incremental};
 
 use super::*;
 
@@ -438,11 +438,11 @@ fn inserts_blank_page() {
 fn document_info_edits_round_trip_with_unicode() {
     let mut doc = open(fixture());
     set_info(&mut doc, "Title", "Résumé — 履歴書").unwrap();
-    set_info(&mut doc, "Author", "PdfCraft").unwrap();
+    set_info(&mut doc, "Author", "PDF").unwrap();
     set_info(&mut doc, "Producer", "").unwrap(); // clearing removes the key
     let doc = save_and_reopen(&doc);
     assert_eq!(info(&doc, "Title").as_deref(), Some("Résumé — 履歴書"));
-    assert_eq!(info(&doc, "Author").as_deref(), Some("PdfCraft"));
+    assert_eq!(info(&doc, "Author").as_deref(), Some("PDF"));
     assert_eq!(info(&doc, "Producer"), None);
 }
 
@@ -559,7 +559,7 @@ fn custom_document_properties_drop_padding_before_the_cap() {
     let mut doc = open(fixture());
     set_info(&mut doc, "Title", "Report").unwrap();
     let Some(Object::Ref(info_ref)) = doc.trailer().get(b"Info").cloned() else { panic!("an /Info reference") };
-    let text = |s: &str| Object::String(pdfcraft_cos::PdfString { bytes: s.as_bytes().to_vec(), hex: false });
+    let text = |s: &str| Object::String(iridium_pdf_cos::PdfString { bytes: s.as_bytes().to_vec(), hex: false });
     doc.update_dict(info_ref, |d| {
         d.set(b"Mixed".to_vec(), text(" \0Lab\0 "));
         d.set(b"Pad".to_vec(), text(" \0 \0"));
@@ -589,14 +589,14 @@ fn doc_with_xmp(xmp: &[u8]) -> Document {
     let mut dict = Dict::new();
     dict.set(b"Type".to_vec(), Object::name("Metadata"));
     dict.set(b"Subtype".to_vec(), Object::name("XML"));
-    let m = doc.add(Object::Stream(pdfcraft_cos::Stream::flate(dict, xmp)));
+    let m = doc.add(Object::Stream(iridium_pdf_cos::Stream::flate(dict, xmp)));
     let root = doc.root().unwrap();
     doc.update_dict(root, |c| c.set(b"Metadata".to_vec(), Object::Ref(m))).unwrap();
     full_roundtrip(&doc)
 }
 
 /// The catalog's metadata stream.
-fn xmp_stream(doc: &Document) -> Option<pdfcraft_cos::Stream> {
+fn xmp_stream(doc: &Document) -> Option<iridium_pdf_cos::Stream> {
     match &*doc.get(catalog(doc).reference(b"Metadata")?) {
         Object::Stream(s) => Some(s.clone()),
         _ => None,
@@ -2346,7 +2346,7 @@ fn extracting_splitting_and_combining_preserve_page_labels() {
     assert!(err.contains("decoded prefixes exceed 4 MiB in total"), "{err}");
 
     crate::number_pages(&mut one, 0, 0, LowerRoman, "", 2).unwrap();
-    let err = extract_pages(&one, &vec![0; pdfcraft_cos::page_labels::MAX_LABEL_TREE_WORK]).unwrap_err().to_string();
+    let err = extract_pages(&one, &vec![0; iridium_pdf_cos::page_labels::MAX_LABEL_TREE_WORK]).unwrap_err().to_string();
     assert!(err.contains("the number tree has too many entries"), "{err}");
 }
 
@@ -2439,7 +2439,7 @@ fn page_label_limits_reject_cyclic_old_trees_without_rewriting() {
 fn page_label_limits_reject_oversized_old_arrays_without_rewriting() {
     let mut d = doc_a();
     let mut dict = Dict::new();
-    dict.set(b"Kids".to_vec(), Object::Array(vec![Object::Null; pdfcraft_cos::page_labels::MAX_LABEL_TREE_WORK + 1]));
+    dict.set(b"Kids".to_vec(), Object::Array(vec![Object::Null; iridium_pdf_cos::page_labels::MAX_LABEL_TREE_WORK + 1]));
     let tree = d.add(Object::Dict(dict));
     d.update_dict(d.root().unwrap(), |c| c.set(b"PageLabels".to_vec(), Object::Ref(tree))).unwrap();
     let before = d.modified_objects();
@@ -2580,7 +2580,7 @@ fn page_label_missing_kids_are_not_a_cycle() {
     leaf.set(b"Nums".to_vec(), Object::Array(vec![Object::Int(0), Object::Dict(spec)]));
     let leaf = d.add(Object::Dict(leaf));
     let mut tree = Dict::new();
-    let missing = |n| Object::Ref(pdfcraft_cos::ObjRef { num: n, generation: 0 });
+    let missing = |n| Object::Ref(iridium_pdf_cos::ObjRef { num: n, generation: 0 });
     tree.set(b"Kids".to_vec(), Object::Array(vec![missing(9_000), missing(9_001), Object::Ref(leaf)]));
     let tree = d.add(Object::Dict(tree));
     d.update_dict(d.root().unwrap(), |c| c.set(b"PageLabels".to_vec(), Object::Ref(tree))).unwrap();
@@ -2679,7 +2679,7 @@ fn page_label_prefixes_are_bounded_in_total() {
     assert!(crate::number_pages(&mut d, 0, 1, crate::LabelStyle::Decimal, "", 1).is_err());
     assert_eq!(d.modified_objects(), before, "a refused relabelling changes nothing");
     // Exactly 4 MiB of prefixes is still read.
-    let max = pdfcraft_cos::page_labels::MAX_PREFIX_TOTAL_BYTES / 1024;
+    let max = iridium_pdf_cos::page_labels::MAX_PREFIX_TOTAL_BYTES / 1024;
     assert!(crate::page_labels(&shared(max as i64, 1024)).unwrap().iter().all(|l| l.len() == 1024));
 }
 
@@ -2849,9 +2849,9 @@ fn initial_view_round_trips_and_keeps_scripts() {
     // A script opening action survives a change that needs no destination.
     let mut doc = doc;
     let root = doc.root().unwrap();
-    let mut js = pdfcraft_cos::Dict::new();
+    let mut js = iridium_pdf_cos::Dict::new();
     js.set(b"S".to_vec(), Object::name("JavaScript"));
-    js.set(b"JS".to_vec(), pdfcraft_cos::PdfString::text("app.alert('hi')"));
+    js.set(b"JS".to_vec(), iridium_pdf_cos::PdfString::text("app.alert('hi')"));
     doc.update_dict(root, |c| c.set(b"OpenAction".to_vec(), Object::Dict(js))).unwrap();
     crate::set_initial_view(&mut doc, &crate::InitialView { layout: Layout::SinglePage, ..Default::default() }).unwrap();
     assert!(doc.get(root).as_dict().unwrap().get(b"OpenAction").and_then(|o| o.as_dict()).is_some_and(|d| d.name(b"S") == Some(b"JavaScript")));
@@ -2861,14 +2861,14 @@ fn initial_view_round_trips_and_keeps_scripts() {
 #[test]
 fn an_unchanged_opening_destination_keeps_its_position_and_name() {
     use crate::view::{Magnification, Navigation};
-    let page2 = Object::Ref(pdfcraft_cos::ObjRef::new(5, 0));
+    let page2 = Object::Ref(iridium_pdf_cos::ObjRef::new(5, 0));
     let xyz = Object::Array(vec![page2.clone(), Object::name("XYZ"), Object::Int(100), Object::Int(500), Object::Int(2)]);
-    let mut named = pdfcraft_cos::Dict::new();
+    let mut named = iridium_pdf_cos::Dict::new();
     named.set(b"S".to_vec(), Object::name("GoTo"));
     named.set(b"D".to_vec(), Object::name("there"));
-    let mut dests = pdfcraft_cos::Dict::new();
+    let mut dests = iridium_pdf_cos::Dict::new();
     dests.set(b"there".to_vec(), Object::Array(vec![page2, Object::name("Fit")]));
-    let mut prefs = pdfcraft_cos::Dict::new();
+    let mut prefs = iridium_pdf_cos::Dict::new();
     prefs.set(b"NonFullScreenPageMode".to_vec(), Object::name("UseOutlines"));
     for action in [xyz, Object::Dict(named)] {
         let mut doc = open(fixture());
@@ -2918,12 +2918,12 @@ fn initial_view_percentages_are_written_as_zoom_factors() {
 #[test]
 fn choosing_100_percent_keeps_an_actual_size_opening_destination() {
     use crate::view::Magnification;
-    let page2 = Object::Ref(pdfcraft_cos::ObjRef::new(5, 0));
+    let page2 = Object::Ref(iridium_pdf_cos::ObjRef::new(5, 0));
     let xyz = Object::Array(vec![page2.clone(), Object::name("XYZ"), Object::Int(100), Object::Int(500), Object::Int(1)]);
-    let mut named = pdfcraft_cos::Dict::new();
+    let mut named = iridium_pdf_cos::Dict::new();
     named.set(b"S".to_vec(), Object::name("GoTo"));
     named.set(b"D".to_vec(), Object::name("there"));
-    let mut dests = pdfcraft_cos::Dict::new();
+    let mut dests = iridium_pdf_cos::Dict::new();
     dests.set(b"there".to_vec(), Object::Array(vec![page2, Object::name("XYZ"), Object::Null, Object::Null, Object::Int(1)]));
     for action in [xyz, Object::Dict(named)] {
         let mut doc = open(fixture());
@@ -2951,13 +2951,13 @@ fn choosing_100_percent_keeps_an_actual_size_opening_destination() {
 /// A document whose `/OpenAction` is `action`, with the named destination `there` (page 3 at
 /// 200%) in the catalog `/Dests` and `here` (page 1, fit) in a `/Names /Dests` tree.
 fn doc_opening_at(action: Object) -> Document {
-    let page1 = Object::Ref(pdfcraft_cos::ObjRef::new(4, 0));
-    let page3 = Object::Ref(pdfcraft_cos::ObjRef::new(6, 0));
-    let mut dests = pdfcraft_cos::Dict::new();
+    let page1 = Object::Ref(iridium_pdf_cos::ObjRef::new(4, 0));
+    let page3 = Object::Ref(iridium_pdf_cos::ObjRef::new(6, 0));
+    let mut dests = iridium_pdf_cos::Dict::new();
     dests.set(b"there".to_vec(), Object::Array(vec![page3, Object::name("XYZ"), Object::Null, Object::Null, Object::Int(2)]));
-    let mut tree = pdfcraft_cos::Dict::new();
+    let mut tree = iridium_pdf_cos::Dict::new();
     tree.set(b"Names".to_vec(), Object::Array(vec![Object::String(PdfString::text("here")), Object::Array(vec![page1, Object::name("Fit")])]));
-    let mut names = pdfcraft_cos::Dict::new();
+    let mut names = iridium_pdf_cos::Dict::new();
     names.set(b"Dests".to_vec(), Object::Dict(tree));
     let mut doc = open(fixture());
     let root = doc.root().unwrap();
@@ -2980,8 +2980,8 @@ fn open_action(doc: &Document) -> Option<Object> {
 #[test]
 fn choosing_page_one_replaces_a_named_opening_destination() {
     use crate::view::Magnification;
-    let page1 = Object::Ref(pdfcraft_cos::ObjRef::new(4, 0));
-    let mut goto = pdfcraft_cos::Dict::new();
+    let page1 = Object::Ref(iridium_pdf_cos::ObjRef::new(4, 0));
+    let mut goto = iridium_pdf_cos::Dict::new();
     goto.set(b"S".to_vec(), Object::name("GoTo"));
     goto.set(b"D".to_vec(), Object::name("there"));
     for action in [Object::Dict(goto), Object::name("there"), Object::String(PdfString::text("there"))] {
@@ -3008,7 +3008,7 @@ fn choosing_page_one_replaces_a_named_opening_destination() {
 #[test]
 fn a_named_opening_destination_is_kept_while_it_still_holds() {
     use crate::view::Magnification;
-    let page2 = Object::Ref(pdfcraft_cos::ObjRef::new(5, 0));
+    let page2 = Object::Ref(iridium_pdf_cos::ObjRef::new(5, 0));
     for (action, magnification) in
         [(Object::String(PdfString::text("here")), Magnification::FitPage), (Object::name("nowhere"), Magnification::Default)]
     {
@@ -3111,7 +3111,7 @@ fn extract_keeps_images_an_undecodable_page_might_draw() {
 
 /// zlib data that reads as `readable` and is then damaged, with more of the stream after the
 /// damage: a stored block, then a block of the reserved type (RFC 1951 §3.2.3), then `rest`.
-fn damaged_flate(readable: &[u8], rest: &[u8]) -> pdfcraft_cos::Stream {
+fn damaged_flate(readable: &[u8], rest: &[u8]) -> iridium_pdf_cos::Stream {
     let len = u16::try_from(readable.len()).unwrap();
     let mut raw = vec![0x78, 0x01, 0x00];
     raw.extend_from_slice(&len.to_le_bytes());
@@ -3121,14 +3121,14 @@ fn damaged_flate(readable: &[u8], rest: &[u8]) -> pdfcraft_cos::Stream {
     raw.extend_from_slice(rest);
     let mut dict = Dict::new();
     dict.set(b"Filter".to_vec(), Object::name("FlateDecode"));
-    pdfcraft_cos::Stream::from_raw(dict, raw)
+    iridium_pdf_cos::Stream::from_raw(dict, raw)
 }
 
 /// A page or form damaged partway may draw images past the damage, which other readers may still
 /// read: pruning keeps them, as it does for content that doesn't decode.
 #[test]
 fn extract_keeps_images_content_damaged_partway_might_draw() {
-    use pdfcraft_cos::ObjRef;
+    use iridium_pdf_cos::ObjRef;
     let mut page = doc_images_with(&raw("/ImA Do"), "");
     page.set(ObjRef::new(6, 0), damaged_flate(b"/ImA Do\n", b"/ImB Do"));
 
@@ -3154,8 +3154,8 @@ fn extract_keeps_images_content_damaged_partway_might_draw() {
 /// resources of its own too, and `/Nested` draws `/ImA` through resources it shares with the second
 /// page, which draws `/ImB` through them. The three streams are the first page's content, `/Fm`
 /// and `/Nested`.
-fn doc_shared_form_resources(page: pdfcraft_cos::Stream, fm: pdfcraft_cos::Stream, nested: pdfcraft_cos::Stream) -> Document {
-    use pdfcraft_cos::ObjRef;
+fn doc_shared_form_resources(page: iridium_pdf_cos::Stream, fm: iridium_pdf_cos::Stream, nested: iridium_pdf_cos::Stream) -> Document {
+    use iridium_pdf_cos::ObjRef;
     let b: Vec<String> = vec![
         "<< /Type /Catalog /Pages 2 0 R >>".into(),
         "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 /MediaBox [0 0 200 200] >>".into(),
@@ -3187,7 +3187,7 @@ fn doc_shared_form_resources(page: pdfcraft_cos::Stream, fm: pdfcraft_cos::Strea
 /// from them. So is each one content that doesn't decode may draw.
 #[test]
 fn extract_keeps_images_forms_drawn_around_damage_draw_through_shared_resources() {
-    let whole = |content: &[u8]| pdfcraft_cos::Stream::from_raw(Dict::new(), content.to_vec());
+    let whole = |content: &[u8]| iridium_pdf_cos::Stream::from_raw(Dict::new(), content.to_vec());
     let undecodable = |content: &[u8]| {
         let mut s = whole(content);
         s.dict.set(b"Filter".to_vec(), Object::name("NoSuchFilter"));
@@ -3218,8 +3218,8 @@ fn extract_keeps_images_forms_drawn_around_damage_draw_through_shared_resources(
 /// shares. Read 9 deep, it leaves the file unpruned, so what it draws from them stays.
 #[test]
 fn a_damaged_form_at_the_depth_limit_has_its_forms_read() {
-    use pdfcraft_cos::ObjRef;
-    let whole = |content: &[u8]| pdfcraft_cos::Stream::from_raw(Dict::new(), content.to_vec());
+    use iridium_pdf_cos::ObjRef;
+    let whole = |content: &[u8]| iridium_pdf_cos::Stream::from_raw(Dict::new(), content.to_vec());
     let mut src = doc_shared_form_resources(whole(b"/C Do"), damaged_flate(b"0 g\n", b"/Nested Do"), whole(b"/ImA Do"));
     // Seven forms between the page and `/Fm`, each drawing the next as `/C`: `/Fm` is 8 deep.
     let mut next = ObjRef::new(7, 0);
@@ -3247,8 +3247,8 @@ fn a_damaged_form_at_the_depth_limit_has_its_forms_read() {
 /// `/ImA` through the resources the second page draws `/ImB` through.
 #[test]
 fn nothing_is_pruned_past_the_depth_limit() {
-    use pdfcraft_cos::ObjRef;
-    let whole = |content: &[u8]| pdfcraft_cos::Stream::from_raw(Dict::new(), content.to_vec());
+    use iridium_pdf_cos::ObjRef;
+    let whole = |content: &[u8]| iridium_pdf_cos::Stream::from_raw(Dict::new(), content.to_vec());
     for (what, fm) in [("whole", whole(b"/Nested Do")), ("damaged", damaged_flate(b"0 g\n", b"/Nested Do"))] {
         let mut src = doc_shared_form_resources(whole(b"/C Do"), fm, whole(b"/ImA Do"));
         // Eight forms between the page and `/Fm`, each drawing the next as `/C`: `/Fm` is 9 deep.
@@ -3277,8 +3277,8 @@ fn nothing_is_pruned_past_the_depth_limit() {
 /// the second page draws `/ImB` through.
 #[test]
 fn pruning_goes_on_down_to_the_depth_limit() {
-    use pdfcraft_cos::ObjRef;
-    let whole = |content: &[u8]| pdfcraft_cos::Stream::from_raw(Dict::new(), content.to_vec());
+    use iridium_pdf_cos::ObjRef;
+    let whole = |content: &[u8]| iridium_pdf_cos::Stream::from_raw(Dict::new(), content.to_vec());
     let cases = [
         ("whole", whole(b"/C Do"), whole(b"0 g")),
         ("damaged form", whole(b"/C Do"), damaged_flate(b"0 g\n", b"0 g")),
@@ -3315,8 +3315,8 @@ fn pruning_goes_on_down_to_the_depth_limit() {
 /// an error, having pruned nothing.
 #[test]
 fn a_long_chain_of_forms_is_read_only_to_the_depth_limit() {
-    use pdfcraft_cos::ObjRef;
-    let whole = |content: &[u8]| pdfcraft_cos::Stream::from_raw(Dict::new(), content.to_vec());
+    use iridium_pdf_cos::ObjRef;
+    let whole = |content: &[u8]| iridium_pdf_cos::Stream::from_raw(Dict::new(), content.to_vec());
     let xobjects = |names: Dict| Object::Dict([(b"XObject".to_vec(), Object::Dict(names))].into_iter().collect());
     for damaged in [false, true] {
         let mut doc = doc_shared_form_resources(whole(b"/C Do"), whole(b""), whole(b""));
@@ -3338,7 +3338,7 @@ fn a_long_chain_of_forms_is_read_only_to_the_depth_limit() {
 /// kept, not lost to content read with the predictor's tag bytes left in it.
 #[test]
 fn extract_keeps_images_a_form_with_parameters_by_reference_draws() {
-    use pdfcraft_cos::ObjRef;
+    use iridium_pdf_cos::ObjRef;
     let content = b"q 10 0 0 10 0 0 cm /ImB Do Q";
     // PNG Up, one column: each byte a row of its own, tagged 2.
     let mut rows = Vec::new();
@@ -3349,7 +3349,7 @@ fn extract_keeps_images_a_form_with_parameters_by_reference_draws() {
     }
     let mut src = doc_images_with(&raw("/Fm Do"), "");
     let parms = src.add(Object::Dict([(b"Predictor".to_vec(), Object::Int(12))].into_iter().collect::<Dict>()));
-    let mut fm = pdfcraft_cos::Stream::flate(Dict::new(), &rows);
+    let mut fm = iridium_pdf_cos::Stream::flate(Dict::new(), &rows);
     fm.dict.set(b"DecodeParms".to_vec(), Object::Ref(parms));
     fm.dict.set(b"Subtype".to_vec(), Object::name("Form"));
     fm.dict.set(b"BBox".to_vec(), Object::Array(vec![0.into(), 0.into(), 1.into(), 1.into()]));
@@ -3420,20 +3420,20 @@ fn extract_still_prunes_page_xobjects_when_type3_resources_are_separate() {
 
 fn doc_type3_glyph_form_with_shared_resources(cycle: bool) -> Document {
     let mut doc = doc_type3_shared_xobjects("<< >>");
-    let mut resources = pdfcraft_cos::Dict::new();
+    let mut resources = iridium_pdf_cos::Dict::new();
     resources.set(b"XObject".to_vec(), Object::Ref(ObjRef::new(6, 0)));
-    let mut form = pdfcraft_cos::Dict::new();
+    let mut form = iridium_pdf_cos::Dict::new();
     form.set(b"Type".to_vec(), Object::name("XObject"));
     form.set(b"Subtype".to_vec(), Object::name("Form"));
     form.set(b"BBox".to_vec(), Object::Array(vec![Object::Int(0), Object::Int(0), Object::Int(1), Object::Int(1)]));
     form.set(b"Resources".to_vec(), Object::Dict(resources));
-    let form = doc.add(Object::Stream(pdfcraft_cos::Stream::from_raw(form, b"/ImB Do".to_vec())));
-    let mut xobjects = pdfcraft_cos::Dict::new();
+    let form = doc.add(Object::Stream(iridium_pdf_cos::Stream::from_raw(form, b"/ImB Do".to_vec())));
+    let mut xobjects = iridium_pdf_cos::Dict::new();
     xobjects.set(b"Fm".to_vec(), Object::Ref(form));
-    let mut resources = pdfcraft_cos::Dict::new();
+    let mut resources = iridium_pdf_cos::Dict::new();
     resources.set(b"XObject".to_vec(), Object::Dict(xobjects));
     doc.update_dict(ObjRef::new(7, 0), |font| font.set(b"Resources".to_vec(), Object::Dict(resources))).unwrap();
-    doc.set(ObjRef::new(8, 0), Object::Stream(pdfcraft_cos::Stream::from_raw(pdfcraft_cos::Dict::new(), b"1 0 0 0 1 1 d1 /Fm Do".to_vec())));
+    doc.set(ObjRef::new(8, 0), Object::Stream(iridium_pdf_cos::Stream::from_raw(iridium_pdf_cos::Dict::new(), b"1 0 0 0 1 1 d1 /Fm Do".to_vec())));
     if cycle {
         doc.update_dict(ObjRef::new(6, 0), |xobjects| xobjects.set(b"Again".to_vec(), Object::Ref(form))).unwrap();
     }
@@ -3479,12 +3479,12 @@ fn doc_type3_resources_of_undecodable_content(form: bool) -> Document {
         resources.remove(b"Font");
     })
     .unwrap();
-    doc.set(ObjRef::new(4, 0), Object::Stream(pdfcraft_cos::Stream::from_raw(pdfcraft_cos::Dict::new(), b"/ImA Do".to_vec())));
-    let mut fonts = pdfcraft_cos::Dict::new();
+    doc.set(ObjRef::new(4, 0), Object::Stream(iridium_pdf_cos::Stream::from_raw(iridium_pdf_cos::Dict::new(), b"/ImA Do".to_vec())));
+    let mut fonts = iridium_pdf_cos::Dict::new();
     fonts.set(b"T3".to_vec(), Object::Ref(ObjRef::new(7, 0)));
-    let mut glyph_resources = pdfcraft_cos::Dict::new();
+    let mut glyph_resources = iridium_pdf_cos::Dict::new();
     glyph_resources.set(b"Font".to_vec(), Object::Dict(fonts));
-    let mut unreadable = pdfcraft_cos::Dict::new();
+    let mut unreadable = iridium_pdf_cos::Dict::new();
     unreadable.set(b"Filter".to_vec(), Object::name("NoSuchFilter"));
     if form {
         unreadable.set(b"Type".to_vec(), Object::name("XObject"));
@@ -3492,18 +3492,18 @@ fn doc_type3_resources_of_undecodable_content(form: bool) -> Document {
         unreadable.set(b"BBox".to_vec(), Object::Array(vec![Object::Int(0), Object::Int(0), Object::Int(200), Object::Int(200)]));
         unreadable.set(b"Resources".to_vec(), Object::Dict(glyph_resources.clone()));
     }
-    let unreadable = doc.add(Object::Stream(pdfcraft_cos::Stream::from_raw(unreadable, b"BT /T3 50 Tf 50 80 Td (A) Tj ET".to_vec())));
+    let unreadable = doc.add(Object::Stream(iridium_pdf_cos::Stream::from_raw(unreadable, b"BT /T3 50 Tf 50 80 Td (A) Tj ET".to_vec())));
     let (contents, resources) = if form {
-        let contents = doc.add(Object::Stream(pdfcraft_cos::Stream::from_raw(pdfcraft_cos::Dict::new(), b"/Fm Do".to_vec())));
-        let mut xobjects = pdfcraft_cos::Dict::new();
+        let contents = doc.add(Object::Stream(iridium_pdf_cos::Stream::from_raw(iridium_pdf_cos::Dict::new(), b"/Fm Do".to_vec())));
+        let mut xobjects = iridium_pdf_cos::Dict::new();
         xobjects.set(b"Fm".to_vec(), Object::Ref(unreadable));
-        let mut resources = pdfcraft_cos::Dict::new();
+        let mut resources = iridium_pdf_cos::Dict::new();
         resources.set(b"XObject".to_vec(), Object::Dict(xobjects));
         (contents, resources)
     } else {
         (unreadable, glyph_resources)
     };
-    let mut page = pdfcraft_cos::Dict::new();
+    let mut page = iridium_pdf_cos::Dict::new();
     page.set(b"Type".to_vec(), Object::name("Page"));
     page.set(b"Parent".to_vec(), Object::Ref(ObjRef::new(2, 0)));
     page.set(b"Contents".to_vec(), Object::Ref(contents));
@@ -3536,7 +3536,7 @@ fn extract_keeps_type3_glyph_resources_of_an_undecodable_form() {
 #[test]
 fn extract_still_prunes_separate_resources_when_many_pages_share_a_type3_font() {
     let mut src = doc_type3_shared_xobjects("<< /XObject << /ImB 10 0 R >> >>");
-    src.set(ObjRef::new(4, 0), Object::Stream(pdfcraft_cos::Stream::from_raw(pdfcraft_cos::Dict::new(), b"/ImA Do".to_vec())));
+    src.set(ObjRef::new(4, 0), Object::Stream(iridium_pdf_cos::Stream::from_raw(iridium_pdf_cos::Dict::new(), b"/ImA Do".to_vec())));
     let page = src.get(ObjRef::new(3, 0)).as_dict().unwrap().clone();
     let mut kids = vec![Object::Ref(ObjRef::new(3, 0))];
     for _ in 1..4_000 {
@@ -3554,11 +3554,11 @@ fn extract_still_prunes_separate_resources_when_many_pages_share_a_type3_font() 
 
 // Both sides of the comparison go through the same pdftoppm, so the assertion is about our two
 // documents rather than about Poppler's output, and no Poppler version can change the verdict.
-// It skips where pdftoppm is absent and fails where PDFCRAFT_ORACLES_REQUIRED is set.
+// It skips where pdftoppm is absent and fails where IRIDIUM_PDF_ORACLES_REQUIRED is set.
 #[test]
 fn extract_type3_shared_xobjects_matches_poppler_pixels() {
-    let pdftoppm = pdfcraft_oracle::or_skip!(pdfcraft_oracle::pdftoppm());
-    let dir = std::env::temp_dir().join(format!("pdfcraft-type3-extract-{}", std::process::id()));
+    let pdftoppm = iridium_pdf_oracle::or_skip!(iridium_pdf_oracle::pdftoppm());
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-type3-extract-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let fixtures = [
         doc_type3_shared_xobjects("<< /XObject 6 0 R >>"),
@@ -4386,7 +4386,7 @@ fn a_form_drawing_itself_repeatedly_is_analysed_once() {
 
 /// One page whose /Contents names the same 1 MiB stream 300 times (a few kilobytes on disk).
 fn repeated_contents() -> Document {
-    use pdfcraft_cos::{Dict, Stream};
+    use iridium_pdf_cos::{Dict, Stream};
     let mut doc = Document::new_empty();
     let stream = doc.add(Stream::flate(Dict::new(), &vec![b' '; 1 << 20]));
     let pages = doc.add(Object::Null);
@@ -4420,7 +4420,7 @@ fn repeated_content_references_share_one_decode_budget() {
     if let Ok((form, _)) = page_as_form(&mut dst, &src, 0) {
         let Object::Stream(s) = &*dst.get(form) else { panic!("not a stream") };
         let len = s.decoded().unwrap().len();
-        assert!(len <= pdfcraft_cos::MAX_PAGE_DECODED + 300, "{len} bytes");
+        assert!(len <= iridium_pdf_cos::MAX_PAGE_DECODED + 300, "{len} bytes");
     }
 }
 
@@ -4515,20 +4515,20 @@ fn with_document_parts_and_namespaces() -> Document {
     header.copy_from_slice(b"%PDF-2.0");
     let mut doc = open(bytes);
     let first = pages(&doc).unwrap()[0].obj;
-    let mut namespace = pdfcraft_cos::Dict::new();
+    let mut namespace = iridium_pdf_cos::Dict::new();
     namespace.set(b"Type".to_vec(), Object::name("Namespace"));
-    namespace.set(b"NS".to_vec(), Object::String(pdfcraft_cos::PdfString { bytes: b"http://iso.org/pdf2/ssn".to_vec(), hex: false }));
+    namespace.set(b"NS".to_vec(), Object::String(iridium_pdf_cos::PdfString { bytes: b"http://iso.org/pdf2/ssn".to_vec(), hex: false }));
     let namespace = doc.add(Object::Dict(namespace));
-    let mut tree = pdfcraft_cos::Dict::new();
+    let mut tree = iridium_pdf_cos::Dict::new();
     tree.set(b"Type".to_vec(), Object::name("StructTreeRoot"));
     tree.set(b"Namespaces".to_vec(), Object::Array(vec![Object::Ref(namespace)]));
     let tree = doc.add(Object::Dict(tree));
-    let mut part = pdfcraft_cos::Dict::new();
+    let mut part = iridium_pdf_cos::Dict::new();
     part.set(b"Type".to_vec(), Object::name("DPart"));
     part.set(b"Start".to_vec(), Object::Ref(first));
     part.set(b"End".to_vec(), Object::Ref(first));
     let part = doc.add(Object::Dict(part));
-    let mut root = pdfcraft_cos::Dict::new();
+    let mut root = iridium_pdf_cos::Dict::new();
     root.set(b"Type".to_vec(), Object::name("DPartRoot"));
     root.set(b"DPartRootNode".to_vec(), Object::Ref(part));
     let root = doc.add(Object::Dict(root));
@@ -4615,7 +4615,7 @@ fn contents_pieces_join_with_a_space_across_a_trailing_comment() {
     let (form_ref, _) = crate::page_as_form(&mut form_dst, &commented, 0).unwrap();
     let Object::Stream(form_stream) = &*form_dst.get(form_ref) else { panic!("form stream") };
     let form_bytes = form_stream.decoded().unwrap();
-    let drawn: Vec<Vec<u8>> = pdfcraft_content::parse(&form_bytes)
+    let drawn: Vec<Vec<u8>> = iridium_pdf_content::parse(&form_bytes)
         .ops
         .into_iter()
         .filter(|op| op.op == b"Do")
@@ -4876,7 +4876,7 @@ fn a_form_action_brings_no_field_from_a_page_left_behind() {
 }
 
 /// The titles of a bookmark's children, each with its own children's titles.
-fn bookmark_titles(doc: &Document, first: Option<pdfcraft_cos::ObjRef>) -> Vec<(String, Vec<String>)> {
+fn bookmark_titles(doc: &Document, first: Option<iridium_pdf_cos::ObjRef>) -> Vec<(String, Vec<String>)> {
     let mut out = Vec::new();
     let mut at = first;
     while let Some(r) = at {

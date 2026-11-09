@@ -2,7 +2,7 @@
 use super::{cx, fixture, reopen, streams};
 use crate::place::MARK_PLACEMENT_FAILURE;
 use crate::*;
-use pdfcraft_cos::{ObjRef, SaveOptions, write_incremental};
+use iridium_pdf_cos::{ObjRef, SaveOptions, write_incremental};
 
 const SELECTED: &[usize] = &[0, 1, 2];
 
@@ -129,7 +129,7 @@ fn unchanged_after_later_page_failure(kind: MarkKind) {
     for (replace, pending_edit) in [(true, false), (true, true), (false, false), (false, true)] {
         let (mut doc, source) = marked_document();
         if pending_edit {
-            let pending = doc.add(Object::String(pdfcraft_cos::PdfString::literal(b"unsaved caller edit".to_vec())));
+            let pending = doc.add(Object::String(iridium_pdf_cos::PdfString::literal(b"unsaved caller edit".to_vec())));
             doc.update_dict(page_list(&doc)[0].obj, |d| d.set(b"CallerEdit".to_vec(), Object::Ref(pending))).unwrap();
         }
         let modified = doc.is_modified();

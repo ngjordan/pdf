@@ -460,7 +460,7 @@ mod tests {
 }
 
 #[cfg(test)]
-mod pdfcraft_tests {
+mod iridium_pdf_tests {
     use super::*;
 
     /// PdfCraft patch (2): room runs out a whole surface's coverage before the limit, so the path

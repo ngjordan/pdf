@@ -1,6 +1,6 @@
 //! Which options a list box has selected, through the tool table (ISO 32000-2 Table 234, `/I`).
 
-use pdfcraft_automation::{Automation, Content};
+use iridium_pdf_automation::{Automation, Content};
 use serde_json::{Value, json};
 
 fn tool(a: &mut Automation, name: &str, args: Value) -> Value {
@@ -28,7 +28,7 @@ fn pdf_of(objs: &[&str]) -> Vec<u8> {
 }
 
 fn open(test: &str) -> (Automation, u64, std::path::PathBuf) {
-    let dir = std::env::temp_dir().join(format!("pdfcraft-list-selection-{test}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("iridium-pdf-list-selection-{test}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let bytes = pdf_of(&[

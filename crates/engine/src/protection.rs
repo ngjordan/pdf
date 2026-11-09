@@ -10,7 +10,7 @@ pub struct SecuritySummary {
     /// Opened with the owner password (no restrictions apply).
     pub owner: bool,
     /// For pending protection: the restrictions as they will apply to others.
-    pub permissions: pdfcraft_cos::Permissions,
+    pub permissions: iridium_pdf_cos::Permissions,
     /// Set in this session; written by the next save.
     pub pending: bool,
 }
@@ -52,7 +52,7 @@ pub struct Protection {
     /// "Enable text access for screen reader devices".
     pub accessibility: bool,
     /// Compatibility level; AES-256 (Acrobat X and later) by default.
-    pub algorithm: pdfcraft_cos::Algorithm,
+    pub algorithm: iridium_pdf_cos::Algorithm,
     /// `false`: "Encrypt all document contents except metadata".
     pub encrypt_metadata: bool,
 }
@@ -83,7 +83,7 @@ impl Default for Protection {
             changes: Changes::None,
             copy: false,
             accessibility: true,
-            algorithm: pdfcraft_cos::Algorithm::Aes256,
+            algorithm: iridium_pdf_cos::Algorithm::Aes256,
             encrypt_metadata: true,
         }
     }
@@ -128,7 +128,7 @@ impl Protection {
         if [&self.open_password, &self.permissions_password].into_iter().flatten().any(String::is_empty) {
             return bad("passwords can't be empty");
         }
-        if self.algorithm != pdfcraft_cos::Algorithm::Aes256
+        if self.algorithm != iridium_pdf_cos::Algorithm::Aes256
             && [&self.open_password, &self.permissions_password].into_iter().flatten().any(|p| p.chars().any(|c| !(' '..='~').contains(&c)))
         {
             return bad("this compatibility level supports only plain ASCII passwords; use AES-256 (Acrobat X and later)");
@@ -137,7 +137,7 @@ impl Protection {
         // which drops soft hyphens and folds compatibility forms; older levels: the first 32
         // bytes, padded). One that comes out as the empty password opens the file without asking,
         // and an open password that comes out as the permissions password lifts the restrictions.
-        let effective = |p: &str| pdfcraft_cos::effective_password(self.algorithm, p);
+        let effective = |p: &str| iridium_pdf_cos::effective_password(self.algorithm, p);
         let (open, permissions) = (self.open_password.as_deref().map(effective), self.permissions_password.as_deref().map(effective));
         let empty = effective("");
         if open.iter().chain(&permissions).any(|p| *p == empty) {
@@ -152,7 +152,7 @@ impl Protection {
 
 /// Opened as owner, or nothing is restricted (no permissions password was set): security may
 /// be changed, as in Acrobat.
-pub(crate) fn unrestricted(p: &pdfcraft_cos::Permissions) -> bool {
+pub(crate) fn unrestricted(p: &iridium_pdf_cos::Permissions) -> bool {
     const ALL: i32 = 0b1111_0011_1100; // bits 3–6 and 9–12
     p.owner || p.bits & ALL == ALL
 }

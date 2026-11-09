@@ -1,13 +1,13 @@
 //! Bookmarks ▸ New bookmarks from text styles (#1693): for documents whose headings aren't
 //! tagged, a style per bookmark level (the chapters' font and size for level 1, the sections'
 //! for level 2, …), and every line set in it becomes a bookmark of that level
-//! ([`pdfcraft_engine::text_style_bookmarks`]).
+//! ([`iridium_pdf_engine::text_style_bookmarks`]).
 
-use pdfcraft_engine::text_style_bookmarks::{TextStyle, TextStyleUse};
-use pdfcraft_engine::{DocId, Edit};
+use iridium_pdf_engine::text_style_bookmarks::{TextStyle, TextStyleUse};
+use iridium_pdf_engine::{DocId, Edit};
 
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, widgets};
+use crate::{PdfApp, widgets};
 
 /// The levels offered: deeper outlines are rare, and each level needs a style of its own.
 const LEVELS: usize = 4;
@@ -31,7 +31,7 @@ impl TextStyleDraft {
     }
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// Open New bookmarks from text styles for document `id`: its styles are read now, and the
     /// largest is offered for level 1 when there is more than one (headings are larger than the
     /// text around them; a single style has no headings to tell apart).
@@ -69,7 +69,7 @@ fn style_label(u: &TextStyleUse) -> String {
 
 /// The dialog's contents and its buttons. Returns whether it closes; Create makes the
 /// bookmarks and shows them in the Bookmarks panel.
-pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> bool {
+pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfApp, t: &Tokens) -> bool {
     ui.label(egui::RichText::new(tl!("New bookmarks from text styles")).font(theme::semibold(18.0)));
     ui.add_space(6.0);
     let d = &mut app.text_style_draft;

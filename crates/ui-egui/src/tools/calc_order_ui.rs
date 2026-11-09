@@ -16,11 +16,11 @@ use std::sync::Arc;
 
 use crate::canvas::PageToolContext;
 use crate::theme::{self, Tokens};
-use crate::{LeftPanel, PdfCraftApp, icons, widgets};
+use crate::{LeftPanel, PdfApp, icons, widgets};
 use egui::{Align2, Color32, CornerRadius, Pos2, Rect, Sense, Shape, Stroke, Vec2, pos2, vec2};
-use pdfcraft_cos::ObjRef;
-use pdfcraft_engine::form_scripts::{CalcOp, Calculate, format_value};
-use pdfcraft_engine::{CalculatedField, CalculationIssue, CalculationOrder, Edit, FormField, FormFieldKind};
+use iridium_pdf_cos::ObjRef;
+use iridium_pdf_engine::form_scripts::{CalcOp, Calculate, format_value};
+use iridium_pdf_engine::{CalculatedField, CalculationIssue, CalculationOrder, Edit, FormField, FormFieldKind};
 
 /// Links and steps on the page, which is paper white in either theme.
 const LINK_OK: Color32 = Color32::from_rgb(0x1B, 0x63, 0xE0);
@@ -131,7 +131,7 @@ impl Focus {
 }
 
 impl CalcOrderView {
-    fn listed(&mut self, doc: &pdfcraft_engine::Document) -> Arc<Listed> {
+    fn listed(&mut self, doc: &iridium_pdf_engine::Document) -> Arc<Listed> {
         let generation = doc.edit_generation();
         if let Some(listed) = self.current(generation) {
             return listed;
@@ -626,7 +626,7 @@ fn explained(issues: &[CalculationIssue]) -> String {
 }
 
 /// The Calculation order page; Back returns to Prepare a form.
-pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens) {
+pub(crate) fn panel(app: &mut PdfApp, ui: &mut egui::Ui, t: &Tokens) {
     let (back, close) = crate::panels::panel_header(ui, t, "Calculation order", Some(("chevron-left", tl!("Back to Prepare a form"))));
     if back {
         app.left = LeftPanel::Tool("form");

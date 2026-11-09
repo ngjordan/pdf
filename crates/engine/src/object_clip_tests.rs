@@ -67,14 +67,14 @@ fn copy_all_but_left(s: &Session, id: DocId) -> ObjectClip {
     doc.copy_objects(0, &targets).unwrap()
 }
 
-fn render(s: &Session, id: DocId) -> pdfcraft_render::RenderedPage {
+fn render(s: &Session, id: DocId) -> iridium_pdf_render::RenderedPage {
     let doc = s.get(id).unwrap();
-    let mut renderer = pdfcraft_render::PageRenderer::new(doc.bytes.clone(), doc.config.clone());
-    renderer.render(pdfcraft_render::RenderRequest { page: 0, scale: 1.0, ..Default::default() })
+    let mut renderer = iridium_pdf_render::PageRenderer::new(doc.bytes.clone(), doc.config.clone());
+    renderer.render(iridium_pdf_render::RenderRequest { page: 0, scale: 1.0, ..Default::default() })
 }
 
 /// The pixels in user-space box `r` of a 300 pt page rendered at scale 1.
-fn pixels(page: &pdfcraft_render::RenderedPage, r: [f64; 4]) -> Vec<u8> {
+fn pixels(page: &iridium_pdf_render::RenderedPage, r: [f64; 4]) -> Vec<u8> {
     let mut out = Vec::new();
     for y in (300.0 - r[3]) as u32..(300.0 - r[1]) as u32 {
         for x in r[0] as u32..r[2] as u32 {
@@ -85,7 +85,7 @@ fn pixels(page: &pdfcraft_render::RenderedPage, r: [f64; 4]) -> Vec<u8> {
     out
 }
 
-fn images(s: &Session, id: DocId) -> Vec<Option<pdfcraft_cos::ObjRef>> {
+fn images(s: &Session, id: DocId) -> Vec<Option<iridium_pdf_cos::ObjRef>> {
     s.get(id).unwrap().page_images(0).into_iter().map(|i| i.object).collect()
 }
 
@@ -239,7 +239,7 @@ fn objects_pasted_exactly_over_each_other_delete_together_in_one_step() {
 fn several_objects_delete_last_first() {
     let content =
         "BT /F1 12 Tf 20 250 Td (A) Tj ET BT /F1 12 Tf 20 180 Td (B) Tj ET BT /F1 12 Tf 20 110 Td (C) Tj ET BT /F1 12 Tf 20 40 Td (D) Tj ET";
-    let mut doc = pdfcraft_cos::Document::open(pdf(&[(content, "<< /Font << /F1 5 0 R >> >>")], &[HELVETICA.into()])).unwrap();
+    let mut doc = iridium_pdf_cos::Document::open(pdf(&[(content, "<< /Font << /F1 5 0 R >> >>")], &[HELVETICA.into()])).unwrap();
     let t = |kind, index| ObjectTarget { kind, index };
     let targets = [t(ObjectKind::Added, 0), t(ObjectKind::Text, 1), t(ObjectKind::Image, 0), t(ObjectKind::Text, 3), t(ObjectKind::Added, 2)];
     let mut order = Vec::new();

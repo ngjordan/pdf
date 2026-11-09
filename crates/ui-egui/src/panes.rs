@@ -1,15 +1,15 @@
 //! Split view (`view.split-window`): the main window's page area in two panes, and which pane
 //! shows each tab.
 //!
-//! Every tab is a [`DocView`](crate::DocView) in `PdfCraftApp::views`, and its [`Place`] says where
+//! Every tab is a [`DocView`](crate::DocView) in `PdfApp::views`, and its [`Place`] says where
 //! it shows. The window's tab strip holds the [`Place::Main`] tabs; split view adds a second pane,
 //! to the right or below, with a small strip of its own ([`Place::Second`]). Each pane shows the
-//! tab of it that was active last, and `PdfCraftApp::active` is the tab of the pane last clicked:
+//! tab of it that was active last, and `PdfApp::active` is the tab of the pane last clicked:
 //! menus, keyboard shortcuts and the side panels act on it.
 //!
 //! One document can show in both panes at once (page 2 beside page 40): two views with one
 //! `DocId`. The document, its edits and its undo history are the session's, so an edit made in one
-//! view is the other's too ([`PdfCraftApp::settle_panes`] refreshes the other view), while each view
+//! view is the other's too ([`PdfApp::settle_panes`] refreshes the other view), while each view
 //! keeps its own scroll, zoom and selection. Closing one of them closes only that view.
 //!
 //! Nothing here is kept across restarts: the second pane's tabs are ordinary tabs, so the last
@@ -18,10 +18,10 @@
 use std::collections::{HashMap, HashSet};
 
 use egui::{Pos2, Rect, Sense, Stroke, vec2};
-use pdfcraft_engine::DocId;
+use iridium_pdf_engine::DocId;
 
 use crate::theme::Tokens;
-use crate::{CloseRequest, PdfCraftApp};
+use crate::{CloseRequest, PdfApp};
 
 /// Where a tab is shown.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -139,7 +139,7 @@ fn layout(area: Rect, split: Split) -> (Rect, Rect, Rect) {
     }
 }
 
-impl PdfCraftApp {
+impl PdfApp {
     /// The tabs shown in `place`, in their strip's order (indexes into `views`).
     pub fn tabs_in(&self, place: Place) -> Vec<usize> {
         self.views.iter().enumerate().filter(|(_, v)| v.pane.place == place).map(|(i, _)| i).collect()
@@ -501,7 +501,7 @@ impl PdfCraftApp {
 
 /// Once a frame, before anything is drawn: the panes settle (and a quit or Close all asks about
 /// each document once).
-pub(crate) fn frame(app: &mut PdfCraftApp) {
+pub(crate) fn frame(app: &mut PdfApp) {
     if matches!(app.close_request, Some(CloseRequest::Quit | CloseRequest::All)) {
         app.one_tab_per_document();
     }
@@ -510,7 +510,7 @@ pub(crate) fn frame(app: &mut PdfCraftApp) {
 
 /// The page area: the main pane's tab (Home or Combine files while it has none, a comparison's
 /// two halves), or split view's two panes.
-pub(crate) fn page_area(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
+pub(crate) fn page_area(app: &mut PdfApp, ui: &mut egui::Ui) {
     app.panes.page_rect = Some(ui.max_rect());
     app.panes.drawing = Place::Main;
     if let Some(hint) = app.panes.drop_hint.take() {
@@ -526,7 +526,7 @@ pub(crate) fn page_area(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
 }
 
 /// What the main pane shows: tab `main`, or Home or Combine files while it has none.
-fn main_pane(app: &mut PdfCraftApp, main: Option<usize>, ui: &mut egui::Ui) {
+fn main_pane(app: &mut PdfApp, main: Option<usize>, ui: &mut egui::Ui) {
     match main {
         None if app.combine_showing() => crate::combine_ui::page(app, ui),
         None => crate::home::show(app, ui),
@@ -557,7 +557,7 @@ fn pressed_in(ui: &egui::Ui, rect: Rect, place: Place, view: Option<&crate::DocV
 
 /// Split view: the main pane, the divider and the second pane with its strip. A press in a pane
 /// makes it the active one before it is drawn, so the click acts there.
-fn split_area(app: &mut PdfCraftApp, split: Split, main: Option<usize>, second: usize, ui: &mut egui::Ui) {
+fn split_area(app: &mut PdfApp, split: Split, main: Option<usize>, second: usize, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let area = ui.max_rect();
     let (first, divider, other) = layout(area, split);
@@ -591,7 +591,7 @@ fn split_area(app: &mut PdfCraftApp, split: Split, main: Option<usize>, second: 
 }
 
 /// One pane of split view: the second has its own tab strip above its page area.
-fn pane(app: &mut PdfCraftApp, ui: &mut egui::Ui, rect: Rect, place: Place, front: Option<usize>, active: bool) {
+fn pane(app: &mut PdfApp, ui: &mut egui::Ui, rect: Rect, place: Place, front: Option<usize>, active: bool) {
     let t = Tokens::get(ui.ctx());
     let salt = if place == Place::Second { "second-pane" } else { "main-pane" };
     let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect).id_salt(salt));

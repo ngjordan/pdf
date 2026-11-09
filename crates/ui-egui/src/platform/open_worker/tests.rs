@@ -5,7 +5,7 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::{Value, json};
 
-use crate::{PdfCraftApp, control::ControlClient, open_worker};
+use crate::{PdfApp, control::ControlClient, open_worker};
 
 fn fixture(pages: usize) -> Vec<u8> {
     let mut objects = vec!["<< /Type /Catalog /Pages 2 0 R >>".to_string()];
@@ -33,11 +33,11 @@ fn fixture(pages: usize) -> Vec<u8> {
 }
 
 #[allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
-fn harness() -> (Harness<'static, PdfCraftApp>, ControlClient) {
+fn harness() -> (Harness<'static, PdfApp>, ControlClient) {
     let slot: Arc<Mutex<Option<ControlClient>>> = Arc::default();
     let saved = slot.clone();
     let mut harness = Harness::builder().with_size(egui::vec2(1000.0, 700.0)).build_eframe(move |creation| {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").expect("language preference");
         *saved.lock().expect("control-client slot") = Some(app.attach_control(&creation.egui_ctx));
         app.open_bytes("existing.pdf", None, fixture(3)).expect("existing document");
@@ -48,7 +48,7 @@ fn harness() -> (Harness<'static, PdfCraftApp>, ControlClient) {
 }
 
 #[allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
-fn request(harness: &mut Harness<'static, PdfCraftApp>, client: &ControlClient, method: &str, params: Value) -> Value {
+fn request(harness: &mut Harness<'static, PdfApp>, client: &ControlClient, method: &str, params: Value) -> Value {
     let reply = client.send(method, params);
     for _ in 0..5 {
         harness.step();
@@ -66,7 +66,7 @@ fn open_prepare_keeps_control_and_existing_tabs_live_until_atomic_commit() {
     let (gate, started, release, finished) = open_worker::prepare_gate();
     harness.state_mut().open_prepare_gate = Some(gate);
 
-    let path = std::env::temp_dir().join(format!("pdfcraft-open-worker-{}.pdf", std::process::id()));
+    let path = std::env::temp_dir().join(format!("iridium-pdf-open-worker-{}.pdf", std::process::id()));
     std::fs::write(&path, fixture(2)).expect("write test PDF");
     let open_reply = request(&mut harness, &client, "ui.open", json!({ "path": path.to_string_lossy() }));
     assert_eq!(open_reply["pending"], true);
@@ -100,12 +100,12 @@ impl Drop for ToolOpenFile {
 
 #[allow(clippy::expect_used)]
 fn tool_open_file(case: &str, extension: &str, bytes: &[u8]) -> ToolOpenFile {
-    let path = std::env::temp_dir().join(format!("pdfcraft-open-tool-{}-{case}.{extension}", std::process::id()));
+    let path = std::env::temp_dir().join(format!("iridium-pdf-open-tool-{}-{case}.{extension}", std::process::id()));
     std::fs::write(&path, bytes).expect("write the synthetic tool input");
     ToolOpenFile(path)
 }
 
-fn tool_open_harness() -> Harness<'static, PdfCraftApp> {
+fn tool_open_harness() -> Harness<'static, PdfApp> {
     let (mut harness, _) = harness();
     harness.state_mut().close_tab(0);
     harness.run_steps(2);
@@ -119,7 +119,7 @@ struct HeldToolOpen {
 }
 
 impl HeldToolOpen {
-    fn install(harness: &mut Harness<'static, PdfCraftApp>) -> Self {
+    fn install(harness: &mut Harness<'static, PdfApp>) -> Self {
         let (gate, started, release, finished) = open_worker::prepare_gate();
         harness.state_mut().open_prepare_gate = Some(gate);
         Self { started, release, finished }
@@ -131,14 +131,14 @@ impl HeldToolOpen {
     }
 
     #[allow(clippy::expect_used)]
-    fn complete(&self, harness: &mut Harness<'static, PdfCraftApp>) {
+    fn complete(&self, harness: &mut Harness<'static, PdfApp>) {
         self.release.send(()).expect("release the native preparation");
         self.finished.recv_timeout(Duration::from_secs(5)).expect("the native open returned its result");
         harness.run_steps(2);
     }
 }
 
-fn choose_export_tool(harness: &mut Harness<'static, PdfCraftApp>, file: &ToolOpenFile) {
+fn choose_export_tool(harness: &mut Harness<'static, PdfApp>, file: &ToolOpenFile) {
     harness.state_mut().pick_override = Some(vec![file.0.to_string_lossy().into_owned()]);
     harness.state_mut().run_command("export.text");
     harness.run_steps(2);
@@ -172,8 +172,9 @@ fn chosen_tool_runs_after_preparation(extension: &str, bytes: Vec<u8>) {
     } else {
         assert!(chosen.dirty && chosen.path.is_none(), "conversion produces a new unsaved PDF");
         assert_eq!(chosen.info.pages.len(), 1);
-        let mut renderer = pdfcraft_render::PageRenderer::new(chosen.bytes.clone(), Default::default());
-        let output = renderer.render(pdfcraft_render::RenderRequest { page: 0, kind: pdfcraft_render::RequestKind::Text, ..Default::default() });
+        let mut renderer = iridium_pdf_render::PageRenderer::new(chosen.bytes.clone(), Default::default());
+        let output =
+            renderer.render(iridium_pdf_render::RenderRequest { page: 0, kind: iridium_pdf_render::RequestKind::Text, ..Default::default() });
         let text = output.text.expect("read the converted text").plain_text();
         assert_eq!(text.split_whitespace().collect::<Vec<_>>().join(" "), std::str::from_utf8(&bytes).expect("synthetic input is UTF-8"));
     }
@@ -193,10 +194,13 @@ fn a_chosen_tool_runs_on_converted_text_only_after_native_preparation_commits() 
 
 #[allow(clippy::expect_used)]
 fn encrypted_tool_fixture() -> Vec<u8> {
-    let mut session = pdfcraft_engine::Session::new();
+    let mut session = iridium_pdf_engine::Session::new();
     let id = session.open("secret.pdf", None, Arc::new(fixture(2)), None).expect("open the synthetic PDF");
     session
-        .apply(id, pdfcraft_engine::Edit::Protect(pdfcraft_engine::Protection { open_password: Some("tool-password".into()), ..Default::default() }))
+        .apply(
+            id,
+            iridium_pdf_engine::Edit::Protect(iridium_pdf_engine::Protection { open_password: Some("tool-password".into()), ..Default::default() }),
+        )
         .expect("encrypt the synthetic PDF");
     session.save_bytes(id).expect("write the encrypted synthetic PDF").as_ref().clone()
 }
@@ -354,7 +358,7 @@ fn assert_tool_runs_after_background_open(extension: &str, bytes: Vec<u8>, pages
     harness.state_mut().close_tab(0);
     let (gate, started, release, finished) = open_worker::prepare_gate();
     harness.state_mut().open_prepare_gate = Some(gate);
-    let path = std::env::temp_dir().join(format!("pdfcraft-tool-worker-{}.{extension}", std::process::id()));
+    let path = std::env::temp_dir().join(format!("iridium-pdf-tool-worker-{}.{extension}", std::process::id()));
     std::fs::write(&path, &bytes).expect("write picked document");
     harness.state_mut().pick_override = Some(vec![path.to_string_lossy().into_owned()]);
     harness.state_mut().run_command("export.text");
@@ -392,7 +396,7 @@ fn a_startup_document_waits_for_an_active_document_to_prepare() {
     harness.state_mut().close_tab(0);
     let (gate, started, release, finished) = open_worker::prepare_gate();
     harness.state_mut().open_prepare_gate = Some(gate);
-    let path = std::env::temp_dir().join(format!("pdfcraft-startup-worker-{}.pdf", std::process::id()));
+    let path = std::env::temp_dir().join(format!("iridium-pdf-startup-worker-{}.pdf", std::process::id()));
     std::fs::write(&path, fixture(2)).expect("write chosen document");
     harness.state_mut().open_path(&path.to_string_lossy());
     started.recv_timeout(Duration::from_secs(5)).expect("chosen document reached preparation");
@@ -578,7 +582,7 @@ struct PickerFiles<'a> {
     original_c: &'a [u8],
 }
 
-fn assert_picker_keeps_a_visible(harness: &mut Harness<'static, PdfCraftApp>, files: &PickerFiles<'_>) -> pdfcraft_engine::DocId {
+fn assert_picker_keeps_a_visible(harness: &mut Harness<'static, PdfApp>, files: &PickerFiles<'_>) -> iridium_pdf_engine::DocId {
     // Poll admission separately from consuming the picker callback: this reproduces
     // the same ordering as a UI frame, with both worker replies already available.
     harness.state_mut().poll_pending_opens();
@@ -602,8 +606,8 @@ fn assert_picker_keeps_a_visible(harness: &mut Harness<'static, PdfCraftApp>, fi
 }
 
 fn assert_picker_completion_releases_b(
-    harness: &mut Harness<'static, PdfCraftApp>,
-    a_id: pdfcraft_engine::DocId,
+    harness: &mut Harness<'static, PdfApp>,
+    a_id: iridium_pdf_engine::DocId,
     cancel: bool,
     files: &PickerFiles<'_>,
 ) {
@@ -631,7 +635,7 @@ fn assert_picker_completion_releases_b(
     assert_picker_files_unchanged(files);
 }
 
-fn assert_document_a_after_picker(harness: &Harness<'static, PdfCraftApp>, a_id: pdfcraft_engine::DocId, cancel: bool) {
+fn assert_document_a_after_picker(harness: &Harness<'static, PdfApp>, a_id: iridium_pdf_engine::DocId, cancel: bool) {
     let expected_pages = if cancel { 2 } else { 3 };
     let doc = harness.state().session.get(a_id);
     assert!(doc.is_some(), "A after picker completion");
@@ -643,7 +647,7 @@ fn assert_document_a_after_picker(harness: &Harness<'static, PdfCraftApp>, a_id:
     }
 }
 
-fn assert_document_b_after_picker(harness: &Harness<'static, PdfCraftApp>, active: usize, files: &PickerFiles<'_>) {
+fn assert_document_b_after_picker(harness: &Harness<'static, PdfApp>, active: usize, files: &PickerFiles<'_>) {
     let doc = harness.state().session.get(harness.state().views[active].id);
     assert!(doc.is_some(), "ordinary B document");
     if let Some(doc) = doc {
@@ -653,7 +657,7 @@ fn assert_document_b_after_picker(harness: &Harness<'static, PdfCraftApp>, activ
     }
 }
 
-fn assert_a_saved_source(harness: &Harness<'static, PdfCraftApp>, a_id: pdfcraft_engine::DocId, original: &[u8]) {
+fn assert_a_saved_source(harness: &Harness<'static, PdfApp>, a_id: iridium_pdf_engine::DocId, original: &[u8]) {
     let doc = harness.state().session.get(a_id);
     assert!(doc.is_some(), "A retains exactly one insertion or cancellation");
     if let Some(doc) = doc {
@@ -677,9 +681,9 @@ fn inline_tool_open_keeps_its_command_for_pdf_conversion_and_password_retry() {
     for (name, bytes, encrypted) in
         [("plain.pdf", fixture(1), false), ("converted.txt", b"Text to export".to_vec(), false), ("locked.pdf", encrypted_tool_fixture(), true)]
     {
-        let path = std::env::temp_dir().join(format!("pdfcraft-inline-tool-{}-{name}", std::process::id()));
+        let path = std::env::temp_dir().join(format!("iridium-pdf-inline-tool-{}-{name}", std::process::id()));
         std::fs::write(&path, bytes).expect("write selected file");
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("language", "en").expect("language preference");
         assert!(app.ctx.is_none(), "this exercises the no-context inline path");
         app.open_path_then(&path.to_string_lossy(), Some("export.text"));
@@ -703,9 +707,9 @@ fn inline_tool_open_keeps_its_command_for_pdf_conversion_and_password_retry() {
 fn startup_files_wait_for_absolute_link_consent_and_preparation() {
     let (mut h, _) = harness();
     let source = h.state().views[0].id;
-    let path = std::env::temp_dir().join(format!("pdfcraft-open-consented-startup-{}.pdf", std::process::id()));
+    let path = std::env::temp_dir().join(format!("iridium-pdf-open-consented-startup-{}.pdf", std::process::id()));
     std::fs::write(&path, fixture(2)).expect("write linked PDF");
-    h.state_mut().open_remote_link(source, path.to_string_lossy().into_owned(), pdfcraft_render::RemoteDestination::Default);
+    h.state_mut().open_remote_link(source, path.to_string_lossy().into_owned(), iridium_pdf_render::RemoteDestination::Default);
     h.state().startup_inbox.lock().expect("startup queue").push(("startup.pdf".into(), fixture(1)));
     h.step();
     assert!(h.state().pending_remote_link.is_some());
@@ -740,7 +744,7 @@ fn launch_layout_waits_for_cli_opens_and_preserves_restored_tabs() {
     for reverse in [false, true] {
         for count in [1, 2] {
             for restored in [false, true] {
-                let mut app = PdfCraftApp::new();
+                let mut app = PdfApp::new();
                 app.set_option("default-layout", "continuous").unwrap();
                 if restored {
                     app.open_bytes("restored.pdf", None, fixture(1)).unwrap();
@@ -806,7 +810,7 @@ fn launch_layout_waits_for_cli_opens_and_preserves_restored_tabs() {
 fn launch_layout_failed_or_cancelled_opens_do_not_target_existing_documents() {
     use crate::canvas::PageLayout;
     for cancel in [false, true] {
-        let mut app = PdfCraftApp::new();
+        let mut app = PdfApp::new();
         app.set_option("default-layout", "continuous").unwrap();
         app.open_bytes("restored.pdf", None, fixture(1)).unwrap();
         let (sender, receiver) = std::sync::mpsc::channel();
@@ -826,7 +830,7 @@ fn launch_layout_failed_or_cancelled_opens_do_not_target_existing_documents() {
         app.set_launch_layout("single").unwrap();
         assert!(app.set_launch_layout("invalid").is_err());
         let kind = if cancel {
-            open_worker::ResultKind::Prepared { bytes: Arc::new(fixture(1)), result: Box::new(Err(pdfcraft_render::OpenError::NeedsPassword)) }
+            open_worker::ResultKind::Prepared { bytes: Arc::new(fixture(1)), result: Box::new(Err(iridium_pdf_render::OpenError::NeedsPassword)) }
         } else {
             open_worker::ResultKind::ReadFailed("synthetic read failure".into())
         };
@@ -848,7 +852,7 @@ fn flagged_startup_opens_wait_for_password_ownership_before_the_first_frame() {
     use crate::canvas::PageLayout;
     let locked = tool_open_file("launch-locked", "pdf", &encrypted_tool_fixture());
     let second = tool_open_file("launch-second", "pdf", &fixture(2));
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.set_option("default-layout", "continuous").unwrap();
     app.open_path_with_display(locked.0.to_str().unwrap(), PageLayout::TwoUp, false);
     let bytes = app.password_prompt.as_ref().unwrap().bytes.clone();
@@ -883,7 +887,7 @@ fn a_new_file_from_the_os_brings_the_window_forward_before_it_is_prepared() {
     let (mut harness, _client) = harness();
     let (gate, started, release, finished) = open_worker::prepare_gate();
     harness.state_mut().open_prepare_gate = Some(gate);
-    let path = std::env::temp_dir().join(format!("pdfcraft-os-open-worker-{}.pdf", std::process::id()));
+    let path = std::env::temp_dir().join(format!("iridium-pdf-os-open-worker-{}.pdf", std::process::id()));
     std::fs::write(&path, fixture(2)).expect("write the handed-over PDF");
     let mut queue = vec![crate::OsEvent::Open(vec![path.to_string_lossy().into_owned()])];
     harness.state_mut().os_events = Some(Box::new(move || std::mem::take(&mut queue)));
@@ -913,7 +917,7 @@ fn a_new_file_from_the_os_brings_the_window_forward_before_it_is_prepared() {
 fn a_repeated_waiting_open_keeps_the_tool_it_brings() {
     let file = tool_open_file("deferred-tool", "pdf", &fixture(1));
     let path = file.0.to_string_lossy().into_owned();
-    let mut app = PdfCraftApp::new();
+    let mut app = PdfApp::new();
     app.deferred_opens.push_back(crate::DeferredOpen { path: path.clone(), then: None, display_override: None });
     assert_eq!(app.open_path_then(&path, Some("export.text")), crate::OpenOutcome::Pending);
     assert_eq!(app.deferred_opens.len(), 1);

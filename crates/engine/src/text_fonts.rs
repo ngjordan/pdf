@@ -80,10 +80,10 @@ pub fn discover_budgeted(roots: &[PathBuf], mut budget: u64) -> Vec<FontFile> {
             if read.is_err() || bytes.len() != meta.len() as usize {
                 continue;
             }
-            if pdfcraft_fonts::embedding::validate_document_input(&bytes).is_err() {
+            if iridium_pdf_fonts::embedding::validate_document_input(&bytes).is_err() {
                 continue;
             }
-            if let Ok((family, face)) = pdfcraft_fonts::embedding::names(&bytes) {
+            if let Ok((family, face)) = iridium_pdf_fonts::embedding::names(&bytes) {
                 let key = font_content_key(&bytes);
                 if seen_face_content.insert((face.clone(), key)) {
                     budget = budget.saturating_sub(meta.len());
@@ -113,7 +113,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn a_linked_font_root_is_scanned_but_descendant_links_are_not() {
-        let root = std::env::temp_dir().join(format!("pdfcraft-font-links-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("iridium-pdf-font-links-{}", std::process::id()));
         let real = root.join("real");
         std::fs::create_dir_all(&real).unwrap();
         let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/fonts/Inter-Regular.ttf");
@@ -132,7 +132,7 @@ mod tests {
 
     #[test]
     fn discovery_keeps_all_valid_faces_within_its_scan_budget() {
-        let root = std::env::temp_dir().join(format!("pdfcraft-font-count-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("iridium-pdf-font-count-{}", std::process::id()));
         std::fs::create_dir_all(&root).unwrap();
         let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/fonts/Inter-Regular.ttf");
         let bytes = std::fs::read(source).unwrap();
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_discover_deduplicates_non_adjacent_same_content() {
-        let root = std::env::temp_dir().join(format!("pdfcraft-font-dedup-test-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("iridium-pdf-font-dedup-test-{}", std::process::id()));
         let dir_a = root.join("a");
         let dir_b = root.join("b");
         let dir_c = root.join("c");
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn rejected_fonts_do_not_spend_the_budget_and_the_order_is_deterministic() {
-        let root = std::env::temp_dir().join(format!("pdfcraft-font-budget-test-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("iridium-pdf-font-budget-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(&root).unwrap();
 
