@@ -653,7 +653,7 @@ mod tests {
     #[test]
     fn macos_bundle_id_matches_app_id() {
         assert!(read("packaging/macos/Info.plist.in").contains("<string>ph.pdf</string>"), "bundle id");
-        let main = read("apps/iridium_pdf/src/main.rs");
+        let main = read("apps/iridium-pdf/src/main.rs");
         assert!(main.contains(r#"const APP_ID: &str = "ph.pdf""#), "APP_ID drifted from the bundle id");
     }
 

@@ -94,7 +94,7 @@ pub fn show(app: &mut PdfApp, ui: &mut egui::Ui) {
                         ui.horizontal(|ui| {
                             widgets::app_mark(ui, 28.0);
                             ui.vertical(|ui| {
-                                ui.label(egui::RichText::new(tl!("Join the the upstream project community")).font(theme::semibold(15.0)));
+                                ui.label(egui::RichText::new(tl!("Join the Iridium community")).font(theme::semibold(15.0)));
                                 ui.label(egui::RichText::new(tl!("Get help, share feedback and follow development on Discord.")).color(t.text_muted));
                             });
                             // Closed for this run only: the card is back on the next launch.

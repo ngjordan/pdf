@@ -23,7 +23,7 @@ fn main() {
         .set_icon_with_id("../../assets/app-icon/iridium-pdf-document.ico", "2")
         .set_manifest(windows_manifest::WINDOWS_MANIFEST)
         .set("ProductName", "PDF")
-        .set("FileDescription", "PDF PDF workbench")
+        .set("FileDescription", "PDF workbench")
         .set("LegalCopyright", "Copyright (c) the PDF contributors. MIT OR Apache-2.0.")
         .set("OriginalFilename", "iridium_pdf.exe")
         .set("InternalName", "iridium_pdf");

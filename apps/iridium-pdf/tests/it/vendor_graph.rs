@@ -31,6 +31,19 @@ fn locked(name: &str) -> String {
 /// 40-character revision, including the `Cargo.lock` URL and fragment. A path source (no `source`
 /// line) is refused: it would make the graph depend on a developer's checkout. A published path
 /// patch is refused as well.
+/// The egui revision the root manifest pins, read from it so the expectation cannot drift
+/// from what the build actually uses.
+fn egui_rev() -> &'static str {
+    use std::sync::OnceLock;
+    static REV: OnceLock<&'static str> = OnceLock::new();
+    REV.get_or_init(|| {
+        let manifest = std::fs::read_to_string(root().join("Cargo.toml")).expect("root Cargo.toml");
+        let line = manifest.lines().find(|l| l.starts_with("egui-wgpu = ")).expect("the egui-wgpu dependency");
+        let rev = line.split("rev = \"").nth(1).expect("the egui-wgpu rev").split('"').next().expect("the rev");
+        Box::leak(rev.to_string().into_boxed_str())
+    })
+}
+
 fn assert_resolved(name: &str, version: &str, url: &str, rev: &str) {
     let package = locked(name);
     let expected_version = format!("version = \"{version}\"");
@@ -48,8 +61,8 @@ fn assert_resolved(name: &str, version: &str, url: &str, rev: &str) {
 /// files remain.
 #[test]
 fn vendor_provenance_window_stack_graph_is_resolved() {
-    assert_resolved("winit", "0.30.13", "https://github.com/ngjordan/winit.git.git", "a517b3846ee8457d84ee4975110bfda6797c44dc");
-    assert_resolved("egui-wgpu", "0.37.0", "https://github.com/ngjordan/egui.git.git", "6d518fc799681571963842f95b55a6b68431b15a");
+    assert_resolved("winit", "0.30.13", "https://github.com/ngjordan/winit.git", "a517b3846ee8457d84ee4975110bfda6797c44dc");
+    assert_resolved("egui-wgpu", "0.37.0", "https://github.com/ngjordan/egui.git", egui_rev());
     // Retained provenance: the audited copies and their recorded W1–W13 / E2+E3 rows.
     let readme = std::fs::read_to_string(root().join("vendor/README.md")).expect("vendor/README.md");
     for marker in ["W1–W13", "surface_fit", "catch_errors", "e9809ef54b18499bb4f2cac945719ecc2a61061b"] {

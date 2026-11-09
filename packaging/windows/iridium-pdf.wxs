@@ -4,7 +4,7 @@
   <?define HasCraftFontLicences=0 ?>
   <?endif?>
   <Package Name="PDF" Manufacturer="Iridium Technologies, Inc." Version="$(var.Version)" UpgradeCode="EA00C367-7270-4C50-9D8B-A7A5C88AD27F" Scope="perUserOrMachine" Compressed="yes" Language="1033">
-    <SummaryInformation Description="PDF PDF workbench" Manufacturer="Iridium Technologies, Inc." />
+    <SummaryInformation Description="PDF workbench" Manufacturer="Iridium Technologies, Inc." />
     <?include $(sys.SOURCEFILEDIR)install-policy.wxi?>
     <!-- HKLM registrations must never point into a per-user installation (#305). Allow removal
          of an existing installation even if an older MSI let it install per-user. -->
@@ -138,12 +138,12 @@
            the ProductCode, which every release changes, so a taskbar pin made from a shortcut that
            named it shows a blank icon once an update removes the old release. -->
       <Component Id="PdfcraftStartMenuShortcut" Directory="ProgramMenuFolder" Guid="DC028192-C233-4F99-9A77-ED458C60DF26">
-        <Shortcut Id="StartMenuShortcut" Name="PDF" Description="PDF PDF workbench" Target="[#PdfcraftExe]" WorkingDirectory="INSTALLFOLDER" />
+        <Shortcut Id="StartMenuShortcut" Name="PDF" Description="PDF workbench" Target="[#PdfcraftExe]" WorkingDirectory="INSTALLFOLDER" />
         <RegistryValue Root="HKMU" Key="Software\PDF\Shortcuts" Name="StartMenu" Type="integer" Value="1" KeyPath="yes" />
       </Component>
 
       <Component Id="PdfcraftDesktopShortcut" Directory="DesktopFolder" Guid="F6948627-32AB-4D78-8865-0FDF417CE442" Condition="INSTALLDESKTOPSHORTCUT = 1">
-        <Shortcut Id="DesktopShortcut" Name="PDF" Description="PDF PDF workbench" Target="[#PdfcraftExe]" WorkingDirectory="INSTALLFOLDER" />
+        <Shortcut Id="DesktopShortcut" Name="PDF" Description="PDF workbench" Target="[#PdfcraftExe]" WorkingDirectory="INSTALLFOLDER" />
         <RegistryValue Root="HKMU" Key="Software\PDF\Shortcuts" Name="Desktop" Type="integer" Value="1" KeyPath="yes" />
       </Component>
 

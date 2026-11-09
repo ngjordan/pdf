@@ -82,7 +82,7 @@ From a source build, `trunk build --release` doesn't fetch the models. Add them 
 ```html
 <iframe
   src="https://example.com/iridium-pdf/"
-  title="PDF PDF workbench"
+  title="PDF workbench"
   style="width: 100%; height: 720px; border: 0;"
   allow="fullscreen; clipboard-read; clipboard-write"
   allowfullscreen>

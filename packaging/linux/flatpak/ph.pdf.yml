@@ -104,7 +104,7 @@ modules:
         CARGO_HOME: /run/build/iridium-pdf/cargo
         CARGO_NET_OFFLINE: 'true'
         # The interface translations (the craft-i18n source below), embedded by build.rs.
-        CRAFT_I18N_DIR: /run/build/iridium-pdf/craft-i18n
+        CRAFT_I18N_DIR: /run/build/iridium_pdf/craft-i18n
         CRAFT_I18N_REQUIRED: '1'
     build-commands:
       - cargo --offline build --release --locked -p iridium-pdf
@@ -130,6 +130,6 @@ modules:
       # The interface translations at the commit in craft-i18n.rev (a test keeps the two equal).
       - type: git
         url: https://github.com/ngjordan/craft-i18n
-        commit: 575cfdef63227b14daf173b8cc87928bfdfa325e
+        commit: 76f8e6dc2438bb0e17270f4637922e84a74046b2
         dest: craft-i18n
       - cargo-sources.json

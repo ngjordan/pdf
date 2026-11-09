@@ -1,4 +1,4 @@
-PDF PDF document icon (iridium-pdf-document.svg and iridium-pdf-document.ico).
+PDF document icon (iridium-pdf-document.svg and iridium-pdf-document.ico).
 SPDX-License-Identifier: ISC AND (MIT OR Apache-2.0)
 
 The document outline and fold are adapted from Lucide file-text (lucide-static 1.49.0):

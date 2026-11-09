@@ -290,7 +290,7 @@ mod tests {
             c("iridium-pdf-render", &[("hayro", Normal, false), ("lopdf", Normal, false)]),
             c("iridium-pdf-engine", &[("iridium-pdf-render", Normal, true)]),
             c("iridium-pdf-ui-egui", &[("iridium-pdf-engine", Normal, true), ("egui", Normal, false), ("egui_kittest", Dev, false)]),
-            c("iridium_pdf", &[("iridium-pdf-ui-egui", Normal, true)]),
+            c("iridium-pdf", &[("iridium-pdf-ui-egui", Normal, true)]),
         ];
         assert!(check(&g).is_empty(), "{:?}", check(&g));
     }

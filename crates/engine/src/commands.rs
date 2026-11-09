@@ -409,7 +409,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("prepress.hairlines", "Fix hairlines…", None, None, Modification, "minus"),
     c("page.properties", "Page properties…", PAGES, None, Modification, "info"),
     c("help.shortcuts", "Keyboard shortcuts", HELP, None, Nothing, "circle-help"),
-    c("help.discord", "Join the the upstream project Discord", HELP, None, Nothing, "messages-square"),
+    c("help.discord", "Join the Iridium Discord", HELP, None, Nothing, "messages-square"),
     c("help.app_page", "PDF web page", HELP, None, Nothing, "globe"),
     c("help.github", "PDF on GitHub", HELP, None, Nothing, "code-xml"),
     c("help.website", "the upstream project website", HELP, None, Nothing, "external-link"),

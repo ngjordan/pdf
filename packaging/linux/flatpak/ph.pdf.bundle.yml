@@ -107,7 +107,7 @@ modules:
     # keeps both equal to the pin).
     build-options:
       env:
-        CRAFT_I18N_DIR: /run/build/iridium-pdf/craft-i18n
+        CRAFT_I18N_DIR: /run/build/iridium_pdf/craft-i18n
     build-commands:
       - install -Dm755 bin/iridium-pdf /app/bin/iridium-pdf
       - install -Dm755 bin/iridium-pdf-cli /app/bin/iridium-pdf-cli
@@ -124,5 +124,5 @@ modules:
         path: stage
       - type: git
         url: https://github.com/ngjordan/craft-i18n
-        commit: 575cfdef63227b14daf173b8cc87928bfdfa325e
+        commit: 76f8e6dc2438bb0e17270f4637922e84a74046b2
         dest: craft-i18n

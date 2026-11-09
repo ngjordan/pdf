@@ -10,7 +10,7 @@ use craft_update::{CheckResultDialog, CheckResultResponse};
 use crate::PdfApp;
 
 /// Where every PDF release is listed.
-pub const RELEASES_PAGE: &str = "https://github.com/ngjordan/iridium-pdf/releases";
+pub const RELEASES_PAGE: &str = "https://github.com/ngjordan/pdf/releases";
 
 /// Stands in for the network in tests.
 #[cfg(not(target_arch = "wasm32"))]
