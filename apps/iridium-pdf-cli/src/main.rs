@@ -94,7 +94,7 @@ iridium-pdf-cli run    --script steps.json [--root DIR] [--report]
     "\
 iridium-pdf-cli ui     --control FILE <method> [key=value …] [--out shot.png]
                                                            drive a running app started with --control FILE
-help and feedback: https://discord.gg/artcraft"
+help and feedback: https://iridium.ph"
 );
 
 fn main() -> ExitCode {
