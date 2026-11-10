@@ -169,3 +169,10 @@ eframe = { git = "https://github.com/ngjordan/egui.git", rev = "faf1ced22250c509
 egui_demo_lib = { git = "https://github.com/ngjordan/egui.git", rev = "faf1ced22250c509636bff2578731a0be86a69ac" }
 egui_inspection = { git = "https://github.com/ngjordan/egui.git", rev = "faf1ced22250c509636bff2578731a0be86a69ac" }
 winit = { git = "https://github.com/ngjordan/winit.git", rev = "a517b3846ee8457d84ee4975110bfda6797c44dc" }
+
+# craft-print pins the Windows spooler crates to immutable upstream revisions. Redirect them to
+# the ngjordan mirror (the same commits, same revs) so the dependency graph names only sources
+# the allowlist in deny.toml accepts.
+[patch."https://github.com/storytold/winprint.rs"]
+winprint = { git = "https://github.com/ngjordan/winprint.rs", rev = "51934db382f225454cf152a8657eb03789be63c4" }
+craft-winprint-gdi = { git = "https://github.com/ngjordan/winprint.rs", rev = "64e7afd4d1483512385012c340ecaaaf0f3beb7f" }
