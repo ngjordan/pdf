@@ -53,12 +53,81 @@ pub struct Launch {
 /// The PDF app, ready to be drawn into any region.
 pub struct Shell {
     app: PdfApp,
+    /// Only the macOS menu re-install reads it.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    ctx: egui::Context,
+    fonts: egui::FontDefinitions,
+    style: egui::Style,
+    zoom: f32,
+}
+
+/// What only a real `CreationContext` can tell: the Wayland check and the wgpu adapter.
+/// The host path has neither.
+struct Window<'a> {
+    wayland: bool,
+    wgpu: Option<&'a eframe::egui_wgpu::RenderState>,
 }
 
 impl Shell {
     /// Build the shell. `cc` is eframe's creation context; `launch` carries the files/flags the
-    /// app was started with.
+    /// app was started with. This is the standalone app's path: it keeps what needs the real
+    /// window (the Windows taskbar icon, the Wayland check, the wgpu adapter report) and builds
+    /// the rest like [`Shell::new_for_host`].
     pub fn new(cc: &eframe::CreationContext<'_>, launch: Launch) -> Self {
+        #[cfg(target_os = "windows")]
+        if let Some(window) = cc.winit_window() {
+            set_taskbar_icon(window);
+        }
+        let window = Window { wayland: native_wayland(cc), wgpu: cc.wgpu_render_state.as_ref() };
+        Self::new_with(&cc.egui_ctx, cc.storage, launch, window)
+    }
+
+    /// Host-facing constructor: no `CreationContext`, so a host can build this module later than
+    /// app start-up. `ctx` is the host's shared egui context; `storage` its persistent store
+    /// (`None` when it has none). Without a window there is no taskbar icon, no Wayland flag
+    /// (`os_events` gets `false`) and no wgpu adapter report.
+    ///
+    /// The app installs its fonts, style and zoom on its first frame (`logic`), so what
+    /// [`Shell::fonts`], [`Shell::style`] and [`Shell::zoom`] return is what egui held at
+    /// construction, except the fonts, which are the set the app will install.
+    pub fn new_for_host(ctx: &egui::Context, storage: Option<&dyn eframe::Storage>, launch: Launch) -> Self {
+        Self::new_with(ctx, storage, launch, Window { wayland: false, wgpu: None })
+    }
+
+    /// The font set this module installs, captured at construction.
+    pub fn fonts(&self) -> egui::FontDefinitions {
+        self.fonts.clone()
+    }
+
+    /// The style this module left in the context, captured at construction. The app installs its
+    /// own on the first frame, so before that this is egui's.
+    pub fn style(&self) -> egui::Style {
+        self.style.clone()
+    }
+
+    /// The zoom factor in the context at construction (the app sets its own from its first frame).
+    pub fn zoom(&self) -> f32 {
+        self.zoom
+    }
+
+    /// (macOS) Re-install this module's native menu bar. No-op elsewhere. Takes `&mut self`
+    /// because the app keeps the built menu inside itself.
+    pub fn install_native_menu(&mut self) {
+        #[cfg(target_os = "macos")]
+        if !self.app.install_native_menu(&self.ctx) {
+            log::warn!("couldn't install the macOS menu bar; the menus stay in the window");
+        }
+    }
+
+    fn new_with(ctx: &egui::Context, storage: Option<&dyn eframe::Storage>, launch: Launch, window: Window<'_>) -> Self {
+        let app = Self::build(ctx, storage, launch, window);
+        // The app's fonts are built, not read back: `ctx.fonts()` panics before egui's first pass.
+        let lang = iridium_pdf_ui_egui::i18n::Lang::from_pref(&app.language);
+        let fonts = iridium_pdf_ui_egui::theme::installed_font_definitions(iridium_pdf_ui_egui::theme::CjkPreference::for_language(lang.code()));
+        Self { app, ctx: ctx.clone(), fonts, style: ctx.global_style().as_ref().clone(), zoom: ctx.zoom_factor() }
+    }
+
+    fn build(ctx: &egui::Context, storage: Option<&dyn eframe::Storage>, launch: Launch, window: Window<'_>) -> PdfApp {
         let Launch { files, options, control_file, create_images, combine, integrated, window_controls, two_paged, os_events, startup_error } =
             launch;
         let mut app = PdfApp::new();
@@ -68,10 +137,10 @@ impl Shell {
         app.enable_desktop_theme();
         // The system's reopen-windows choice (macOS) starts the preference; a saved choice replaces it.
         app.reopen_last_session = reopen::system_default();
-        if let Some(json) = cc.storage.and_then(|s| s.get_string("iridium_pdf").or_else(|| s.get_string(LEGACY_STORAGE_KEY))) {
+        if let Some(json) = storage.and_then(|s| s.get_string("iridium_pdf").or_else(|| s.get_string(LEGACY_STORAGE_KEY))) {
             app.restore(&json);
         }
-        app.window_state = iridium_pdf_ui_egui::window_state::WindowState::started_with(cc.storage);
+        app.window_state = iridium_pdf_ui_egui::window_state::WindowState::started_with(storage);
         app.integrated_titlebar = integrated;
         app.window_controls = window_controls;
         app.system_text_scale = text_scale::system();
@@ -79,9 +148,6 @@ impl Shell {
         // it is set to On or Off.
         #[cfg(target_os = "windows")]
         {
-            if let Some(window) = cc.winit_window() {
-                set_taskbar_icon(window);
-            }
             app.motion.source = Some(motion::source());
         }
         app.set_startup_update_check(true);
@@ -92,19 +158,19 @@ impl Shell {
             // The native menu bar. Its Quit (⌘Q) closes the window rather than ending the process as
             // winit's does (#1136), so `guard_quit` asks about unsaved changes, as for the close
             // button.
-            if !app.install_native_menu(&cc.egui_ctx) {
+            if !app.install_native_menu(ctx) {
                 log::warn!("couldn't install the macOS menu bar; the menus stay in the window");
             }
         }
         if let Some(connect) = &os_events {
-            app.os_events = Some(connect(&cc.egui_ctx, native_wayland(cc)));
+            app.os_events = Some(connect(ctx, window.wayland));
         }
         if let Some(file) = &control_file {
-            let client = app.attach_control(&cc.egui_ctx);
+            let client = app.attach_control(ctx);
             if let Err(message) = open_control_channel(file, iridium_pdf_ui_egui::control::serve(client)) {
                 // Before any document opens, so nothing is lost; the host stops the app.
                 *startup_error.borrow_mut() = Some(message);
-                return Self { app };
+                return app;
             }
         }
         // Autosave unsaved changes; offer to recover documents a crashed session left behind.
@@ -113,7 +179,7 @@ impl Shell {
         }
         // The OCR Verify screen stores its per-language dictionary beside recovery data.
         app.ocr_verify.dictionary_dir = iridium_pdf_ui_egui::default_dictionary_dir();
-        if let Some(state) = &cc.wgpu_render_state {
+        if let Some(state) = window.wgpu {
             let adapter = state.adapter.get_info();
             let max_texture_dimension_2d = state.device.limits().max_texture_dimension_2d;
             log::info!(
@@ -153,7 +219,7 @@ impl Shell {
                 log::warn!("--{k} {v}: {e}");
             }
         }
-        Self { app }
+        app
     }
 
     /// Per-frame logic, called before `ui`.
