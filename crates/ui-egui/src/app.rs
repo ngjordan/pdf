@@ -503,6 +503,36 @@ impl PdfApp {
         }
     }
 
+    /// Install this app's own look into `ctx`: fonts (and image loaders) once, the theme's visuals,
+    /// and the interface zoom. `run_logic` calls it every frame (later calls reinstall only what
+    /// changed: the CJK font set, the resolved theme, the zoom factor); a host calls it once at
+    /// construction so what it captures is this app's look, not egui's defaults. Returns the zoom
+    /// factor applied: egui's `zoom_factor()` only shows a new one after the next pass.
+    pub fn install_look(&mut self, ctx: &egui::Context) -> f32 {
+        let lang = i18n::Lang::from_pref(&self.language);
+        // Chinese wants its own faces before the Japanese ones (one baseline per line).
+        let cjk = theme::CjkPreference::for_language(lang.code());
+        if !self.styled {
+            egui_extras::install_image_loaders(ctx);
+            theme::install_fonts_for(ctx, cjk);
+            self.fonts_cjk = cjk;
+            theme::apply(ctx, self.theme);
+            self.styled = true;
+        } else {
+            self.fonts_ready = true;
+            if cjk != self.fonts_cjk {
+                // Same family names as before, so named fonts stay valid while the new set loads.
+                theme::install_fonts_for(ctx, cjk);
+                self.fonts_cjk = cjk;
+            }
+        }
+        self.sync_theme(ctx);
+        let native = ctx.native_pixels_per_point().unwrap_or(1.0);
+        let zoom = ui_scale::zoom(self.ui_scale, self.system_text_scale, native);
+        ui_scale::sync(ctx, zoom, &mut self.ui_scale_applied);
+        zoom
+    }
+
     /// [`eframe::App::ui`] without the frame, for a host that embeds the app.
     pub fn run_ui(&mut self, ui: &mut egui::Ui) {
         self.begin_ui();
@@ -534,25 +564,7 @@ impl PdfApp {
             self.poll_pending_opens();
         }
         self.check_restored_recent();
-        // Chinese wants its own faces before the Japanese ones (one baseline per line).
-        let cjk = theme::CjkPreference::for_language(lang.code());
-        if !self.styled {
-            egui_extras::install_image_loaders(ctx);
-            theme::install_fonts_for(ctx, cjk);
-            self.fonts_cjk = cjk;
-            theme::apply(ctx, self.theme);
-            self.styled = true;
-        } else {
-            self.fonts_ready = true;
-            if cjk != self.fonts_cjk {
-                // Same family names as before, so named fonts stay valid while the new set loads.
-                theme::install_fonts_for(ctx, cjk);
-                self.fonts_cjk = cjk;
-            }
-        }
-        self.sync_theme(ctx);
-        let native = ctx.native_pixels_per_point().unwrap_or(1.0);
-        ui_scale::sync(ctx, ui_scale::zoom(self.ui_scale, self.system_text_scale, native), &mut self.ui_scale_applied);
+        let _ = self.install_look(ctx);
         // Remember user work even if its tab is subsequently closed or Home is selected.
         self.startup_superseded |= !self.views.is_empty() || self.combine_showing() || self.dialog.is_some() || self.password_prompt.is_some();
         // Also done in `raw_input_hook`, before input; here for hosts that don't call the hook.

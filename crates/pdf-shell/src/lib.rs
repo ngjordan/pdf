@@ -87,9 +87,8 @@ impl Shell {
     /// (`None` when it has none). Without a window there is no taskbar icon, no Wayland flag
     /// (`os_events` gets `false`) and no wgpu adapter report.
     ///
-    /// The app installs its fonts, style and zoom on its first frame (`logic`), so what
-    /// [`Shell::fonts`], [`Shell::style`] and [`Shell::zoom`] return is what egui held at
-    /// construction, except the fonts, which are the set the app will install.
+    /// The app's look (fonts, style, zoom) is installed into `ctx` here, by [`PdfApp::install_look`],
+    /// so [`Shell::fonts`], [`Shell::style`] and [`Shell::zoom`] return the app's own.
     pub fn new_for_host(ctx: &egui::Context, storage: Option<&dyn eframe::Storage>, launch: Launch) -> Self {
         Self::new_with(ctx, storage, launch, Window { wayland: false, wgpu: None })
     }
@@ -99,13 +98,13 @@ impl Shell {
         self.fonts.clone()
     }
 
-    /// The style this module left in the context, captured at construction. The app installs its
-    /// own on the first frame, so before that this is egui's.
+    /// The style this module installed in the context, captured at construction.
     pub fn style(&self) -> egui::Style {
         self.style.clone()
     }
 
-    /// The zoom factor in the context at construction (the app sets its own from its first frame).
+    /// The zoom factor this module installed, captured at construction (egui's own `zoom_factor()`
+    /// shows it only after the next pass).
     pub fn zoom(&self) -> f32 {
         self.zoom
     }
@@ -120,11 +119,13 @@ impl Shell {
     }
 
     fn new_with(ctx: &egui::Context, storage: Option<&dyn eframe::Storage>, launch: Launch, window: Window<'_>) -> Self {
-        let app = Self::build(ctx, storage, launch, window);
+        let mut app = Self::build(ctx, storage, launch, window);
+        // Install the app's own look first, so the style and zoom captured below are its own.
+        let zoom = app.install_look(ctx);
         // The app's fonts are built, not read back: `ctx.fonts()` panics before egui's first pass.
         let lang = iridium_pdf_ui_egui::i18n::Lang::from_pref(&app.language);
         let fonts = iridium_pdf_ui_egui::theme::installed_font_definitions(iridium_pdf_ui_egui::theme::CjkPreference::for_language(lang.code()));
-        Self { app, ctx: ctx.clone(), fonts, style: ctx.global_style().as_ref().clone(), zoom: ctx.zoom_factor() }
+        Self { app, ctx: ctx.clone(), fonts, style: ctx.global_style().as_ref().clone(), zoom }
     }
 
     fn build(ctx: &egui::Context, storage: Option<&dyn eframe::Storage>, launch: Launch, window: Window<'_>) -> PdfApp {
@@ -344,6 +345,19 @@ fn set_taskbar_icon(window: &winit::window::Window) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_captured_look_is_the_apps_own_not_eguis_default() {
+        let ctx = egui::Context::default();
+        let default_style = ctx.global_style().as_ref().clone();
+        let shell = Shell::new_for_host(&ctx, None, Launch::default());
+        assert_ne!(shell.style().visuals.panel_fill, default_style.visuals.panel_fill, "PDF's visuals, not egui's");
+        assert_eq!(shell.style().visuals.panel_fill, ctx.global_style().visuals.panel_fill);
+        // What the app asked egui for is what egui holds once a pass has run.
+        let mut out = ctx.run_ui(Default::default(), |_| {});
+        out.textures_delta.clear();
+        assert_eq!(shell.zoom(), ctx.zoom_factor());
+    }
 
     #[test]
     fn a_software_renderer_is_shown_to_the_user() {
