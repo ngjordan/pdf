@@ -12,6 +12,8 @@ workspace = true
 # Help ▸ Check for updates (issue #28): one HTTPS request to GitHub, over rustls with the OS's
 # trusted roots. No bundled root list (webpki-roots and webpki-root-certs are CDLA-licensed).
 iridium-pdf-ui-egui = { workspace = true }
+# The app's shell as a library; this crate keeps only what is process-wide.
+iridium-pdf-shell = { workspace = true }
 # `build_info`: the version and compile-time build label for `--version` and the log.
 iridium-pdf-engine = { workspace = true }
 # `owner_only`: the --control file is restricted to its user on Windows (#3922).
@@ -56,18 +58,10 @@ winit = { version = "0.30", default-features = false, features = ["wayland"] }
 # shows it (issue #378). Safe wrappers over Win32; only the `user` feature (which brings `kernel` with it),
 # and `advapi` for the session id that names the single-instance socket (#3338).
 winsafe = { version = "0.0.29", default-features = false, features = ["user", "advapi"] }
-# Settings ▸ Accessibility ▸ Visual effects ▸ Animation effects (src/motion.rs), through WinRT's
-# `UISettings`, whose bindings are safe to call (winsafe's `SystemParametersInfo` is an unsafe
-# fn). Already in the tree through wgpu's DX12 backend; this adds one small namespace to it.
-windows = { version = "0.62", default-features = false, features = ["std", "UI_ViewManagement"] }
 # Single instance (#282): later launches hand their files to the running app over a Unix domain
 # socket. `std` has no Unix sockets on Windows, and calling Winsock directly needs unsafe, which
 # our workspace forbids. Already in the lockfile through zbus; pinned exactly, review before bumping.
 uds_windows = "=1.2.1"
-# Full-resolution taskbar and Alt+Tab icon (`ICON_BIG`, issue #3818). Set both window icons
-# directly so eframe cannot replace ICON_BIG with a system-sized copy. Already in the tree
-# through eframe and covered by the workspace's winit patch.
-winit = { version = "0.30", default-features = false }
 
 [build-dependencies]
 # Icon + VERSIONINFO for iridium-pdf.exe; build.rs only uses it when targeting Windows.

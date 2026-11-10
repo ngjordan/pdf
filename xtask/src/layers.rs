@@ -88,6 +88,8 @@ pub const TABLE: &[(&str, Class)] = &[
     ("oracle", Class::Testkit),
     // L8 apps + tooling
     ("iridium-pdf", Class::Exempt),
+    // The desktop shell as a library: exempt like the app (desktop-only, so no wasm check).
+    ("shell", Class::Exempt),
     ("cli", Class::Exempt),
     ("web", Class::Exempt),
     ("ocr-worker", Class::Exempt),

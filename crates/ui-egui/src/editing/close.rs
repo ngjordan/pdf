@@ -227,7 +227,7 @@ impl PdfApp {
     /// Whether leaving would lose work: a document with unsaved changes, or an OCR review not yet
     /// accepted or rejected. The browser's reload warning and the embedding page (`host_dirty`)
     /// both hear this.
-    pub(crate) fn work_at_risk(&self) -> bool {
+    pub fn work_at_risk(&self) -> bool {
         self.first_dirty().is_some() || self.ocr_review_index().is_some()
     }
 

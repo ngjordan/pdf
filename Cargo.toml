@@ -62,6 +62,7 @@ iridium-pdf-render = { path = "crates/render", version = "0.18.1" }
 iridium-pdf-engine = { path = "crates/engine", version = "0.18.1" }
 iridium-pdf-platform = { path = "crates/platform", version = "0.18.1" }
 iridium-pdf-ui-egui = { path = "crates/ui-egui", version = "0.18.1" }
+iridium-pdf-shell = { path = "crates/pdf-shell", version = "0.18.1" }
 iridium-pdf-automation = { path = "crates/automation", version = "0.18.1", default-features = false }
 iridium-pdf-prc = { path = "crates/prc", version = "0.18.1" }
 iridium-pdf-prc-render = { path = "crates/prc-render", version = "0.18.1" }

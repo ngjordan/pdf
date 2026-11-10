@@ -3243,6 +3243,7 @@ dependencies = [
  "fmv-macos-events",
  "iridium-pdf-engine",
  "iridium-pdf-platform",
+ "iridium-pdf-shell",
  "iridium-pdf-ui-egui",
  "log",
  "pollster 1.0.1",
@@ -3251,7 +3252,6 @@ dependencies = [
  "uds_windows",
  "wayland-client",
  "wayland-protocols",
- "windows",
  "winit",
  "winresource",
  "winsafe",
@@ -3682,6 +3682,21 @@ dependencies = [
  "thiserror 2.0.21",
  "unicode-bidi",
  "url",
+]
+
+[[package]]
+name = "iridium-pdf-shell"
+version = "0.18.1"
+dependencies = [
+ "eframe",
+ "egui",
+ "iridium-pdf-platform",
+ "iridium-pdf-ui-egui",
+ "log",
+ "raw-window-handle",
+ "serde_json",
+ "windows",
+ "winit",
 ]
 
 [[package]]

@@ -32,16 +32,13 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use iridium_pdf_ui_egui::PdfApp;
+use iridium_pdf_shell::{Launch, Shell};
 
 #[cfg(target_os = "macos")]
 mod apple_events;
 mod compositor_gpu;
 mod decorations;
 mod logging;
-#[cfg(target_os = "windows")]
-mod motion;
-mod reopen;
 mod settings;
 mod single_instance;
 mod startup;
@@ -87,9 +84,6 @@ fn print_and_exit(text: &str) -> eframe::Result {
     let _ = writeln!(std::io::stdout().lock(), "{text}");
     Ok(())
 }
-
-/// The app had a former upstream name; settings saved then are under this key.
-const LEGACY_STORAGE_KEY: &str = "printcraft";
 
 /// The preferences folder (`app.ron`, docs/development.md). In portable mode
 /// it is the former upstream data folder beside the executable (#157). XDG desktops use the configuration base;
@@ -258,30 +252,39 @@ fn main() -> eframe::Result {
     // Absolute for this instance too: links relative to a document resolve against its folder,
     // never the working directory.
     let files = single_instance::absolute(&files);
-    let instance = match single_instance::claim(&files, may_hand_off, combine) {
+    let instance: Option<single_instance::Server> = match single_instance::claim(&files, may_hand_off, combine) {
         single_instance::Claim::HandedOff => return Ok(()),
         single_instance::Claim::Primary(server) => Some(server),
         single_instance::Claim::Alone => None,
     };
     let choice = renderer_choice(std::env::var("IRIDIUM_PDF_RENDERER").ok().as_deref());
-    let launch = Launch { files, options, control_file, create_images, combine, integrated, window_controls, two_paged };
+    let launch = Launch {
+        files,
+        options,
+        control_file,
+        create_images,
+        combine,
+        integrated,
+        window_controls,
+        two_paged,
+        os_events: os_events_source(
+            instance,
+            #[cfg(target_os = "macos")]
+            &apple_events,
+        ),
+        ..Launch::default()
+    };
     // Finder, Open With and the Dock deliver files as Apple events, not arguments; catch the one
     // that launched us as well as later ones. Lives until the event loop returns.
     #[cfg(target_os = "macos")]
-    let apple_events = apple_events::AppleEvents::install();
+    let apple_events = std::rc::Rc::new(apple_events::AppleEvents::install());
     // Set once the app is created, which is after the renderer has started.
     let started = Rc::new(Cell::new(false));
     let first = if choice == RendererChoice::Gl { eframe::Renderer::Glow } else { eframe::Renderer::Wgpu };
     let result = eframe::run_native(
         "PDF",
         native_options(launch.integrated, launch.window_controls.is_some(), first),
-        app_creator(
-            launch.clone(),
-            Rc::clone(&started),
-            instance.as_ref(),
-            #[cfg(target_os = "macos")]
-            &apple_events,
-        ),
+        app_creator(launch.clone(), Rc::clone(&started)),
     );
     match result {
         // Only a renderer that couldn't start: without a window or display at all, OpenGL can't
@@ -293,17 +296,43 @@ fn main() -> eframe::Result {
             eframe::run_native(
                 "PDF",
                 native_options(launch.integrated, launch.window_controls.is_some(), eframe::Renderer::Glow),
-                app_creator(
-                    launch,
-                    started,
-                    instance.as_ref(),
-                    #[cfg(target_os = "macos")]
-                    &apple_events,
-                ),
+                app_creator(launch, started),
             )
         }
         other => other,
     }
+}
+
+/// Build the [`eframe::AppCreator`] closure that starts the [`Shell`] once the window and renderer are ready.
+fn app_creator(launch: Launch, started: Rc<Cell<bool>>) -> eframe::AppCreator<'static> {
+    Box::new(move |cc| {
+        started.set(true);
+        let failure = Rc::clone(&launch.startup_error);
+        let shell = Shell::new(cc, launch);
+        // `--control` couldn't be published: the app doesn't start.
+        if let Some(message) = failure.borrow_mut().take() {
+            return Err(message.into());
+        }
+        Ok(Box::new(shell))
+    })
+}
+
+/// Where the shell gets files handed over while it runs: the first PDF's socket (a later launch's
+/// files), or on macOS the Apple events (Finder, Open With, the Dock).
+fn os_events_source(
+    instance: Option<single_instance::Server>,
+    #[cfg(target_os = "macos")] apple_events: &Rc<apple_events::AppleEvents>,
+) -> Option<iridium_pdf_shell::OsEventsConnect> {
+    if let Some(server) = instance {
+        return Some(Rc::new(move |ctx, wayland| server.connect(ctx, wayland)));
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let apple_events = Rc::clone(apple_events);
+        return Some(Rc::new(move |ctx, _| apple_events.connect(ctx)));
+    }
+    #[cfg(not(target_os = "macos"))]
+    None
 }
 
 /// Which renderer to start with, from `IRIDIUM_PDF_RENDERER`.
@@ -370,312 +399,6 @@ fn native_options(integrated: bool, app_frame: bool, renderer: eframe::Renderer)
         configure_gpu(&mut native);
     }
     native
-}
-
-/// What the command line asked for, kept so a second run (with OpenGL) can start the same way.
-#[derive(Clone)]
-struct Launch {
-    files: Vec<String>,
-    options: Vec<(String, String)>,
-    control_file: Option<String>,
-    create_images: bool,
-    /// `--combine`: the files go to the Combine files tab.
-    combine: bool,
-    integrated: bool,
-    /// The window buttons the app draws, when the desktop leaves the frame to it.
-    window_controls: Option<iridium_pdf_ui_egui::window_controls::Layout>,
-    two_paged: bool,
-}
-
-/// Whether the window is a native Wayland one (not X11 or XWayland).
-#[cfg(all(unix, not(target_os = "macos")))]
-fn native_wayland(cc: &eframe::CreationContext<'_>) -> bool {
-    use raw_window_handle::{HasDisplayHandle, RawDisplayHandle};
-    cc.display_handle().is_ok_and(|handle| matches!(handle.as_raw(), RawDisplayHandle::Wayland(_)))
-}
-
-#[cfg(not(all(unix, not(target_os = "macos"))))]
-fn native_wayland(_: &eframe::CreationContext<'_>) -> bool {
-    false
-}
-
-/// Decode `png` as a [`winit::window::Icon`] for the Windows taskbar and Alt+Tab (`ICON_BIG`).
-#[cfg(target_os = "windows")]
-fn taskbar_icon(png: &[u8]) -> Option<winit::window::Icon> {
-    let icon = match eframe::icon_data::from_png_bytes(png) {
-        Ok(icon) => icon,
-        Err(e) => {
-            log::warn!("taskbar icon: {e}");
-            return None;
-        }
-    };
-    match winit::window::Icon::from_rgba(icon.rgba, icon.width, icon.height) {
-        Ok(icon) => Some(icon),
-        Err(e) => {
-            log::warn!("taskbar icon: {e}");
-            None
-        }
-    }
-}
-
-/// Install the decoded [`winit::window::Icon`] from `png` via `set` when decoding succeeds.
-#[cfg(target_os = "windows")]
-fn install_taskbar_icon(png: &[u8], set: impl FnOnce(winit::window::Icon)) {
-    if let Some(icon) = taskbar_icon(png) {
-        set(icon);
-    }
-}
-
-/// Install both window icons before the first frame. eframe's icon setter is disabled in
-/// `native_options`, so it cannot replace the full-resolution taskbar/Alt+Tab icon (#3818).
-#[cfg(target_os = "windows")]
-fn set_taskbar_icon(window: &winit::window::Window) {
-    use winit::platform::windows::{IconExtWindows as _, WindowExtWindows as _};
-    install_taskbar_icon(APP_ICON_PNG, |icon| window.set_taskbar_icon(Some(icon)));
-    // The title bar's icon: the small image drawn for this scale in the exe's own icon (build.rs).
-    let side = (16.0 * window.scale_factor()).round().clamp(16.0, 256.0) as u32;
-    match winit::window::Icon::from_resource(1, Some(winit::dpi::PhysicalSize::new(side, side))) {
-        Ok(icon) => window.set_window_icon(Some(icon)),
-        Err(e) => log::warn!("window icon: {e}"),
-    }
-}
-
-/// Build the [`eframe::AppCreator`] closure that initializes [`PdfApp`] once the window and renderer are ready.
-fn app_creator<'a>(
-    launch: Launch,
-    started: Rc<Cell<bool>>,
-    instance: Option<&'a single_instance::Server>,
-    #[cfg(target_os = "macos")] apple_events: &'a apple_events::AppleEvents,
-) -> eframe::AppCreator<'a> {
-    let Launch { files, options, control_file, create_images, combine, integrated, window_controls, two_paged } = launch;
-    Box::new(move |cc| {
-        started.set(true);
-        let mut app = PdfApp::new();
-        // First start (or settings from before Units existed): the region's unit.
-        app.units = iridium_pdf_ui_egui::units::Unit::system();
-        #[cfg(target_os = "linux")]
-        app.enable_desktop_theme();
-        // The system's reopen-windows choice (macOS) starts the preference; a saved choice replaces it.
-        app.reopen_last_session = reopen::system_default();
-        if let Some(json) = cc.storage.and_then(|s| s.get_string("iridium_pdf").or_else(|| s.get_string(LEGACY_STORAGE_KEY))) {
-            app.restore(&json);
-        }
-        app.window_state = iridium_pdf_ui_egui::window_state::WindowState::started_with(cc.storage);
-        app.integrated_titlebar = integrated;
-        app.window_controls = window_controls;
-        app.system_text_scale = text_scale::system();
-        // Windows' Animation effects setting, which Preferences ▸ Animation effects follows unless
-        // it is set to On or Off.
-        #[cfg(target_os = "windows")]
-        {
-            if let Some(window) = cc.winit_window() {
-                set_taskbar_icon(window);
-            }
-            app.motion.source = Some(motion::source());
-        }
-        app.set_startup_update_check(true);
-        app.printer_source = Some(iridium_pdf_ui_egui::system_printers());
-        app.os_key_store_ids = cfg!(any(target_os = "macos", target_os = "windows"));
-        #[cfg(target_os = "macos")]
-        {
-            app.os_events = Some(apple_events.connect(&cc.egui_ctx));
-            // The native menu bar. Its Quit (⌘Q) closes the window rather than ending the process as
-            // winit's does (#1136), so `guard_quit` asks about unsaved changes, as for the close
-            // button.
-            if !app.install_native_menu(&cc.egui_ctx) {
-                log::warn!("couldn't install the macOS menu bar; the menus stay in the window");
-            }
-        }
-        if let Some(server) = instance {
-            app.os_events = Some(server.connect(&cc.egui_ctx, native_wayland(cc)));
-        }
-        if let Some(file) = &control_file {
-            let client = app.attach_control(&cc.egui_ctx);
-            open_control_channel(file, iridium_pdf_ui_egui::control::serve(client))?;
-        }
-        // Autosave unsaved changes; offer to recover documents a crashed session left behind.
-        if let Some(dir) = iridium_pdf_ui_egui::RecoveryStore::default_dir() {
-            app.enable_recovery(iridium_pdf_ui_egui::RecoveryStore::new(dir));
-        }
-        // The OCR Verify screen stores its per-language dictionary beside recovery data.
-        app.ocr_verify.dictionary_dir = iridium_pdf_ui_egui::default_dictionary_dir();
-        if let Some(state) = &cc.wgpu_render_state {
-            let adapter = state.adapter.get_info();
-            let max_texture_dimension_2d = state.device.limits().max_texture_dimension_2d;
-            log::info!(
-                "renderer: wgpu; adapter: {} ({:?}, {:?}); max_texture_dimension_2d: {max_texture_dimension_2d}",
-                adapter.name,
-                adapter.device_type,
-                adapter.backend
-            );
-            notify_software_renderer(&mut app, adapter.device_type);
-        } else {
-            log::info!("renderer: OpenGL (glow)");
-        }
-        // A portable marker whose data folder can't be written (#157): say where settings went.
-        if let Some(w) = &iridium_pdf_ui_egui::portable::current().unwritable {
-            app.notify_fmt(
-                "Portable mode is off: {folder} can't be written ({error}). Settings are kept in your user folder instead.",
-                &[("folder", &w.folder.display().to_string()), ("error", &w.error)],
-            );
-        }
-        let defer_layout = two_paged && !files.is_empty() && !create_images;
-        if create_images {
-            if let Err(e) = app.begin_image_import_paths(&files) {
-                app.notify(e);
-            }
-        } else if combine {
-            app.reopen_last_files(&[]);
-            app.combine_paths(&files);
-        } else {
-            // With the preference on, last session's files come back first; files named on
-            // the command line open after them, in front (#442).
-            app.reopen_last_files(&files);
-            startup::open_files(&mut app, &files, two_paged);
-        }
-        for (k, v) in options {
-            let result = if defer_layout && k == "layout" { app.set_launch_layout(&v) } else { app.set_option(&k, &v) };
-            if let Err(e) = result {
-                log::warn!("--{k} {v}: {e}");
-            }
-        }
-        Ok(Box::new(app))
-    })
-}
-
-/// Tell the user when wgpu draws on the processor (WARP on Windows, llvmpipe on Linux) rather than
-/// a GPU, which makes everything slower. egui-wgpu only logs it, so the reporter of #519 had to find
-/// it in iridium_pdf.log. The OpenGL fallback isn't covered: glow only reports its renderer through
-/// `unsafe` calls.
-fn notify_software_renderer(app: &mut PdfApp, device_type: eframe::wgpu::DeviceType) {
-    if device_type == eframe::wgpu::DeviceType::Cpu {
-        app.notify_tr("PDF is drawing without a graphics processor, so it may be slow. Updating the graphics driver may help.");
-    }
-}
-
-/// Publish a started control channel in `file`.
-///
-/// A failure stops the app. `--control` was asked for, so carrying on without it would leave a
-/// script driving nothing, and the file that couldn't be replaced may be another user's, planted
-/// at a shared path such as `/tmp/pc.json` to receive the commands. This runs before any document
-/// opens, so nothing is lost.
-fn open_control_channel(file: &str, endpoint: std::io::Result<iridium_pdf_ui_egui::control::Endpoint>) -> Result<(), String> {
-    match endpoint.and_then(|ep| write_control_file(file, ep.port, &ep.token).map(|()| ep.port)) {
-        // Never the token (AGENTS.md §3): it stays in the owner-only file.
-        Ok(port) => {
-            log::info!("UI control channel on 127.0.0.1:{port} (connection details in {file})");
-            Ok(())
-        }
-        Err(e) => {
-            // cmd.exe doesn't expand `~` (#3922).
-            let example = if cfg!(windows) { r"%USERPROFILE%\.iridium-pdf-control.json" } else { "~/.iridium-pdf-control.json" };
-            let message = format!("--control {file}: {e}. Use a control file in a folder only you can write, such as {example}");
-            log::error!("{message}");
-            Err(message)
-        }
-    }
-}
-
-/// Write the control endpoint so that only the current user can read the token.
-///
-/// The JSON goes to a new file, created fresh and owner-only, which then replaces `path`. On Unix
-/// the file sits next to `path` with mode 0600. On Windows it sits in a new folder next to `path`
-/// whose access list, of this user and SYSTEM only, it inherits when it is created, so no other
-/// account can open it at any time (#3922; review on #3956). Opening `path` itself would follow a
-/// link planted there and truncate whatever it points at; a rename replaces the link and leaves
-/// its target alone. A reader polling for the file also never sees it half-written.
-fn write_control_file(path: &str, port: u16, token: &str) -> std::io::Result<()> {
-    use std::io::ErrorKind;
-    let json = serde_json::json!({ "port": port, "token": token, "pid": std::process::id() }).to_string();
-    let path = std::path::Path::new(path);
-    let name = path.file_name().ok_or_else(|| std::io::Error::new(ErrorKind::InvalidInput, "not a file name"))?;
-    // Windows: the user's SID, read once for the private folder and for the file in it, since each
-    // lookup starts `whoami` (review on #3956).
-    #[cfg(windows)]
-    let me = iridium_pdf_platform::owner_only::current_user_sid()?;
-    #[cfg(windows)]
-    let restrict = |file: &std::path::Path| iridium_pdf_platform::owner_only::restrict_to_owner(file, &me);
-    #[cfg(not(windows))]
-    let restrict = |_: &std::path::Path| Ok::<(), std::io::Error>(());
-    // Unpredictable suffixes, so the name can't be planted in advance. `RandomState` is keyed from
-    // the operating system's random source.
-    let random = std::hash::RandomState::new();
-    for i in 0..16u32 {
-        let mut staged = std::ffi::OsString::from(".");
-        staged.push(name);
-        staged.push(format!(".{:016x}.tmp", std::hash::BuildHasher::hash_one(&random, i)));
-        let staged = path.with_file_name(staged);
-        // Windows: a file created next to `path` would inherit that folder's access list, which may
-        // let other users read it, and restricting it afterwards leaves a window in which one of
-        // them opens a handle; Windows checks access only when a handle is opened, so a later
-        // change of the list doesn't revoke it. The file is created in a private folder instead,
-        // and that folder is removed once the file has left it.
-        #[cfg(windows)]
-        let (staging, staged) = {
-            match iridium_pdf_platform::owner_only::create_private_dir(&staged, &me) {
-                Ok(()) => {}
-                Err(e) if e.kind() == ErrorKind::AlreadyExists => continue,
-                // As for a file below: something at the name we may not open still takes it.
-                Err(e) if e.kind() == ErrorKind::PermissionDenied && staged.symlink_metadata().is_ok() => continue,
-                Err(e) => return Err(e),
-            }
-            let file = staged.join(name);
-            (staged, file)
-        };
-        let done = stage_control_file(&staged, path, &json, &restrict);
-        #[cfg(windows)]
-        let _ = std::fs::remove_dir(&staging);
-        match done {
-            Some(done) => return done,
-            None => continue,
-        }
-    }
-    Err(std::io::Error::new(ErrorKind::AlreadyExists, "no free name for the control file's temporary copy"))
-}
-
-/// Create `staged` fresh and owner-only, `restrict` it, write `json` to it and rename it to `path`.
-/// `None` when something already has the name, so the caller tries another. On any other failure
-/// the new file is removed and nothing is left at `path`'s side.
-fn stage_control_file(
-    staged: &std::path::Path,
-    path: &std::path::Path,
-    json: &str,
-    restrict: &dyn Fn(&std::path::Path) -> std::io::Result<()>,
-) -> Option<std::io::Result<()>> {
-    use std::io::{ErrorKind, Write};
-    let mut opts = std::fs::OpenOptions::new();
-    opts.write(true).create_new(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        opts.mode(0o600);
-    }
-    let file = match opts.open(staged) {
-        Ok(f) => f,
-        Err(e) if e.kind() == ErrorKind::AlreadyExists => return None,
-        // Windows refuses `create_new` on a folder with "access denied"; the name is taken all
-        // the same. A folder we can't write to, with nothing at the name, still fails here.
-        Err(e) if e.kind() == ErrorKind::PermissionDenied && staged.symlink_metadata().is_ok() => return None,
-        Err(e) => return Some(Err(e)),
-    };
-    // Windows: the file inherited the private folder's list. It also gets a list of its own, so it
-    // stays private wherever the rename puts it, and that is checked before the token is written;
-    // nothing is written if that fails (#3922). Unix has mode 0600 above, and `restrict` does nothing.
-    if let Err(e) = restrict(staged) {
-        drop(file);
-        let _ = std::fs::remove_file(staged);
-        return Some(Err(e));
-    }
-    // The block closes the file before it is renamed.
-    let written = {
-        let mut file = file;
-        file.write_all(json.as_bytes())
-    };
-    let done = written.and_then(|()| std::fs::rename(staged, path));
-    if done.is_err() {
-        let _ = std::fs::remove_file(staged);
-    }
-    Some(done)
 }
 
 /// How wgpu finds a GPU. Each choice yields to its wgpu environment variable.

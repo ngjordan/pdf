@@ -33,12 +33,6 @@ fn assert_window_stack_graph(root: &std::path::Path, name: &str, version: &str) 
     package
 }
 
-use iridium_pdf_ui_egui::control::Endpoint;
-
-fn endpoint() -> std::io::Result<Endpoint> {
-    Ok(Endpoint { port: 4321, token: "0123456789abcdef".into() })
-}
-
 /// Tests that open a real GPU device take this first, so only one of them is inside the
 /// graphics libraries at a time. The test threads otherwise run them together, and on
 /// FreeBSD's CI machine the test process then died with SIGSEGV, in about half the runs:
@@ -50,28 +44,6 @@ static GPU: std::sync::Mutex<()> = std::sync::Mutex::new(());
 fn gpu() -> std::sync::MutexGuard<'static, ()> {
     // A test that panicked while holding it leaves nothing to clean up.
     GPU.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
-#[test]
-fn a_control_channel_that_cant_be_published_stops_the_app() {
-    let dir = std::env::temp_dir().join(format!("iridium-pdf-app-control-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    let path = |name: &str| dir.join(name).to_str().unwrap().to_owned();
-
-    // A folder in the way stands in for a file another user created first: the write fails.
-    std::fs::create_dir(dir.join("taken.json")).unwrap();
-    let err = super::open_control_channel(&path("taken.json"), endpoint()).unwrap_err();
-    assert!(err.contains("--control") && err.contains("taken.json") && err.contains("only you can write"), "{err}");
-    // No listener: nothing to publish.
-    let err = super::open_control_channel(&path("pc.json"), Err(std::io::Error::other("no loopback"))).unwrap_err();
-    assert!(err.contains("no loopback"), "{err}");
-    assert!(!dir.join("pc.json").exists());
-
-    super::open_control_channel(&path("pc.json"), endpoint()).unwrap();
-    let written: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(dir.join("pc.json")).unwrap()).unwrap();
-    assert_eq!((written["port"].as_u64(), written["token"].as_str()), (Some(4321), Some("0123456789abcdef")));
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -153,27 +125,6 @@ fn the_window_and_windows_taskbar_icons_load_from_the_bundled_png() {
             assert_eq!(viewport.icon.as_deref(), Some(&egui::IconData::default()));
         }
         assert_eq!((icon.width, icon.height), (256, 256));
-        let mut installed = None;
-        super::install_taskbar_icon(super::APP_ICON_PNG, |icon| installed = Some(icon));
-        assert!(installed.is_some(), "issue #3818: ICON_BIG loads and installs from APP_ICON_PNG");
-        let mut bad = None;
-        super::install_taskbar_icon(b"not a png", |icon| bad = Some(icon));
-        assert!(bad.is_none());
-    }
-}
-
-#[test]
-fn a_software_renderer_is_shown_to_the_user() {
-    use eframe::wgpu::DeviceType;
-    // Issue #519: WARP or llvmpipe is announced in the app, not just in iridium_pdf.log.
-    let mut app = super::PdfApp::new();
-    super::notify_software_renderer(&mut app, DeviceType::Cpu);
-    let notice = app.toast.as_ref().map(|(m, _)| m.as_str()).unwrap_or_default();
-    assert!(notice.contains("without a graphics processor"), "{notice:?}");
-    for gpu in [DeviceType::IntegratedGpu, DeviceType::DiscreteGpu, DeviceType::VirtualGpu, DeviceType::Other] {
-        let mut app = super::PdfApp::new();
-        super::notify_software_renderer(&mut app, gpu);
-        assert!(app.toast.is_none(), "{gpu:?}: {:?}", app.toast);
     }
 }
 
@@ -605,114 +556,6 @@ fn linux_display_gpus_reads_connected_connectors() -> std::io::Result<()> {
     assert_eq!(laptop, vec![panel(AMD_IGPU), monitor(NVIDIA)]);
     assert!(super::linux_display_gpus(std::path::Path::new("/nonexistent/drm")).is_empty());
     Ok(())
-}
-
-/// A fresh folder per call: tests run in parallel.
-fn scratch() -> std::path::PathBuf {
-    static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-    let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let d = std::env::temp_dir().join(format!("iridium-pdf-control-file-{}-{n}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&d);
-    std::fs::create_dir_all(&d).unwrap();
-    d
-}
-
-/// The control file's port and token, and every name in its folder.
-fn written(dir: &std::path::Path) -> (serde_json::Value, Vec<String>) {
-    let json = serde_json::from_str(&std::fs::read_to_string(dir.join("ctl.json")).unwrap()).unwrap();
-    let mut names: Vec<String> = std::fs::read_dir(dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
-    names.sort();
-    (json, names)
-}
-
-#[test]
-fn the_control_file_replaces_a_hard_link_instead_of_writing_through_it() {
-    // The file used to be opened with create + truncate, so a link planted at the path had its
-    // target truncated and overwritten with the token.
-    let dir = scratch();
-    std::fs::write(dir.join("victim.txt"), "keep me").unwrap();
-    std::fs::hard_link(dir.join("victim.txt"), dir.join("ctl.json")).unwrap();
-    super::write_control_file(&dir.join("ctl.json").to_string_lossy(), 4242, "t0ken").unwrap();
-    assert_eq!(std::fs::read_to_string(dir.join("victim.txt")).unwrap(), "keep me");
-    let (json, names) = written(&dir);
-    assert_eq!((json["port"].as_u64(), json["token"].as_str()), (Some(4242), Some("t0ken")));
-    assert_eq!(names, ["ctl.json", "victim.txt"], "no temporary file left behind");
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn the_control_file_replaces_a_symlink_instead_of_writing_through_it() {
-    let dir = scratch();
-    let (link, target) = (dir.join("ctl.json"), dir.join("victim.txt"));
-    std::fs::write(&target, "keep me").unwrap();
-    #[cfg(unix)]
-    let made = std::os::unix::fs::symlink(&target, &link);
-    #[cfg(windows)]
-    let made = std::os::windows::fs::symlink_file(&target, &link);
-    if let Err(e) = made {
-        // Windows needs Developer Mode (or admin) for symlinks.
-        eprintln!("skipped: can't create a symlink here: {e}");
-        let _ = std::fs::remove_dir_all(&dir);
-        return;
-    }
-    super::write_control_file(&link.to_string_lossy(), 4242, "t0ken").unwrap();
-    assert_eq!(std::fs::read_to_string(&target).unwrap(), "keep me");
-    assert!(!std::fs::symlink_metadata(&link).unwrap().file_type().is_symlink());
-    assert_eq!(written(&dir).0["token"].as_str(), Some("t0ken"));
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn the_control_file_replaces_the_one_a_previous_run_left() {
-    let dir = scratch();
-    std::fs::write(dir.join("ctl.json"), r#"{"port":1,"token":"old"}"#).unwrap();
-    super::write_control_file(&dir.join("ctl.json").to_string_lossy(), 4242, "t0ken").unwrap();
-    let (json, names) = written(&dir);
-    assert_eq!(json["token"].as_str(), Some("t0ken"));
-    assert_eq!(names, ["ctl.json"]);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mode = std::fs::metadata(dir.join("ctl.json")).unwrap().permissions().mode();
-        assert_eq!(mode & 0o077, 0, "only the owner can read the token: {mode:o}");
-    }
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-/// #3922: a control file created in a folder that lets every user read what's in it is still
-/// readable by its user and SYSTEM only, like mode 0600 on Unix.
-#[cfg(windows)]
-#[test]
-fn the_control_file_is_owner_only_in_a_folder_other_users_can_read() {
-    use iridium_pdf_platform::owner_only;
-    let dir = scratch();
-    let users = std::process::Command::new("icacls").arg(&dir).arg("/grant").arg("*S-1-5-32-545:(OI)(CI)R").output().unwrap();
-    assert!(users.status.success());
-    // What the folder hands down, for comparison: a plain file there is readable by Users.
-    std::fs::write(dir.join("plain.txt"), "x").unwrap();
-    let me = owner_only::current_user_sid().unwrap();
-    assert!(owner_only::foreign_access(&owner_only::sddl_of(&dir.join("plain.txt")).unwrap(), &me).is_some());
-    super::write_control_file(&dir.join("ctl.json").to_string_lossy(), 4242, "t0ken").unwrap();
-    let sddl = owner_only::sddl_of(&dir.join("ctl.json")).unwrap();
-    assert_eq!(owner_only::foreign_access(&sddl, &me), None, "{sddl}");
-    let (json, names) = written(&dir);
-    assert_eq!(json["token"].as_str(), Some("t0ken"));
-    assert_eq!(names, ["ctl.json", "plain.txt"], "no private staging folder left behind");
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-/// Review on #3956: writing the control file reads the user's SID once, for both the private
-/// folder and the file in it, rather than starting `whoami` for each.
-#[cfg(windows)]
-#[test]
-fn writing_the_control_file_looks_up_the_users_sid_once() {
-    use iridium_pdf_platform::owner_only::sid_lookups_on_this_thread;
-    let dir = scratch();
-    let before = sid_lookups_on_this_thread();
-    super::write_control_file(&dir.join("ctl.json").to_string_lossy(), 4242, "t0ken").unwrap();
-    assert_eq!(sid_lookups_on_this_thread().saturating_sub(before), 1, "whoami runs once per control file");
-    assert_eq!(written(&dir).0["token"].as_str(), Some("t0ken"));
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// X11 startup notification and docks match a window to its launcher by `StartupWMClass`,

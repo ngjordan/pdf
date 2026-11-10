@@ -485,6 +485,17 @@ impl eframe::App for PdfApp {
     /// Last-resort guard (AGENTS.md §4, #3914): a panic in a frame is reported and the app, with
     /// every open tab, keeps running; see `frame_guard`.
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.run_logic(ctx);
+    }
+
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        self.run_ui(ui);
+    }
+}
+
+impl PdfApp {
+    /// [`eframe::App::logic`] without the frame, for a host that embeds the app (`iridium-pdf-shell`).
+    pub fn run_logic(&mut self, ctx: &egui::Context) {
         self.begin_logic();
         self.guarded_frame(|app| app.logic_unguarded(ctx));
         if self.frame_panicked {
@@ -492,7 +503,8 @@ impl eframe::App for PdfApp {
         }
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    /// [`eframe::App::ui`] without the frame, for a host that embeds the app.
+    pub fn run_ui(&mut self, ui: &mut egui::Ui) {
         self.begin_ui();
         self.guarded_frame(|app| app.ui_unguarded(ui));
         self.end_ui();
