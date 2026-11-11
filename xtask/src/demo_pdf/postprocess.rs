@@ -376,7 +376,7 @@ fn decode_text(bytes: &[u8]) -> String {
 fn tidy_title(title: &str) -> String {
     const ACRONYMS: &[&str] = &["PDF"];
     // Chrome drops the <br> between the two lines of the cover title.
-    if title == "PdfCraftShowcase" {
+    if title == "IridiumShowcase" {
         return TITLE.to_string();
     }
     let title = title.split_whitespace().collect::<Vec<_>>().join(" ");

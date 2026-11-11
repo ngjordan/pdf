@@ -28,7 +28,7 @@ craft-print = { git = "https://github.com/ngjordan/craft-libs", version = "0.1.0
 # Whether a path stored in a document may be opened (GoToR link targets).
 craft-docpath = { version = "0.1.0", git = "https://github.com/ngjordan/craft-libs", rev = "95cee510eb4dd48e8cb76b9fa71a45df57fb89ad" }
 # craft-update: app-specific pretend versions apply to startup and manual checks.
-craft-update = { git = "https://github.com/ngjordan/craft-libs", version = "=0.1.0", rev = "7ad94d4fdd66", features = ["egui"] }
+craft-update = { git = "https://github.com/ngjordan/craft-libs", version = "=0.1.0", rev = "d5cef98249adf1347432a900c09b47d73771b3e6", features = ["egui"] }
 # internal
 iridium-pdf-geom = { path = "crates/geom", version = "0.18.1" }
 iridium-pdf-filters = { path = "crates/filters", version = "0.18.1" }

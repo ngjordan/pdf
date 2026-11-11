@@ -15,12 +15,15 @@ use std::sync::OnceLock;
 /// Files beside the executable that switch on portable mode (either one; contents are ignored).
 pub const MARKERS: [&str; 2] = ["portable.txt", "PDF.portable"];
 /// The data folder created beside the executable in portable mode.
-pub const DATA_DIR: &str = "PdfCraftData";
+pub const DATA_DIR: &str = "IridiumPdfData";
+/// The folder the app used before the rename: a portable copy keeps its settings there, so
+/// that folder is used rather than a new one.
+pub const LEGACY_DATA_DIR: &str = "PdfCraftData";
 
 /// The outcome of looking for a portable marker.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Portable {
-    /// `<exe dir>/PdfCraftData` when portable mode is on, `None` otherwise.
+    /// `<exe dir>/IridiumPdfData` when portable mode is on, `None` otherwise.
     pub dir: Option<PathBuf>,
     /// Set when a marker was found but its data folder can't be written.
     pub unwritable: Option<Unwritable>,
@@ -73,7 +76,10 @@ pub fn resolve(exe_dir: Option<&Path>) -> Portable {
     let Some((exe_dir, marker)) = exe_dir.and_then(|d| find_marker(d).map(|m| (d, m))) else {
         return Portable::default();
     };
-    let folder = exe_dir.join(DATA_DIR);
+    let folder = match exe_dir.join(LEGACY_DATA_DIR) {
+        legacy if legacy.is_dir() => legacy,
+        _ => exe_dir.join(DATA_DIR),
+    };
     match ensure_writable(&folder) {
         Ok(()) => Portable { dir: Some(folder), unwritable: None },
         Err(e) => Portable { dir: None, unwritable: Some(Unwritable { marker, folder, error: e.to_string() }) },
@@ -139,6 +145,18 @@ mod tests {
         std::fs::write(exe.join(DATA_DIR).join("app.ron"), b"()").unwrap();
         assert_eq!(resolve(Some(&exe)).dir, Some(exe.join(DATA_DIR)));
         assert_eq!(std::fs::read(exe.join(DATA_DIR).join("app.ron")).unwrap(), b"()", "existing settings are kept");
+        let _ = std::fs::remove_dir_all(&exe);
+    }
+
+    #[test]
+    fn a_folder_from_before_the_rename_is_used_rather_than_a_new_one() {
+        let exe = temp("legacy");
+        std::fs::write(exe.join("portable.txt"), b"PDF portable mode").unwrap();
+        std::fs::create_dir_all(exe.join(LEGACY_DATA_DIR)).unwrap();
+        std::fs::write(exe.join(LEGACY_DATA_DIR).join("app.ron"), b"()").unwrap();
+        let p = resolve(Some(&exe));
+        assert_eq!(p.dir, Some(exe.join(LEGACY_DATA_DIR)), "the old folder keeps the settings");
+        assert!(!exe.join(DATA_DIR).exists(), "no second folder is created");
         let _ = std::fs::remove_dir_all(&exe);
     }
 

@@ -463,7 +463,7 @@ impl Annotator {
     fn stamp(&mut self, doc: &mut Document, page: ObjectId, r: Rect) -> Dictionary {
         let green = Rgb::hex(0x1d7f4e);
         let mut dict = self.base("Stamp", r, green, AUTHOR, "Approved for the showcase.", page);
-        dict.set("Name", "PdfCraftApproved");
+        dict.set("Name", "IridiumApproved");
         dict.set("CA", 0.92);
         let (w, h) = (r.w(), r.h());
         let mut c = Content::new();

@@ -4,6 +4,11 @@
 //! delete, or ungroup grouped artwork (its content drawn in place, see `ungroup`). Only the stream that draws it is rewritten, as a new object.
 
 use iridium_pdf_content::{Matrix, Op, parse, serialize_ops};
+
+/// The marked-content tag the editor writes around an image it has cropped.
+const CROP_TAG: &[u8] = b"IridiumImageCrop";
+/// The tag files written before the rename carry; still read, never written.
+const LEGACY_CROP_TAG: &[u8] = b"PdfCraftImageCrop";
 use iridium_pdf_cos::{Dict, Document, ObjRef, Object};
 use kurbo::{BezPath, Point, Shape};
 use std::sync::Arc;
@@ -253,7 +258,7 @@ impl ImageState {
                     self.path.close_path();
                 }
             }
-            b"MP" if op.name(0) == Some(b"PdfCraftImageCrop") => self.app_crop = true,
+            b"MP" if op.name(0) == Some(CROP_TAG) || op.name(0) == Some(LEGACY_CROP_TAG) => self.app_crop = true,
             b"W" => self.pending_clip = Some(false),
             b"W*" => self.pending_clip = Some(true),
             b"n" | b"S" | b"s" | b"f" | b"F" | b"f*" | b"B" | b"B*" | b"b" | b"b*" => {
@@ -1352,7 +1357,11 @@ fn arrange_image(
         return Err(EditError::Invalid("unsupported graphics state: non-invertible CTM".into()));
     }
 
-    let owned_crop = ops.get(scope_start..target).unwrap_or_default().iter().any(|op| op.is("MP") && op.name(0) == Some(b"PdfCraftImageCrop"));
+    let owned_crop = ops
+        .get(scope_start..target)
+        .unwrap_or_default()
+        .iter()
+        .any(|op| op.is("MP") && (op.name(0) == Some(CROP_TAG) || op.name(0) == Some(LEGACY_CROP_TAG)));
     let extracted_scope = if owned_crop { None } else { extract_scope_state(&ops, scope_start, target, scope_start_ctm)? };
     let mut extracted = match extracted_scope {
         Some(ext) => ext,
@@ -1597,13 +1606,13 @@ fn image_scopes(ops: &[Op], target: usize, done: &str, hidden: usize) -> Result<
 /// A marked-content point identifies only the clipping path written by this editor.
 /// It does not open a marked-content sequence or change the document's structure tags.
 fn crop_marker() -> Op {
-    Op::new("MP", vec![Object::Name(b"PdfCraftImageCrop".to_vec())])
+    Op::new("MP", vec![Object::Name(CROP_TAG.to_vec())])
 }
 
 fn app_crop_ranges(ops: &[Op], start: usize, target: usize) -> Vec<std::ops::Range<usize>> {
     let mut ranges = Vec::new();
     for (index, op) in ops.iter().enumerate().take(target).skip(start) {
-        if !op.is("MP") || op.name(0) != Some(b"PdfCraftImageCrop") {
+        if !op.is("MP") || (op.name(0) != Some(CROP_TAG) && op.name(0) != Some(LEGACY_CROP_TAG)) {
             continue;
         }
         let path_start = index.saturating_add(1);
