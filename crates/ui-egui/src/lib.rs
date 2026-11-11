@@ -13,15 +13,16 @@
 /// prompt shows both, and an AppImage's menu entry gets the icon.
 #[cfg(not(target_arch = "wasm32"))]
 pub const UPDATE_APP: craft_update::app::App = craft_update::app::App {
-    // The name, id and repo the update prompt shows and downloads from. The upstream suite
-    // entry is the starting point; these override it.
+    // The name, id and repo the update prompt shows and downloads from.
     id: "iridium-pdf",
     name: "PDF",
     tagline: "Reading, organizing and protecting PDFs",
     repo: "ngjordan/pdf",
+    former_ids: &[],
+    former_names: &[],
     icon_png: Some(include_bytes!("../../../assets/app-icon/hicolor/128x128/apps/ph.pdf.png")),
     accent: Some([0xb7, 0x02, 0x28]),
-    ..craft_update::suite::PDFCRAFT
+    developer: "Iridium Technologies, Inc.",
 };
 
 use crate::control::Host as _;
