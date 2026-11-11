@@ -18,6 +18,7 @@ pub const UPDATE_APP: craft_update::app::App = craft_update::app::App {
     name: "PDF",
     tagline: "Reading, organizing and protecting PDFs",
     repo: "ngjordan/pdf",
+    bundle: "ph.pdf",
     former_ids: &[],
     former_names: &[],
     icon_png: Some(include_bytes!("../../../assets/app-icon/hicolor/128x128/apps/ph.pdf.png")),
