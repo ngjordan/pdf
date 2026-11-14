@@ -475,6 +475,15 @@ impl eframe::App for PdfApp {
     }
 
     /// Starts an update that waits for the exit. On macOS the process ends before the app is dropped.
+    // `eframe::App::on_exit` takes a GL context when eframe's `glow` feature
+    // is on and takes nothing when it is off, so the method is written once
+    // per shape. The crate's `glow` feature picks the shape.
+    #[cfg(feature = "glow")]
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.updates.exiting();
+    }
+
+    #[cfg(not(feature = "glow"))]
     fn on_exit(&mut self) {
         self.updates.exiting();
     }

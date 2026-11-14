@@ -53,7 +53,7 @@
   <key>CFBundleExecutable</key>
   <string>PDF</string>
   <key>CFBundleIdentifier</key>
-  <string>ph.pdf</string>
+  <string>ph.iridium.pdf</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundlePackageType</key>

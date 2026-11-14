@@ -4,13 +4,13 @@
 #
 #   curl -fsSLO https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/master/cargo/flatpak-cargo-generator.py
 #   python3 flatpak-cargo-generator.py Cargo.lock -o packaging/linux/flatpak/cargo-sources.json
-#   flatpak-builder --user --install --force-clean build-flatpak packaging/linux/flatpak/ph.pdf.yml
-#   flatpak run ph.pdf
+#   flatpak-builder --user --install --force-clean build-flatpak packaging/linux/flatpak/ph.iridium.pdf.yml
+#   flatpak run ph.iridium.pdf
 #
 # For Flathub, replace the `dir` source with a `git` source pinned to a release tag and commit.
-# The single-file .flatpak attached to each release comes from ph.pdf.bundle.yml,
+# The single-file .flatpak attached to each release comes from ph.iridium.pdf.bundle.yml,
 # which repackages the prebuilt release binaries. Keep runtime-version and finish-args identical.
-id: ph.pdf
+id: ph.iridium.pdf
 runtime: org.freedesktop.Platform
 runtime-version: '25.08'
 sdk: org.freedesktop.Sdk
@@ -110,14 +110,14 @@ modules:
       - cargo --offline build --release --locked -p iridium-pdf
       - install -Dm755 target/release/iridium-pdf /app/bin/iridium-pdf
       - install -Dm644 NOTICE /app/share/doc/iridium-pdf/NOTICE
-      - install -Dm644 packaging/linux/ph.pdf.desktop /app/share/applications/ph.pdf.desktop
-      - install -Dm644 packaging/linux/ph.pdf.mime.xml /app/share/mime/packages/ph.pdf.xml
+      - install -Dm644 packaging/linux/ph.iridium.pdf.desktop /app/share/applications/ph.iridium.pdf.desktop
+      - install -Dm644 packaging/linux/ph.iridium.pdf.mime.xml /app/share/mime/packages/ph.iridium.pdf.xml
       - mkdir -p /app/share/icons && cp -R assets/app-icon/hicolor /app/share/icons/
       - >-
         version=$(awk '/^\[/{p=($0=="[workspace.package]");next} p&&$1=="version"{gsub(/[" ]/,"",$3);print $3;exit}' Cargo.toml);
         install -d /app/share/metainfo;
         sed -e "s/@VERSION@/$version/" -e "s/@DATE@/$(date -u +%Y-%m-%d)/"
-        packaging/linux/ph.pdf.metainfo.xml.in > /app/share/metainfo/ph.pdf.metainfo.xml
+        packaging/linux/ph.iridium.pdf.metainfo.xml.in > /app/share/metainfo/ph.iridium.pdf.metainfo.xml
     sources:
       - type: dir
         path: ../../..

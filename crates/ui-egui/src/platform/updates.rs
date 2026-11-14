@@ -148,6 +148,11 @@ mod tests {
     #[test]
     fn on_exit_calls_the_update_exit_hook_once() {
         let mut app = PdfApp::new();
+        // The trait method takes the GL context when eframe's `glow` feature is
+        // on. See crates/ui-egui/Cargo.toml.
+        #[cfg(feature = "glow")]
+        app.on_exit(None);
+        #[cfg(not(feature = "glow"))]
         app.on_exit();
         assert_eq!(app.updates.exits, 1);
     }

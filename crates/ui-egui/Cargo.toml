@@ -9,6 +9,14 @@ rust-version = "1.95"
 [lints]
 workspace = true
 
+[features]
+# The OpenGL renderer. `eframe::App::on_exit` takes a GL context when eframe's
+# `glow` feature is on and takes nothing when it is off, and a feature is a
+# property of the whole build: the app offers OpenGL, the Workspace suite
+# links these crates with wgpu only, and a browser has no GL context at all.
+# The trait method is written once per shape, and this feature picks the shape.
+glow = ["eframe/glow"]
+
 [dependencies]
 craft-ui = { workspace = true }
 # The menus: native on macOS, an egui bar elsewhere, from one definition (menus.rs).
@@ -29,7 +37,6 @@ iridium-pdf-model = { workspace = true }
 iridium-pdf-platform = { workspace = true }
 egui = { workspace = true, features = ["bytemuck", "default_fonts", "monochrome_emoji_fonts"] }
 egui_extras = { workspace = true }
-# `glow` is always on: `eframe::App::on_exit` takes a GL context when that feature is enabled.
 eframe = { workspace = true, features = ["default_fonts", "wgpu","accesskit", "persistence", "links", "clipboard"] }
 serde = { workspace = true }
 serde_json = { workspace = true }

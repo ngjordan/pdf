@@ -26,7 +26,7 @@ set -euo pipefail
 # shellcheck source=../env.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 HERE="$ROOT/packaging/linux"
-APP_ID=ph.pdf
+APP_ID=ph.iridium.pdf
 
 SKIP_BUILD=0
 FORMATS="appimage deb rpm tar cli"

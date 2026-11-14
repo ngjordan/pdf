@@ -635,7 +635,7 @@ pub fn progress_notice(app: &PdfApp, ctx: &egui::Context) -> bool {
 /// The app's own mark, sized to `size` points square.
 pub fn app_mark(ui: &mut egui::Ui, size: f32) -> Response {
     ui.add(
-        egui::Image::from_bytes("bytes://app-mark.png", include_bytes!("../../../assets/app-icon/hicolor/128x128/apps/ph.pdf.png"))
+        egui::Image::from_bytes("bytes://app-mark.png", include_bytes!("../../../assets/app-icon/hicolor/128x128/apps/ph.iridium.pdf.png"))
             .fit_to_exact_size(vec2(size, size))
             .alt_text("PDF"),
     )

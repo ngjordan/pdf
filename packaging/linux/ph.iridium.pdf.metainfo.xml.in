@@ -2,12 +2,12 @@
 <!-- AppStream metadata (software centres, Flathub). Template: package.sh and the Flatpak
      manifest substitute @VERSION@ and @DATE@ from Cargo.toml and the build date. -->
 <component type="desktop-application">
-  <id>ph.pdf</id>
+  <id>ph.iridium.pdf</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT OR Apache-2.0</project_license>
   <name>PDF</name>
   <summary>Read, organize, combine, split and secure PDFs</summary>
-  <developer id="ph.pdf">
+  <developer id="ph.iridium.pdf">
     <name>Iridium Technologies, Inc.</name>
   </developer>
   <description>
@@ -16,8 +16,8 @@
       organize, combine and split pages; edit, redact, protect and export documents.
     </p>
   </description>
-  <launchable type="desktop-id">ph.pdf.desktop</launchable>
-  <icon type="stock">ph.pdf</icon>
+  <launchable type="desktop-id">ph.iridium.pdf.desktop</launchable>
+  <icon type="stock">ph.iridium.pdf</icon>
   <!-- Only url types known to appstream 0.15 (Ubuntu 22.04, where CI validates): no vcs-browser. -->
   <url type="homepage">https://iridium.ph/apps/iridium-pdf</url>
   <url type="bugtracker">https://github.com/ngjordan/iridium-pdf/issues</url>

@@ -8,10 +8,17 @@ license.workspace = true
 [lints]
 workspace = true
 
+[features]
+# The OpenGL renderer; see crates/ui-egui/Cargo.toml for why the feature has to
+# exist rather than being the app's business alone.
+glow = ["eframe/glow", "iridium-pdf-ui-egui/glow"]
+
 [dependencies]
 iridium-pdf-ui-egui = { workspace = true }
 # `owner_only`: the --control file is restricted to its user on Windows (#3922).
 iridium-pdf-platform = { workspace = true }
+# The `glow` feature adds eframe's own, so the trait's on_exit has the shape
+# this crate's on_exit is written for.
 eframe = { workspace = true, features = ["wgpu"] }
 egui = { workspace = true }
 serde_json = { workspace = true }

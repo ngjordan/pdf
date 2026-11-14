@@ -26,7 +26,7 @@ const LEGACY_STORAGE_KEY: &str = "printcraft";
 
 /// The app icon the Windows taskbar and Alt+Tab show (`ICON_BIG`).
 #[cfg(target_os = "windows")]
-const APP_ICON_PNG: &[u8] = include_bytes!("../../../assets/app-icon/hicolor/256x256/apps/ph.pdf.png");
+const APP_ICON_PNG: &[u8] = include_bytes!("../../../assets/app-icon/hicolor/256x256/apps/ph.iridium.pdf.png");
 
 /// Connects the queue of files other launches or the OS hand over (`PdfApp::os_events`) once the
 /// window exists; the flag is whether the window is a native Wayland one.
@@ -274,6 +274,11 @@ impl Shell {
     /// What the app does on quit: an update waiting for the exit starts. Preferences and the window
     /// go to eframe's storage through [`eframe::App::save`], which this type implements.
     pub fn save_state(&mut self) {
+        // The trait method takes the GL context when eframe's `glow` feature is
+        // on. See crates/ui-egui/Cargo.toml.
+        #[cfg(feature = "glow")]
+        eframe::App::on_exit(&mut self.app, None);
+        #[cfg(not(feature = "glow"))]
         eframe::App::on_exit(&mut self.app);
     }
 
@@ -294,6 +299,14 @@ impl eframe::App for Shell {
         eframe::App::save(&mut self.app, storage);
     }
 
+    // The GL context is there when eframe's `glow` feature is on. See
+    // crates/ui-egui/Cargo.toml.
+    #[cfg(feature = "glow")]
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.save_state();
+    }
+
+    #[cfg(not(feature = "glow"))]
     fn on_exit(&mut self) {
         self.save_state();
     }

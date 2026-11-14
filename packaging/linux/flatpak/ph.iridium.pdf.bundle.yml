@@ -9,9 +9,9 @@
 # at runtime; the freedesktop runtime has all of them, and the GPU driver comes from its
 # org.freedesktop.Platform.GL extension.
 #
-# ph.pdf.yml (same directory) is the from-source manifest for Flathub. Keep
+# ph.iridium.pdf.yml (same directory) is the from-source manifest for Flathub. Keep
 # runtime-version and finish-args identical in both (packaging-lint checks this).
-id: ph.pdf
+id: ph.iridium.pdf
 runtime: org.freedesktop.Platform
 runtime-version: '25.08'
 sdk: org.freedesktop.Sdk
@@ -111,10 +111,10 @@ modules:
     build-commands:
       - install -Dm755 bin/iridium-pdf /app/bin/iridium-pdf
       - install -Dm755 bin/iridium-pdf-cli /app/bin/iridium-pdf-cli
-      - install -Dm644 share/applications/ph.pdf.desktop /app/share/applications/ph.pdf.desktop
-      - install -Dm644 share/mime/packages/ph.pdf.xml /app/share/mime/packages/ph.pdf.xml
+      - install -Dm644 share/applications/ph.iridium.pdf.desktop /app/share/applications/ph.iridium.pdf.desktop
+      - install -Dm644 share/mime/packages/ph.iridium.pdf.xml /app/share/mime/packages/ph.iridium.pdf.xml
       # Already has the release's version and date substituted by package.sh.
-      - install -Dm644 share/metainfo/ph.pdf.metainfo.xml /app/share/metainfo/ph.pdf.metainfo.xml
+      - install -Dm644 share/metainfo/ph.iridium.pdf.metainfo.xml /app/share/metainfo/ph.iridium.pdf.metainfo.xml
       # OCR models (with their licences), found at /app/bin/../share/iridium-pdf/models.
       - mkdir -p /app/share/iridium-pdf && cp -R share/iridium-pdf/models /app/share/iridium-pdf/
       # Licences, including the embedded craft-fonts' OFL texts.

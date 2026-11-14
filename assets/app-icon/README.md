@@ -34,11 +34,11 @@ Licence: [LICENSE.txt](LICENSE.txt) (`MIT OR Apache-2.0`, like the repo).
 | `iridium-pdf.ico` | Windows icon (16–256 px), embedded in `iridium-pdf.exe` by `apps/iridium-pdf/build.rs` |
 | `iridium-pdf-document.svg` | Windows PDF file icon master: a Lucide document outline, red badge and outlined PDF lettering; no font dependency |
 | `iridium-pdf-document.ico` | Windows PDF file icon (16–256 px), embedded as resource 2 in `iridium-pdf.exe` |
-| `hicolor/<n>x<n>/apps/ph.pdf.png` | Linux hicolor theme, 16–512 px; the 256 px one is the runtime icon on Windows and Linux |
-| `hicolor/scalable/apps/ph.pdf.svg` | Linux scalable icon (copy of the master) |
+| `hicolor/<n>x<n>/apps/ph.iridium.pdf.png` | Linux hicolor theme, 16–512 px; the 256 px one is the runtime icon on Windows and Linux |
+| `hicolor/scalable/apps/ph.iridium.pdf.svg` | Linux scalable icon (copy of the master) |
 
 Where it shows: `apps/iridium-pdf/src/main.rs` sets the window icon (Dock, taskbar, Alt-Tab, launcher) and the
-Wayland app id `ph.pdf`; `packaging/linux/ph.pdf.desktop` names the
+Wayland app id `ph.iridium.pdf`; `packaging/linux/ph.iridium.pdf.desktop` names the
 hicolor icon.
 
 Windows PDF files use resource 2 (`"iridium-pdf.exe",-2`) when PDF is chosen as the default

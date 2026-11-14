@@ -6,7 +6,7 @@ updates a **draft** GitHub Release named `PDF v<version>`. Nobody sees a draft u
 maintainer publishes it.
 
 The pipeline was ported from PhotoCraft's. User-facing names say **PDF**; files, binaries and
-ids stay lowercase (`iridium-pdf-<version>-<platform>-<arch>.<ext>`, `ph.pdf`).
+ids stay lowercase (`iridium-pdf-<version>-<platform>-<arch>.<ext>`, `ph.iridium.pdf`).
 
 ## Cutting a release
 
@@ -87,7 +87,7 @@ The web build does not include these models, and OCR remains limited to the Lati
 ### macOS
 
 `packaging/macos/package.sh` builds both architectures, joins them with `lipo`, and assembles
-`PDF.app` from `Info.plist.in` (bundle id `ph.pdf`, macOS 11+, PDF declared
+`PDF.app` from `Info.plist.in` (bundle id `ph.iridium.pdf`, macOS 11+, PDF declared
 as a document type with rank Alternate, so PDF is offered under Open With without taking over
 from Preview). Files opened from Finder arrive as Apple events, which
 `apps/iridium-pdf/src/apple_events.rs` receives.
@@ -207,9 +207,9 @@ downloading only the changed blocks. `latest` is the newest published, non-pre-r
 otherwise; the release job checks both.
 
 **Flatpak:** the `flatpak` job turns each arch's tarball into a single-file bundle with
-`packaging/linux/flatpak-bundle.sh` and `flatpak/ph.pdf.bundle.yml` (no Rust build;
+`packaging/linux/flatpak-bundle.sh` and `flatpak/ph.iridium.pdf.bundle.yml` (no Rust build;
 the same binaries), then installs it and runs `iridium-pdf-cli --version` in the sandbox.
-`flatpak/ph.pdf.yml` is the from-source manifest for a later Flathub submission;
+`flatpak/ph.iridium.pdf.yml` is the from-source manifest for a later Flathub submission;
 packaging-lint keeps the runtime and sandbox permissions (`finish-args`) of the two identical.
 Printing is not available in the Flatpak yet: it runs `lp`, which the freedesktop runtime lacks
 (the job logs a note); it needs the print portal. Users install the bundle with `flatpak install --user iridium-pdf-<v>-linux-<arch>.flatpak`; the

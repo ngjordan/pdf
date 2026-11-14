@@ -13,6 +13,6 @@ fn vendor_provenance_winit_carries_the_x11_server_dpi_fallback() {
     assert!(randr.contains("screen.width_in_millimeters.into()"));
     assert!(randr.contains("calc_dpi_factor(screen_pixels, screen_mm)"));
     assert!(randr.contains("server_dpi_wins_over_the_panels_physical_density"));
-    let desktop = std::fs::read_to_string(root.join("packaging/linux/ph.pdf.desktop")).unwrap();
+    let desktop = std::fs::read_to_string(root.join("packaging/linux/ph.iridium.pdf.desktop")).unwrap();
     assert!(!desktop.contains("WINIT_X11_SCALE_FACTOR"));
 }

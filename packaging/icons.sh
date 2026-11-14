@@ -12,7 +12,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIR="$ROOT/assets/app-icon"
 SVG="$DIR/iridium-pdf.svg"
-ID="ph.pdf"
+ID="ph.iridium.pdf"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/app-icon/hicolor/256x256/apps/ph.pdf.png" width="128" height="128" alt="PDF icon">
+  <img src="assets/app-icon/hicolor/256x256/apps/ph.iridium.pdf.png" width="128" height="128" alt="PDF icon">
 </p>
 
 <h1 align="center">PDF</h1>
@@ -556,7 +556,7 @@ each able to stand on its own.
 | <img src="https://raw.githubusercontent.com/ngjordan/docs/main/assets/app-icon/hicolor/64x64/apps/ph.docs.png" alt="" width="32" height="32"> | **Docs** | Word processing and documents | [GitHub](https://github.com/ngjordan/docs) |
 | <img src="https://raw.githubusercontent.com/ngjordan/cad/main/assets/app-icon/hicolor/64x64/apps/ph.cad.png" alt="" width="32" height="32"> | **CAD** | Computer-aided design and drafting | [GitHub](https://github.com/ngjordan/cad) |
 | <img src="https://raw.githubusercontent.com/ngjordan/decks/main/assets/app-icon/hicolor/64x64/apps/ph.decks.png" alt="" width="32" height="32"> | **Decks** | Presentations and slide shows | [GitHub](https://github.com/ngjordan/decks) |
-| <img src="https://raw.githubusercontent.com/ngjordan/pdf/main/assets/app-icon/hicolor/64x64/apps/ph.pdf.png" alt="" width="32" height="32"> | **PDF** | Reading, organizing and protecting PDF files | [GitHub](https://github.com/ngjordan/pdf) |
+| <img src="https://raw.githubusercontent.com/ngjordan/pdf/main/assets/app-icon/hicolor/64x64/apps/ph.iridium.pdf.png" alt="" width="32" height="32"> | **PDF** | Reading, organizing and protecting PDF files | [GitHub](https://github.com/ngjordan/pdf) |
 
 It is one of five open-source desktop applications built by Iridium Technologies, Inc.
 
@@ -600,7 +600,7 @@ part of this repository and PDF, under [`docs/brand/LICENSE-brand.txt`](docs/bra
 Forks and modified versions must remove them.
 
 <p align="center">
-  <a href="https://iridium.ph/"><img alt="PDF" src="assets/app-icon/hicolor/128x128/apps/ph.pdf.png" width="28"></a><br>
+  <a href="https://iridium.ph/"><img alt="PDF" src="assets/app-icon/hicolor/128x128/apps/ph.iridium.pdf.png" width="28"></a><br>
   <sub>Made by the <a href="https://iridium.ph/">Iridium Technologies</a> team and community.</sub>
 </p>
 
