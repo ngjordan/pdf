@@ -2723,3 +2723,13 @@ fn only_pixel_snapping_passes_for_fitting_the_view() {
         assert!(!fits_height(Rect::from_min_size(pos2(0.0, 0.0), vec2(1.0, 600.5)), 600.0, ppp));
     }
 }
+
+#[test]
+fn find_boolean_or_and_and() {
+    let t = find_test_text("alpha beta");
+    let f = |q: &str| Find { case_query: q.into(), ..Default::default() }.on_page(&t).len();
+    assert_eq!(f("alpha OR gamma"), 1);
+    assert_eq!(f("alpha AND beta"), 2);
+    assert_eq!(f("alpha AND gamma"), 0);
+    assert_eq!(f("gamma OR delta"), 0);
+}

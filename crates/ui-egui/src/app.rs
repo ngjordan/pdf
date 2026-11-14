@@ -475,7 +475,7 @@ impl eframe::App for PdfApp {
     }
 
     /// Starts an update that waits for the exit. On macOS the process ends before the app is dropped.
-    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+    fn on_exit(&mut self) {
         self.updates.exiting();
     }
 

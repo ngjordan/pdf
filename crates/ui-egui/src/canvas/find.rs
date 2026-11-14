@@ -40,6 +40,19 @@ pub(super) enum Follow {
 }
 
 impl Find {
+    /// Matches on one page. Upper-case ` OR ` joins alternatives; ` AND ` inside one needs every term on the page.
+    // ponytail: no NOT, proximity or stemming; add when asked.
+    pub(super) fn on_page(&self, text: &iridium_pdf_render::PageText) -> Vec<Range<usize>> {
+        let mut out = Vec::new();
+        for group in self.case_query.split(" OR ") {
+            let hits: Vec<_> = group.split(" AND ").map(|t| text.find_opts(t.trim(), self.case_sensitive, self.whole_words)).collect();
+            if hits.iter().all(|h| !h.is_empty()) {
+                out.extend(hits.into_iter().flatten());
+            }
+        }
+        out
+    }
+
     /// The first match at or after `page`, or the first match when none follows (the search
     /// wraps round the document).
     pub(super) fn first_at_or_after(&self, page: usize) -> Option<usize> {
@@ -103,7 +116,7 @@ impl DocView {
         pages.sort();
         for &p in &pages {
             if let Some(text) = self.texts.get(&p) {
-                f.matches.extend(text.find_opts(&f.case_query, f.case_sensitive, f.whole_words).into_iter().map(|r| (p, r)));
+                f.matches.extend(f.on_page(text).into_iter().map(|r| (p, r)));
             }
         }
         f.matches.sort_by_key(|(p, r)| (*p, r.start));
@@ -128,7 +141,7 @@ impl DocView {
         // this arrival must not pull them back; the choice then becomes theirs to keep.
         let follow = f.follow_page(self.current);
         f.matches.retain(|(p, _)| *p != page);
-        f.matches.extend(text.find_opts(&f.case_query, f.case_sensitive, f.whole_words).into_iter().map(|r| (page, r)));
+        f.matches.extend(f.on_page(text).into_iter().map(|r| (page, r)));
         f.matches.sort_by_key(|(p, r)| (*p, r.start));
         if let Follow::Active(from) = follow {
             f.current = f.first_at_or_after(from);

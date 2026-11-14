@@ -8,13 +8,17 @@ use std::rc::Rc;
 
 use iridium_pdf_ui_egui::{OsEventsFn, PdfApp};
 
+// wasm32: no control channel, no file paths. The ui-egui API for both is native-only.
+#[cfg(not(target_arch = "wasm32"))]
 mod control;
 #[cfg(target_os = "windows")]
 mod motion;
 mod reopen;
+#[cfg(not(target_arch = "wasm32"))]
 mod startup;
 mod text_scale;
 
+#[cfg(not(target_arch = "wasm32"))]
 use control::open_control_channel;
 
 /// The app had a former upstream name; settings saved then are under this key.
@@ -141,7 +145,10 @@ impl Shell {
         if let Some(json) = storage.and_then(|s| s.get_string("iridium_pdf").or_else(|| s.get_string(LEGACY_STORAGE_KEY))) {
             app.restore(&json);
         }
-        app.window_state = iridium_pdf_ui_egui::window_state::WindowState::started_with(storage);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            app.window_state = iridium_pdf_ui_egui::window_state::WindowState::started_with(storage);
+        }
         app.integrated_titlebar = integrated;
         app.window_controls = window_controls;
         app.system_text_scale = text_scale::system();
@@ -151,6 +158,8 @@ impl Shell {
         {
             app.motion.source = Some(motion::source());
         }
+        // The web build never touches the network on its own.
+        #[cfg(not(target_arch = "wasm32"))]
         app.set_startup_update_check(true);
         app.printer_source = Some(iridium_pdf_ui_egui::system_printers());
         app.os_key_store_ids = cfg!(any(target_os = "macos", target_os = "windows"));
@@ -166,6 +175,7 @@ impl Shell {
         if let Some(connect) = &os_events {
             app.os_events = Some(connect(ctx, window.wayland));
         }
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(file) = &control_file {
             let client = app.attach_control(ctx);
             if let Err(message) = open_control_channel(file, iridium_pdf_ui_egui::control::serve(client)) {
@@ -200,7 +210,12 @@ impl Shell {
                 &[("folder", &w.folder.display().to_string()), ("error", &w.error)],
             );
         }
+        // A browser tab has no command line: the host opens documents from bytes.
+        #[cfg(target_arch = "wasm32")]
+        let _ = (&files, &startup_error, &control_file, create_images, combine, two_paged);
+        #[cfg(not(target_arch = "wasm32"))]
         let defer_layout = two_paged && !files.is_empty() && !create_images;
+        #[cfg(not(target_arch = "wasm32"))]
         if create_images {
             if let Err(e) = app.begin_image_import_paths(&files) {
                 app.notify(e);
@@ -215,7 +230,10 @@ impl Shell {
             startup::open_files(&mut app, &files, two_paged);
         }
         for (k, v) in options {
+            #[cfg(not(target_arch = "wasm32"))]
             let result = if defer_layout && k == "layout" { app.set_launch_layout(&v) } else { app.set_option(&k, &v) };
+            #[cfg(target_arch = "wasm32")]
+            let result = app.set_option(&k, &v);
             if let Err(e) = result {
                 log::warn!("--{k} {v}: {e}");
             }
@@ -239,14 +257,24 @@ impl Shell {
     }
 
     /// Open a file path (as a string, matching the app's existing convention).
+    /// Native only: the app reads the file from the file system, and a browser
+    /// tab has none. There the app opens a document through its own file
+    /// service instead.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn open_path(&mut self, path: &str) {
         self.app.open_path(path);
     }
 
+    /// Open a file path in a browser tab, where the app has no file system to
+    /// read from. The document arrives through the app's own file service
+    /// instead, so there is nothing to open here.
+    #[cfg(target_arch = "wasm32")]
+    pub fn open_path(&mut self, _path: &str) {}
+
     /// What the app does on quit: an update waiting for the exit starts. Preferences and the window
     /// go to eframe's storage through [`eframe::App::save`], which this type implements.
     pub fn save_state(&mut self) {
-        eframe::App::on_exit(&mut self.app, None);
+        eframe::App::on_exit(&mut self.app);
     }
 
     /// False when a document has unsaved changes (text typed into a field included) or an OCR
@@ -266,7 +294,7 @@ impl eframe::App for Shell {
         eframe::App::save(&mut self.app, storage);
     }
 
-    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+    fn on_exit(&mut self) {
         self.save_state();
     }
 

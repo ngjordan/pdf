@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn on_exit_calls_the_update_exit_hook_once() {
         let mut app = PdfApp::new();
-        app.on_exit(None);
+        app.on_exit();
         assert_eq!(app.updates.exits, 1);
     }
 }
