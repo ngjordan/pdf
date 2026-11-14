@@ -5778,11 +5778,11 @@ note = "the Compare dialog has a page-range field and run_compare parses it; no 
 
 [verdict."misc.compare-scanned"]
 title = "Compare scanned documents via OCR"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/engine/src/compare.rs:64", "crates/engine/src/compare.rs:78"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Compare Files diffs embedded text words only (compare.rs:64, a.words()); it never runs OCR first. A scan can still be compared pixel-wise by compare_visual (compare.rs:78). Missing: Recognize text then word-diff for image-only pages."
 
 [verdict."misc.action-wizard-run"]
 title = "Run guided actions on files"
@@ -5801,11 +5801,11 @@ commands = ["actions.wizard"]
 
 [verdict."misc.action-wizard-manage"]
 title = "Import, export, copy and delete actions"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/ui-egui/src/workflows/actions_ui.rs:284", "crates/ui-egui/src/workflows/actions_ui.rs:288"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Custom actions can be created, edited (actions_ui.rs:284) and deleted (:288) and persist in settings (app/prefs.rs:148, :469); built-ins are fixed. Missing: import, export and copy/duplicate of an action file."
 
 [verdict."misc.action-prepare-distribution"]
 title = "Built-in action: prepare for distribution"
@@ -5832,10 +5832,10 @@ note = "catalog.rs:463 lists \"actions.archive\" as Planned and no command with 
 [verdict."misc.action-publish-web"]
 title = "Built-in action: prepare for web publishing"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/actions.rs:125"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "builtin() lists five actions (Prepare for Distribution, Optimize Scanned, Page Numbers, Confidential, Sanitize); no web-publishing action. No Fast Web View step either: linearized output is named in cos/src/lib.rs:12 but only in a doc comment, no writer found."
 
 [verdict."misc.batch-processing"]
 title = "Batch processing over files and folders"
@@ -5848,34 +5848,34 @@ note = "Actions and OCR run over chosen files."
 [verdict."misc.action-prompt-steps"]
 title = "Prompt-user and instruction steps"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/actions.rs:10"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Step enum has 12 variants (RecognizeText … RunJavaScript); none asks the user a question or shows an instruction. run_on (actions.rs:215) runs steps unattended."
 
 [verdict."misc.action-javascript-step"]
 title = "Execute JavaScript step"
-verdict = "ABSENT"
+verdict = "REAL"
 level = "read"
-evidence = ["crates/automation/src/lib.rs"]
+evidence = ["crates/engine/src/actions.rs:191"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Step::RunJavaScript(String) (actions.rs:32) runs s.run_javascript(id, js, None) at :191-192, logging the script error if any. It is in the step picker (Step::all, :50) and saved/loaded as run_javascript (:68)."
 
 [verdict."misc.custom-commands"]
 title = "Custom commands"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/automation/src/lib.rs"]
+evidence = ["crates/engine/src/commands.rs:296"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Commands come from one static table (c(...) rows, e.g. actions.wizard at :296); no user-defined command ids or scripting hook to register one. Nearest: user-built action sequences (actions_ui.rs:208) and the JavaScript console (commands.rs:361)."
 
 [verdict."misc.custom-tools"]
 title = "Custom tool sets"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/ui-egui/src/hotbar.rs:150"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "The hotbar holds a user-chosen list of registry command buttons with add/remove (hotbar.rs:150-165). Missing: named tool sets, switching between sets, import/export."
 
 [verdict."misc.command-registry"]
 title = "One command registry for menus, shortcuts, palette and automation"
@@ -5972,10 +5972,10 @@ commands = []
 [verdict."misc.ai-provider"]
 title = "AI provider interface (local model or own endpoint), off by default"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/dialogs/preferences.rs:542"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No provider setting: the Preferences card list (preferences.rs:507-545) ends at JavaScript. A search for llm/openai/ollama/assistant across crates/**/*.rs found nothing."
 
 [verdict."misc.ai-summary"]
 title = "Summarize a document"
@@ -5988,50 +5988,50 @@ note = "the automation API exposes summarize_document (text summary); no LLM-bas
 [verdict."misc.ai-ask"]
 title = "Ask questions with citations to pages"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:361"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No ask/chat command next to tools.js_console (commands.rs:361); no AI client code anywhere. Nearest is word search (panels/search_ui.rs)."
 
 [verdict."misc.ai-conversational-edit"]
 title = "Natural-language editing through registry commands"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:361"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No in-app natural-language command box. The only agent route is external: automation tools/MCP (automation/src/tools.rs:201) driven by someone else's model."
 
 [verdict."misc.ai-presentation"]
 title = "Generate a presentation from documents"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:357"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Only export.pptx exists (commands.rs:357; export/src/pptx.rs): one slide per page of one PDF. Nothing generates a presentation from documents, and there is no AI client code."
 
 [verdict."misc.ai-podcast"]
 title = "Generate an audio overview"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:361"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No audio-overview command, no text-to-speech or AI client anywhere in crates/**/*.rs."
 
 [verdict."misc.ai-charts"]
 title = "Charts from document data"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:361"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No chart-from-data command and no AI client code; nothing in crates/**/*.rs builds a chart from document content."
 
 [verdict."misc.contract-analysis"]
 title = "Contract key terms and multi-contract compare"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:299"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Next to doc.compare (commands.rs:299, a word diff of two files) there is no key-terms extraction or multi-contract comparison; doc.compare handles exactly two files, text only."
 
 [verdict."misc.adobe-ai-assistant"]
 title = "Adobe AI Assistant"
@@ -6099,27 +6099,27 @@ note = "Acrobat service not applicable; no account needed lives outside the loca
 
 [verdict."misc.rich-media-preserve"]
 title = "Preserve 3D, video and sound content"
-verdict = "ABSENT"
+verdict = "PARTIAL"
 level = "read"
-evidence = ["crates/automation/src/lib.rs"]
+evidence = ["crates/edit/src/flatten.rs:128", "crates/engine/src/edit.rs:170"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "3D, Screen, Movie, RichMedia annotations are explicitly left in place when flattening (flatten.rs:128), and 3D can be added (edit.rs:170). Sound/Movie/RichMedia are only kept, never created or inspected; no test of preservation across every save path was found."
 
 [verdict."misc.rich-media-poster"]
 title = "Show posters for rich media"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/annot/src/threed.rs:1"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "3D annotations get a poster in /AP /N from a picture or a labelled placeholder (threed.rs:1-2, :15-16). Movie, Sound and RichMedia have no poster generation; they show only whatever appearance the file already carries."
 
 [verdict."misc.rich-media-playback"]
 title = "Play video and sound via the platform"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/canvas/page_input.rs:960"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Page interaction (page_input.rs:960 paints field highlights; links open via app/links.rs) has no activate/play path for Movie, Sound, Screen, RichMedia or 3D. No audio/video dependency in the crates."
 
 [verdict."misc.3d-view"]
 title = "View 3D (U3D/PRC) content"
@@ -6139,11 +6139,11 @@ note = "Embeds a U3D or PRC file (detected from its header) as a 3D annotation w
 
 [verdict."misc.legacy-multimedia"]
 title = "Legacy multimedia (screen annotations, renditions)"
-verdict = "ABSENT"
+verdict = "PARTIAL"
 level = "read"
-evidence = ["crates/automation/src/lib.rs"]
+evidence = ["crates/a11y/src/content.rs:243", "crates/preflight/src/lib.rs:253"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Screen/Movie/Sound/RichMedia/3D subtypes are recognised: the accessibility check lists them (a11y/content.rs:243), PDF/A preflight flags them (preflight/src/lib.rs:253) and flatten leaves them (edit/src/flatten.rs:128). Missing: viewing renditions, editing or removing them from the UI."
 
 [verdict."misc.flash-swf"]
 title = "Flash/SWF content"
@@ -6195,11 +6195,11 @@ note = "a real Commenting card exists (sort by, copy colour, note font/size, cre
 
 [verdict."misc.prefs-forms"]
 title = "Preferences: forms"
-verdict = "ABSENT"
+verdict = "PARTIAL"
 level = "read"
-evidence = ["crates/automation/src/lib.rs"]
+evidence = ["crates/ui-egui/src/app/prefs.rs:99"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Only one forms preference: highlight_fields default is stored (prefs.rs:99) and toggled from the page bar (canvas/bars.rs:214), not from Preferences. Missing: auto-complete, calculation-order, highlight colour, and a Forms card in the dialog (preferences.rs:507-545)."
 
 [verdict."misc.prefs-identity"]
 title = "Preferences: identity"
@@ -6212,42 +6212,42 @@ note = "Author on new comments captures the author name; login name and email id
 [verdict."misc.prefs-full-screen"]
 title = "Preferences: full screen"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/dialogs/preferences.rs:694"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "view.full_screen exists (commands.rs:229) but there is no full-screen preference (navigation, background, transitions, escape key); card_documents_and_view (preferences.rs:694) has no such setting."
 
 [verdict."misc.prefs-search"]
 title = "Preferences: search"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/automation/src/lib.rs"]
+evidence = ["crates/ui-egui/src/dialogs/preferences.rs:694"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Find options (Whole words, Case-sensitive) live in the search panel (panels/search_ui.rs:34-35) and are not stored or editable in Preferences; no Search card (preferences.rs:507-545)."
 
 [verdict."misc.prefs-signatures"]
 title = "Preferences: signatures"
-verdict = "ABSENT"
+verdict = "PARTIAL"
 level = "read"
-evidence = ["crates/automation/src/lib.rs"]
+evidence = ["crates/ui-egui/src/app/prefs.rs:144"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Saved digital IDs and trusted certificates persist (prefs.rs:144-145) with a certificate viewer (dialogs.rs:274), and Fill & Sign has its card (preferences.rs:797). Missing: signature creation/appearance and verification preferences, timestamp server, in the dialog."
 
 [verdict."misc.prefs-security"]
 title = "Preferences: security and trust"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/ui-egui/src/dialogs/preferences.rs:807"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Enable JavaScript toggle (preferences.rs:807), secured-document notice (:664), links ask first (:745), trusted certificates saved (app/prefs.rs:145). Missing: protected/enhanced security mode, privileged locations, trust manager."
 
 [verdict."misc.prefs-spelling"]
 title = "Preferences: spelling"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/automation/src/lib.rs"]
+evidence = ["crates/ui-egui/src/dialogs/preferences.rs:507"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "No spelling setting or spell-check code; a search for spell across crates/**/*.rs matches only unrelated words (tests)."
 
 [verdict."misc.prefs-language"]
 title = "Preferences: language"
@@ -6259,11 +6259,11 @@ note = "Shortcut modifiers and key names use a dedicated catalog context across 
 
 [verdict."misc.prefs-reading"]
 title = "Preferences: reading"
-verdict = "ABSENT"
+verdict = "PARTIAL"
 level = "read"
-evidence = ["crates/automation/src/lib.rs"]
+evidence = ["crates/ui-egui/src/commands.rs:758", "crates/ui-egui/src/dialogs/preferences.rs:926"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "a11y.reading_options opens Properties > Advanced (commands.rs:758) and Reading colours remap page colours (preferences.rs:926). Missing: read-out-loud, reading order override preference, screen-reader options in Preferences."
 
 [verdict."misc.prefs-accessibility"]
 title = "Preferences: accessibility"
@@ -6276,10 +6276,10 @@ note = "the reading-colours card replaces document colours and page background; 
 [verdict."misc.prefs-color-management"]
 title = "Preferences: colour management"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/dialogs/preferences.rs:683"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No colour-management preference or ICC working-space setting; CMYK is converted plainly (edit/src/background.rs:156). Nearest preference card is Appearance (preferences.rs:683)."
 
 [verdict."misc.prefs-javascript"]
 title = "Preferences: JavaScript"
@@ -6290,11 +6290,11 @@ commands = ["app.preferences"]
 
 [verdict."misc.prefs-measuring"]
 title = "Preferences: measuring"
-verdict = "ABSENT"
+verdict = "PARTIAL"
 level = "read"
-evidence = ["crates/automation/src/lib.rs"]
+evidence = ["crates/ui-egui/src/dialogs/preferences.rs:749", "crates/engine/src/commands.rs:177"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Units preference (preferences.rs:749) and per-document scale via measure.scale (commands.rs:177). Missing: measuring preferences (snap to content, markup defaults, precision) in the dialog."
 
 [verdict."misc.prefs-units-guides"]
 title = "Preferences: units and guides"
@@ -6307,34 +6307,34 @@ note = "Units + guides + grid card sets page and ruler units, guide colour and s
 [verdict."misc.prefs-content-editing"]
 title = "Preferences: content editing"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/dialogs/preferences.rs:507"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No Content Editing card (preferences.rs:507-545): no external image/object editor choice or text-edit defaults."
 
 [verdict."misc.prefs-convert"]
 title = "Preferences: convert to and from PDF"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:352"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Export commands (export.image/text/docx/pptx, commands.rs:352-357) take options in their own dialogs; no convert-to/from-PDF preferences in Preferences."
 
 [verdict."misc.prefs-catalog"]
 title = "Preferences: catalog / index"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/automation/src/lib.rs"]
+evidence = ["crates/engine/src/commands.rs:201"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "No catalog/index build or settings; neighbouring edit.advanced_search (commands.rs:201) searches open documents, not an index."
 
 [verdict."misc.admin-preferences"]
 title = "Admin-deployable preference defaults"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/automation/src/lib.rs"]
+evidence = ["crates/ui-egui/src/app/prefs.rs:77"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Settings are one per-user JSON written by the save routine (prefs.rs:77 onward); no managed/system-wide defaults layer or lock."
 
 [verdict."misc.localization"]
 title = "Localization (Fluent catalogs)"
@@ -6346,11 +6346,11 @@ note = "The UI offers 22 non-English catalogs plus English fallback (entry count
 
 [verdict."misc.rtl-ui"]
 title = "Right-to-left user interface"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+verdict = "REAL"
+level = "read"
+evidence = ["crates/ui-egui/src/theme.rs:505"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "sync_direction (theme.rs:505-517, called from app.rs:748) sets egui right_to_left when the interface language is rtl: ar, ckb, fa (i18n.rs:105-112); comment text wraps via the bidi module. Not visually verified in this audit."
 
 [verdict."misc.installers"]
 title = "Signed installers for macOS, Windows and Linux"
@@ -6362,33 +6362,33 @@ note = "Release builds provide signed and notarized macOS artifacts and code-sig
 
 [verdict."misc.web-deploy"]
 title = "Hosted web app deployment"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["apps/iridium-pdf-web/Trunk.toml:1", "packaging/web/package.sh"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "A Trunk web build and package.sh produce a static zip with sample _headers/.htaccess (packaging/web/README.md). Missing: any deployment automation; no workflow in .github/workflows publishes it (release.yml has no web step)."
 
 [verdict."misc.performance-budgets"]
 title = "Meet performance budgets on Tier-1 platforms"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/automation/src/lib.rs"]
+evidence = ["xtask/src/gates.rs:272"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "xtask gates check extraction quality, not speed; no latency/memory budget assertions or benches found. docs/form-performance.md records historical measurements for one feature only."
 
 [verdict."misc.send-email"]
 title = "Send the file by email (system mail client)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:190"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No share/send command beside file.save (commands.rs:190-191). mailto appears only for opening links with a confirm prompt (ui-egui/src/dialogs/prompts.rs:150)."
 
 [verdict."misc.user-docs"]
 title = "User documentation and keyboard reference"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/ui-egui/src/dialogs.rs:471", "crates/ui-egui/src/commands.rs:257"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "help.shortcuts opens a Keyboard Shortcuts dialog (commands.rs:257, dialogs.rs:471) and help.* link to the project site (commands.rs:413-415). Missing: bundled/in-app user guide; docs/ holds developer documents."
 
