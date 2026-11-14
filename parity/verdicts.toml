@@ -329,9 +329,10 @@ commands = []
 [verdict."core.encrypted-autosave"]
 title = "Autosaves of encrypted documents stay encrypted"
 verdict = "REAL"
-level = "wired"
-evidence = ["crates/cos/src/document/open.rs:59"]
+level = "read"
+evidence = ["crates/ui-egui/src/persist/recovery.rs:12"]
 commands = []
+note = "ui-egui persist/recovery.rs header: encrypted documents are stored encrypted, recovery never writes plaintext snapshots (comment read; body not traced)"
 
 [verdict."core.web-recovery"]
 title = "Crash recovery in the web app"
@@ -909,18 +910,18 @@ note = "no command id and no implementation found in a source sweep"
 [verdict."view.search-index"]
 title = "Build and search a full-text index across files"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/render/src/raster.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:513"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:513 lists \"search.index\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."view.embedded-index"]
 title = "Embedded search index"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/render/src/raster.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:513"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:513 lists \"search.index\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."view.text-select"]
 title = "Select text in reading order"
@@ -1117,11 +1118,11 @@ note = "no command id; source sweep inconclusive (generic matches only)"
 
 [verdict."view.show-page-boxes"]
 title = "Show art, trim and bleed boxes"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/render/src/raster.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/engine/src/printcheck.rs:33"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Print-readiness check reports media/crop/trim/bleed boxes per page in mm in a text report (printcheck.rs PageBoxes); boxes are not drawn over the page"
 
 [verdict."view.web-app"]
 title = "Run in the browser (WebAssembly)"
@@ -1581,11 +1582,11 @@ note = "The headless batch tool allocates inclusive intervals in input order and
 
 [verdict."edit.bates-remove"]
 title = "Remove Bates numbering"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/edit/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/ui-egui/src/commands.rs:530"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No Bates-specific remove. Bates numbers are <<Bates Number#..>> tokens in the header/footer, so Remove Header & Footer (Edit::RemoveMarks HeaderFooter) removes them along with any other header/footer text"
 
 [verdict."edit.spell-check"]
 title = "Spell check in comments, form fields and edited text"
@@ -2735,10 +2736,10 @@ commands = ["measure.export"]
 [verdict."comment.geospatial"]
 title = "Geospatial location and measuring"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/annot/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:436"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:436 lists \"measure.geo\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."comment.shared-review"]
 title = "Send for comments / shared review"
@@ -3436,10 +3437,10 @@ commands = ["protect.remove"]
 [verdict."protect.certificate-encryption"]
 title = "Encrypt with certificates for recipients"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/crypt/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:292"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:292 lists \"protect.certificate\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."protect.recipient-permissions"]
 title = "Per-recipient permissions for certificate security"
@@ -4406,10 +4407,10 @@ note = "Requested in 1595; not an Acrobat export."
 [verdict."create.export-xlsx"]
 title = "Export to Excel (.xlsx) with table detection"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:87"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:87 lists \"export.xlsx\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."create.export-pptx"]
 title = "Export to PowerPoint (.pptx)"
@@ -4490,18 +4491,18 @@ note = "no command id; source sweep inconclusive (generic matches only)"
 [verdict."create.export-ps"]
 title = "Export to PostScript"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:94"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:94 lists \"export.ps\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."create.export-eps"]
 title = "Export to EPS"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:94"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:94 lists \"export.ps (PostScript / EPS)\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."create.export-ocr"]
 title = "Run OCR automatically when exporting scans"
@@ -4722,11 +4723,11 @@ note = "hidden layer content removed; visible layers not flattened"
 
 [verdict."optimize.merge-image-fragments"]
 title = "Detect and merge image fragments"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+verdict = "REAL"
+level = "read"
+evidence = ["crates/optimize/src/fragments.rs:360"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "optimize crate fragments.rs merges runs of stacked tiled image fragments into one image (merge_page body read: skips pages without fragments/content it cannot decode, keeps finest resolution); exposed as the \"Merge image fragments\" checkbox in the Optimize dialog"
 
 [verdict."optimize.lines-to-curves"]
 title = "Convert smooth lines to curves"
@@ -4799,19 +4800,19 @@ note = "no command id and no implementation found in a source sweep"
 
 [verdict."optimize.preflight-fix"]
 title = "Preflight analyze and fix"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/ui-egui/src/dialogs/standards_ui.rs:32"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Verify and fix exist for PDF/A only: pdfa_verify and pdfa_convert (Edit::ConvertPdfA) in standards_ui.rs; no profile-driven preflight analyze-and-fix"
 
 [verdict."optimize.preflight-profiles"]
 title = "Built-in preflight profiles"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:502"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:502 lists \"preflight.run\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."optimize.preflight-single-checks"]
 title = "Single checks"
@@ -4848,10 +4849,10 @@ note = "no command id; source sweep inconclusive (generic matches only)"
 [verdict."optimize.preflight-results"]
 title = "Preflight results tree with object details"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:502"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:502 lists \"preflight.run\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."optimize.preflight-snap-view"]
 title = "Snap view of a flagged object"
@@ -4863,11 +4864,11 @@ note = "no command id; source sweep inconclusive (generic matches only)"
 
 [verdict."optimize.preflight-reports"]
 title = "Preflight reports (PDF, XML, text)"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/engine/src/printcheck.rs:55"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Plain-text print-readiness report only (printcheck.rs PrintReadiness::text, verification only); no PDF or XML report"
 
 [verdict."optimize.preflight-droplets"]
 title = "Preflight droplets and batch preflight"
@@ -4904,26 +4905,26 @@ note = "Fixes XMP, output intent (generated sRGB ICC profile, only for documents
 [verdict."optimize.pdfa-accessible-levels"]
 title = "PDF/A conformance levels a and u"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+level = "read"
+evidence = ["crates/preflight/src/lib.rs:41"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Level enum has only A2b and A3b (preflight/src/lib.rs:41); levels a and u absent"
 
 [verdict."optimize.pdfx-validate"]
 title = "Verify PDF/X compliance"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:500"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:500 lists \"standards.pdfx\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."optimize.pdfx-convert"]
 title = "Save as PDF/X (1a, 3, 4)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:500"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:500 lists \"standards.pdfx\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."optimize.output-intents"]
 title = "Choose output intents and conditions"
@@ -4952,10 +4953,10 @@ note = "no command id and no implementation found in a source sweep"
 [verdict."optimize.pdfua-validate"]
 title = "Verify PDF/UA-1 and PDF/UA-2"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:501"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:501 lists \"standards.pdfua\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."optimize.standards-panel"]
 title = "Standards panel showing declared conformance"
@@ -5142,10 +5143,10 @@ note = "no command id; source sweep inconclusive (generic matches only)"
 [verdict."print.output-preview"]
 title = "Output preview"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:410"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:410 lists \"prepress.output_preview\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."print.separations"]
 title = "Separations preview with area coverage"
@@ -5222,10 +5223,10 @@ note = "no command id; source sweep inconclusive (generic matches only)"
 [verdict."print.printer-marks"]
 title = "Add printer marks (crop, bleed, registration, colour bars)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:414"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:414 lists \"prepress.marks\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."print.fix-hairlines"]
 title = "Fix hairlines"
@@ -5679,10 +5680,10 @@ commands = ["file.properties"]
 [verdict."a11y.make-accessible-action"]
 title = "Make Accessible guided action"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/a11y/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:460"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:460 lists \"actions.make_accessible\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."a11y.setup-assistant"]
 title = "Accessibility setup assistant"
@@ -5823,10 +5824,10 @@ commands = ["actions.optimize_scans"]
 [verdict."misc.action-archive"]
 title = "Built-in action: archive documents"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/automation/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:463"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "catalog.rs:463 lists \"actions.archive\" as Planned and no command with that id is registered in engine/src/commands.rs; feature not implemented"
 
 [verdict."misc.action-publish-web"]
 title = "Built-in action: prepare for web publishing"
