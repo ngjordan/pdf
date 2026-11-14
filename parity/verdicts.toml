@@ -621,26 +621,26 @@ commands = ["view.marquee_zoom"]
 [verdict."view.dynamic-zoom"]
 title = "Dynamic zoom (drag to zoom)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/render/src/raster.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:217"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No drag-to-zoom command; the only pointer zoom is Marquee zoom (view.marquee_zoom, commands.rs:217, ui-egui/src/commands.rs:357)."
 
 [verdict."view.loupe"]
 title = "Loupe magnifier tool"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/render/src/raster.rs"]
+evidence = ["crates/engine/src/commands.rs:217"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "No loupe tool in the view commands or QuickTool enum (ui-egui/src/state.rs:59); no 'loupe' string anywhere in crates."
 
 [verdict."view.pan-and-zoom"]
 title = "Pan and zoom overview window"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/render/src/raster.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:217"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No overview/pan-and-zoom window; zoom commands end at marquee zoom (commands.rs:217)."
 
 [verdict."view.hand-tool"]
 title = "Hand tool for panning"
@@ -681,10 +681,10 @@ note = "Click to advance (and shift-click back) ships with view.full-screen; aut
 [verdict."view.reflow"]
 title = "Reflow text to the window width"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/render/src/raster.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:213"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No reflow view mode; fit-width/fit-page only (commands.rs:212-213). 'reflow' appears only inside text-edit block layout (edit/src/text/blocks.rs:28), not as a view."
 
 [verdict."view.page-navigation"]
 title = "Page navigation (next, previous, first, last, go to page)"
@@ -744,11 +744,11 @@ commands = ["view.next_tab", "view.previous_tab"]
 
 [verdict."view.multiple-windows"]
 title = "Multiple windows; drag a tab out into a window"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/render/src/raster.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/ui-egui/src/chrome.rs:173"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Tabs drag-reorder within the strip (chrome.rs:173) and split into a second pane (panes.rs:346). Missing: tearing a tab out into a separate OS window; no second viewport created anywhere."
 
 [verdict."view.split-window"]
 title = "Split window (two panes on one document)"
@@ -759,11 +759,11 @@ commands = ["view.split"]
 
 [verdict."view.spreadsheet-split"]
 title = "Spreadsheet split (four synchronised panes)"
-verdict = "ABSENT"
+verdict = "PARTIAL"
 level = "read"
-evidence = ["crates/render/src/raster.rs"]
+evidence = ["crates/ui-egui/src/panes.rs:346"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "View > Split gives two synchronised panes of one document (panes.rs:346). Missing: the four-pane spreadsheet split."
 
 [verdict."view.thumbnails-panel"]
 title = "Page thumbnails panel"
@@ -819,26 +819,26 @@ note = "Layers panel ▸ Layer options ▸ Reset to Initial Visibility shows eac
 [verdict."view.destinations-panel"]
 title = "Named destinations panel"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/render/src/raster.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/state.rs:39"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "RightPanel enum (state.rs:39-55) has Comments, Bookmarks, Pages, Fields, Layers, Attachments, Signatures, Accessibility, Tags, Search, Compare; no Destinations. Named dests only resolved for open-action (app/files.rs:69) and link targets."
 
 [verdict."view.articles-panel"]
 title = "Articles panel and article reading"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/render/src/raster.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/state.rs:39"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No Articles panel in RightPanel enum (state.rs:39-55); no article/thread reading handler anywhere in ui-egui or render."
 
 [verdict."view.model-tree"]
 title = "3D model tree panel"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/render/src/raster.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/prc/src/tree/mod.rs:261"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "PRC crate builds the 3D model tree (PrcFile::model_tree, tree/mod.rs:261). Missing: no panel consumes it (RightPanel enum state.rs:39-55 has no model tree; ui-egui never references model_tree)."
 
 [verdict."view.page-labels-display"]
 title = "Show page labels (i, ii, 1, 2...)"
@@ -870,11 +870,11 @@ commands = ["edit.find"]
 
 [verdict."view.find-in-comments-bookmarks"]
 title = "Find in comments and bookmarks"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/render/src/raster.rs"]
+verdict = "REAL"
+level = "read"
+evidence = ["crates/ui-egui/src/panels/comments_panel.rs:207", "crates/ui-egui/src/panels/right.rs:152"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Comments panel search filters comments, replies and statuses (comments_panel.rs:207); Bookmarks panel has its own search box (right.rs:152, outline_matches)."
 
 [verdict."view.find-results-panel"]
 title = "Find results list"
@@ -894,18 +894,18 @@ note = "in the current document, as a side panel; searching other open documents
 [verdict."view.search-folder"]
 title = "Search all PDFs in a folder"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/render/src/raster.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/panels/search_ui.rs:13"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Search panel searches the open document only (search_ui.rs:13, canvas/find.rs:83 'all pages whose text is known'); embedded-index tool is Planned(M12) at engine/src/catalog.rs:513. No folder search."
 
 [verdict."view.search-boolean"]
 title = "Boolean, proximity and stemming search"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/render/src/raster.rs"]
+evidence = ["crates/ui-egui/src/canvas/find.rs:24"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Find options are only case-sensitive and whole-words (find.rs:24-26, search_ui.rs:34-35); no boolean, proximity or stemming operator."
 
 [verdict."view.search-index"]
 title = "Build and search a full-text index across files"
@@ -978,41 +978,41 @@ note = "Select tool: a click selects a raster image (also inside Form artwork or
 title = "Rulers"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/render/src/raster.rs"]
+evidence = ["crates/engine/src/commands.rs:233"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "No ruler command or overlay; the 'ruler' string is only the icon name of measure commands (commands.rs:174-177)."
 
 [verdict."view.grid"]
 title = "Grid and snap to grid"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/render/src/raster.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:233"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No grid or snap-to-grid view command; measure/src/snap.rs:39 'grid' is a spatial index for snapping measurements to geometry, not a view grid."
 
 [verdict."view.guides"]
 title = "Guides"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/render/src/raster.rs"]
+evidence = ["crates/engine/src/commands.rs:233"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "No guides command or overlay in the view commands (commands.rs:206-242)."
 
 [verdict."view.line-weights"]
 title = "Show line weights"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/render/src/raster.rs"]
+evidence = ["crates/engine/src/commands.rs:229"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "No 'show line weights' toggle in view commands (commands.rs:206-242); rendering has no such switch."
 
 [verdict."view.cursor-coordinates"]
 title = "Cursor coordinates"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/render/src/raster.rs"]
+evidence = ["crates/engine/src/commands.rs:242"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "No cursor-coordinates readout in the view commands (commands.rs:206-242) or status area."
 
 [verdict."view.theme-light-dark"]
 title = "Light and dark themes"
@@ -1087,11 +1087,11 @@ note = "asks GitHub Releases through craft-update at start (desktop app only) an
 
 [verdict."view.single-key-accelerators"]
 title = "Single-key tool accelerators"
-verdict = "ABSENT"
+verdict = "PARTIAL"
 level = "read"
-evidence = ["crates/render/src/raster.rs"]
+evidence = ["crates/ui-egui/src/app/keys.rs:95"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "tool_keys handles V (Select), H (Hand) and Space-for-hand (keys.rs:95-125). Missing: Acrobat's other single-key tool accelerators (text, comment tools etc.); no preference to switch them on or off."
 
 [verdict."view.customize-quick-tools"]
 title = "Customise the quick-action toolbar and pinned tools"
@@ -1111,10 +1111,10 @@ commands = []
 [verdict."view.pdfa-view-mode"]
 title = "Read-only view for PDF/A files with an Enable editing bar"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/render/src/raster.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/app/files.rs:69"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "On open (app/files.rs:69) nothing checks the PDF/A flag for a read-only mode or Enable editing bar; standards_ui.rs:64 only offers removing the PDF/A id."
 
 [verdict."view.show-page-boxes"]
 title = "Show art, trim and bleed boxes"
@@ -1252,19 +1252,19 @@ note = "Added Arabic copy/search keeps typing order through per-line ActualText.
 
 [verdict."edit.rotated-text-editing"]
 title = "Edit rotated text"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/edit/src/lib.rs"]
+verdict = "REAL"
+level = "read"
+evidence = ["crates/edit/src/text/rewrite.rs:188", "crates/edit/src/text/lines.rs:36"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Text-line matching works along the line's own direction and rotation angle (rewrite.rs:188-198, lines.rs:36), so turned text is grouped and rewritten along its baseline."
 
 [verdict."edit.keep-tags-on-edit"]
 title = "Keep structure tags when editing"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/edit/src/lib.rs"]
+level = "read"
+evidence = ["crates/edit/src/text.rs:106"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Text edit tracks only marked-content scopes to avoid merging paragraphs (text.rs:106); it never reads or updates StructTreeRoot/MCID tags (no StructTreeRoot reference anywhere in crates/edit)."
 
 [verdict."edit.image-add"]
 title = "Add an image"
@@ -1343,18 +1343,18 @@ note = "Image stacking order in content streams: Bring to Front, Send to Back, B
 [verdict."edit.align-distribute-objects"]
 title = "Align and distribute objects"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/edit/src/lib.rs"]
+level = "read"
+evidence = ["crates/edit/src/objects.rs:107"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Object ops are move_objects (objects.rs:107) and copy/paste (objects.rs:12); no align or distribute function exists."
 
 [verdict."edit.vector-edit"]
 title = "Select, move, scale, recolour and delete vector paths"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/edit/src/lib.rs"]
+level = "read"
+evidence = ["crates/edit/src/objects.rs:20"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "ObjectKind is Added, Text, Image only (objects.rs:20-24); vector paths are not selectable, movable or recolourable objects."
 
 [verdict."edit.edit-object-tool"]
 title = "Edit object tool for any page object"
@@ -1367,10 +1367,10 @@ note = "Same-page mixed selection (844): Shift/Ctrl/Command-click toggles, empty
 [verdict."edit.object-properties"]
 title = "Object properties (colour space, font, convert colour)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/edit/src/lib.rs"]
+level = "read"
+evidence = ["crates/edit/src/objects.rs:46"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "EditableObject carries rect, content_type and text only (objects.rs:46-51); no colour space, font or convert-colour properties."
 
 [verdict."edit.link-create"]
 title = "Create web and page links"
@@ -1418,18 +1418,18 @@ commands = ["edit.link"]
 [verdict."edit.action-launch"]
 title = "Open-a-file action"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/edit/src/lib.rs"]
+level = "read"
+evidence = ["crates/annot/src/links.rs:10"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "LinkAction is Page, Uri or Other(kept as is) (links.rs:10-19); no Launch action can be created."
 
 [verdict."edit.action-named"]
 title = "Execute-a-menu-item action (safe list)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/edit/src/lib.rs"]
+level = "read"
+evidence = ["crates/annot/src/links.rs:10"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "LinkAction has no Named variant (links.rs:10-19); preflight only validates the four ISO named actions (preflight/src/lib.rs:252)."
 
 [verdict."edit.action-set-ocg-state"]
 title = "Set-layer-visibility action"
@@ -1457,26 +1457,26 @@ note = "field and button JavaScript actions run through the js engine (run_butto
 [verdict."edit.action-thread"]
 title = "Read-an-article action"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/edit/src/lib.rs"]
+level = "read"
+evidence = ["crates/annot/src/links.rs:10"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "LinkAction has no Thread variant (links.rs:10-19); no article/thread handling in crates."
 
 [verdict."edit.action-goto-embedded"]
 title = "Go to a target in an embedded file (GoToE)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/edit/src/lib.rs"]
+level = "read"
+evidence = ["crates/annot/src/links.rs:10"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "LinkAction has no GoToE variant (links.rs:10-19); GoToE appears only as a destination reference kept alive by optimize (optimize/src/links.rs:177)."
 
 [verdict."edit.action-media"]
 title = "Play sound / media / rich-media actions"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/edit/src/lib.rs"]
+level = "read"
+evidence = ["crates/annot/src/links.rs:10"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "LinkAction has no Sound/Movie/Rendition/RichMedia variant (links.rs:10-19); flatten only skips such annotations (edit/src/flatten.rs:128)."
 
 [verdict."edit.header-footer-add"]
 title = "Add header and footer"
@@ -1559,10 +1559,10 @@ commands = ["edit.background.update", "edit.background.remove"]
 [verdict."edit.decoration-profiles"]
 title = "Saved header/footer and watermark settings"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/edit/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:377"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Header/footer and watermark commands (commands.rs:377-382) take their settings per call; no saved-settings store exists (no preset/profile code for marks in ui-egui/src/dialogs/marks_ui.rs)."
 
 [verdict."edit.bates-numbering"]
 title = "Bates numbering"
@@ -1591,18 +1591,18 @@ note = "No Bates-specific remove. Bates numbers are <<Bates Number#..>> tokens i
 [verdict."edit.spell-check"]
 title = "Spell check in comments, form fields and edited text"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/edit/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:308"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No spell-check command among the Edit block (commands.rs:308-315); no spell code in any crate."
 
 [verdict."edit.spell-dictionaries"]
 title = "Spelling dictionaries per language and a user dictionary"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/edit/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:308"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No spelling dictionaries or user dictionary; only an OCR-review word list exists (automation/src/tools.rs:1477), which is not a spelling dictionary."
 
 [verdict."edit.format-panel"]
 title = "Format panel for edited text"
@@ -1693,18 +1693,18 @@ note = "page.copy/page.paste cover the in-app page clipboard (organize.cut-copy-
 [verdict."organize.insert-from-scanner"]
 title = "Insert pages from a scanner"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:404"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Insert pages offers only 'from file' (page.insert, commands.rs:404; organize/src/import.rs:108); no scanner access in any crate (no TWAIN/WIA/SANE code)."
 
 [verdict."organize.insert-from-web"]
 title = "Insert pages from a web page"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:404"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "page.insert takes a file only (commands.rs:404); no URL fetch for page insertion. The sole network fetch in ui-egui is the web build's OCR call (workflows/ocr_web.rs:100)."
 
 [verdict."organize.insert-by-drop"]
 title = "Insert by dropping files onto the page grid"
@@ -1766,10 +1766,10 @@ commands = ["page.copy", "page.cut", "page.paste"]
 [verdict."organize.drag-pages-between-documents"]
 title = "Drag pages between documents"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/panels/pages.rs:137"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Thumbnail drag reorders pages within the one document (panel_drag, pages.rs:137-141). Cross-document transfer is only via Copy/Cut/Paste pages (engine/src/commands.rs:181-183), not drag."
 
 [verdict."organize.page-range-selection"]
 title = "Select by range, odd/even, landscape/portrait"
@@ -1816,19 +1816,19 @@ commands = ["page.split"]
 
 [verdict."organize.split-naming"]
 title = "Name split parts after bookmarks; never overwrite"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+verdict = "REAL"
+level = "read"
+evidence = ["crates/automation/src/assemble.rs:402"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Parts split at top-level bookmarks are named after the bookmark (assemble.rs:402-404); equal or sanitised-alike titles get -2, -3 case-insensitively so none overwrites another (assemble.rs:412-418)."
 
 [verdict."organize.split-multiple-files"]
 title = "Split multiple files in one run"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/automation/src/assemble.rs:380"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "doc_split (tools.rs:354) and Session::split (engine/src/session/files.rs:387) take one document id; no multi-file split loop, and batch.rs has no split step."
 
 [verdict."organize.combine-files"]
 title = "Combine files into one PDF"
@@ -1925,10 +1925,10 @@ commands = ["page.insert", "page.combine"]
 [verdict."organize.struct-tree-merge"]
 title = "Merge structure trees when combining"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/organize/src/import.rs:16"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Documented behaviour: StructParent(s) links are removed on import 'because the source structure tree is not copied' (import.rs:16-17); combining discards tags rather than merging trees."
 
 [verdict."organize.page-labels-edit"]
 title = "Edit page labels (style, prefix, start)"
@@ -1954,18 +1954,18 @@ commands = ["page.crop"]
 [verdict."organize.remove-white-margins"]
 title = "Remove white margins"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:402"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Cropping is manual only (page.crop commands.rs:402; page.boxes with explicit margins, ui-egui/src/dialogs/pageboxes.rs:51). No content-bounds detection to trim white margins automatically."
 
 [verdict."organize.change-page-size"]
 title = "Change page size"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:403"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Only box editing (page.boxes, commands.rs:403) and blank-page size (organize/src/lib.rs:601); no function scales page content to a new paper size."
 
 [verdict."organize.page-transitions"]
 title = "Page transitions"
@@ -1985,18 +1985,18 @@ commands = ["page.properties"]
 [verdict."organize.page-actions"]
 title = "Page open/close actions"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/organize/src/transition.rs:1"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "organize handles /Trans and /Dur on pages (transition.rs) but no page /AA open/close actions; no AA reference in organize/src or engine commands."
 
 [verdict."organize.page-templates"]
 title = "Page templates"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:398"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No page template (named page/spawn) support among page commands (commands.rs:395-410) or in organize/src."
 
 [verdict."organize.bookmark-add"]
 title = "Add a bookmark (⌘B)"
@@ -2109,34 +2109,34 @@ note = "no attachment-editor command; attachment descriptions cannot be read or 
 [verdict."organize.associated-files"]
 title = "Associated files with relationships (PDF/A-3, PDF 2.0)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/organize/src/attachments.rs:21"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "add_attachment builds a filespec with F, UF, EF, Desc only (attachments.rs:21-66): no /AF array and no /AFRelationship. Preflight only flags the missing key (preflight/src/lib.rs:1083)."
 
 [verdict."organize.portfolio-view"]
 title = "View PDF Portfolios as a file list"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/organize/src/attachments.rs:13"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Only the flat embedded-files list exists (attachments.rs:13); no /Collection portfolio schema reading or file-list view."
 
 [verdict."organize.portfolio-extract"]
 title = "Extract files from a portfolio"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/organize/src/attachments.rs:13"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Attachments can be listed/added/deleted (attachments.rs:13,21,75) but nothing reads a /Collection portfolio to extract files; no 'Collection' handling in crates."
 
 [verdict."organize.portfolio-create"]
 title = "Create PDF Portfolios"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/organize/src/attachments.rs:21"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "add_attachment writes attachments without a /Collection dictionary (attachments.rs:21-66); no portfolio creation."
 
 [verdict."organize.document-properties"]
 title = "Document properties dialog (description, fonts, advanced)"
@@ -2176,11 +2176,11 @@ note = "Document Properties ▸ Custom lists them, with Name and Value fields an
 
 [verdict."organize.xmp-editor"]
 title = "Additional metadata (XMP) editor"
-verdict = "ABSENT"
+verdict = "PARTIAL"
 level = "read"
-evidence = ["crates/organize/src/lib.rs"]
+evidence = ["crates/organize/src/xmp.rs:1"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "XMP is kept in sync with Info fields and custom properties when Properties change (xmp.rs:1-17). Missing: no user-facing editor for arbitrary XMP/additional metadata."
 
 [verdict."organize.document-language"]
 title = "Set document language and binding"
@@ -2192,18 +2192,18 @@ commands = ["file.properties"]
 [verdict."organize.print-presets"]
 title = "Print dialog presets in document properties"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/organize/src/view.rs:1"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Document properties (view.rs) cover initial view and reading options only; no ViewerPreferences print presets (PrintScaling, NumCopies, Duplex) are written."
 
 [verdict."organize.base-url"]
 title = "Base URL for relative links"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/organize/src/lib.rs"]
+level = "read"
+evidence = ["crates/organize/src/view.rs:1"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No /URI /Base setting in organize/src (view.rs covers initial view only); link edits use absolute URIs (annot/src/links.rs:16)."
 
 [verdict."comment.list-view"]
 title = "Comments panel with threaded replies (read-only)"
@@ -2380,17 +2380,17 @@ commands = ["comment.attach"]
 title = "Sound comments"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/annot/src/lib.rs"]
+evidence = ["crates/engine/src/commands.rs:265"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Comment tools (commands.rs:265-284) have no sound/record command; annot reads Sound annotations only as fixtures (annot/src/tests.rs:1801) and has no create path or audio capture."
 
 [verdict."comment.image-comment"]
 title = "Add an image as a comment"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/annot/src/lib.rs"]
+verdict = "REAL"
+level = "read"
+evidence = ["crates/engine/src/edit/run.rs:571", "crates/ui-egui/src/tools/stamps_ui.rs:1"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "A picture (image or PDF page) is placed as a CustomStamp annotation with comment name and author (run.rs:571-581); stamps_ui.rs creates it from an image file."
 
 [verdict."comment.line-endings"]
 title = "All ten line-ending styles and dashed/cloudy borders"
@@ -2602,19 +2602,19 @@ commands = ["comment.stamp"]
 
 [verdict."comment.stamps-manage"]
 title = "Manage stamp categories and imports"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/annot/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/ui-egui/src/tools/stamps_ui.rs:114"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Custom stamps are created from an image or PDF page into a named category (stamps_ui.rs:103-129) and deleted (stamps_ui.rs:160-181). Missing: renaming or moving categories, exporting/importing a stamp set."
 
 [verdict."comment.stamps-rotate"]
 title = "Rotate stamps with a handle"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/annot/src/lib.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/tools/comments/state.rs:21"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Gesture enum (state.rs:21-35) has Draw, Move, Resize, Reshape, Place; no Rotate gesture or handle. orient_image_stamp (annot/src/create.rs:506) only counter-rotates for the displayed page on placement."
 
 [verdict."comment.import-fdf-xfdf"]
 title = "Import comments from FDF/XFDF"
@@ -2677,10 +2677,10 @@ commands = ["comment.flatten"]
 [verdict."comment.migrate"]
 title = "Migrate comments to a revised document"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/annot/src/lib.rs"]
+level = "read"
+evidence = ["crates/organize/src/comments.rs:1"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Only import of comments from another PDF/data file exists (organize/src/comments.rs; comment.import commands.rs:288). No matching of comments onto a revised document's changed pages."
 
 [verdict."comment.measure-distance"]
 title = "Distance measuring tool"
@@ -2841,10 +2841,10 @@ note = "auto-size, comb, multiline, password, quadding (text, dropdown and list-
 [verdict."form.rich-text-fields"]
 title = "Rich-text field values"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/forms/src/lib.rs"]
+level = "read"
+evidence = ["crates/forms/src/lib.rs:13"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "FieldValue is plain Text/Check/Radio (lib.rs:337-347); /RV rich text is dropped when a value is set (forms/src/values.rs:184,316; lib.rs:13)."
 
 [verdict."form.af-number"]
 title = "Number and currency formatting (AFNumber)"
@@ -3068,10 +3068,10 @@ commands = ["form.add.signature"]
 [verdict."form.add-barcode-field"]
 title = "Barcode fields (PDF417, QR, Data Matrix)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/forms/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:334"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "form.add.* commands (commands.rs:325-334) cover text, checkbox, radio, combo, list, button, image, date, signature; no barcode. Barcodes exist only in XFA layout (xfa/src/parse.rs:501)."
 
 [verdict."form.props-general"]
 title = "Field properties: general (name, tooltip, visibility, read-only, required)"
@@ -3221,10 +3221,10 @@ commands = ["tools.document_js"]
 [verdict."form.document-actions"]
 title = "Document actions (will close, will save, did save, will print, did print)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/forms/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:527"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Document actions item js.actions is Planned(M6) (catalog.rs:527) and registered in no command table. js::Event::doc exists for Open/WillSave names (js/src/model.rs:102) but nothing fires or edits WillClose/WillSave/DidSave/WillPrint/DidPrint."
 
 [verdict."form.js-host"]
 title = "JavaScript engine with the Acrobat object model subset"
@@ -3245,17 +3245,17 @@ commands = ["tools.js_console"]
 title = "JavaScript debugger"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/forms/src/lib.rs"]
+evidence = ["crates/engine/src/catalog.rs:525"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Only a console exists (js_run, tools.rs:1351; js.console at catalog.rs:525); no debugger, breakpoints or stepping; js limits only cap loops/recursion (js/src/tests.rs:488)."
 
 [verdict."form.edit-all-javascripts"]
 title = "Edit all JavaScripts in one editor"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/forms/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/automation/src/tools.rs:1357"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Document-level scripts can be listed and edited (tools.rs:1357,1361) and a field's script set (form_set_script). Missing: one editor listing every script (field, page and document actions) together."
 
 [verdict."form.js-security"]
 title = "JavaScript enable switch and sandboxing"
@@ -3267,10 +3267,10 @@ commands = ["app.preferences"]
 [verdict."form.folder-level-js"]
 title = "Folder-level JavaScript"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/forms/src/lib.rs"]
+level = "read"
+evidence = ["crates/automation/src/tools.rs:1357"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Only document-level scripts (tools.rs:1357-1361); no folder/application-level JavaScript loading anywhere in crates/js or crates/automation."
 
 [verdict."form.xfa-static"]
 title = "View and fill static XFA forms"
@@ -3414,11 +3414,11 @@ commands = ["protect.password"]
 
 [verdict."protect.encrypt-attachments-only"]
 title = "Encrypt only file attachments"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/crypt/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/crypt/src/lib.rs:178", "crates/crypt/src/lib.rs:681"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Reading handles /EFF embedded-file-only crypt filters (lib.rs:140,178,336). Missing: creation; NewEncryption (lib.rs:681-689) and the Protect dialog (ui-egui/src/dialogs/protect.rs:153-158) offer only all contents or all except metadata."
 
 [verdict."protect.password-strength"]
 title = "Password strength meter"
@@ -3445,26 +3445,26 @@ note = "catalog.rs:292 lists \"protect.certificate\" as Planned and no command w
 [verdict."protect.recipient-permissions"]
 title = "Per-recipient permissions for certificate security"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/crypt/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:292"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Certificate encryption is Planned(M8) (catalog.rs:292) and no code writes an Adobe.PubSec dictionary; the only PubSec reference is a test fixture (crypt/src/tests.rs:234). Per-recipient permissions have nowhere to live."
 
 [verdict."protect.recipient-ldap"]
 title = "Find recipients in a directory (LDAP)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/crypt/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:292"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No directory or LDAP lookup in any crate; certificate encryption itself is Planned(M8) (catalog.rs:292)."
 
 [verdict."protect.security-policies"]
 title = "Local security policies (saved presets)"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/crypt/src/lib.rs"]
+evidence = ["crates/ui-egui/src/dialogs/protect.rs:2"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Password Security dialog (protect.rs) holds a one-off draft: algorithm, metadata, printing, changes; no named saved policy store anywhere."
 
 [verdict."protect.rights-management"]
 title = "Server-based rights management (AEM/LiveCycle)"
@@ -3477,10 +3477,10 @@ note = "Acrobat service server product; local policy presets only lives outside 
 [verdict."protect.mip-labels"]
 title = "Open Microsoft Purview-protected PDFs and apply labels"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/crypt/src/lib.rs"]
+level = "read"
+evidence = ["crates/crypt/src/lib.rs:1"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "The crypt crate implements the standard security handler R2-R6 only (lib.rs:1-7); no Purview/MIP protected-document support or label code in any crate."
 
 [verdict."protect.redact-text"]
 title = "Mark text for redaction"
@@ -3535,9 +3535,9 @@ commands = []
 title = "Pattern sets per locale"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/crypt/src/lib.rs"]
+evidence = ["crates/redact/src/patterns.rs:8"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Fixed pattern list: Phone, Email, CreditCard, Ssn, Date, Iban (patterns.rs:8-18, PATTERNS at 20); no locale-specific sets. Only redaction-code sets (FOIA etc., codes.rs:13) and user regex (user_regex.rs:1) exist."
 
 [verdict."protect.redact-partial-words"]
 title = "Redact part of a match (e.g. all but the last four digits)"
@@ -3550,10 +3550,10 @@ note = "redactions cover whole text spans or search hits; no partial-word editin
 [verdict."protect.redact-folder"]
 title = "Search and redact across a folder"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/crypt/src/lib.rs"]
+level = "read"
+evidence = ["crates/automation/src/tools.rs:146"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "doc_batch runs convert, ocr and optimize only (tools.rs:146); redact tools work on open documents (automation/src/redact.rs)."
 
 [verdict."protect.redaction-properties"]
 title = "Redaction fill colour and overlay text"
@@ -3629,10 +3629,10 @@ commands = ["redact.apply", "file.save"]
 [verdict."protect.redact-ai-suggestions"]
 title = "Suggest sensitive content to redact via an AI provider"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/crypt/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:541"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "AI items are Provider placeholders (ai.summary, ai.ask, ai.translate; catalog.rs:541-543) and no code calls a provider; redaction marks come from patterns/regex only (redact/src/patterns.rs:8)."
 
 [verdict."protect.remove-hidden-information"]
 title = "Remove hidden information (selectable categories)"
@@ -3658,43 +3658,43 @@ note = "New iridium-pdf-audit crate."
 
 [verdict."protect.remove-hidden-on-close"]
 title = "Remove hidden information when closing or sending"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/crypt/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/ui-egui/src/tools/redact_ui.rs:628"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Remove Hidden Information runs on demand (redact_ui.rs:628, engine/src/document.rs:611) and in the distribution action (engine/src/actions.rs:130). Missing: the automatic trigger on close or send."
 
 [verdict."protect.attachment-trust"]
 title = "Block opening risky attachment types"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/crypt/src/lib.rs"]
+evidence = ["crates/ui-egui/src/workflows/files.rs:259"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Attachment names are cleaned of bidi/control characters for saving (files.rs:259-262), but no file type is blocked or warned about and no trust list exists."
 
 [verdict."protect.url-access-control"]
 title = "Control internet access from PDFs"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/crypt/src/lib.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/app/links.rs:87"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "open_url sends any link straight to the browser (links.rs:87-89,122); no allow/deny list or prompt for internet access from a PDF."
 
 [verdict."protect.protected-view"]
 title = "Open untrusted files in a restricted view"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/crypt/src/lib.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/app/files.rs:69"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Opening (app/files.rs:69) goes straight to the normal editable view; no restricted/protected-view mode or sandbox state exists."
 
 [verdict."protect.security-envelope"]
 title = "Security envelopes"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/crypt/src/lib.rs"]
+evidence = ["crates/crypt/src/lib.rs:1"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "No envelope (file wrapped in an encrypted attachment-only PDF) code; embedded-file encryption is read-only (crypt/src/lib.rs:178) and nothing creates a wrapper."
 
 [verdict."sign.pkcs12"]
 title = "Sign with a PKCS12 (.p12/.pfx) digital ID"
@@ -3727,10 +3727,10 @@ commands = ["sign.digital", "sign.certify"]
 [verdict."sign.pkcs11"]
 title = "Sign with PKCS11 tokens and smart cards"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/sign/src/lib.rs"]
+level = "read"
+evidence = ["crates/sign/src/keys.rs:1"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No PKCS#11 module loading (no cryptoki/pkcs11 code). Hardware IDs only appear through macOS CryptoTokenKit via the Keychain (sign/src/keychain.rs:76) and the Windows store (sign/src/windows.rs)."
 
 [verdict."sign.self-signed-id"]
 title = "Create a self-signed digital ID"
@@ -3784,11 +3784,11 @@ commands = ["sign.digital"]
 
 [verdict."sign.lock-after-signing"]
 title = "Lock document or fields after signing"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/sign/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/sign/src/pdf/signing.rs:218"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Certifying writes a DocMDP reference (signing.rs:218-226; SignDraft.certify, sign_ui.rs:114) which locks the document. Missing: locking chosen fields after signing (no /Lock or FieldMDP code)."
 
 [verdict."sign.pkcs7-detached"]
 title = "PKCS7 detached signatures"
@@ -3829,9 +3829,9 @@ commands = ["sign.certify"]
 title = "Field locks (FieldMDP)"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/sign/src/lib.rs"]
+evidence = ["crates/sign/src/pdf/signing.rs:218"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "The only signature reference written is TransformMethod DocMDP (signing.rs:218-220); no FieldMDP transform and no /Lock dictionary handling in sign or forms crates."
 
 [verdict."sign.document-timestamp"]
 title = "Add a document timestamp (RFC 3161)"
@@ -3845,9 +3845,9 @@ note = "timestamp_document appends a standalone /ETSI.RFC3161 signature dictiona
 title = "Configure timestamp servers"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/sign/src/lib.rs"]
+evidence = ["crates/sign/src/timestamp.rs:94"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Timestamps go through a TimestampAuthority trait (timestamp.rs:94); the only impls are test doubles (sign/tests/it/pdf.rs:866). No server URL setting or HTTP TSA client; engine catalog item sign.timestamp is Planned(M9) (catalog.rs:393)."
 
 [verdict."sign.pades-bt"]
 title = "PAdES B-T (signature timestamp)"
@@ -3944,17 +3944,17 @@ note = "import .cer/.pem/.der/.p7b/.p7c/.p12 through the tool; per-certificate t
 title = "EU Trusted Lists"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/sign/src/lib.rs"]
+evidence = ["crates/automation/src/tools.rs:1015"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Trust is a user-supplied certificate list (sign_trust, tools.rs:1015); no EU Trusted List download or parse anywhere in crates/sign."
 
 [verdict."sign.os-trust"]
 title = "Trust the operating system's root certificates"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/sign/src/lib.rs"]
+level = "read"
+evidence = ["crates/automation/src/tools.rs:1015"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Validation trusts only certificates added by the user (sign_trust, tools.rs:1015); OS root stores are consulted only to list signing identities (sign/src/keychain.rs:62, windows.rs), not as trust anchors."
 
 [verdict."sign.verification-time"]
 title = "Verification time (signing time, timestamp, now)"
@@ -3980,11 +3980,11 @@ commands = ["sign.panel"]
 
 [verdict."sign.compare-signed-version"]
 title = "Compare signed version with the current one"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/sign/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/ui-egui/src/tools/sign_ui.rs:664"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "View signed version opens the signed revision as a snapshot (sign_ui.rs:664-680, canvas/bars.rs:98) and Compare files exists (engine/src/commands.rs:299). Missing: one action that compares the signed version against the current document."
 
 [verdict."sign.verify-on-open"]
 title = "Verify signatures when a document opens"
@@ -4005,33 +4005,33 @@ note = "no clear-signature command; sign.validate makes signatures permanently u
 title = "Signature seed values"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/sign/src/lib.rs"]
+evidence = ["crates/sign/src/pdf/types.rs:1"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "No /SV seed-value dictionary read or written; sign/src/pdf/types.rs and signing.rs set no seed constraints, and signing ignores any on an empty field."
 
 [verdict."sign.preview-mode"]
 title = "Preview document mode before signing"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/sign/src/lib.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/tools/sign_ui.rs:114"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "SignDraft (sign_ui.rs:108-122) has no preview-document step; the only preview is of the signature appearance (sign_ui/dialog.rs:253)."
 
 [verdict."sign.qualified-labels"]
 title = "Show qualified signature/seal labels"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/sign/src/lib.rs"]
+evidence = ["crates/ui-egui/src/tools/sign_ui.rs:316"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Identities are labelled only as smart card (sign_ui.rs:316); no qualified signature/seal label logic or EU trust-list data to drive it."
 
 [verdict."sign.web-signing"]
 title = "Sign in the browser with a PKCS12 file"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/sign/src/lib.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/tools/sign_ui/dialog.rs:236"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "The .p12/.pfx picker is compiled out for wasm32 (dialog.rs:236-249, 194), so the browser build offers no PKCS12 signing even though sign/src/pkcs12.rs itself has no OS dependency."
 
 [verdict."sign.aatl"]
 title = "Adobe Approved Trust List"
@@ -4111,11 +4111,11 @@ note = "On demand, per edit: in Edit text & images, recognised text (the invisib
 
 [verdict."ocr.ocr-downsample"]
 title = "Downsample images during OCR"
-verdict = "ABSENT"
+verdict = "REAL"
 level = "read"
-evidence = ["crates/ocr/src/lib.rs"]
+evidence = ["crates/engine/src/ocr.rs:108", "crates/engine/src/ocr.rs:702"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "OcrSettings.dpi is Acrobat's 'Downsample to' choice (ocr.rs:108-110); each page is rendered at settings.dpi clamped 72-600 for recognition (ocr.rs:697-702)."
 
 [verdict."ocr.skip-renderable-text"]
 title = "Skip pages that already have text"
@@ -4160,17 +4160,17 @@ note = "Camera images (Enhance camera image level) and scanned pages (Enhance sc
 title = "Descreen"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/ocr/src/lib.rs"]
+evidence = ["crates/ocr/src/preprocess.rs:20"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "PreprocessOptions has auto_rotate, deskew, denoise, binarize only (preprocess.rs:20-30); no descreen step."
 
 [verdict."ocr.remove-halo"]
 title = "Remove halos"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/ocr/src/lib.rs"]
+evidence = ["crates/ocr/src/preprocess.rs:20"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "PreprocessOptions (preprocess.rs:20-30) has no halo removal; its denoise is a 3x3 median filter (preprocess.rs:26)."
 
 [verdict."ocr.edge-shadow-removal"]
 title = "Edge shadow removal"
@@ -4207,18 +4207,18 @@ note = "The OCR Verify screen, in the document area under the window's tabs, men
 [verdict."ocr.adaptive-compression"]
 title = "Adaptive (MRC) compression of scans"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/ocr/src/lib.rs"]
+level = "read"
+evidence = ["crates/ocr/src/lib.rs:8"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "OCR leaves the scanned image untouched ('Searchable Image (Exact)', lib.rs:8-9); no MRC layer separation. Image recompression lives in optimize (optimize/src/images.rs), not in OCR or scan output."
 
 [verdict."ocr.scan-pdfa"]
 title = "Make scans PDF/A compliant"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/ocr/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/ocr.rs:107"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "OcrSettings (ocr.rs:107-125) has no PDF/A option; Save as PDF/A is a separate command (standards.pdfa, engine/src/catalog.rs:499) that has to be run on the result."
 
 [verdict."ocr.ocr-engines"]
 title = "Pluggable OCR engines (ocrs default; tesseract optional)"
@@ -4239,25 +4239,25 @@ commands = ["ocr.recognize"]
 title = "Scan from TWAIN/WIA/ICA/SANE scanners"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/ocr/src/lib.rs"]
+evidence = ["crates/engine/src/commands.rs:298"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "No scanner access (no TWAIN, WIA, ICA or SANE code in any crate); the nearest scan command is 'Optimize scanned documents' (commands.rs:298), which works on files."
 
 [verdict."ocr.scan-presets"]
 title = "Scan presets"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/ocr/src/lib.rs"]
+evidence = ["crates/engine/src/ocr.rs:107"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "No saved scan presets: OcrSettings (ocr.rs:107) is a per-run struct with Default and no persisted named set; actions.rs:125 holds built-in actions only."
 
 [verdict."ocr.scan-append"]
 title = "Append scans to an existing PDF or split into files"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/ocr/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:298"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No scan acquisition, so no append-to-existing or split-into-files option for scans exists; doc_split (automation/src/assemble.rs:354) splits existing documents only."
 
 [verdict."ocr.adobe-scan-sync"]
 title = "Adobe Scan mobile capture sync"
@@ -4291,10 +4291,10 @@ commands = ["create.file"]
 [verdict."create.from-markdown"]
 title = "Create PDF from Markdown"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/create/src/lib.rs:797"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "source_kind recognises only PDF, images and .txt/.text (lib.rs:797-809); no Markdown parser or Create command (engine/commands.rs:184-188). Markdown exists only as an export target (export/src/lib.rs:21)."
 
 [verdict."create.from-clipboard"]
 title = "Create PDF from the clipboard"
@@ -4305,11 +4305,11 @@ commands = ["create.clipboard"]
 
 [verdict."create.from-screenshot"]
 title = "Create PDF from a screen capture"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/ui-egui/src/workflows/create_ui.rs:136"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Create PDF from clipboard turns a pasted image (e.g. a screen capture taken by the OS) into a PDF (create_ui.rs:136, commands.rs:255). Missing: no built-in screen-capture tool; edit.snapshot (commands.rs:228) copies a page area, not the screen."
 
 [verdict."create.blank"]
 title = "Create a blank PDF"
@@ -4321,26 +4321,26 @@ commands = ["create.blank"]
 [verdict."create.from-html"]
 title = "Create PDF from an HTML file"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/create/src/lib.rs:797"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No HTML renderer; Create accepts PDF, image or text only (lib.rs:797-809). HTML is an export format only (commands.rs:358)."
 
 [verdict."create.from-web-page"]
 title = "Create PDF from a web page URL"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:184"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "create.* commands (commands.rs:173-188) have no URL source and no page fetch/render code anywhere."
 
 [verdict."create.from-office"]
 title = "Create PDF from Office documents (LibreOffice sidecar)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/create/src/lib.rs:797"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No LibreOffice sidecar or Office converter: source_kind (lib.rs:797) returns None for .docx/.xlsx/.pptx; no external-process call for conversion in create or engine."
 
 [verdict."create.create-multiple"]
 title = "Convert many files to PDF in one run"
@@ -4360,26 +4360,26 @@ note = "Page sizing: embedded resolution (72 dpi fallback), fixed 72 dpi, or cus
 [verdict."create.pdf-printer"]
 title = "Print to PDF from other applications"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:184"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No virtual PDF printer or print-to-PDF driver; crates/print only sends jobs to existing printers via CUPS/lp (print/src/spool.rs:9)."
 
 [verdict."create.distiller"]
 title = "PostScript/EPS to PDF (Distiller)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/create/src/lib.rs:797"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No PostScript/EPS interpreter; source_kind (lib.rs:797) rejects .ps/.eps. PostScript appears only as a planned export (export.ps Planned(M10), catalog.rs:94)."
 
 [verdict."create.job-options"]
 title = "PDF settings presets (job options)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/create/src/lib.rs:81"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Create functions (blank, from_images, from_text; lib.rs:81,850,921) take explicit arguments; no saved job-options/settings presets for conversion."
 
 [verdict."create.export-docx"]
 title = "Export to Word (.docx)"
@@ -4437,10 +4437,10 @@ commands = ["export.image"]
 [verdict."create.export-jpeg2000"]
 title = "Export pages as JPEG 2000"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/export.rs:362"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "ImageFormat is Png, Jpeg{quality}, Tiff (export.rs:362-369); JPEG 2000 is read on import (create/src/lib.rs:828) but not written."
 
 [verdict."create.export-all-images"]
 title = "Export all embedded images"
@@ -4467,26 +4467,26 @@ commands = ["export.text"]
 [verdict."create.export-accessible-text"]
 title = "Export accessible text (from tags)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:355"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "export.text (commands.rs:355) is plain text extraction; no export of the tag tree as accessible text."
 
 [verdict."create.export-xml"]
 title = "Export to XML"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:359"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No XML export of page content among export.* commands (commands.rs:352-376); XML in session/files.rs:92 is comments/form data only."
 
 [verdict."create.export-svg"]
 title = "Export to SVG"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:359"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No SVG export: export.* commands (commands.rs:352-376) and ImageFormat (export.rs:362) have no vector output."
 
 [verdict."create.export-ps"]
 title = "Export to PostScript"
@@ -4507,18 +4507,18 @@ note = "catalog.rs:94 lists \"export.ps (PostScript / EPS)\" as Planned and no c
 [verdict."create.export-ocr"]
 title = "Run OCR automatically when exporting scans"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/create/src/lib.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/workflows/export_ui.rs:24"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "ExportDraft (export_ui.rs:24-31) has dpi, range, format, min_side only; exporting never runs recognition on scanned pages."
 
 [verdict."create.export-settings"]
 title = "Per-format export settings"
-verdict = "ABSENT"
+verdict = "PARTIAL"
 level = "read"
-evidence = ["crates/create/src/lib.rs"]
+evidence = ["crates/ui-egui/src/workflows/export_ui.rs:24"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Image export has dpi, page range, format and min image side (export_ui.rs:24-31) and JPEG quality (export.rs:365). Missing: settings for Word/PowerPoint/HTML/RTF/Markdown export (compare.rs:159 OfficeFormat takes only the format)."
 
 [verdict."create.text-extraction"]
 title = "Extract text in reading order (columns, RTL, CJK)"
@@ -4531,9 +4531,9 @@ commands = []
 title = "Translate documents"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/create/src/lib.rs"]
+evidence = ["crates/engine/src/catalog.rs:543"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Translate is a Provider placeholder (ai.translate, catalog.rs:543); no provider call implemented in any crate."
 
 [verdict."create.cloud-office-conversion"]
 title = "Cloud conversion from the macOS Office add-in"
@@ -4601,17 +4601,17 @@ commands = ["optimize.advanced"]
 title = "Unembed fonts"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/optimize/src/lib.rs"]
+evidence = ["crates/optimize/src/lib.rs:188"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "optimize::Settings (lib.rs:188-217) has image, discard, flate, object-stream and clean-up switches; nothing about fonts, and no font-unembedding code in the optimize crate."
 
 [verdict."optimize.flatten-transparency"]
 title = "Flatten transparency"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/optimize/src/lib.rs"]
+evidence = ["crates/optimize/src/lib.rs:188"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "No transparency flattening in Settings (lib.rs:188-217). edit/src/flatten.rs flattens annotations and fields; preflight/src/transparency.rs only checks transparency."
 
 [verdict."optimize.discard-javascript"]
 title = "Discard JavaScript actions"
@@ -4644,10 +4644,10 @@ commands = ["optimize.advanced"]
 [verdict."optimize.discard-search-index"]
 title = "Discard embedded search index"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+level = "read"
+evidence = ["crates/optimize/src/lib.rs:188"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Settings has no discard-index switch (lib.rs:188-217); discarded objects are thumbnails, alternates, tags, print settings, form actions (lib.rs:19-20)."
 
 [verdict."optimize.discard-print-settings"]
 title = "Discard embedded print settings"
@@ -4709,9 +4709,9 @@ commands = ["optimize.advanced"]
 title = "Discard external cross-references"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/optimize/src/lib.rs"]
+evidence = ["crates/optimize/src/links.rs:177"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "links.rs removes links pointing nowhere inside the file; it keeps GoToR/GoToE destinations alive (links.rs:177) and no setting discards external cross-references."
 
 [verdict."optimize.discard-hidden-layers"]
 title = "Discard hidden layers and flatten visible ones"
@@ -4732,10 +4732,10 @@ note = "optimize crate fragments.rs merges runs of stacked tiled image fragments
 [verdict."optimize.lines-to-curves"]
 title = "Convert smooth lines to curves"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+level = "read"
+evidence = ["crates/optimize/src/lib.rs:188"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No path simplification in Settings (lib.rs:188-217) or the optimize modules; content streams are never rewritten for geometry."
 
 [verdict."optimize.compress-structure"]
 title = "Compress document structure (object streams)"
@@ -4761,11 +4761,11 @@ commands = ["optimize.advanced"]
 
 [verdict."optimize.optimize-content"]
 title = "Optimize page content streams"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/optimize/src/lib.rs:213"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Clean Up recompresses streams (flate_unencoded, lzw_to_flate, object_streams; lib.rs:204-212) and drops undrawn images (unused.rs). Missing: any rewrite of page content-stream operators."
 
 [verdict."optimize.audit-space"]
 title = "Audit space usage"
@@ -4776,11 +4776,11 @@ commands = ["optimize.advanced"]
 
 [verdict."optimize.optimizer-presets"]
 title = "Optimizer presets"
-verdict = "ABSENT"
+verdict = "PARTIAL"
 level = "read"
-evidence = ["crates/optimize/src/lib.rs"]
+evidence = ["crates/optimize/src/lib.rs:253"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Built-in Standard and Mobile presets (lib.rs:253-258), picked in the dialog (ui-egui/src/workflows/optimize_ui.rs:196-202). Missing: user-saved, named or deleted presets."
 
 [verdict."optimize.batch-optimize"]
 title = "Optimize multiple files"
@@ -4792,11 +4792,11 @@ note = "Headless and CLI only: doc_batch with the optimize step (`iridium-pdf-cl
 
 [verdict."optimize.preflight"]
 title = "Preflight analysis"
-verdict = "ABSENT"
+verdict = "PARTIAL"
 level = "read"
-evidence = ["crates/optimize/src/lib.rs"]
+evidence = ["crates/preflight/src/lib.rs:569"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "verify() checks PDF/A-2b/3b (lib.rs:569), run via pdfa_verify (engine/src/compare.rs:31) and Print readiness (engine/src/printcheck.rs:158). Missing: a general profile-driven Preflight; preflight.run is Planned(M11) (catalog.rs:411)."
 
 [verdict."optimize.preflight-fix"]
 title = "Preflight analyze and fix"
@@ -4818,33 +4818,33 @@ note = "catalog.rs:502 lists \"preflight.run\" as Planned and no command with th
 title = "Single checks"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/optimize/src/lib.rs"]
+evidence = ["crates/preflight/src/lib.rs:569"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "verify() runs the whole PDF/A rule set in one pass (lib.rs:569) with no way to choose a single check; Level has only A2b and A3b (lib.rs:41-44)."
 
 [verdict."optimize.preflight-single-fixups"]
 title = "Single fixups"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/optimize/src/lib.rs"]
+evidence = ["crates/preflight/src/lib.rs:1227"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "convert() applies all PDF/A fixes together (lib.rs:1227); Issue.fixable only marks whether convert can fix it (lib.rs:94). No single-fixup entry point."
 
 [verdict."optimize.preflight-custom-profiles"]
 title = "Create and edit custom profiles"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+level = "read"
+evidence = ["crates/preflight/src/lib.rs:41"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Profiles are the fixed Level enum A2b/A3b (lib.rs:41-44); no custom profile structure or editor."
 
 [verdict."optimize.preflight-profile-exchange"]
 title = "Import, export and lock profiles"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+level = "read"
+evidence = ["crates/preflight/src/lib.rs:41"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No profile serialisation, import, export or lock; the only 'profile' is the compiled-in Level enum (lib.rs:41-44)."
 
 [verdict."optimize.preflight-results"]
 title = "Preflight results tree with object details"
@@ -4857,10 +4857,10 @@ note = "catalog.rs:502 lists \"preflight.run\" as Planned and no command with th
 [verdict."optimize.preflight-snap-view"]
 title = "Snap view of a flagged object"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/dialogs/standards_ui.rs:104"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Issues carry page and object (preflight/src/lib.rs:90-93) but the results list only prints text and '(page n)' (standards_ui.rs:104-108); no jump to or zoomed view of the flagged object."
 
 [verdict."optimize.preflight-reports"]
 title = "Preflight reports (PDF, XML, text)"
@@ -4874,17 +4874,17 @@ note = "Plain-text print-readiness report only (printcheck.rs PrintReadiness::te
 title = "Preflight droplets and batch preflight"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/optimize/src/lib.rs"]
+evidence = ["crates/automation/src/tools.rs:146"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "doc_batch runs convert, ocr and optimize only (tools.rs:146); no droplet or batch preflight over files and folders."
 
 [verdict."optimize.preflight-audit-trail"]
 title = "Embed preflight audit trail"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/optimize/src/lib.rs"]
+evidence = ["crates/preflight/src/lib.rs:1126"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Report (lib.rs:1126) is returned to the caller; nothing embeds a preflight result or history in the PDF, and Print readiness is stated to change nothing (engine/src/printcheck.rs:1)."
 
 [verdict."optimize.pdfa-validate"]
 title = "Verify PDF/A compliance (2b and 3b so far; 1, 2a, 2u, 3a, 3u, 4 not yet)"
@@ -4937,18 +4937,18 @@ note = "sRGB output intent added and listed; no choice of other conditions yet."
 [verdict."optimize.pdfe"]
 title = "PDF/E"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+level = "read"
+evidence = ["crates/preflight/src/lib.rs:41"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Standards covered are PDF/A (preflight/src/lib.rs:41) and the PDF/X id carried through splits (organize/src/pdfx.rs); no PDF/E check or conversion."
 
 [verdict."optimize.pdfvt"]
 title = "PDF/VT"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/optimize/src/lib.rs"]
+evidence = ["crates/preflight/src/lib.rs:41"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "No PDF/VT (DPart/DPM) check or conversion; DPartRoot is only preserved in organize tests (organize/src/tests.rs:4506)."
 
 [verdict."optimize.pdfua-validate"]
 title = "Verify PDF/UA-1 and PDF/UA-2"
@@ -4976,18 +4976,18 @@ commands = ["standards.pdfa"]
 [verdict."optimize.pdfx5-reference-xobjects"]
 title = "Show PDF/X-5 reference XObjects"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+level = "read"
+evidence = ["crates/organize/src/pdfx.rs:1"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "organize/src/pdfx.rs only reads and carries the declared PDF/X id; nothing handles or displays PDF/X-5 reference XObjects (/Ref)."
 
 [verdict."optimize.einvoice-pdfa3"]
 title = "Embed e-invoice XML in PDF/A-3"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/optimize/src/lib.rs"]
+level = "read"
+evidence = ["crates/organize/src/attachments.rs:21"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "PDF/A-3b verification exists (preflight Level::A3b) but attachments are added without /AFRelationship or /AF (attachments.rs:21-66); no Factur-X/ZUGFeRD XML embedding or XMP extension for it."
 
 [verdict."print.print-dialog"]
 title = "Print dialog"
@@ -5033,11 +5033,11 @@ commands = ["print.dialog"]
 
 [verdict."print.paper-source-by-size"]
 title = "Choose paper source by PDF page size"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/ui-egui/src/workflows/print_ui/body.rs:245"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "A 'Match page at 100%' button picks the paper size matching the current PDF page (body.rs:245-252, print/src/sheets.rs:92). Missing: automatic choice per page or of the paper tray; input slot is only reachable through the driver options panel (body.rs:236)."
 
 [verdict."print.duplex"]
 title = "Print on both sides"
@@ -5084,10 +5084,10 @@ commands = ["print.dialog"]
 [verdict."print.print-with-comment-summary"]
 title = "Print with a comments summary"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+level = "read"
+evidence = ["crates/print/src/settings.rs:135"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Content is Document, DocumentAndMarkups, DocumentAndStamps or FormFieldsOnly (settings.rs:135-145); no option appends a comments summary to the print job, although Summarize comments exists (commands.rs:292)."
 
 [verdict."print.print-preview"]
 title = "Print preview"
@@ -5112,11 +5112,11 @@ commands = ["print.dialog"]
 
 [verdict."print.page-setup"]
 title = "Page setup"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/print/src/settings.rs:148"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Paper, orientation, layout and content are set inside the Print dialog (Settings, settings.rs:148-165); there is no separate Page Setup dialog or margin setting."
 
 [verdict."print.print-ready-pdf"]
 title = "Produce a print-ready imposed PDF"
@@ -5135,10 +5135,10 @@ commands = ["print.dialog"]
 [verdict."print.postscript-output"]
 title = "PostScript Level 3 output"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:94"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "PostScript / EPS output is Planned(M10) (export.ps, catalog.rs:94); print jobs go to CUPS/lp as PDF (print/src/spool.rs) and no PostScript writer exists."
 
 [verdict."print.output-preview"]
 title = "Output preview"
@@ -5151,74 +5151,74 @@ note = "catalog.rs:410 lists \"prepress.output_preview\" as Planned and no comma
 [verdict."print.separations"]
 title = "Separations preview with area coverage"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:410"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Output preview (separations, area coverage) is Planned(M11) (catalog.rs:410); no separation or coverage code in engine, render or print."
 
 [verdict."print.total-area-coverage"]
 title = "Total area coverage warning"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/printcheck.rs:129"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Print readiness states 'Not checked: PDF/X, overprint, total area coverage, spot colours, transparency flattening' (printcheck.rs:129)."
 
 [verdict."print.color-warnings"]
 title = "Overprint and rich-black warnings"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/printcheck.rs:129"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Overprint and rich-black are explicitly not checked (printcheck.rs:129); no detection code elsewhere."
 
 [verdict."print.object-inspector"]
 title = "Object inspector"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/print/src/lib.rs"]
+evidence = ["crates/engine/src/catalog.rs:410"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Part of Output preview, Planned(M11) (catalog.rs:410); there is no inspector over page objects' colour or overprint attributes. Object listing (edit/src/objects.rs:58) reports rect and type only."
 
 [verdict."print.simulate-paper-ink"]
 title = "Simulate paper colour and black ink"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:410"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Output preview is Planned(M11) (catalog.rs:410); render/src has no paper-white or black-ink simulation."
 
 [verdict."print.overprint-preview"]
 title = "Overprint preview"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/print/src/lib.rs"]
+evidence = ["crates/engine/src/printcheck.rs:129"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Overprint explicitly not handled (printcheck.rs:129); Output preview is Planned(M11) (catalog.rs:410)."
 
 [verdict."print.convert-colors"]
 title = "Convert colours"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/print/src/lib.rs"]
+evidence = ["crates/engine/src/catalog.rs:412"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Convert colors is Planned(M11) (prepress.convert_colors, catalog.rs:412) and not among registered commands (commands.rs:409 has only prepress.hairlines)."
 
 [verdict."print.ink-manager"]
 title = "Ink manager"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/print/src/lib.rs"]
+evidence = ["crates/engine/src/printcheck.rs:129"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Spot colours are explicitly not checked (printcheck.rs:129); no ink manager code or UI."
 
 [verdict."print.ink-aliases"]
 title = "Ink aliases and spot-to-process"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/printcheck.rs:129"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No ink alias or spot-to-process conversion; spot colours are not handled at all (printcheck.rs:129)."
 
 [verdict."print.printer-marks"]
 title = "Add printer marks (crop, bleed, registration, colour bars)"
@@ -5239,49 +5239,49 @@ commands = ["prepress.hairlines"]
 title = "Flattener preview"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/print/src/lib.rs"]
+evidence = ["crates/engine/src/printcheck.rs:129"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "Transparency flattening is explicitly not checked (printcheck.rs:129) and not implemented (no flattening in optimize or edit for transparency)."
 
 [verdict."print.color-management"]
 title = "Colour management settings (working spaces, intents)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+level = "read"
+evidence = ["crates/print/src/settings.rs:148"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "print Settings (settings.rs:148-165) has no colour-management fields; preflight/src/icc.rs only builds/validates an output-intent profile, with no working spaces or intents."
 
 [verdict."print.advanced-print-separations"]
 title = "Print separations and in-RIP separations"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+level = "read"
+evidence = ["crates/print/src/settings.rs:148"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Advanced print options reduce to Print as image via Raster (settings.rs:158-175); no separations or in-RIP separation setting."
 
 [verdict."print.print-marks-bleeds"]
 title = "Marks and bleeds when printing"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/print/src/settings.rs:82"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Poster tiles can print cut marks (settings.rs:82-86, UI body.rs:336). Missing: crop, registration, colour-bar marks and bleed for normal printing; Add printer marks is Planned(M11) (catalog.rs:414)."
 
 [verdict."print.trap-presets"]
 title = "Trap presets (stored as data)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+level = "read"
+evidence = ["crates/print/src/imposition.rs:81"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "TrapNet annotations are only filtered out of printed pages (imposition.rs:81); no trap preset data is stored or edited."
 
 [verdict."print.jdf"]
 title = "JDF job definitions (read-only)"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/print/src/lib.rs"]
+level = "read"
+evidence = ["crates/print/src/lib.rs:1"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No JDF reading in any crate; print/src has no job-definition parser (grep for jdf finds nothing)."
 
 [verdict."a11y.app-screen-reader"]
 title = "Screen-reader support for the app (AccessKit)"
@@ -5293,11 +5293,11 @@ note = "AccessKit labels on all custom widgets; the accessible window is named w
 
 [verdict."a11y.keyboard-only"]
 title = "Full keyboard operation of the app"
-verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/a11y/src/lib.rs"]
+verdict = "PARTIAL"
+level = "read"
+evidence = ["crates/ui-egui/src/canvas/navigation.rs:1", "crates/ui-egui/src/app/keys.rs:34"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Keyboard handling exists for menus (keys.rs:34-36), page navigation (canvas/navigation.rs), the palette, object selection (tools/object_ui.rs), forms, OCR Verify and many dialogs, and widgets expose accessible names. Not shown: every pointer-only workflow (drawing comments, marquee/crop tools, thumbnail drag) has a keyboard path; no audit of that exists."
 
 [verdict."a11y.checker"]
 title = "Accessibility checker (full check)"
@@ -5587,18 +5587,18 @@ note = "The engine, headless tools and right-side editor list reachable indirect
 [verdict."a11y.role-map"]
 title = "Role map editor"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/a11y/src/lib.rs"]
+level = "read"
+evidence = ["crates/a11y/src/tags.rs:37"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "TagProperty (tags.rs:37-48) edits Type, Title, ActualText, AlternateText, Language, Summary, Scope; RoleMap is only read for word counting (engine/src/word_count.rs:136) and preserved by sanitize. No editor."
 
 [verdict."a11y.class-map"]
 title = "Class map editor"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/a11y/src/lib.rs"]
+level = "read"
+evidence = ["crates/a11y/src/tags.rs:37"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No ClassMap handling in a11y or ui-egui; the only references are sanitize's list of structure keys (redact/src/sanitize.rs:298)."
 
 [verdict."a11y.order-panel"]
 title = "Order panel"
@@ -5619,10 +5619,10 @@ note = "Selecting a tag in the Tags panel lists its direct marked-content refere
 [verdict."a11y.create-tag-from-selection"]
 title = "Create a tag from a selection"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/a11y/src/lib.rs"]
+level = "read"
+evidence = ["crates/a11y/src/tags.rs:118"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "Tag edits are move_tag (tags.rs:118) and set_tag_property (tags.rs:391) on existing tags; new tags come only from automatic tagging (a11y/src/autotag.rs). No create-from-selection."
 
 [verdict."a11y.artifact-marking"]
 title = "Mark content as artifact"
@@ -5642,11 +5642,11 @@ note = "Lists findings for untagged painted page content, non-widget annotations
 
 [verdict."a11y.table-editor"]
 title = "Table editor (headers, scope, spans)"
-verdict = "ABSENT"
+verdict = "PARTIAL"
 level = "read"
-evidence = ["crates/a11y/src/lib.rs"]
+evidence = ["crates/a11y/src/tags.rs:37"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "TagProperty has table Summary and header Scope (tags.rs:37-46; TagInfo.scope at tags.rs:21), and layout tables convert to blocks (a11y/src/layout_table.rs). Missing: column/row span and header-ID editing, and a table-structure grid editor."
 
 [verdict."a11y.alt-text-workflow"]
 title = "Set alternate text figure by figure (with decorative option)"
@@ -5658,10 +5658,10 @@ commands = ["a11y.alt_text"]
 [verdict."a11y.alt-text-suggestions"]
 title = "Suggest alternate text via an AI provider"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/a11y/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/catalog.rs:541"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "AI is Provider-only placeholders (catalog.rs:541-543) with no provider call; a11y/src/alt.rs sets alt text supplied by the user (a11y.alt_text, commands.rs:373)."
 
 [verdict."a11y.set-language"]
 title = "Set document language"
@@ -5689,9 +5689,9 @@ note = "catalog.rs:460 lists \"actions.make_accessible\" as Planned and no comma
 title = "Accessibility setup assistant"
 verdict = "ABSENT"
 level = "read"
-evidence = ["crates/a11y/src/lib.rs"]
+evidence = ["crates/engine/src/commands.rs:372"]
 commands = []
-note = "no command id and no implementation found in a source sweep"
+note = "No setup-assistant wizard among a11y commands (commands.rs:368-375); only a reading-options properties tab (ui-egui/src/commands.rs:758)."
 
 [verdict."a11y.read-aloud"]
 title = "Read out loud (platform TTS)"
@@ -5704,10 +5704,10 @@ note = "reading order and reading options exist; no text-to-speech / read-out-lo
 [verdict."a11y.read-aloud-options"]
 title = "Read-aloud voice, pitch and speed"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/a11y/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:372"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No read-aloud or speech synthesis code in any crate (no voice, pitch or speed settings); a11y.reading_options opens the Properties Advanced tab (ui-egui/src/commands.rs:758)."
 
 [verdict."a11y.replace-page-colors"]
 title = "Replace page colours (high contrast)"
@@ -5719,18 +5719,18 @@ commands = []
 [verdict."a11y.reflow-tagged"]
 title = "Reflow tagged content"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/a11y/src/lib.rs"]
+level = "read"
+evidence = ["crates/engine/src/commands.rs:372"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "No reflow view over the tag tree: view commands (commands.rs:206-242) have no reflow mode and a11y commands (commands.rs:368-375) none either."
 
 [verdict."a11y.keyboard-selection-cursor"]
 title = "Always show the keyboard selection cursor"
 verdict = "ABSENT"
-level = "wired"
-evidence = ["crates/a11y/src/lib.rs"]
+level = "read"
+evidence = ["crates/ui-egui/src/app/keys.rs:95"]
 commands = []
-note = "no command id; source sweep inconclusive (generic matches only)"
+note = "keys.rs:95-125 handles tool keys only; no caret-browsing or 'always show keyboard selection cursor' preference exists in ui-egui."
 
 [verdict."misc.compare-text"]
 title = "Compare files: text differences"
