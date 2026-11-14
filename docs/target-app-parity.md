@@ -24,10 +24,10 @@ Approved Trust List) are out of scope: 23 such features are tracked as `na` in
 
 | | Value | Kind |
 |---|---|---|
-| **Feature breadth**, tier-weighted | **≈ 67%** | measured (checklist; weights below) |
-| Feature breadth, unweighted | 57.0% (423 shipped + 75 partial of 808) | measured (`cargo xtask parity` arithmetic) |
+| **Feature breadth**, tier-weighted |**[parity/parity.md](../parity/parity.md)**| measured (checklist; weights below) |
+| Feature breadth, unweighted |[parity/parity.md](../parity/parity.md)| measured (`cargo xtask parity` arithmetic) |
 | Must-have (P0) features | 94.2% (226 + 23 partial of 252) | measured |
-| Feature breadth, mainstream practitioner | ≈ 70% tier-weighted (63.3% unweighted: 292 + 45 partial of 497; P0 95.3%) | measured ([split below](#mainstream-practitioner-vs-full-acrobat-pro)) |
+| Feature breadth, mainstream practitioner |[parity/parity.md](../parity/parity.md)| measured ([split below](#mainstream-practitioner-vs-full-acrobat-pro)) |
 | **Ready for real work**, full Acrobat Pro | **≈ 50%** (range 45–53%) | estimated (weighted sum over dimensions, [below](#by-dimension)) |
 | **Ready for real work**, mainstream practitioner | **≈ 55%** (range 50–60%) | estimated ([split below](#mainstream-practitioner-vs-full-acrobat-pro)) |
 | **Ready for real work**, essentials user | **≈ 66%** (range 60–70%) | estimated ([below](#essentials-user)) |
