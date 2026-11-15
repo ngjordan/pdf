@@ -242,12 +242,16 @@ impl DocView {
 
     /// Standard zoom steps (as in Acrobat's zoom menu).
     pub fn zoom_step(&mut self, up: bool) {
-        const STEPS: [f32; 17] = [0.1, 0.25, 0.33, 0.5, 0.66, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 32.0];
-        let z = self.zoom;
-        let next = if up { STEPS.iter().copied().find(|s| *s > z * 1.01) } else { STEPS.iter().rev().copied().find(|s| *s < z * 0.99) };
-        if let Some(n) = next {
+        if let Some(n) = self.zoom_step_target(up) {
             self.set_zoom(n);
         }
+    }
+
+    /// Where a zoom step goes; `None` past either end, so the buttons can grey out there.
+    pub fn zoom_step_target(&self, up: bool) -> Option<f32> {
+        const STEPS: [f32; 17] = [0.1, 0.25, 0.33, 0.5, 0.66, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 32.0];
+        let z = self.zoom;
+        if up { STEPS.iter().copied().find(|s| *s > z * 1.01) } else { STEPS.iter().rev().copied().find(|s| *s < z * 0.99) }
     }
 
     /// The first page of the two-page spread page `c` is in: spreads are [0, 1], [2, 3], … or,

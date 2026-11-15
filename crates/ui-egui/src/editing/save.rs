@@ -118,7 +118,9 @@ impl PdfApp {
             };
             match delivered {
                 Ok(()) => {
-                    let _ = self.session.mark_saved(id, bytes, None);
+                    // The file was delivered; if the session cannot record that, the
+                    // document still looks unsaved and the user has to know why.
+                    let marked = self.session.mark_saved(id, bytes, None);
                     if let Some(doc) = self.session.get(id)
                         && let Some(view) = self.views.get_mut(index)
                     {
@@ -127,9 +129,19 @@ impl PdfApp {
                         // later downloads are named after the redacted copy too.
                         view.redactions_downloaded = view.redactions_applied;
                     }
-                    // The host reports where the file went (and any failure) itself.
-                    if !to_host {
-                        self.notify_fmt("Downloaded {name}", &[("name", &name)]);
+                    match marked {
+                        Ok(()) => {
+                            // The host reports where the file went (and any failure) itself.
+                            if !to_host {
+                                self.notify_fmt("Downloaded {name}", &[("name", &name)]);
+                            }
+                        }
+                        Err(e) => {
+                            self.notify_fmt(
+                                "Downloaded {name}, but the document is still marked unsaved: {e}",
+                                &[("name", &name), ("e", &e.to_string())],
+                            );
+                        }
                     }
                     after(self);
                     true

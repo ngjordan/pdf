@@ -774,11 +774,11 @@ pub fn right_rail(app: &mut PdfApp, ui: &mut egui::Ui) {
                     // Two buttons across the rail, each leaving a pixel to the rail's edge.
                     let side = (ui.available_width() / 2.0).floor();
                     let tip = crate::commands::key_tip(ui.ctx(), tl!("Zoom out ({key})"), crate::commands::ZOOM_OUT);
-                    if icons::button(ui, "zoom-out", side, false, &tip).clicked() {
+                    if ui.add_enabled_ui(view.zoom_step_target(false).is_some(), |ui| icons::button(ui, "zoom-out", side, false, &tip)).inner.clicked() {
                         view.zoom_step(false);
                     }
                     let tip = crate::commands::key_tip(ui.ctx(), tl!("Zoom in ({key})"), crate::commands::ZOOM_IN);
-                    if icons::button(ui, "zoom-in", side, false, &tip).clicked() {
+                    if ui.add_enabled_ui(view.zoom_step_target(true).is_some(), |ui| icons::button(ui, "zoom-in", side, false, &tip)).inner.clicked() {
                         view.zoom_step(true);
                     }
                 });
