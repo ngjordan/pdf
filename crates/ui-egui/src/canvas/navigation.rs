@@ -204,6 +204,13 @@ impl DocView {
     /// Next page (`true`) or previous page. In two-page view this moves a whole spread: the other
     /// page of the spread is already on screen, so stepping to it wouldn't move the view (#70).
     pub fn step_page(&mut self, forward: bool) {
+        if let Some(target) = self.page_step_target(forward) {
+            self.go_to_page(target);
+        }
+    }
+
+    /// Where `step_page` goes; `None` past either end, so the buttons can grey out there.
+    pub fn page_step_target(&self, forward: bool) -> Option<usize> {
         let c = self.current;
         let last = self.page_count.saturating_sub(1);
         let (target, first) = match self.layout {
@@ -222,10 +229,7 @@ impl DocView {
         };
         // Past either end there is nowhere to go: stay put rather than re-align the view, which
         // would scroll the page back to its top.
-        if if forward { target > last } else { first == 0 } {
-            return;
-        }
-        self.go_to_page(target);
+        if if forward { target > last } else { first == 0 } { None } else { Some(target) }
     }
 
     /// Page-editor focus and drafts belong to a document, even while another tab is active.

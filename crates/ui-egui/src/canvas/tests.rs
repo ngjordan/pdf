@@ -2733,3 +2733,13 @@ fn find_boolean_or_and_and() {
     assert_eq!(f("alpha AND gamma"), 0);
     assert_eq!(f("gamma OR delta"), 0);
 }
+
+#[test]
+fn page_step_target_is_none_past_either_end() {
+    let v = view(3, PageLayout::Single, false);
+    assert_eq!(v.page_step_target(false), None);
+    assert_eq!(v.page_step_target(true), Some(1));
+    let mut v = view(3, PageLayout::Single, false);
+    v.current = 2;
+    assert_eq!(v.page_step_target(true), None);
+}

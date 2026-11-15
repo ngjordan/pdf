@@ -812,10 +812,11 @@ pub fn right_rail(app: &mut PdfApp, ui: &mut egui::Ui) {
                     }
                 }
                 ui.add_space(6.0);
-                if icons::button(ui, "chevron-down", 30.0, false, tl!("Next page")).clicked() {
+                let (can_next, can_prev) = (view.page_step_target(true).is_some(), view.page_step_target(false).is_some());
+                if ui.add_enabled_ui(can_next, |ui| icons::button(ui, "chevron-down", 30.0, false, tl!("Next page"))).inner.clicked() {
                     view.step_page(true);
                 }
-                if icons::button(ui, "chevron-up", 30.0, false, tl!("Previous page")).clicked() {
+                if ui.add_enabled_ui(can_prev, |ui| icons::button(ui, "chevron-up", 30.0, false, tl!("Previous page"))).inner.clicked() {
                     view.step_page(false);
                 }
                 // History is distinct from stepping to the adjacent page, and belongs to this tab.
